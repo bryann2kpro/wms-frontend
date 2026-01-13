@@ -2,18 +2,17 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
-  redirect,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
-
-import Header from '../components/Header'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import StoreDevtools from '../lib/demo-store-devtools'
 
-import { getLocale, shouldRedirect } from '@/paraglide/runtime'
+import { AuthProvider } from '../lib/auth-context'
+
+import { getLocale } from '@/paraglide/runtime'
 
 import appCss from '../styles.css?url'
 
@@ -65,8 +64,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Header />
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <TanStackDevtools
           config={{
             position: 'bottom-right',
