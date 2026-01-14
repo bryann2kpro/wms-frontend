@@ -9,13 +9,13 @@ export interface User {
 const mockUsers: User[] = [
   {
     id: '1',
-    email: 'admin@ederan.com',
+    email: 'admin@smee.com.my',
     name: 'Admin User',
     role: 'admin',
   },
   {
     id: '2',
-    email: 'finance@ederan.com',
+    email: 'finance@smee.com.my',
     name: 'Finance User',
     role: 'finance',
   },

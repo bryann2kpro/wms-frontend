@@ -202,13 +202,13 @@ function RouteComponent() {
                 <li className="flex items-start gap-2">
                   <span className="text-muted-foreground">👤</span>
                   <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Admin:</span> admin@ederan.com / demo123
+                    <span className="font-medium text-foreground">Admin:</span> admin@smee.com.my / demo123
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-muted-foreground">👤</span>
                   <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Finance:</span> finance@ederan.com / demo123
+                    <span className="font-medium text-foreground">Finance:</span> finance@smee.com.my / demo123
                   </span>
                 </li>
               </ul>
