@@ -6,8 +6,6 @@ import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { authenticateUser } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -15,14 +13,26 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export const Route = createFileRoute('/login')({
   component: RouteComponent,
 })
 
-const loginSchema = z.object({
-  email: z.email('Please enter a valid email address'),
+const formSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -36,6 +46,10 @@ function RouteComponent() {
     defaultValues: {
       email: '',
       password: '',
+    },
+    validators: {
+      onBlur: formSchema,
+      onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
       setError('')
@@ -66,111 +80,108 @@ function RouteComponent() {
         </CardHeader>
         <CardContent>
           <form
+            id="login-form"
             onSubmit={(e) => {
               e.preventDefault()
-              e.stopPropagation()
               form.handleSubmit()
             }}
-            className="space-y-4"
           >
-            <form.Field
-              name="email"
-              validators={{
-                onBlur: ({ value }) => {
-                  const result = loginSchema.shape.email.safeParse(value)
-                  return result.success ? undefined : result.error.issues[0]?.message
-                },
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name} className="text-sm font-medium">
-                    Email
-                  </Label>
-                  <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                    <Input
-                      id={field.name}
-                      type="email"
-                      placeholder="admin@ederan.com"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      disabled={form.state.isSubmitting}
-                      aria-invalid={field.state.meta.errors.length > 0}
-                      className="pl-9 transition-all duration-200"
-                    />
-                  </div>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-
-            <form.Field
-              name="password"
-              validators={{
-                onBlur: ({ value }) => {
-                  const result = loginSchema.shape.password.safeParse(value)
-                  return result.success ? undefined : result.error.issues[0]?.message
-                },
-              }}
-            >
-              {(field) => (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={field.name} className="text-sm font-medium">
-                      Password
-                    </Label>
-                    <Link
-                      to="/forgot-password"
-                      className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors font-medium"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                    <Input
-                      id={field.name}
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      disabled={form.state.isSubmitting}
-                      aria-invalid={field.state.meta.errors.length > 0}
-                      className="pl-9 pr-10 transition-all duration-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-sm hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={0}
-                      disabled={form.state.isSubmitting}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
+            <FieldGroup>
+              <form.Field
+                name="email"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                      <InputGroup>
+                        <InputGroupAddon align="inline-start">
+                          <Mail className="h-4 w-4" />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          id={field.name}
+                          name={field.name}
+                          type="email"
+                          placeholder="admin@smee.com.my"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          // disabled={form.state.isSubmitting}
+                          aria-invalid={isInvalid}
+                          autoComplete="email"
+                        />
+                      </InputGroup>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
                       )}
-                    </button>
-                  </div>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+                    </Field>
+                  )
+                }}
+              />
+              <form.Field
+                name="password"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                        <Link
+                          to="/forgot-password"
+                          className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors font-medium"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <InputGroup>
+                        <InputGroupAddon align="inline-start">
+                          <Lock className="h-4 w-4" />
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          id={field.name}
+                          name={field.name}
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="Enter your password"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          // disabled={form.state.isSubmitting}
+                          aria-invalid={isInvalid}
+                          autoComplete="current-password"
+                        />
+                        <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            disabled={form.state.isSubmitting}
+                            variant="ghost"
+                            size="icon-xs"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </InputGroupButton>
+                        </InputGroupAddon>
+                      </InputGroup>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+            </FieldGroup>
 
             {error && (
-              <Alert variant="destructive" className="animate-in fade-in-0 slide-in-from-top-2">
+              <Alert
+                variant="destructive"
+                className="mt-4 animate-in fade-in-0 slide-in-from-top-2"
+              >
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -181,6 +192,7 @@ function RouteComponent() {
               {([isSubmitting, canSubmit]) => (
                 <Button
                   type="submit"
+                  form="login-form"
                   className="w-full mt-6 h-10 text-base font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                   disabled={isSubmitting || !canSubmit}
                 >
@@ -195,25 +207,27 @@ function RouteComponent() {
                 </Button>
               )}
             </form.Subscribe>
-
-            <div className="mt-6 rounded-lg border border-border bg-muted/50 p-4 text-sm">
-              <p className="font-semibold mb-3 text-foreground">Demo accounts:</p>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-muted-foreground">👤</span>
-                  <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Admin:</span> admin@smee.com.my / demo123
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-muted-foreground">👤</span>
-                  <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Finance:</span> finance@smee.com.my / demo123
-                  </span>
-                </li>
-              </ul>
-            </div>
           </form>
+
+          <div className="mt-6 rounded-lg border border-border bg-muted/50 p-4 text-sm">
+            <p className="font-semibold mb-3 text-foreground">Demo accounts:</p>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-muted-foreground">👤</span>
+                <span className="text-muted-foreground">
+                  <span className="font-medium text-foreground">Admin:</span>{' '}
+                  admin@smee.com.my / demo123
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-muted-foreground">👤</span>
+                <span className="text-muted-foreground">
+                  <span className="font-medium text-foreground">Finance:</span>{' '}
+                  finance@smee.com.my / demo123
+                </span>
+              </li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
