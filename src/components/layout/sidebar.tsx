@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
-import { LayoutDashboard, Package, ArrowRightLeft, Truck, FileText, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, Package, ArrowRightLeft, Truck, Settings, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -10,7 +10,6 @@ const navigation = [
   { name: "GRN", to: "/admin/grn", icon: Package },
   { name: "Transfer Orders", to: "/admin/transfers", icon: ArrowRightLeft },
   { name: "Deliveries", to: "/admin/deliveries", icon: Truck },
-  { name: "Documents", to: "/admin/documents", icon: FileText },
   { name: "Settings", to: "/admin/settings", icon: Settings },
 ]
 
