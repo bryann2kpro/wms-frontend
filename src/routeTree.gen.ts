@@ -18,6 +18,9 @@ import { Route as DemoTableRouteImport } from './routes/demo/table'
 import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
+import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminGrnRouteImport } from './routes/admin/grn'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
@@ -75,6 +78,21 @@ const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
   id: '/demo/apollo-client',
   path: '/demo/apollo-client',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTransfersRoute = AdminTransfersRouteImport.update({
+  id: '/transfers',
+  path: '/transfers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGrnRoute = AdminGrnRouteImport.update({
+  id: '/grn',
+  path: '/grn',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
   id: '/deliveries',
@@ -144,6 +162,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/transfers': typeof AdminTransfersRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -167,6 +188,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/transfers': typeof AdminTransfersRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -191,6 +215,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/transfers': typeof AdminTransfersRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -216,6 +243,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
+    | '/admin/grn'
+    | '/admin/settings'
+    | '/admin/transfers'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -239,6 +269,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
+    | '/admin/grn'
+    | '/admin/settings'
+    | '/admin/transfers'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -262,6 +295,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
+    | '/admin/grn'
+    | '/admin/settings'
+    | '/admin/transfers'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -366,6 +402,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApolloClientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/transfers': {
+      id: '/admin/transfers'
+      path: '/transfers'
+      fullPath: '/admin/transfers'
+      preLoaderRoute: typeof AdminTransfersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/grn': {
+      id: '/admin/grn'
+      path: '/grn'
+      fullPath: '/admin/grn'
+      preLoaderRoute: typeof AdminGrnRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/deliveries': {
       id: '/admin/deliveries'
       path: '/deliveries'
@@ -456,11 +513,17 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminGrnRoute: typeof AdminGrnRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminTransfersRoute: typeof AdminTransfersRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminGrnRoute: AdminGrnRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminTransfersRoute: AdminTransfersRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

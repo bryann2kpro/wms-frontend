@@ -39,6 +39,15 @@ import {
 import { GlobalLoadingShadow } from '@/components/ui/loading-shadow'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
   Plus,
   Search,
   Eye,
@@ -194,10 +203,220 @@ function DeliveriesRouteComponent() {
             Manage deliveries, track shipments, and proof of delivery.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Schedule Delivery
-        </Button>
+        <Dialog
+          open={isCreateOpen}
+          onOpenChange={(open) => {
+            setIsCreateOpen(open)
+            if (!open) {
+              form.reset()
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule Delivery
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Schedule New Delivery</DialogTitle>
+              <DialogDescription>
+                Enter the details for the new delivery.
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                form.handleSubmit()
+              }}
+              className="space-y-4"
+            >
+              <FieldGroup>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <form.Field
+                    name="deliveryNumber"
+                    children={(field) => {
+                      const isInvalid =
+                        field.state.meta.isTouched && !field.state.meta.isValid
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            Delivery Number
+                          </FieldLabel>
+                          <Input
+                            id={field.name}
+                            value={field.state.value}
+                            placeholder="DEL-2024-001"
+                            onBlur={field.handleBlur}
+                            onChange={(e) =>
+                              field.handleChange(e.target.value)
+                            }
+                            aria-invalid={isInvalid}
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  />
+                  <form.Field
+                    name="customerName"
+                    children={(field) => {
+                      const isInvalid =
+                        field.state.meta.isTouched && !field.state.meta.isValid
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            Customer Name
+                          </FieldLabel>
+                          <Input
+                            id={field.name}
+                            value={field.state.value}
+                            placeholder="Enter customer name"
+                            onBlur={field.handleBlur}
+                            onChange={(e) =>
+                              field.handleChange(e.target.value)
+                            }
+                            aria-invalid={isInvalid}
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  />
+                </div>
+
+                <form.Field
+                  name="deliveryAddress"
+                  children={(field) => {
+                    const isInvalid =
+                      field.state.meta.isTouched && !field.state.meta.isValid
+                    return (
+                      <Field data-invalid={isInvalid}>
+                        <FieldLabel htmlFor={field.name}>
+                          Delivery Address
+                        </FieldLabel>
+                        <Textarea
+                          id={field.name}
+                          value={field.state.value}
+                          placeholder="Enter full delivery address..."
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={isInvalid}
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    )
+                  }}
+                />
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <form.Field
+                    name="scheduledDate"
+                    children={(field) => {
+                      const isInvalid =
+                        field.state.meta.isTouched && !field.state.meta.isValid
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            Scheduled Date
+                          </FieldLabel>
+                          <Input
+                            id={field.name}
+                            type="date"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) =>
+                              field.handleChange(e.target.value)
+                            }
+                            aria-invalid={isInvalid}
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  />
+                  <form.Field
+                    name="driver"
+                    children={(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Driver</FieldLabel>
+                        <Input
+                          id={field.name}
+                          value={field.state.value}
+                          placeholder="John Doe"
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  />
+                  <form.Field
+                    name="vehicle"
+                    children={(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Vehicle</FieldLabel>
+                        <Input
+                          id={field.name}
+                          value={field.state.value}
+                          placeholder="VAN-001"
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <form.Field
+                  name="notes"
+                  children={(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        value={field.state.value}
+                        placeholder="Enter any delivery instructions..."
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+
+              <form.Subscribe
+                selector={(state) => [state.isSubmitting, state.canSubmit]}
+              >
+                {([isSubmitting, canSubmit]) => (
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsCreateOpen(false)
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting || !canSubmit}>
+                      {isSubmitting ? 'Scheduling...' : 'Schedule Delivery'}
+                    </Button>
+                  </DialogFooter>
+                )}
+              </form.Subscribe>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {summary && (
@@ -384,209 +603,6 @@ function DeliveriesRouteComponent() {
         </CardContent>
       </Card>
 
-      {/* Create Delivery Panel */}
-      {isCreateOpen && (
-        <Card className="border-primary/30 shadow-lg shadow-primary/10">
-          <CardHeader>
-            <CardTitle>Schedule New Delivery</CardTitle>
-            <CardDescription>
-              Enter the details for the new delivery.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                form.handleSubmit()
-              }}
-              className="space-y-4"
-            >
-              <FieldGroup>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <form.Field
-                    name="deliveryNumber"
-                    children={(field) => {
-                      const isInvalid =
-                        field.state.meta.isTouched && !field.state.meta.isValid
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>
-                            Delivery Number
-                          </FieldLabel>
-                          <Input
-                            id={field.name}
-                            value={field.state.value}
-                            placeholder="DEL-2024-001"
-                            onBlur={field.handleBlur}
-                            onChange={(e) =>
-                              field.handleChange(e.target.value)
-                            }
-                            aria-invalid={isInvalid}
-                          />
-                          {isInvalid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      )
-                    }}
-                  />
-                  <form.Field
-                    name="customerName"
-                    children={(field) => {
-                      const isInvalid =
-                        field.state.meta.isTouched && !field.state.meta.isValid
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>
-                            Customer Name
-                          </FieldLabel>
-                          <Input
-                            id={field.name}
-                            value={field.state.value}
-                            placeholder="Enter customer name"
-                            onBlur={field.handleBlur}
-                            onChange={(e) =>
-                              field.handleChange(e.target.value)
-                            }
-                            aria-invalid={isInvalid}
-                          />
-                          {isInvalid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      )
-                    }}
-                  />
-                </div>
-
-                <form.Field
-                  name="deliveryAddress"
-                  children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Delivery Address
-                        </FieldLabel>
-                        <Textarea
-                          id={field.name}
-                          value={field.state.value}
-                          placeholder="Enter full delivery address..."
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                />
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <form.Field
-                    name="scheduledDate"
-                    children={(field) => {
-                      const isInvalid =
-                        field.state.meta.isTouched && !field.state.meta.isValid
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>
-                            Scheduled Date
-                          </FieldLabel>
-                          <Input
-                            id={field.name}
-                            type="date"
-                            value={field.state.value}
-                            onBlur={field.handleBlur}
-                            onChange={(e) =>
-                              field.handleChange(e.target.value)
-                            }
-                            aria-invalid={isInvalid}
-                          />
-                          {isInvalid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      )
-                    }}
-                  />
-                  <form.Field
-                    name="driver"
-                    children={(field) => (
-                      <Field>
-                        <FieldLabel htmlFor={field.name}>Driver</FieldLabel>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          placeholder="John Doe"
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </Field>
-                    )}
-                  />
-                  <form.Field
-                    name="vehicle"
-                    children={(field) => (
-                      <Field>
-                        <FieldLabel htmlFor={field.name}>Vehicle</FieldLabel>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          placeholder="VAN-001"
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </Field>
-                    )}
-                  />
-                </div>
-
-                <form.Field
-                  name="notes"
-                  children={(field) => (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
-                      <Textarea
-                        id={field.name}
-                        value={field.state.value}
-                        placeholder="Enter any delivery instructions..."
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                      />
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-
-              <form.Subscribe
-                selector={(state) => [state.isSubmitting, state.canSubmit]}
-              >
-                {([isSubmitting, canSubmit]) => (
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsCreateOpen(false)
-                      }}
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting || !canSubmit}>
-                      {isSubmitting ? 'Scheduling...' : 'Schedule Delivery'}
-                    </Button>
-                  </div>
-                )}
-              </form.Subscribe>
-            </form>
-          </CardContent>
-        </Card>
-      )}
 
       {/* View Delivery Details */}
       {selectedDelivery && (
