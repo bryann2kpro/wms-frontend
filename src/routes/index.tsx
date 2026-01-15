@@ -1,14 +1,13 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useEffect } from 'react';
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-export const Route = createFileRoute('/')({ component: App, })
+export const Route = createFileRoute("/")({ component: App });
 
 function App() {
+	useEffect(() => {
+		console.log("redirecting to /login");
+		throw redirect({ to: "/login" });
+	}, []);
 
-  useEffect(() => {
-    console.log('redirecting to /login')
-    throw redirect({ to: '/login' })
-  }, [])
-
-  return null;
+	return null;
 }
