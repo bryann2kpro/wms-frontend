@@ -31,4 +31,4 @@ COPY --from=builder /app/project.inlang /app/project.inlang
 
 RUN pnpm install --production
 EXPOSE 3000
-CMD ["pnpm", "preview"]
+CMD ["node", ".output/server/index.mjs"]
