@@ -1,7 +1,4 @@
-"use client"
-
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { LayoutDashboard, Package, ArrowRightLeft, Truck, FileText, Settings, LogOut } from "lucide-react"
@@ -9,17 +6,23 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "GRN", href: "/grn", icon: Package },
-  { name: "Transfer Orders", href: "/transfers", icon: ArrowRightLeft },
-  { name: "Deliveries", href: "/deliveries", icon: Truck },
-  { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "GRN", to: "/admin/grn", icon: Package },
+  { name: "Transfer Orders", to: "/admin/transfers", icon: ArrowRightLeft },
+  { name: "Deliveries", to: "/admin/deliveries", icon: Truck },
+  { name: "Documents", to: "/admin/documents", icon: FileText },
+  { name: "Settings", to: "/admin/settings", icon: Settings },
 ]
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate({ to: "/login" })
+  }
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-background">
@@ -30,11 +33,11 @@ export function Sidebar() {
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = location.pathname === item.to
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
@@ -59,10 +62,7 @@ export function Sidebar() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2 bg-transparent"
-          onClick={() => {
-            logout()
-            window.location.href = "/login"
-          }}
+          onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />
           Logout

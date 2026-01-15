@@ -57,7 +57,7 @@ function RouteComponent() {
         const user = authenticateUser(value.email, value.password)
         if (user) {
           login(user)
-          navigate({ to: '/dashboard' })
+          navigate({ to: '/admin/dashboard' })
         } else {
           setError('Invalid email or password')
         }

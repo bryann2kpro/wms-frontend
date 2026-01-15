@@ -11,13 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoTableRouteImport } from './routes/demo/table'
 import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
+import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
@@ -39,9 +41,9 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -73,6 +75,16 @@ const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
   id: '/demo/apollo-client',
   path: '/demo/apollo-client',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
@@ -127,9 +139,11 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -148,9 +162,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -170,9 +186,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -193,9 +211,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/dashboard'
+    | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -214,9 +234,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
+    | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -235,9 +257,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/dashboard'
+    | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -257,7 +281,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   DemoApolloClientRoute: typeof DemoApolloClientRoute
@@ -293,11 +317,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -341,6 +365,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/apollo-client'
       preLoaderRoute: typeof DemoApolloClientRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/deliveries': {
+      id: '/admin/deliveries'
+      path: '/deliveries'
+      fullPath: '/admin/deliveries'
+      preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
@@ -415,9 +453,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminDeliveriesRoute: AdminDeliveriesRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   DemoApolloClientRoute: DemoApolloClientRoute,
