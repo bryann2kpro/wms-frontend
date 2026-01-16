@@ -13,10 +13,41 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
-import { User, Building, Bell, Shield, Loader2 } from "lucide-react";
+import { usePermissions } from "@/lib/permissions";
+import {
+	User,
+	Building,
+	Bell,
+	Shield,
+	Loader2,
+	Users,
+	Database,
+	Route as RouteIcon,
+	Plug,
+	Plus,
+	Edit,
+	Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { WMSRole } from "@/lib/auth";
 
 // Zod schemas for validation
 const userProfileSchema = z.object({
@@ -52,8 +83,12 @@ export const Route = createFileRoute("/admin/settings")({
 
 function SettingsPage() {
 	const { user } = useAuth();
+	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
+	const [activeTab, setActiveTab] = useState<
+		"profile" | "users" | "master-data" | "delivery-rules" | "integration"
+	>("profile");
 
 	// Mock mutation functions
 	const updateUserProfile = useMutation({
@@ -101,12 +136,40 @@ function SettingsPage() {
 		},
 	});
 
+	const tabs = [
+		{ id: "profile" as const, label: "Profile", icon: User },
+		...(hasPermission("admin:users")
+			? [{ id: "users" as const, label: "Users/Roles", icon: Users }]
+			: []),
+		...(hasPermission("admin:master_data")
+			? [{ id: "master-data" as const, label: "Master Data", icon: Database }]
+			: []),
+		...(hasPermission("admin:delivery_rules")
+			? [
+					{
+						id: "delivery-rules" as const,
+						label: "Delivery Rules",
+						icon: RouteIcon,
+					},
+				]
+			: []),
+		...(hasPermission("admin:integration_status")
+			? [
+					{
+						id: "integration" as const,
+						label: "Integration Status",
+						icon: Plug,
+					},
+				]
+			: []),
+	];
+
 	return (
 		<div className="container mx-auto p-6 space-y-6">
 			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+				<h1 className="text-3xl font-bold tracking-tight">Admin / Settings</h1>
 				<p className="text-muted-foreground">
-					Manage your account and application preferences
+					Manage users, master data, delivery rules, and integration settings
 				</p>
 			</div>
 
@@ -116,28 +179,56 @@ function SettingsPage() {
 				</div>
 			)}
 
-			<div className="grid gap-6 lg:grid-cols-2">
-				<UserProfileCard
-					user={user}
-					onSubmit={updateUserProfile.mutateAsync}
-					isSubmitting={updateUserProfile.isPending}
-				/>
-
-				<CompanySettingsCard
-					onSubmit={updateCompanySettings.mutateAsync}
-					isSubmitting={updateCompanySettings.isPending}
-				/>
-
-				<NotificationsCard
-					onSubmit={updateNotifications.mutateAsync}
-					isSubmitting={updateNotifications.isPending}
-				/>
-
-				<SecurityCard
-					onSubmit={updatePassword.mutateAsync}
-					isSubmitting={updatePassword.isPending}
-				/>
+			{/* Tabs */}
+			<div className="flex gap-2 border-b">
+				{tabs.map((tab) => {
+					const Icon = tab.icon;
+					return (
+						<Button
+							key={tab.id}
+							variant={activeTab === tab.id ? "default" : "ghost"}
+							onClick={() => setActiveTab(tab.id)}
+							className="rounded-b-none"
+						>
+							<Icon className="mr-2 h-4 w-4" />
+							{tab.label}
+						</Button>
+					);
+				})}
 			</div>
+
+			{/* Tab Content */}
+			{activeTab === "profile" && (
+				<div className="grid gap-6 lg:grid-cols-2">
+					<UserProfileCard
+						user={user}
+						onSubmit={updateUserProfile.mutateAsync}
+						isSubmitting={updateUserProfile.isPending}
+					/>
+					<SecurityCard
+						onSubmit={updatePassword.mutateAsync}
+						isSubmitting={updatePassword.isPending}
+					/>
+					<NotificationsCard
+						onSubmit={updateNotifications.mutateAsync}
+						isSubmitting={updateNotifications.isPending}
+					/>
+				</div>
+			)}
+
+			{activeTab === "users" && hasPermission("admin:users") && (
+				<UsersRolesCard />
+			)}
+
+			{activeTab === "master-data" && hasPermission("admin:master_data") && (
+				<MasterDataCard />
+			)}
+
+			{activeTab === "delivery-rules" &&
+				hasPermission("admin:delivery_rules") && <DeliveryRulesCard />}
+
+			{activeTab === "integration" &&
+				hasPermission("admin:integration_status") && <IntegrationStatusCard />}
 		</div>
 	);
 }
@@ -195,7 +286,7 @@ function UserProfileCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -294,7 +385,7 @@ function CompanySettingsCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -314,7 +405,7 @@ function CompanySettingsCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -334,7 +425,7 @@ function CompanySettingsCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -526,7 +617,7 @@ function SecurityCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -547,7 +638,7 @@ function SecurityCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -568,7 +659,7 @@ function SecurityCard({
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
-										{field.state.meta.errors[0]}
+										{field.state.meta.errors[0]?.message}
 									</p>
 								)}
 							</div>
@@ -588,5 +679,233 @@ function SecurityCard({
 				</form>
 			</CardContent>
 		</Card>
+	);
+}
+
+// Mock users data
+const mockUsersList = [
+	{
+		id: "1",
+		name: "Supervisor User",
+		email: "admin@smee.com.my",
+		role: "supervisor" as WMSRole,
+	},
+	{
+		id: "2",
+		name: "Logistic User",
+		email: "finance@smee.com.my",
+		role: "logistic" as WMSRole,
+	},
+	{
+		id: "3",
+		name: "Store Keeper User",
+		email: "warehouse@smee.com.my",
+		role: "store_keeper" as WMSRole,
+	},
+];
+
+function UsersRolesCard() {
+	const [users] = useState(mockUsersList);
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex items-center justify-between">
+					<div>
+						<CardTitle>Users & Roles Management</CardTitle>
+						<CardDescription>
+							Manage system users and assign roles
+						</CardDescription>
+					</div>
+					<Button>
+						<Plus className="mr-2 h-4 w-4" />
+						Add User
+					</Button>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<div className="overflow-x-auto rounded-lg border">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Name</TableHead>
+								<TableHead>Email</TableHead>
+								<TableHead>Role</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{users.map((user) => (
+								<TableRow key={user.id}>
+									<TableCell className="font-medium">{user.name}</TableCell>
+									<TableCell>{user.email}</TableCell>
+									<TableCell>
+										<Badge variant="outline">
+											{user.role.replace("_", " ").toUpperCase()}
+										</Badge>
+									</TableCell>
+									<TableCell className="text-right">
+										<div className="flex justify-end gap-1">
+											<Button variant="ghost" size="icon">
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button variant="ghost" size="icon">
+												<Trash2 className="h-4 w-4 text-red-600" />
+											</Button>
+										</div>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function MasterDataCard() {
+	return (
+		<div className="grid gap-6 md:grid-cols-3">
+			<Card>
+				<CardHeader>
+					<CardTitle>Suppliers</CardTitle>
+					<CardDescription>Manage supplier master data</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant="outline" className="w-full">
+						<Plus className="mr-2 h-4 w-4" />
+						Add Supplier
+					</Button>
+					<div className="mt-4 text-sm text-muted-foreground">
+						Suppliers: 15
+					</div>
+				</CardContent>
+			</Card>
+			<Card>
+				<CardHeader>
+					<CardTitle>Outlets</CardTitle>
+					<CardDescription>Manage outlet master data</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant="outline" className="w-full">
+						<Plus className="mr-2 h-4 w-4" />
+						Add Outlet
+					</Button>
+					<div className="mt-4 text-sm text-muted-foreground">Outlets: 8</div>
+				</CardContent>
+			</Card>
+			<Card>
+				<CardHeader>
+					<CardTitle>SKUs</CardTitle>
+					<CardDescription>Manage SKU master data</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant="outline" className="w-full">
+						<Plus className="mr-2 h-4 w-4" />
+						Add SKU
+					</Button>
+					<div className="mt-4 text-sm text-muted-foreground">SKUs: 245</div>
+				</CardContent>
+			</Card>
+		</div>
+	);
+}
+
+function DeliveryRulesCard() {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Delivery Rules</CardTitle>
+				<CardDescription>
+					Configure delivery scheduling and routing rules
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<div className="rounded-lg border p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="font-medium">Default Delivery Window</p>
+							<p className="text-sm text-muted-foreground">9:00 AM - 5:00 PM</p>
+						</div>
+						<Button variant="outline" size="sm">
+							<Edit className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					</div>
+				</div>
+				<div className="rounded-lg border p-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="font-medium">Auto-Assign Delivery Routes</p>
+							<p className="text-sm text-muted-foreground">Enabled</p>
+						</div>
+						<Switch defaultChecked />
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function IntegrationStatusCard() {
+	const [syncSchedule, setSyncSchedule] = useState("12:00");
+
+	return (
+		<div className="grid gap-6 md:grid-cols-2">
+			<Card>
+				<CardHeader>
+					<CardTitle>NetSuite Connection</CardTitle>
+					<CardDescription>Integration connection status</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="flex items-center justify-between">
+						<span className="text-sm">Connection Status</span>
+						<Badge
+							variant="outline"
+							className="bg-green-500/10 text-green-600 border-green-500/20"
+						>
+							Connected
+						</Badge>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-sm">Last Test</span>
+						<span className="text-sm text-muted-foreground">
+							{new Date().toLocaleString()}
+						</span>
+					</div>
+					<Button variant="outline" className="w-full">
+						Test Connection
+					</Button>
+				</CardContent>
+			</Card>
+			<Card>
+				<CardHeader>
+					<CardTitle>Sync Schedules</CardTitle>
+					<CardDescription>Configure automated sync schedules</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label>TO Pull Schedule</Label>
+						<Input
+							type="time"
+							value={syncSchedule}
+							onChange={(e) => setSyncSchedule(e.target.value)}
+						/>
+						<p className="text-xs text-muted-foreground">
+							Daily TO pull from NetSuite (12pm default)
+						</p>
+					</div>
+					<div className="space-y-2">
+						<Label>Stock Sync Schedule</Label>
+						<Input type="time" value="12:00" disabled />
+						<p className="text-xs text-muted-foreground">
+							Daily stock sync to NetSuite
+						</p>
+					</div>
+					<Button className="w-full">Save Schedule</Button>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

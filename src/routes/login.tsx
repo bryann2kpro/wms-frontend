@@ -217,15 +217,26 @@ function RouteComponent() {
 							<li className="flex items-start gap-2">
 								<span className="text-muted-foreground">👤</span>
 								<span className="text-muted-foreground">
-									<span className="font-medium text-foreground">Admin:</span>{" "}
+									<span className="font-medium text-foreground">
+										Supervisor:
+									</span>{" "}
 									admin@smee.com.my / demo123
 								</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-muted-foreground">👤</span>
 								<span className="text-muted-foreground">
-									<span className="font-medium text-foreground">Finance:</span>{" "}
+									<span className="font-medium text-foreground">Logistic:</span>{" "}
 									finance@smee.com.my / demo123
+								</span>
+							</li>
+							<li className="flex items-start gap-2">
+								<span className="text-muted-foreground">👤</span>
+								<span className="text-muted-foreground">
+									<span className="font-medium text-foreground">
+										Store Keeper:
+									</span>{" "}
+									warehouse@smee.com.my / demo123
 								</span>
 							</li>
 						</ul>

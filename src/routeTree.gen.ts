@@ -8,558 +8,799 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as LoginRouteImport } from "./routes/login";
-import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
-import { Route as AdminRouteRouteImport } from "./routes/admin/route";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as DemoTanstackQueryRouteImport } from "./routes/demo/tanstack-query";
-import { Route as DemoTableRouteImport } from "./routes/demo/table";
-import { Route as DemoStoreRouteImport } from "./routes/demo/store";
-import { Route as DemoI18nRouteImport } from "./routes/demo.i18n";
-import { Route as DemoApolloClientRouteImport } from "./routes/demo.apollo-client";
-import { Route as AdminTransfersRouteImport } from "./routes/admin/transfers";
-import { Route as AdminSettingsRouteImport } from "./routes/admin/settings";
-import { Route as AdminGrnRouteImport } from "./routes/admin/grn";
-import { Route as AdminDeliveriesRouteImport } from "./routes/admin/deliveries";
-import { Route as AdminDashboardRouteImport } from "./routes/admin/dashboard";
-import { Route as DemoStartServerFuncsRouteImport } from "./routes/demo/start.server-funcs";
-import { Route as DemoStartApiRequestRouteImport } from "./routes/demo/start.api-request";
-import { Route as DemoFormSimpleRouteImport } from "./routes/demo/form.simple";
-import { Route as DemoFormAddressRouteImport } from "./routes/demo/form.address";
-import { Route as DemoApiTqTodosRouteImport } from "./routes/demo/api.tq-todos";
-import { Route as DemoApiNamesRouteImport } from "./routes/demo/api.names";
-import { Route as DemoStartSsrIndexRouteImport } from "./routes/demo/start.ssr.index";
-import { Route as DemoStartSsrSpaModeRouteImport } from "./routes/demo/start.ssr.spa-mode";
-import { Route as DemoStartSsrFullSsrRouteImport } from "./routes/demo/start.ssr.full-ssr";
-import { Route as DemoStartSsrDataOnlyRouteImport } from "./routes/demo/start.ssr.data-only";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
+import { Route as DemoTableRouteImport } from './routes/demo/table'
+import { Route as DemoStoreRouteImport } from './routes/demo/store'
+import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
+import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
+import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
+import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
+import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
+import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminGrnRouteImport } from './routes/admin/grn'
+import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
+import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
+import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-queue'
+import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
+import { Route as AdminDeliveryProofRouteImport } from './routes/admin/delivery-proof'
+import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
+import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
+import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
+import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
+import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
+import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as AdminSettlementIdRouteImport } from './routes/admin/settlement.$id'
+import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
+import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
+import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
+import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
 const LoginRoute = LoginRouteImport.update({
-	id: "/login",
-	path: "/login",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-	id: "/forgot-password",
-	path: "/forgot-password",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
-	id: "/admin",
-	path: "/admin",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
-	id: "/",
-	path: "/",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
-	id: "/demo/tanstack-query",
-	path: "/demo/tanstack-query",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/tanstack-query',
+  path: '/demo/tanstack-query',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoTableRoute = DemoTableRouteImport.update({
-	id: "/demo/table",
-	path: "/demo/table",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/table',
+  path: '/demo/table',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStoreRoute = DemoStoreRouteImport.update({
-	id: "/demo/store",
-	path: "/demo/store",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/store',
+  path: '/demo/store',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoI18nRoute = DemoI18nRouteImport.update({
-	id: "/demo/i18n",
-	path: "/demo/i18n",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/i18n',
+  path: '/demo/i18n',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
-	id: "/demo/apollo-client",
-	path: "/demo/apollo-client",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/apollo-client',
+  path: '/demo/apollo-client',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTransfersRoute = AdminTransfersRouteImport.update({
-	id: "/transfers",
-	path: "/transfers",
-	getParentRoute: () => AdminRouteRoute,
-} as any);
+  id: '/transfers',
+  path: '/transfers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettlementRoute = AdminSettlementRouteImport.update({
+  id: '/settlement',
+  path: '/settlement',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
-	id: "/settings",
-	path: "/settings",
-	getParentRoute: () => AdminRouteRoute,
-} as any);
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInvoiceDetailRoute = AdminInvoiceDetailRouteImport.update({
+  id: '/invoice-detail',
+  path: '/invoice-detail',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminGrnRoute = AdminGrnRouteImport.update({
-	id: "/grn",
-	path: "/grn",
-	getParentRoute: () => AdminRouteRoute,
-} as any);
+  id: '/grn',
+  path: '/grn',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminExceptionsRoute = AdminExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminExceptionDetailRoute = AdminExceptionDetailRouteImport.update({
+  id: '/exception-detail',
+  path: '/exception-detail',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDoWorkQueueRoute = AdminDoWorkQueueRouteImport.update({
+  id: '/do-work-queue',
+  path: '/do-work-queue',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDoDetailRoute = AdminDoDetailRouteImport.update({
+  id: '/do-detail',
+  path: '/do-detail',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDeliveryProofRoute = AdminDeliveryProofRouteImport.update({
+  id: '/delivery-proof',
+  path: '/delivery-proof',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
-	id: "/deliveries",
-	path: "/deliveries",
-	getParentRoute: () => AdminRouteRoute,
-} as any);
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
-	id: "/dashboard",
-	path: "/dashboard",
-	getParentRoute: () => AdminRouteRoute,
-} as any);
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
-	id: "/demo/start/server-funcs",
-	path: "/demo/start/server-funcs",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/server-funcs',
+  path: '/demo/start/server-funcs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartApiRequestRoute = DemoStartApiRequestRouteImport.update({
-	id: "/demo/start/api-request",
-	path: "/demo/start/api-request",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/api-request',
+  path: '/demo/start/api-request',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoFormSimpleRoute = DemoFormSimpleRouteImport.update({
-	id: "/demo/form/simple",
-	path: "/demo/form/simple",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/form/simple',
+  path: '/demo/form/simple',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoFormAddressRoute = DemoFormAddressRouteImport.update({
-	id: "/demo/form/address",
-	path: "/demo/form/address",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/form/address',
+  path: '/demo/form/address',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoApiTqTodosRoute = DemoApiTqTodosRouteImport.update({
-	id: "/demo/api/tq-todos",
-	path: "/demo/api/tq-todos",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/api/tq-todos',
+  path: '/demo/api/tq-todos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
-	id: "/demo/api/names",
-	path: "/demo/api/names",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/api/names',
+  path: '/demo/api/names',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettlementIdRoute = AdminSettlementIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminSettlementRoute,
+} as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
-	id: "/demo/start/ssr/",
-	path: "/demo/start/ssr/",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/ssr/',
+  path: '/demo/start/ssr/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartSsrSpaModeRoute = DemoStartSsrSpaModeRouteImport.update({
-	id: "/demo/start/ssr/spa-mode",
-	path: "/demo/start/ssr/spa-mode",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/ssr/spa-mode',
+  path: '/demo/start/ssr/spa-mode',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartSsrFullSsrRoute = DemoStartSsrFullSsrRouteImport.update({
-	id: "/demo/start/ssr/full-ssr",
-	path: "/demo/start/ssr/full-ssr",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/ssr/full-ssr',
+  path: '/demo/start/ssr/full-ssr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
-	id: "/demo/start/ssr/data-only",
-	path: "/demo/start/ssr/data-only",
-	getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/demo/start/ssr/data-only',
+  path: '/demo/start/ssr/data-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-	"/": typeof IndexRoute;
-	"/admin": typeof AdminRouteRouteWithChildren;
-	"/forgot-password": typeof ForgotPasswordRoute;
-	"/login": typeof LoginRoute;
-	"/admin/dashboard": typeof AdminDashboardRoute;
-	"/admin/deliveries": typeof AdminDeliveriesRoute;
-	"/admin/grn": typeof AdminGrnRoute;
-	"/admin/settings": typeof AdminSettingsRoute;
-	"/admin/transfers": typeof AdminTransfersRoute;
-	"/demo/apollo-client": typeof DemoApolloClientRoute;
-	"/demo/i18n": typeof DemoI18nRoute;
-	"/demo/store": typeof DemoStoreRoute;
-	"/demo/table": typeof DemoTableRoute;
-	"/demo/tanstack-query": typeof DemoTanstackQueryRoute;
-	"/demo/api/names": typeof DemoApiNamesRoute;
-	"/demo/api/tq-todos": typeof DemoApiTqTodosRoute;
-	"/demo/form/address": typeof DemoFormAddressRoute;
-	"/demo/form/simple": typeof DemoFormSimpleRoute;
-	"/demo/start/api-request": typeof DemoStartApiRequestRoute;
-	"/demo/start/server-funcs": typeof DemoStartServerFuncsRoute;
-	"/demo/start/ssr/data-only": typeof DemoStartSsrDataOnlyRoute;
-	"/demo/start/ssr/full-ssr": typeof DemoStartSsrFullSsrRoute;
-	"/demo/start/ssr/spa-mode": typeof DemoStartSsrSpaModeRoute;
-	"/demo/start/ssr": typeof DemoStartSsrIndexRoute;
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
+  '/admin/do-detail': typeof AdminDoDetailRoute
+  '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/exception-detail': typeof AdminExceptionDetailRoute
+  '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/transfers': typeof AdminTransfersRoute
+  '/demo/apollo-client': typeof DemoApolloClientRoute
+  '/demo/i18n': typeof DemoI18nRoute
+  '/demo/store': typeof DemoStoreRoute
+  '/demo/table': typeof DemoTableRoute
+  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
+  '/demo/form/address': typeof DemoFormAddressRoute
+  '/demo/form/simple': typeof DemoFormSimpleRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
-	"/": typeof IndexRoute;
-	"/admin": typeof AdminRouteRouteWithChildren;
-	"/forgot-password": typeof ForgotPasswordRoute;
-	"/login": typeof LoginRoute;
-	"/admin/dashboard": typeof AdminDashboardRoute;
-	"/admin/deliveries": typeof AdminDeliveriesRoute;
-	"/admin/grn": typeof AdminGrnRoute;
-	"/admin/settings": typeof AdminSettingsRoute;
-	"/admin/transfers": typeof AdminTransfersRoute;
-	"/demo/apollo-client": typeof DemoApolloClientRoute;
-	"/demo/i18n": typeof DemoI18nRoute;
-	"/demo/store": typeof DemoStoreRoute;
-	"/demo/table": typeof DemoTableRoute;
-	"/demo/tanstack-query": typeof DemoTanstackQueryRoute;
-	"/demo/api/names": typeof DemoApiNamesRoute;
-	"/demo/api/tq-todos": typeof DemoApiTqTodosRoute;
-	"/demo/form/address": typeof DemoFormAddressRoute;
-	"/demo/form/simple": typeof DemoFormSimpleRoute;
-	"/demo/start/api-request": typeof DemoStartApiRequestRoute;
-	"/demo/start/server-funcs": typeof DemoStartServerFuncsRoute;
-	"/demo/start/ssr/data-only": typeof DemoStartSsrDataOnlyRoute;
-	"/demo/start/ssr/full-ssr": typeof DemoStartSsrFullSsrRoute;
-	"/demo/start/ssr/spa-mode": typeof DemoStartSsrSpaModeRoute;
-	"/demo/start/ssr": typeof DemoStartSsrIndexRoute;
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
+  '/admin/do-detail': typeof AdminDoDetailRoute
+  '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/exception-detail': typeof AdminExceptionDetailRoute
+  '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/transfers': typeof AdminTransfersRoute
+  '/demo/apollo-client': typeof DemoApolloClientRoute
+  '/demo/i18n': typeof DemoI18nRoute
+  '/demo/store': typeof DemoStoreRoute
+  '/demo/table': typeof DemoTableRoute
+  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
+  '/demo/form/address': typeof DemoFormAddressRoute
+  '/demo/form/simple': typeof DemoFormSimpleRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesById {
-	__root__: typeof rootRouteImport;
-	"/": typeof IndexRoute;
-	"/admin": typeof AdminRouteRouteWithChildren;
-	"/forgot-password": typeof ForgotPasswordRoute;
-	"/login": typeof LoginRoute;
-	"/admin/dashboard": typeof AdminDashboardRoute;
-	"/admin/deliveries": typeof AdminDeliveriesRoute;
-	"/admin/grn": typeof AdminGrnRoute;
-	"/admin/settings": typeof AdminSettingsRoute;
-	"/admin/transfers": typeof AdminTransfersRoute;
-	"/demo/apollo-client": typeof DemoApolloClientRoute;
-	"/demo/i18n": typeof DemoI18nRoute;
-	"/demo/store": typeof DemoStoreRoute;
-	"/demo/table": typeof DemoTableRoute;
-	"/demo/tanstack-query": typeof DemoTanstackQueryRoute;
-	"/demo/api/names": typeof DemoApiNamesRoute;
-	"/demo/api/tq-todos": typeof DemoApiTqTodosRoute;
-	"/demo/form/address": typeof DemoFormAddressRoute;
-	"/demo/form/simple": typeof DemoFormSimpleRoute;
-	"/demo/start/api-request": typeof DemoStartApiRequestRoute;
-	"/demo/start/server-funcs": typeof DemoStartServerFuncsRoute;
-	"/demo/start/ssr/data-only": typeof DemoStartSsrDataOnlyRoute;
-	"/demo/start/ssr/full-ssr": typeof DemoStartSsrFullSsrRoute;
-	"/demo/start/ssr/spa-mode": typeof DemoStartSsrSpaModeRoute;
-	"/demo/start/ssr/": typeof DemoStartSsrIndexRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
+  '/admin/do-detail': typeof AdminDoDetailRoute
+  '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/exception-detail': typeof AdminExceptionDetailRoute
+  '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/grn': typeof AdminGrnRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/transfers': typeof AdminTransfersRoute
+  '/demo/apollo-client': typeof DemoApolloClientRoute
+  '/demo/i18n': typeof DemoI18nRoute
+  '/demo/store': typeof DemoStoreRoute
+  '/demo/table': typeof DemoTableRoute
+  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/demo/api/names': typeof DemoApiNamesRoute
+  '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
+  '/demo/form/address': typeof DemoFormAddressRoute
+  '/demo/form/simple': typeof DemoFormSimpleRoute
+  '/demo/start/api-request': typeof DemoStartApiRequestRoute
+  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
+  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
+  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
 }
 export interface FileRouteTypes {
-	fileRoutesByFullPath: FileRoutesByFullPath;
-	fullPaths:
-		| "/"
-		| "/admin"
-		| "/forgot-password"
-		| "/login"
-		| "/admin/dashboard"
-		| "/admin/deliveries"
-		| "/admin/grn"
-		| "/admin/settings"
-		| "/admin/transfers"
-		| "/demo/apollo-client"
-		| "/demo/i18n"
-		| "/demo/store"
-		| "/demo/table"
-		| "/demo/tanstack-query"
-		| "/demo/api/names"
-		| "/demo/api/tq-todos"
-		| "/demo/form/address"
-		| "/demo/form/simple"
-		| "/demo/start/api-request"
-		| "/demo/start/server-funcs"
-		| "/demo/start/ssr/data-only"
-		| "/demo/start/ssr/full-ssr"
-		| "/demo/start/ssr/spa-mode"
-		| "/demo/start/ssr";
-	fileRoutesByTo: FileRoutesByTo;
-	to:
-		| "/"
-		| "/admin"
-		| "/forgot-password"
-		| "/login"
-		| "/admin/dashboard"
-		| "/admin/deliveries"
-		| "/admin/grn"
-		| "/admin/settings"
-		| "/admin/transfers"
-		| "/demo/apollo-client"
-		| "/demo/i18n"
-		| "/demo/store"
-		| "/demo/table"
-		| "/demo/tanstack-query"
-		| "/demo/api/names"
-		| "/demo/api/tq-todos"
-		| "/demo/form/address"
-		| "/demo/form/simple"
-		| "/demo/start/api-request"
-		| "/demo/start/server-funcs"
-		| "/demo/start/ssr/data-only"
-		| "/demo/start/ssr/full-ssr"
-		| "/demo/start/ssr/spa-mode"
-		| "/demo/start/ssr";
-	id:
-		| "__root__"
-		| "/"
-		| "/admin"
-		| "/forgot-password"
-		| "/login"
-		| "/admin/dashboard"
-		| "/admin/deliveries"
-		| "/admin/grn"
-		| "/admin/settings"
-		| "/admin/transfers"
-		| "/demo/apollo-client"
-		| "/demo/i18n"
-		| "/demo/store"
-		| "/demo/table"
-		| "/demo/tanstack-query"
-		| "/demo/api/names"
-		| "/demo/api/tq-todos"
-		| "/demo/form/address"
-		| "/demo/form/simple"
-		| "/demo/start/api-request"
-		| "/demo/start/server-funcs"
-		| "/demo/start/ssr/data-only"
-		| "/demo/start/ssr/full-ssr"
-		| "/demo/start/ssr/spa-mode"
-		| "/demo/start/ssr/";
-	fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
+    | '/admin/delivery-proof'
+    | '/admin/do-detail'
+    | '/admin/do-work-queue'
+    | '/admin/exception-detail'
+    | '/admin/exceptions'
+    | '/admin/grn'
+    | '/admin/inventory'
+    | '/admin/invoice-detail'
+    | '/admin/invoices'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/settlement'
+    | '/admin/transfers'
+    | '/demo/apollo-client'
+    | '/demo/i18n'
+    | '/demo/store'
+    | '/demo/table'
+    | '/demo/tanstack-query'
+    | '/admin/settlement/$id'
+    | '/demo/api/names'
+    | '/demo/api/tq-todos'
+    | '/demo/form/address'
+    | '/demo/form/simple'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
+    | '/admin/delivery-proof'
+    | '/admin/do-detail'
+    | '/admin/do-work-queue'
+    | '/admin/exception-detail'
+    | '/admin/exceptions'
+    | '/admin/grn'
+    | '/admin/inventory'
+    | '/admin/invoice-detail'
+    | '/admin/invoices'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/settlement'
+    | '/admin/transfers'
+    | '/demo/apollo-client'
+    | '/demo/i18n'
+    | '/demo/store'
+    | '/demo/table'
+    | '/demo/tanstack-query'
+    | '/admin/settlement/$id'
+    | '/demo/api/names'
+    | '/demo/api/tq-todos'
+    | '/demo/form/address'
+    | '/demo/form/simple'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/login'
+    | '/admin/dashboard'
+    | '/admin/deliveries'
+    | '/admin/delivery-proof'
+    | '/admin/do-detail'
+    | '/admin/do-work-queue'
+    | '/admin/exception-detail'
+    | '/admin/exceptions'
+    | '/admin/grn'
+    | '/admin/inventory'
+    | '/admin/invoice-detail'
+    | '/admin/invoices'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/settlement'
+    | '/admin/transfers'
+    | '/demo/apollo-client'
+    | '/demo/i18n'
+    | '/demo/store'
+    | '/demo/table'
+    | '/demo/tanstack-query'
+    | '/admin/settlement/$id'
+    | '/demo/api/names'
+    | '/demo/api/tq-todos'
+    | '/demo/form/address'
+    | '/demo/form/simple'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
+    | '/demo/start/ssr/data-only'
+    | '/demo/start/ssr/full-ssr'
+    | '/demo/start/ssr/spa-mode'
+    | '/demo/start/ssr/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-	IndexRoute: typeof IndexRoute;
-	AdminRouteRoute: typeof AdminRouteRouteWithChildren;
-	ForgotPasswordRoute: typeof ForgotPasswordRoute;
-	LoginRoute: typeof LoginRoute;
-	DemoApolloClientRoute: typeof DemoApolloClientRoute;
-	DemoI18nRoute: typeof DemoI18nRoute;
-	DemoStoreRoute: typeof DemoStoreRoute;
-	DemoTableRoute: typeof DemoTableRoute;
-	DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute;
-	DemoApiNamesRoute: typeof DemoApiNamesRoute;
-	DemoApiTqTodosRoute: typeof DemoApiTqTodosRoute;
-	DemoFormAddressRoute: typeof DemoFormAddressRoute;
-	DemoFormSimpleRoute: typeof DemoFormSimpleRoute;
-	DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute;
-	DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute;
-	DemoStartSsrDataOnlyRoute: typeof DemoStartSsrDataOnlyRoute;
-	DemoStartSsrFullSsrRoute: typeof DemoStartSsrFullSsrRoute;
-	DemoStartSsrSpaModeRoute: typeof DemoStartSsrSpaModeRoute;
-	DemoStartSsrIndexRoute: typeof DemoStartSsrIndexRoute;
+  IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
+  DemoApolloClientRoute: typeof DemoApolloClientRoute
+  DemoI18nRoute: typeof DemoI18nRoute
+  DemoStoreRoute: typeof DemoStoreRoute
+  DemoTableRoute: typeof DemoTableRoute
+  DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+  DemoApiNamesRoute: typeof DemoApiNamesRoute
+  DemoApiTqTodosRoute: typeof DemoApiTqTodosRoute
+  DemoFormAddressRoute: typeof DemoFormAddressRoute
+  DemoFormSimpleRoute: typeof DemoFormSimpleRoute
+  DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
+  DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
+  DemoStartSsrDataOnlyRoute: typeof DemoStartSsrDataOnlyRoute
+  DemoStartSsrFullSsrRoute: typeof DemoStartSsrFullSsrRoute
+  DemoStartSsrSpaModeRoute: typeof DemoStartSsrSpaModeRoute
+  DemoStartSsrIndexRoute: typeof DemoStartSsrIndexRoute
 }
 
-declare module "@tanstack/react-router" {
-	interface FileRoutesByPath {
-		"/login": {
-			id: "/login";
-			path: "/login";
-			fullPath: "/login";
-			preLoaderRoute: typeof LoginRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/forgot-password": {
-			id: "/forgot-password";
-			path: "/forgot-password";
-			fullPath: "/forgot-password";
-			preLoaderRoute: typeof ForgotPasswordRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/admin": {
-			id: "/admin";
-			path: "/admin";
-			fullPath: "/admin";
-			preLoaderRoute: typeof AdminRouteRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/": {
-			id: "/";
-			path: "/";
-			fullPath: "/";
-			preLoaderRoute: typeof IndexRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/tanstack-query": {
-			id: "/demo/tanstack-query";
-			path: "/demo/tanstack-query";
-			fullPath: "/demo/tanstack-query";
-			preLoaderRoute: typeof DemoTanstackQueryRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/table": {
-			id: "/demo/table";
-			path: "/demo/table";
-			fullPath: "/demo/table";
-			preLoaderRoute: typeof DemoTableRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/store": {
-			id: "/demo/store";
-			path: "/demo/store";
-			fullPath: "/demo/store";
-			preLoaderRoute: typeof DemoStoreRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/i18n": {
-			id: "/demo/i18n";
-			path: "/demo/i18n";
-			fullPath: "/demo/i18n";
-			preLoaderRoute: typeof DemoI18nRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/apollo-client": {
-			id: "/demo/apollo-client";
-			path: "/demo/apollo-client";
-			fullPath: "/demo/apollo-client";
-			preLoaderRoute: typeof DemoApolloClientRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/admin/transfers": {
-			id: "/admin/transfers";
-			path: "/transfers";
-			fullPath: "/admin/transfers";
-			preLoaderRoute: typeof AdminTransfersRouteImport;
-			parentRoute: typeof AdminRouteRoute;
-		};
-		"/admin/settings": {
-			id: "/admin/settings";
-			path: "/settings";
-			fullPath: "/admin/settings";
-			preLoaderRoute: typeof AdminSettingsRouteImport;
-			parentRoute: typeof AdminRouteRoute;
-		};
-		"/admin/grn": {
-			id: "/admin/grn";
-			path: "/grn";
-			fullPath: "/admin/grn";
-			preLoaderRoute: typeof AdminGrnRouteImport;
-			parentRoute: typeof AdminRouteRoute;
-		};
-		"/admin/deliveries": {
-			id: "/admin/deliveries";
-			path: "/deliveries";
-			fullPath: "/admin/deliveries";
-			preLoaderRoute: typeof AdminDeliveriesRouteImport;
-			parentRoute: typeof AdminRouteRoute;
-		};
-		"/admin/dashboard": {
-			id: "/admin/dashboard";
-			path: "/dashboard";
-			fullPath: "/admin/dashboard";
-			preLoaderRoute: typeof AdminDashboardRouteImport;
-			parentRoute: typeof AdminRouteRoute;
-		};
-		"/demo/start/server-funcs": {
-			id: "/demo/start/server-funcs";
-			path: "/demo/start/server-funcs";
-			fullPath: "/demo/start/server-funcs";
-			preLoaderRoute: typeof DemoStartServerFuncsRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/start/api-request": {
-			id: "/demo/start/api-request";
-			path: "/demo/start/api-request";
-			fullPath: "/demo/start/api-request";
-			preLoaderRoute: typeof DemoStartApiRequestRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/form/simple": {
-			id: "/demo/form/simple";
-			path: "/demo/form/simple";
-			fullPath: "/demo/form/simple";
-			preLoaderRoute: typeof DemoFormSimpleRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/form/address": {
-			id: "/demo/form/address";
-			path: "/demo/form/address";
-			fullPath: "/demo/form/address";
-			preLoaderRoute: typeof DemoFormAddressRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/api/tq-todos": {
-			id: "/demo/api/tq-todos";
-			path: "/demo/api/tq-todos";
-			fullPath: "/demo/api/tq-todos";
-			preLoaderRoute: typeof DemoApiTqTodosRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/api/names": {
-			id: "/demo/api/names";
-			path: "/demo/api/names";
-			fullPath: "/demo/api/names";
-			preLoaderRoute: typeof DemoApiNamesRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/start/ssr/": {
-			id: "/demo/start/ssr/";
-			path: "/demo/start/ssr";
-			fullPath: "/demo/start/ssr";
-			preLoaderRoute: typeof DemoStartSsrIndexRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/start/ssr/spa-mode": {
-			id: "/demo/start/ssr/spa-mode";
-			path: "/demo/start/ssr/spa-mode";
-			fullPath: "/demo/start/ssr/spa-mode";
-			preLoaderRoute: typeof DemoStartSsrSpaModeRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/start/ssr/full-ssr": {
-			id: "/demo/start/ssr/full-ssr";
-			path: "/demo/start/ssr/full-ssr";
-			fullPath: "/demo/start/ssr/full-ssr";
-			preLoaderRoute: typeof DemoStartSsrFullSsrRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-		"/demo/start/ssr/data-only": {
-			id: "/demo/start/ssr/data-only";
-			path: "/demo/start/ssr/data-only";
-			fullPath: "/demo/start/ssr/data-only";
-			preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport;
-			parentRoute: typeof rootRouteImport;
-		};
-	}
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/tanstack-query': {
+      id: '/demo/tanstack-query'
+      path: '/demo/tanstack-query'
+      fullPath: '/demo/tanstack-query'
+      preLoaderRoute: typeof DemoTanstackQueryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/table': {
+      id: '/demo/table'
+      path: '/demo/table'
+      fullPath: '/demo/table'
+      preLoaderRoute: typeof DemoTableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/store': {
+      id: '/demo/store'
+      path: '/demo/store'
+      fullPath: '/demo/store'
+      preLoaderRoute: typeof DemoStoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/i18n': {
+      id: '/demo/i18n'
+      path: '/demo/i18n'
+      fullPath: '/demo/i18n'
+      preLoaderRoute: typeof DemoI18nRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/apollo-client': {
+      id: '/demo/apollo-client'
+      path: '/demo/apollo-client'
+      fullPath: '/demo/apollo-client'
+      preLoaderRoute: typeof DemoApolloClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/transfers': {
+      id: '/admin/transfers'
+      path: '/transfers'
+      fullPath: '/admin/transfers'
+      preLoaderRoute: typeof AdminTransfersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settlement': {
+      id: '/admin/settlement'
+      path: '/settlement'
+      fullPath: '/admin/settlement'
+      preLoaderRoute: typeof AdminSettlementRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/invoices': {
+      id: '/admin/invoices'
+      path: '/invoices'
+      fullPath: '/admin/invoices'
+      preLoaderRoute: typeof AdminInvoicesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/invoice-detail': {
+      id: '/admin/invoice-detail'
+      path: '/invoice-detail'
+      fullPath: '/admin/invoice-detail'
+      preLoaderRoute: typeof AdminInvoiceDetailRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/grn': {
+      id: '/admin/grn'
+      path: '/grn'
+      fullPath: '/admin/grn'
+      preLoaderRoute: typeof AdminGrnRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/exceptions': {
+      id: '/admin/exceptions'
+      path: '/exceptions'
+      fullPath: '/admin/exceptions'
+      preLoaderRoute: typeof AdminExceptionsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/exception-detail': {
+      id: '/admin/exception-detail'
+      path: '/exception-detail'
+      fullPath: '/admin/exception-detail'
+      preLoaderRoute: typeof AdminExceptionDetailRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/do-work-queue': {
+      id: '/admin/do-work-queue'
+      path: '/do-work-queue'
+      fullPath: '/admin/do-work-queue'
+      preLoaderRoute: typeof AdminDoWorkQueueRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/do-detail': {
+      id: '/admin/do-detail'
+      path: '/do-detail'
+      fullPath: '/admin/do-detail'
+      preLoaderRoute: typeof AdminDoDetailRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/delivery-proof': {
+      id: '/admin/delivery-proof'
+      path: '/delivery-proof'
+      fullPath: '/admin/delivery-proof'
+      preLoaderRoute: typeof AdminDeliveryProofRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/deliveries': {
+      id: '/admin/deliveries'
+      path: '/deliveries'
+      fullPath: '/admin/deliveries'
+      preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/demo/start/server-funcs': {
+      id: '/demo/start/server-funcs'
+      path: '/demo/start/server-funcs'
+      fullPath: '/demo/start/server-funcs'
+      preLoaderRoute: typeof DemoStartServerFuncsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/api-request': {
+      id: '/demo/start/api-request'
+      path: '/demo/start/api-request'
+      fullPath: '/demo/start/api-request'
+      preLoaderRoute: typeof DemoStartApiRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/form/simple': {
+      id: '/demo/form/simple'
+      path: '/demo/form/simple'
+      fullPath: '/demo/form/simple'
+      preLoaderRoute: typeof DemoFormSimpleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/form/address': {
+      id: '/demo/form/address'
+      path: '/demo/form/address'
+      fullPath: '/demo/form/address'
+      preLoaderRoute: typeof DemoFormAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/api/tq-todos': {
+      id: '/demo/api/tq-todos'
+      path: '/demo/api/tq-todos'
+      fullPath: '/demo/api/tq-todos'
+      preLoaderRoute: typeof DemoApiTqTodosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/api/names': {
+      id: '/demo/api/names'
+      path: '/demo/api/names'
+      fullPath: '/demo/api/names'
+      preLoaderRoute: typeof DemoApiNamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settlement/$id': {
+      id: '/admin/settlement/$id'
+      path: '/$id'
+      fullPath: '/admin/settlement/$id'
+      preLoaderRoute: typeof AdminSettlementIdRouteImport
+      parentRoute: typeof AdminSettlementRoute
+    }
+    '/demo/start/ssr/': {
+      id: '/demo/start/ssr/'
+      path: '/demo/start/ssr'
+      fullPath: '/demo/start/ssr'
+      preLoaderRoute: typeof DemoStartSsrIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/spa-mode': {
+      id: '/demo/start/ssr/spa-mode'
+      path: '/demo/start/ssr/spa-mode'
+      fullPath: '/demo/start/ssr/spa-mode'
+      preLoaderRoute: typeof DemoStartSsrSpaModeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/full-ssr': {
+      id: '/demo/start/ssr/full-ssr'
+      path: '/demo/start/ssr/full-ssr'
+      fullPath: '/demo/start/ssr/full-ssr'
+      preLoaderRoute: typeof DemoStartSsrFullSsrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/start/ssr/data-only': {
+      id: '/demo/start/ssr/data-only'
+      path: '/demo/start/ssr/data-only'
+      fullPath: '/demo/start/ssr/data-only'
+      preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
+
+interface AdminSettlementRouteChildren {
+  AdminSettlementIdRoute: typeof AdminSettlementIdRoute
+}
+
+const AdminSettlementRouteChildren: AdminSettlementRouteChildren = {
+  AdminSettlementIdRoute: AdminSettlementIdRoute,
+}
+
+const AdminSettlementRouteWithChildren = AdminSettlementRoute._addFileChildren(
+  AdminSettlementRouteChildren,
+)
 
 interface AdminRouteRouteChildren {
-	AdminDashboardRoute: typeof AdminDashboardRoute;
-	AdminDeliveriesRoute: typeof AdminDeliveriesRoute;
-	AdminGrnRoute: typeof AdminGrnRoute;
-	AdminSettingsRoute: typeof AdminSettingsRoute;
-	AdminTransfersRoute: typeof AdminTransfersRoute;
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminDeliveryProofRoute: typeof AdminDeliveryProofRoute
+  AdminDoDetailRoute: typeof AdminDoDetailRoute
+  AdminDoWorkQueueRoute: typeof AdminDoWorkQueueRoute
+  AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
+  AdminExceptionsRoute: typeof AdminExceptionsRoute
+  AdminGrnRoute: typeof AdminGrnRoute
+  AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
+  AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
+  AdminTransfersRoute: typeof AdminTransfersRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-	AdminDashboardRoute: AdminDashboardRoute,
-	AdminDeliveriesRoute: AdminDeliveriesRoute,
-	AdminGrnRoute: AdminGrnRoute,
-	AdminSettingsRoute: AdminSettingsRoute,
-	AdminTransfersRoute: AdminTransfersRoute,
-};
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminDeliveryProofRoute: AdminDeliveryProofRoute,
+  AdminDoDetailRoute: AdminDoDetailRoute,
+  AdminDoWorkQueueRoute: AdminDoWorkQueueRoute,
+  AdminExceptionDetailRoute: AdminExceptionDetailRoute,
+  AdminExceptionsRoute: AdminExceptionsRoute,
+  AdminGrnRoute: AdminGrnRoute,
+  AdminInventoryRoute: AdminInventoryRoute,
+  AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
+  AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSettlementRoute: AdminSettlementRouteWithChildren,
+  AdminTransfersRoute: AdminTransfersRoute,
+}
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-	AdminRouteRouteChildren,
-);
+  AdminRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-	IndexRoute: IndexRoute,
-	AdminRouteRoute: AdminRouteRouteWithChildren,
-	ForgotPasswordRoute: ForgotPasswordRoute,
-	LoginRoute: LoginRoute,
-	DemoApolloClientRoute: DemoApolloClientRoute,
-	DemoI18nRoute: DemoI18nRoute,
-	DemoStoreRoute: DemoStoreRoute,
-	DemoTableRoute: DemoTableRoute,
-	DemoTanstackQueryRoute: DemoTanstackQueryRoute,
-	DemoApiNamesRoute: DemoApiNamesRoute,
-	DemoApiTqTodosRoute: DemoApiTqTodosRoute,
-	DemoFormAddressRoute: DemoFormAddressRoute,
-	DemoFormSimpleRoute: DemoFormSimpleRoute,
-	DemoStartApiRequestRoute: DemoStartApiRequestRoute,
-	DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
-	DemoStartSsrDataOnlyRoute: DemoStartSsrDataOnlyRoute,
-	DemoStartSsrFullSsrRoute: DemoStartSsrFullSsrRoute,
-	DemoStartSsrSpaModeRoute: DemoStartSsrSpaModeRoute,
-	DemoStartSsrIndexRoute: DemoStartSsrIndexRoute,
-};
+  IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  LoginRoute: LoginRoute,
+  DemoApolloClientRoute: DemoApolloClientRoute,
+  DemoI18nRoute: DemoI18nRoute,
+  DemoStoreRoute: DemoStoreRoute,
+  DemoTableRoute: DemoTableRoute,
+  DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+  DemoApiNamesRoute: DemoApiNamesRoute,
+  DemoApiTqTodosRoute: DemoApiTqTodosRoute,
+  DemoFormAddressRoute: DemoFormAddressRoute,
+  DemoFormSimpleRoute: DemoFormSimpleRoute,
+  DemoStartApiRequestRoute: DemoStartApiRequestRoute,
+  DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
+  DemoStartSsrDataOnlyRoute: DemoStartSsrDataOnlyRoute,
+  DemoStartSsrFullSsrRoute: DemoStartSsrFullSsrRoute,
+  DemoStartSsrSpaModeRoute: DemoStartSsrSpaModeRoute,
+  DemoStartSsrIndexRoute: DemoStartSsrIndexRoute,
+}
 export const routeTree = rootRouteImport
-	._addFileChildren(rootRouteChildren)
-	._addFileTypes<FileRouteTypes>();
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
-	interface Register {
-		ssr: true;
-		router: Awaited<ReturnType<typeof getRouter>>;
-	}
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }

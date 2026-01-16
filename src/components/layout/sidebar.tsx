@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { usePermissions } from "@/lib/permissions";
+import type { Permission } from "@/lib/permissions";
 import {
 	LayoutDashboard,
 	Package,
@@ -8,26 +10,115 @@ import {
 	Truck,
 	Settings,
 	LogOut,
+	Warehouse,
+	ClipboardCheck,
+	FileCheck,
+	CheckCircle2,
+	FileText,
+	BarChart3,
+	PackageSearch,
+	Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const navigation = [
-	{ name: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
-	{ name: "GRN", to: "/admin/grn", icon: Package },
-	{ name: "Transfer Orders", to: "/admin/transfers", icon: ArrowRightLeft },
-	{ name: "Deliveries", to: "/admin/deliveries", icon: Truck },
-	{ name: "Settings", to: "/admin/settings", icon: Settings },
+interface NavigationItem {
+	name: string;
+	to: string;
+	icon: React.ComponentType<{ className?: string }>;
+	permission?: Permission;
+}
+
+const allNavigationItems: NavigationItem[] = [
+	{
+		name: "Dashboard",
+		to: "/admin/dashboard",
+		icon: LayoutDashboard,
+	},
+	{
+		name: "Inbound (GRN)",
+		to: "/admin/grn",
+		icon: Package,
+		permission: "grn:view",
+	},
+	{
+		name: "Outbound (TO / DO)",
+		to: "/admin/transfers",
+		icon: ArrowRightLeft,
+		permission: "to:view",
+	},
+	{
+		name: "Warehouse Execution",
+		to: "/admin/do-work-queue",
+		icon: Warehouse,
+		permission: "do:view",
+	},
+	{
+		name: "Delivery Proof",
+		to: "/admin/delivery-proof",
+		icon: FileCheck,
+		permission: "delivery_proof:view",
+	},
+	{
+		name: "Settlement",
+		to: "/admin/settlement",
+		icon: CheckCircle2,
+		permission: "settlement:view",
+	},
+	{
+		name: "Exceptions",
+		to: "/admin/exceptions",
+		icon: ClipboardCheck,
+		permission: "exception:view",
+	},
+	{
+		name: "Invoices",
+		to: "/admin/invoices",
+		icon: FileText,
+		permission: "invoice:view",
+	},
+	{
+		name: "Inventory",
+		to: "/admin/inventory",
+		icon: PackageSearch,
+		permission: "inventory:view",
+	},
+	{
+		name: "Reports / Exports",
+		to: "/admin/reports",
+		icon: BarChart3,
+		permission: "reports:view",
+	},
+	{
+		name: "Admin / Settings",
+		to: "/admin/settings",
+		icon: Settings,
+		permission: "admin:users",
+	},
 ];
 
 export function Sidebar() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { user, logout } = useAuth();
+	const { hasPermission } = usePermissions(user);
 
 	const handleLogout = () => {
 		logout();
 		navigate({ to: "/login" });
+	};
+
+	// Filter navigation based on permissions
+	const navigation = allNavigationItems.filter((item) => {
+		if (!item.permission) return true; // Dashboard is always visible
+		return hasPermission(item.permission);
+	});
+
+	const formatRoleName = (role: string) => {
+		return role
+			.split("_")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ");
 	};
 
 	return (
@@ -63,8 +154,8 @@ export function Sidebar() {
 				<div className="mb-3 rounded-lg bg-muted p-3">
 					<p className="text-sm font-medium">{user?.name}</p>
 					<p className="text-xs text-muted-foreground">{user?.email}</p>
-					<p className="mt-1 text-xs font-medium capitalize text-primary">
-						{user?.role}
+					<p className="mt-1 text-xs font-medium text-primary">
+						{user ? formatRoleName(user.role) : ""}
 					</p>
 				</div>
 				<Button

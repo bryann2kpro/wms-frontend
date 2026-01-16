@@ -1,12 +1,7 @@
 import type { TransferOrder } from "./dashboard.mock-data";
 import { mockTransferOrders as baseTransfers } from "./dashboard.mock-data";
 
-export type TransferStatus =
-	| "draft"
-	| "pending"
-	| "in_transit"
-	| "completed"
-	| "cancelled";
+export type TransferStatus = "New" | "Accepted" | "Rejected" | "DO_Created";
 export type NetSuiteStatus = "synced" | "pending" | "error" | undefined;
 
 export interface TransferItem {
@@ -62,21 +57,17 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Standard inventory item",
 			quantity: 20,
 			pickedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 20
-					: transfer.status === "in_transit"
-						? 18
-						: transfer.status === "pending"
-							? 10
-							: 0,
+					: transfer.status === "pending"
+						? 10
+						: 0,
 			packedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 20
-					: transfer.status === "in_transit"
-						? 15
-						: transfer.status === "pending"
-							? 5
-							: 0,
+					: transfer.status === "pending"
+						? 5
+						: 0,
 		},
 		{
 			id: `${transfer.id}-2`,
@@ -84,21 +75,17 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Secondary item",
 			quantity: 15,
 			pickedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 15
-					: transfer.status === "in_transit"
-						? 12
-						: transfer.status === "pending"
-							? 8
-							: 0,
+					: transfer.status === "pending"
+						? 8
+						: 0,
 			packedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 15
-					: transfer.status === "in_transit"
-						? 10
-						: transfer.status === "pending"
-							? 3
-							: 0,
+					: transfer.status === "pending"
+						? 3
+						: 0,
 		},
 		{
 			id: `${transfer.id}-3`,
@@ -106,44 +93,39 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Tertiary item",
 			quantity: 10,
 			pickedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 10
-					: transfer.status === "in_transit"
-						? 8
-						: transfer.status === "pending"
-							? 5
-							: 0,
+					: transfer.status === "pending"
+						? 5
+						: 0,
 			packedQuantity:
-				transfer.status === "completed"
+				transfer.status === "completed" || transfer.status === "in_transit"
 					? 10
-					: transfer.status === "in_transit"
-						? 6
-						: transfer.status === "pending"
-							? 2
-							: 0,
+					: transfer.status === "pending"
+						? 2
+						: 0,
 		},
 	];
 
 	const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-	const status: TransferStatus =
-		transfer.status === "completed"
-			? "completed"
-			: transfer.status === "cancelled"
-				? "cancelled"
-				: transfer.status === "in_transit"
-					? "in_transit"
-					: transfer.status === "pending"
-						? "pending"
-						: "draft";
+	// Map old statuses to new ones for mock data
+	const statusMap: Record<string, TransferStatus> = {
+		completed: "DO_Created",
+		cancelled: "Rejected",
+		in_transit: "Accepted",
+		pending: "Accepted",
+		draft: "New",
+	};
+	const status: TransferStatus = statusMap[transfer.status] || "New";
 
 	const netsuiteStatus: NetSuiteStatus =
-		status === "completed"
+		status === "DO_Created"
 			? index % 3 === 0
 				? "synced"
 				: index % 3 === 1
 					? "error"
 					: "pending"
-			: status === "in_transit"
+			: status === "Accepted"
 				? index % 2 === 0
 					? "synced"
 					: "pending"
@@ -168,11 +150,10 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 
 function buildSummary(source: TransferDetail[]): TransferSummary {
 	const initial: Record<TransferStatus, number> = {
-		draft: 0,
-		pending: 0,
-		in_transit: 0,
-		completed: 0,
-		cancelled: 0,
+		New: 0,
+		Accepted: 0,
+		Rejected: 0,
+		DO_Created: 0,
 	};
 
 	const byStatus = source.reduce((acc, transfer) => {
@@ -243,7 +224,7 @@ export async function createTransfer(
 		transferOrderNumber: input.transferOrderNumber,
 		fromLocation: input.fromLocation,
 		toLocation: input.toLocation,
-		status: "draft",
+		status: "New",
 		createdDate: now,
 		expectedDeliveryDate: input.expectedDeliveryDate,
 		createdBy: "Current User",

@@ -55,6 +55,8 @@ import {
 	XCircle,
 	ChevronLeft,
 	ChevronRight,
+	Edit,
+	Send,
 } from "lucide-react";
 import {
 	type GRNDetail,
@@ -64,16 +66,21 @@ import {
 	createGRN,
 	updateGRNStatus,
 } from "@/data/grn.mock-data";
+import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/lib/auth-context";
+import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
+import { IntegrationLogPanel } from "@/components/integration-log-panel";
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
 });
 
 const grnStatuses: GRNStatus[] = [
-	"pending",
-	"partially_received",
-	"completed",
-	"cancelled",
+	"Draft",
+	"Submitted",
+	"Approved",
+	"Sent-to-ES",
+	"Failed",
 ];
 
 const createGRNSchema = z.object({
@@ -88,6 +95,8 @@ const createGRNSchema = z.object({
 });
 
 function GRNRouteComponent() {
+	const { user } = useAuth();
+	const { hasPermission } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -95,6 +104,12 @@ function GRNRouteComponent() {
 	const [selectedGRN, setSelectedGRN] = useState<GRNDetail | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
+	const [isEditOpen, setIsEditOpen] = useState(false);
+	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	const [grnItems, setGrnItems] = useState<Array<{ sku: string; qty: number }>>(
+		[],
+	);
+	const [skuSearch, setSkuSearch] = useState("");
 
 	const queryClient = useQueryClient();
 
@@ -159,10 +174,11 @@ function GRNRouteComponent() {
 
 	const getStatusColor = (status: GRNStatus) => {
 		const colors: Record<GRNStatus, string> = {
-			pending: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-			partially_received: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-			completed: "bg-green-500/10 text-green-600 border-green-500/20",
-			cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+			Draft: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+			Submitted: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+			Approved: "bg-green-500/10 text-green-600 border-green-500/20",
+			"Sent-to-ES": "bg-purple-500/10 text-purple-600 border-purple-500/20",
+			Failed: "bg-red-500/10 text-red-600 border-red-500/20",
 		};
 		return colors[status];
 	};
@@ -211,7 +227,7 @@ function GRNRouteComponent() {
 							Create GRN
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>Create New GRN</DialogTitle>
 							<DialogDescription>
@@ -225,118 +241,276 @@ function GRNRouteComponent() {
 							}}
 							className="space-y-4"
 						>
-							<FieldGroup>
-								<div className="grid gap-4 sm:grid-cols-2">
-									<form.Field
-										name="grnNumber"
-										children={(field) => {
-											const isInvalid =
-												field.state.meta.isTouched && !field.state.meta.isValid;
-											return (
-												<Field data-invalid={isInvalid}>
-													<FieldLabel htmlFor={field.name}>
-														GRN Number
-													</FieldLabel>
+							<div className="grid gap-6 lg:grid-cols-3">
+								<div className="lg:col-span-2 space-y-4">
+									<FieldGroup>
+										<div className="grid gap-4 sm:grid-cols-2">
+											<form.Field
+												name="grnNumber"
+												children={(field) => {
+													const isInvalid =
+														field.state.meta.isTouched &&
+														!field.state.meta.isValid;
+													return (
+														<Field data-invalid={isInvalid}>
+															<FieldLabel htmlFor={field.name}>
+																GRN Number
+															</FieldLabel>
+															<Input
+																id={field.name}
+																value={field.state.value}
+																placeholder="GRN-2024-001"
+																onBlur={field.handleBlur}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
+																aria-invalid={isInvalid}
+															/>
+															{isInvalid && (
+																<FieldError errors={field.state.meta.errors} />
+															)}
+														</Field>
+													);
+												}}
+											/>
+											<form.Field
+												name="transferOrderNumber"
+												children={(field) => (
+													<Field>
+														<FieldLabel htmlFor={field.name}>
+															PO# / TO# Reference (Optional)
+														</FieldLabel>
+														<Input
+															id={field.name}
+															value={field.state.value}
+															placeholder="TO-2024-001"
+															onBlur={field.handleBlur}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
+														/>
+													</Field>
+												)}
+											/>
+										</div>
+
+										<form.Field
+											name="supplier"
+											children={(field) => {
+												const isInvalid =
+													field.state.meta.isTouched &&
+													!field.state.meta.isValid;
+												return (
+													<Field data-invalid={isInvalid}>
+														<FieldLabel htmlFor={field.name}>
+															Supplier
+														</FieldLabel>
+														<Input
+															id={field.name}
+															value={field.state.value}
+															placeholder="Enter supplier name"
+															onBlur={field.handleBlur}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
+															aria-invalid={isInvalid}
+														/>
+														{isInvalid && (
+															<FieldError errors={field.state.meta.errors} />
+														)}
+													</Field>
+												);
+											}}
+										/>
+
+										<form.Field
+											name="receivedDate"
+											children={(field) => {
+												const isInvalid =
+													field.state.meta.isTouched &&
+													!field.state.meta.isValid;
+												return (
+													<Field data-invalid={isInvalid}>
+														<FieldLabel htmlFor={field.name}>
+															Received Date/Time
+														</FieldLabel>
+														<Input
+															id={field.name}
+															type="datetime-local"
+															value={field.state.value}
+															onBlur={field.handleBlur}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
+															aria-invalid={isInvalid}
+														/>
+														{isInvalid && (
+															<FieldError errors={field.state.meta.errors} />
+														)}
+													</Field>
+												);
+											}}
+										/>
+
+										{/* Line Items */}
+										<div>
+											<Label className="mb-2 block">Line Items</Label>
+											<div className="space-y-2">
+												<div className="flex gap-2">
 													<Input
+														placeholder="Search SKU..."
+														value={skuSearch}
+														onChange={(e) => setSkuSearch(e.target.value)}
+														className="flex-1"
+													/>
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() => {
+															if (skuSearch.trim()) {
+																setGrnItems([
+																	...grnItems,
+																	{ sku: skuSearch.trim(), qty: 1 },
+																]);
+																setSkuSearch("");
+															}
+														}}
+													>
+														Add
+													</Button>
+												</div>
+												<div className="rounded-lg border">
+													<Table>
+														<TableHeader>
+															<TableRow>
+																<TableHead>SKU</TableHead>
+																<TableHead>Qty</TableHead>
+																<TableHead className="text-right">
+																	Actions
+																</TableHead>
+															</TableRow>
+														</TableHeader>
+														<TableBody>
+															{grnItems.length === 0 ? (
+																<TableRow>
+																	<TableCell
+																		colSpan={3}
+																		className="h-24 text-center text-muted-foreground"
+																	>
+																		No items added
+																	</TableCell>
+																</TableRow>
+															) : (
+																grnItems.map((item, index) => (
+																	<TableRow key={index}>
+																		<TableCell className="font-medium">
+																			{item.sku}
+																		</TableCell>
+																		<TableCell>
+																			<Input
+																				type="number"
+																				min="1"
+																				value={item.qty}
+																				onChange={(e) => {
+																					const newItems = [...grnItems];
+																					newItems[index].qty = Number(
+																						e.target.value,
+																					);
+																					setGrnItems(newItems);
+																				}}
+																				className="w-20"
+																			/>
+																		</TableCell>
+																		<TableCell className="text-right">
+																			<Button
+																				type="button"
+																				variant="ghost"
+																				size="icon"
+																				onClick={() => {
+																					setGrnItems(
+																						grnItems.filter(
+																							(_, i) => i !== index,
+																						),
+																					);
+																				}}
+																			>
+																				<XCircle className="h-4 w-4" />
+																			</Button>
+																		</TableCell>
+																	</TableRow>
+																))
+															)}
+														</TableBody>
+													</Table>
+												</div>
+											</div>
+										</div>
+
+										{/* Proof Upload */}
+										<div>
+											<Label className="mb-2 block">Proof Upload</Label>
+											<FileUpload
+												files={proofFiles}
+												onFilesChange={setProofFiles}
+												maxFiles={5}
+												accept="image/*,application/pdf"
+											/>
+										</div>
+
+										<form.Field
+											name="notes"
+											children={(field) => (
+												<Field>
+													<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+													<Textarea
 														id={field.name}
 														value={field.state.value}
-														placeholder="GRN-2024-001"
+														placeholder="Enter any additional notes..."
 														onBlur={field.handleBlur}
 														onChange={(e) => field.handleChange(e.target.value)}
-														aria-invalid={isInvalid}
 													/>
-													{isInvalid && (
-														<FieldError errors={field.state.meta.errors} />
-													)}
 												</Field>
-											);
-										}}
-									/>
-									<form.Field
-										name="transferOrderNumber"
-										children={(field) => (
-											<Field>
-												<FieldLabel htmlFor={field.name}>
-													Transfer Order Number
-												</FieldLabel>
-												<Input
-													id={field.name}
-													value={field.state.value}
-													placeholder="TO-2024-001"
-													onBlur={field.handleBlur}
-													onChange={(e) => field.handleChange(e.target.value)}
-												/>
-											</Field>
-										)}
-									/>
+											)}
+										/>
+									</FieldGroup>
 								</div>
 
-								<form.Field
-									name="supplier"
-									children={(field) => {
-										const isInvalid =
-											field.state.meta.isTouched && !field.state.meta.isValid;
-										return (
-											<Field data-invalid={isInvalid}>
-												<FieldLabel htmlFor={field.name}>Supplier</FieldLabel>
-												<Input
-													id={field.name}
-													value={field.state.value}
-													placeholder="Enter supplier name"
-													onBlur={field.handleBlur}
-													onChange={(e) => field.handleChange(e.target.value)}
-													aria-invalid={isInvalid}
-												/>
-												{isInvalid && (
-													<FieldError errors={field.state.meta.errors} />
-												)}
-											</Field>
-										);
-									}}
-								/>
-
-								<form.Field
-									name="receivedDate"
-									children={(field) => {
-										const isInvalid =
-											field.state.meta.isTouched && !field.state.meta.isValid;
-										return (
-											<Field data-invalid={isInvalid}>
-												<FieldLabel htmlFor={field.name}>
-													Received Date
-												</FieldLabel>
-												<Input
-													id={field.name}
-													type="date"
-													value={field.state.value}
-													onBlur={field.handleBlur}
-													onChange={(e) => field.handleChange(e.target.value)}
-													aria-invalid={isInvalid}
-												/>
-												{isInvalid && (
-													<FieldError errors={field.state.meta.errors} />
-												)}
-											</Field>
-										);
-									}}
-								/>
-
-								<form.Field
-									name="notes"
-									children={(field) => (
-										<Field>
-											<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
-											<Textarea
-												id={field.name}
-												value={field.state.value}
-												placeholder="Enter any additional notes..."
-												onBlur={field.handleBlur}
-												onChange={(e) => field.handleChange(e.target.value)}
-											/>
-										</Field>
-									)}
-								/>
-							</FieldGroup>
+								{/* Right Panel: Audit Trail + Integration Status */}
+								<div className="space-y-4">
+									<Card>
+										<CardHeader>
+											<CardTitle className="text-sm">Audit Trail</CardTitle>
+										</CardHeader>
+										<CardContent className="text-xs space-y-2">
+											<div>
+												<p className="text-muted-foreground">Created By</p>
+												<p className="font-medium">
+													{user?.name || "Current User"}
+												</p>
+											</div>
+											<div>
+												<p className="text-muted-foreground">Created At</p>
+												<p className="font-medium">
+													{new Date().toLocaleString()}
+												</p>
+											</div>
+										</CardContent>
+									</Card>
+									<Card>
+										<CardHeader>
+											<CardTitle className="text-sm">
+												Integration Status
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="text-xs">
+											<p className="text-muted-foreground">Status: Not sent</p>
+											<p className="text-muted-foreground mt-2">
+												GRN will be pushed to NetSuite after approval
+											</p>
+										</CardContent>
+									</Card>
+								</div>
+							</div>
 
 							<form.Subscribe
 								selector={(state) => [state.isSubmitting, state.canSubmit]}
@@ -348,14 +522,36 @@ function GRNRouteComponent() {
 											variant="outline"
 											onClick={() => {
 												setIsCreateOpen(false);
+												setGrnItems([]);
+												setProofFiles([]);
 											}}
 											disabled={isSubmitting}
 										>
 											Cancel
 										</Button>
-										<Button type="submit" disabled={isSubmitting || !canSubmit}>
-											{isSubmitting ? "Creating..." : "Create GRN"}
-										</Button>
+										{hasPermission("grn:create") && (
+											<>
+												<Button
+													type="button"
+													variant="outline"
+													onClick={() => {
+														// Save as draft
+														form.handleSubmit();
+													}}
+													disabled={isSubmitting}
+												>
+													Save Draft
+												</Button>
+												<Button
+													type="submit"
+													disabled={isSubmitting || !canSubmit}
+												>
+													{isSubmitting
+														? "Submitting..."
+														: "Submit for Approval"}
+												</Button>
+											</>
+										)}
 									</DialogFooter>
 								)}
 							</form.Subscribe>
@@ -492,30 +688,46 @@ function GRNRouteComponent() {
 													>
 														<Eye className="h-4 w-4" />
 													</Button>
-													{grn.status === "pending" && (
-														<>
+													{hasPermission("grn:edit") &&
+														(grn.status === "Draft" ||
+															grn.status === "Submitted") && (
+															<Button
+																variant="ghost"
+																size="icon"
+																onClick={() => {
+																	setSelectedGRN(grn);
+																	setIsEditOpen(true);
+																}}
+															>
+																<Edit className="h-4 w-4" />
+															</Button>
+														)}
+													{hasPermission("grn:approve") &&
+														grn.status === "Submitted" && (
 															<Button
 																variant="ghost"
 																size="icon"
 																onClick={() =>
-																	handleUpdateStatus(grn.id, "completed")
+																	handleUpdateStatus(grn.id, "Approved")
 																}
 																disabled={statusMutation.status === "pending"}
 															>
 																<CheckCircle className="h-4 w-4 text-green-600" />
 															</Button>
+														)}
+													{hasPermission("grn:send_to_es") &&
+														grn.status === "Approved" && (
 															<Button
 																variant="ghost"
 																size="icon"
 																onClick={() =>
-																	handleUpdateStatus(grn.id, "cancelled")
+																	handleUpdateStatus(grn.id, "Sent-to-ES")
 																}
 																disabled={statusMutation.status === "pending"}
 															>
-																<XCircle className="h-4 w-4 text-red-600" />
+																<Send className="h-4 w-4 text-purple-600" />
 															</Button>
-														</>
-													)}
+														)}
 												</div>
 											</TableCell>
 										</TableRow>
@@ -568,7 +780,7 @@ function GRNRouteComponent() {
 
 			{/* View GRN Dialog */}
 			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-				<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>GRN Details</DialogTitle>
 						<DialogDescription>
@@ -576,126 +788,167 @@ function GRNRouteComponent() {
 						</DialogDescription>
 					</DialogHeader>
 					{selectedGRN && (
-						<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-							<div className="space-y-6">
-								<div className="grid gap-4 sm:grid-cols-2">
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											GRN Number
-										</Label>
-										<p className="text-sm font-medium">
-											{selectedGRN.grnNumber}
-										</p>
-									</div>
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Transfer Order
-										</Label>
-										<p className="text-sm font-medium">
-											{selectedGRN.transferOrderNumber || "-"}
-										</p>
-									</div>
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Supplier
-										</Label>
-										<p className="text-sm font-medium">
-											{selectedGRN.supplier}
-										</p>
-									</div>
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Received Date
-										</Label>
-										<p className="text-sm font-medium">
-											{selectedGRN.receivedDate.toLocaleDateString()}
-										</p>
-									</div>
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Status
-										</Label>
-										<Badge
-											variant="outline"
-											className={getStatusColor(selectedGRN.status)}
-										>
-											{formatStatus(selectedGRN.status)}
-										</Badge>
-									</div>
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Created By
-										</Label>
-										<p className="text-sm font-medium">
-											{selectedGRN.createdBy}
-										</p>
-									</div>
-								</div>
+						<div className="grid gap-6 lg:grid-cols-3">
+							<div className="lg:col-span-2 space-y-6">
+								<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
+									<div className="space-y-6">
+										<div className="grid gap-4 sm:grid-cols-2">
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													GRN Number
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.grnNumber}
+												</p>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Transfer Order
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.transferOrderNumber || "-"}
+												</p>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Supplier
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.supplier}
+												</p>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Received Date
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.receivedDate.toLocaleString()}
+												</p>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Status
+												</Label>
+												<Badge
+													variant="outline"
+													className={getStatusColor(selectedGRN.status)}
+												>
+													{formatStatus(selectedGRN.status)}
+												</Badge>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Created By
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.createdBy}
+												</p>
+											</div>
+										</div>
 
-								<div>
-									<Label className="mb-2 block text-sm font-medium">
-										Items
-									</Label>
-									<div className="rounded-lg border">
-										<Table>
-											<TableHeader>
-												<TableRow>
-													<TableHead>SKU</TableHead>
-													<TableHead>Description</TableHead>
-													<TableHead>Expected</TableHead>
-													<TableHead>Received</TableHead>
-													<TableHead>Location</TableHead>
-												</TableRow>
-											</TableHeader>
-											<TableBody>
-												{selectedGRN.items.map((item) => (
-													<TableRow key={item.id}>
-														<TableCell className="font-medium">
-															{item.sku}
-														</TableCell>
-														<TableCell>{item.description}</TableCell>
-														<TableCell>{item.expectedQuantity}</TableCell>
-														<TableCell>{item.receivedQuantity}</TableCell>
-														<TableCell>
-															{item.location || "Not assigned"}
-														</TableCell>
-													</TableRow>
-												))}
-											</TableBody>
-										</Table>
-									</div>
-								</div>
+										<div>
+											<Label className="mb-2 block text-sm font-medium">
+												Items
+											</Label>
+											<div className="rounded-lg border">
+												<Table>
+													<TableHeader>
+														<TableRow>
+															<TableHead>SKU</TableHead>
+															<TableHead>Description</TableHead>
+															<TableHead>Expected</TableHead>
+															<TableHead>Received</TableHead>
+															<TableHead>Location</TableHead>
+														</TableRow>
+													</TableHeader>
+													<TableBody>
+														{selectedGRN.items.map((item) => (
+															<TableRow key={item.id}>
+																<TableCell className="font-medium">
+																	{item.sku}
+																</TableCell>
+																<TableCell>{item.description}</TableCell>
+																<TableCell>{item.expectedQuantity}</TableCell>
+																<TableCell>{item.receivedQuantity}</TableCell>
+																<TableCell>
+																	{item.location || "Not assigned"}
+																</TableCell>
+															</TableRow>
+														))}
+													</TableBody>
+												</Table>
+											</div>
+										</div>
 
-								{selectedGRN.notes && (
-									<div>
-										<Label className="text-xs text-muted-foreground">
-											Notes
-										</Label>
-										<p className="text-sm">{selectedGRN.notes}</p>
+										{selectedGRN.notes && (
+											<div>
+												<Label className="text-xs text-muted-foreground">
+													Notes
+												</Label>
+												<p className="text-sm">{selectedGRN.notes}</p>
+											</div>
+										)}
 									</div>
-								)}
-
-								<DialogFooter>
-									<Button
-										variant="outline"
-										onClick={() => setIsViewOpen(false)}
-									>
-										Close
-									</Button>
-									{selectedGRN.status === "pending" && (
-										<Button
-											onClick={() => {
-												handleUpdateStatus(selectedGRN.id, "completed");
-											}}
-											disabled={statusMutation.status === "pending"}
-										>
-											Mark as Completed
-										</Button>
-									)}
-								</DialogFooter>
+								</ScrollArea>
 							</div>
-						</ScrollArea>
+
+							{/* Right Panel: Audit Trail + Integration Status */}
+							<div className="space-y-4">
+								<Card>
+									<CardHeader>
+										<CardTitle className="text-sm">Audit Trail</CardTitle>
+									</CardHeader>
+									<CardContent className="text-xs space-y-2">
+										<div>
+											<p className="text-muted-foreground">Created By</p>
+											<p className="font-medium">{selectedGRN.createdBy}</p>
+										</div>
+										<div>
+											<p className="text-muted-foreground">Created At</p>
+											<p className="font-medium">
+												{selectedGRN.createdAt.toLocaleString()}
+											</p>
+										</div>
+									</CardContent>
+								</Card>
+								<IntegrationLogPanel
+									entityId={selectedGRN.id}
+									entityType="grn"
+									onRetry={(logId) => {
+										console.log("Retry log:", logId);
+									}}
+								/>
+							</div>
+						</div>
 					)}
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setIsViewOpen(false)}>
+							Close
+						</Button>
+						{hasPermission("grn:approve") &&
+							selectedGRN.status === "Submitted" && (
+								<Button
+									onClick={() => {
+										handleUpdateStatus(selectedGRN.id, "Approved");
+									}}
+									disabled={statusMutation.status === "pending"}
+								>
+									Approve
+								</Button>
+							)}
+						{hasPermission("grn:send_to_es") &&
+							selectedGRN.status === "Approved" && (
+								<Button
+									onClick={() => {
+										handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
+									}}
+									disabled={statusMutation.status === "pending"}
+								>
+									<Send className="mr-2 h-4 w-4" />
+									Send to ES
+								</Button>
+							)}
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</div>

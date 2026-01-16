@@ -1,12 +1,31 @@
 export interface DashboardStats {
 	totalGRNs: number;
 	pendingGRNs: number;
+	grnsToday: number;
+	grnsPendingApproval: number;
 	totalTransfers: number;
 	activeTransfers: number;
+	tosPulledToday: number;
+	tosLastPullTime?: Date;
 	totalDeliveries: number;
 	scheduledDeliveries: number;
+	dosByStatus: {
+		picking: number;
+		ready: number;
+		deliveredPendingProof: number;
+	};
+	shortageDamagePending: number;
+	invoicesIssuedToday: number;
+	invoicesIssuedThisWeek: number;
 	inventoryValue: number;
 	lowStockItems: number;
+}
+
+export interface IntegrationHealth {
+	lastTOPullTime: Date;
+	lastStockSyncTime: Date;
+	failedSyncCount: number;
+	stockSyncStatus: "OK" | "Fail";
 }
 
 export interface GRN {
@@ -47,12 +66,31 @@ export interface Delivery {
 export const mockDashboardStats: DashboardStats = {
 	totalGRNs: 124,
 	pendingGRNs: 8,
+	grnsToday: 5,
+	grnsPendingApproval: 3,
 	totalTransfers: 45,
 	activeTransfers: 12,
+	tosPulledToday: 8,
+	tosLastPullTime: new Date(Date.now() - 2 * 3600000), // 2 hours ago
 	totalDeliveries: 89,
 	scheduledDeliveries: 15,
+	dosByStatus: {
+		picking: 5,
+		ready: 8,
+		deliveredPendingProof: 12,
+	},
+	shortageDamagePending: 4,
+	invoicesIssuedToday: 3,
+	invoicesIssuedThisWeek: 15,
 	inventoryValue: 2450000,
 	lowStockItems: 23,
+};
+
+export const mockIntegrationHealth: IntegrationHealth = {
+	lastTOPullTime: new Date(Date.now() - 2 * 3600000), // 2 hours ago
+	lastStockSyncTime: new Date(Date.now() - 12 * 3600000), // 12 hours ago (daily sync)
+	failedSyncCount: 2,
+	stockSyncStatus: "OK",
 };
 
 export const mockGRNs: GRN[] = [
@@ -251,9 +289,11 @@ export const mockDeliveries: Delivery[] = [
 
 export interface DashboardData {
 	stats: DashboardStats;
+	integrationHealth: IntegrationHealth;
 	grns: GRN[];
 	transferOrders: TransferOrder[];
 	deliveries: Delivery[];
+	pendingProofCount: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -262,8 +302,10 @@ export async function getDashboardData(): Promise<DashboardData> {
 
 	return {
 		stats: mockDashboardStats,
+		integrationHealth: mockIntegrationHealth,
 		grns: mockGRNs,
 		transferOrders: mockTransferOrders,
 		deliveries: mockDeliveries,
+		pendingProofCount: mockDashboardStats.dosByStatus.deliveredPendingProof,
 	};
 }

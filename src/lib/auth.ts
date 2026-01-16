@@ -1,8 +1,24 @@
+export type WMSRole = "store_keeper" | "logistic" | "supervisor";
+
+// Legacy role mapping for backward compatibility
+export type LegacyRole = "admin" | "finance" | "warehouse" | "user";
+
 export interface User {
 	id: string;
 	email: string;
 	name: string;
-	role: "admin" | "finance" | "warehouse" | "user";
+	role: WMSRole;
+}
+
+// Map legacy roles to new WMS roles
+export function mapLegacyRole(legacyRole: LegacyRole): WMSRole {
+	const mapping: Record<LegacyRole, WMSRole> = {
+		warehouse: "store_keeper",
+		admin: "supervisor",
+		finance: "logistic",
+		user: "store_keeper", // Default fallback
+	};
+	return mapping[legacyRole] || "store_keeper";
 }
 
 // Mock user database
@@ -10,14 +26,20 @@ const mockUsers: User[] = [
 	{
 		id: "1",
 		email: "admin@smee.com.my",
-		name: "Admin User",
-		role: "admin",
+		name: "Supervisor User",
+		role: "supervisor",
 	},
 	{
 		id: "2",
 		email: "finance@smee.com.my",
-		name: "Finance User",
-		role: "finance",
+		name: "Logistic User",
+		role: "logistic",
+	},
+	{
+		id: "3",
+		email: "warehouse@smee.com.my",
+		name: "Store Keeper User",
+		role: "store_keeper",
 	},
 ];
 

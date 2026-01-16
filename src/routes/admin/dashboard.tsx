@@ -25,6 +25,7 @@ import {
 	AlertCircle,
 	TrendingUp,
 	Clock,
+	FileText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import type { DashboardData } from "@/data/dashboard.mock-data";
@@ -47,7 +48,14 @@ function DashboardComponent() {
 		return <DashboardSkeleton />;
 	}
 
-	const { stats, grns, transferOrders, deliveries } = data;
+	const {
+		stats,
+		integrationHealth,
+		grns,
+		transferOrders,
+		deliveries,
+		pendingProofCount,
+	} = data;
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
@@ -90,14 +98,14 @@ function DashboardComponent() {
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">Total GRNs</CardTitle>
+						<CardTitle className="text-sm font-medium">GRNs Today</CardTitle>
 						<Package className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">{stats.totalGRNs}</div>
+						<div className="text-2xl font-bold">{stats.grnsToday}</div>
 						<p className="text-xs text-muted-foreground">
 							<span className="font-medium text-yellow-600">
-								{stats.pendingGRNs} pending
+								{stats.grnsPendingApproval} pending approval
 							</span>
 						</p>
 					</CardContent>
@@ -106,31 +114,68 @@ function DashboardComponent() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							Transfer Orders
+							TOs Pulled Today
 						</CardTitle>
 						<ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">{stats.totalTransfers}</div>
+						<div className="text-2xl font-bold">{stats.tosPulledToday}</div>
 						<p className="text-xs text-muted-foreground">
-							<span className="font-medium text-blue-600">
-								{stats.activeTransfers} active
-							</span>
+							Last: {stats.tosLastPullTime?.toLocaleTimeString() || "N/A"}
 						</p>
 					</CardContent>
 				</Card>
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">Deliveries</CardTitle>
+						<CardTitle className="text-sm font-medium">DOs Status</CardTitle>
 						<Truck className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">{stats.totalDeliveries}</div>
+						<div className="space-y-1">
+							<div className="text-sm">
+								<span className="font-medium">{stats.dosByStatus.picking}</span>{" "}
+								Picking
+							</div>
+							<div className="text-sm">
+								<span className="font-medium">{stats.dosByStatus.ready}</span>{" "}
+								Ready
+							</div>
+							<div className="text-xs text-muted-foreground">
+								<span className="font-medium text-orange-600">
+									{stats.dosByStatus.deliveredPendingProof} pending proof
+								</span>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Shortage/Damage
+						</CardTitle>
+						<AlertCircle className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{stats.shortageDamagePending}
+						</div>
+						<p className="text-xs text-muted-foreground">Pending approval</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">Invoices</CardTitle>
+						<FileText className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{stats.invoicesIssuedToday}
+						</div>
 						<p className="text-xs text-muted-foreground">
-							<span className="font-medium text-green-600">
-								{stats.scheduledDeliveries} scheduled
-							</span>
+							{stats.invoicesIssuedThisWeek} this week
 						</p>
 					</CardContent>
 				</Card>
@@ -138,7 +183,7 @@ function DashboardComponent() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							Inventory Value
+							Inventory Info
 						</CardTitle>
 						<TrendingUp className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
@@ -151,6 +196,81 @@ function DashboardComponent() {
 								{stats.lowStockItems} low stock items
 							</span>
 						</p>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* Integration Health & Pending Proof */}
+			<div className="grid gap-6 lg:grid-cols-2">
+				{/* Integration Health */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Integration Health</CardTitle>
+						<CardDescription>NetSuite sync status</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">Last TO Pull:</span>
+								<span className="font-medium">
+									{integrationHealth.lastTOPullTime.toLocaleString()}
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">Last Stock Sync:</span>
+								<span className="font-medium">
+									{integrationHealth.lastStockSyncTime.toLocaleString()}
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">Failed Syncs:</span>
+								<span className="font-medium text-red-600">
+									{integrationHealth.failedSyncCount}
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">
+									Stock Sync Status:
+								</span>
+								<Badge
+									variant="outline"
+									className={
+										integrationHealth.stockSyncStatus === "OK"
+											? "bg-green-500/10 text-green-600 border-green-500/20"
+											: "bg-red-500/10 text-red-600 border-red-500/20"
+									}
+								>
+									{integrationHealth.stockSyncStatus}
+								</Badge>
+							</div>
+						</div>
+						<Button variant="outline" size="sm" asChild>
+							<Link to="/admin/settings">View Logs</Link>
+						</Button>
+					</CardContent>
+				</Card>
+
+				{/* Pending Proof */}
+				<Card className="border-orange-200 bg-orange-50/50">
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<AlertCircle className="h-5 w-5 text-orange-600" />
+							Pending Proof of Delivery
+						</CardTitle>
+						<CardDescription>DOs awaiting signed DO upload</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-4">
+							<div className="text-3xl font-bold text-orange-600">
+								{pendingProofCount}
+							</div>
+							<p className="text-sm text-muted-foreground">
+								Delivery orders are waiting for signed proof of delivery upload.
+							</p>
+							<Button asChild>
+								<Link to="/admin/delivery-proof">View Pending Proof</Link>
+							</Button>
+						</div>
 					</CardContent>
 				</Card>
 			</div>

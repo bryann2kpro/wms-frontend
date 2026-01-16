@@ -2,10 +2,11 @@ import type { GRN } from "./dashboard.mock-data";
 import { mockGRNs as baseGRNs } from "./dashboard.mock-data";
 
 export type GRNStatus =
-	| "pending"
-	| "partially_received"
-	| "completed"
-	| "cancelled";
+	| "Draft"
+	| "Submitted"
+	| "Approved"
+	| "Sent-to-ES"
+	| "Failed";
 
 export interface GRNItem {
 	id: string;
@@ -104,16 +105,14 @@ let grnDetails: GRNDetail[] = baseGRNs.map((grn, index) => {
 		0,
 	);
 
-	const status: GRNStatus =
-		grn.status === "completed"
-			? "completed"
-			: grn.status === "cancelled"
-				? "cancelled"
-				: receivedItems === 0
-					? "pending"
-					: receivedItems < totalItems
-						? "partially_received"
-						: "completed";
+	// Map old statuses to new ones for mock data
+	const statusMap: Record<string, GRNStatus> = {
+		completed: "Approved",
+		cancelled: "Failed",
+		pending: "Draft",
+		partially_received: "Submitted",
+	};
+	const status: GRNStatus = statusMap[grn.status] || "Draft";
 
 	return {
 		...grn,
@@ -131,10 +130,11 @@ let grnDetails: GRNDetail[] = baseGRNs.map((grn, index) => {
 
 function buildSummary(source: GRNDetail[]): GRNSummary {
 	const initial: Record<GRNStatus, number> = {
-		pending: 0,
-		partially_received: 0,
-		completed: 0,
-		cancelled: 0,
+		Draft: 0,
+		Submitted: 0,
+		Approved: 0,
+		"Sent-to-ES": 0,
+		Failed: 0,
 	};
 
 	const byStatus = source.reduce((acc, grn) => {
@@ -201,7 +201,7 @@ export async function createGRN(input: CreateGRNInput): Promise<GRNDetail> {
 		id: (grnDetails.length + 1).toString(),
 		grnNumber: input.grnNumber,
 		supplier: input.supplier,
-		status: "pending",
+		status: "Draft",
 		transferOrderNumber: input.transferOrderNumber,
 		receivedDate: input.receivedDate,
 		createdAt: now,
@@ -238,7 +238,7 @@ export async function updateGRNStatus(
 	const current = grnDetails[index];
 	let updated: GRNDetail = { ...current, status };
 
-	if (status === "completed") {
+	if (status === "Approved" || status === "Sent-to-ES") {
 		updated = {
 			...updated,
 			receivedItems: updated.totalItems,
@@ -247,15 +247,8 @@ export async function updateGRNStatus(
 				receivedQuantity: item.expectedQuantity,
 			})),
 		};
-	} else if (status === "cancelled") {
-		updated = {
-			...updated,
-			receivedItems: 0,
-			items: updated.items.map((item) => ({
-				...item,
-				receivedQuantity: 0,
-			})),
-		};
+	} else if (status === "Failed") {
+		// Keep existing quantities on failure
 	}
 
 	grnDetails[index] = updated;
