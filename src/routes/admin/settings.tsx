@@ -138,9 +138,9 @@ function SettingsPage() {
 
 	const tabs = [
 		{ id: "profile" as const, label: "Profile", icon: User },
-		...(hasPermission("admin:users")
-			? [{ id: "users" as const, label: "Users/Roles", icon: Users }]
-			: []),
+		// ...(hasPermission("admin:users")
+		// 	? [{ id: "users" as const, label: "Users/Roles", icon: Users }]
+		// 	: []),
 		...(hasPermission("admin:master_data")
 			? [{ id: "master-data" as const, label: "Master Data", icon: Database }]
 			: []),

@@ -153,8 +153,8 @@ function DOWorkQueueComponent() {
 			</div>
 
 			{summary && (
-				<div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-					{doStatuses.slice(0, 4).map((status) => (
+				<div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+					{doStatuses.map((status) => (
 						<Card key={status}>
 							<CardHeader className="pb-2">
 								<CardTitle className="text-xs font-medium">

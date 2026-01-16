@@ -150,7 +150,7 @@ function DashboardComponent() {
 					</CardContent>
 				</Card>
 
-				<Card>
+				{/* <Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
 							Shortage/Damage
@@ -163,7 +163,7 @@ function DashboardComponent() {
 						</div>
 						<p className="text-xs text-muted-foreground">Pending approval</p>
 					</CardContent>
-				</Card>
+				</Card> */}
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -180,7 +180,7 @@ function DashboardComponent() {
 					</CardContent>
 				</Card>
 
-				<Card>
+				{/* <Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
 							Inventory Info
@@ -197,7 +197,7 @@ function DashboardComponent() {
 							</span>
 						</p>
 					</CardContent>
-				</Card>
+				</Card> */}
 			</div>
 
 			{/* Integration Health & Pending Proof */}

@@ -453,571 +453,571 @@ function TransfersRouteComponent() {
 						</DialogContent>
 					</Dialog>
 				</div>
+			</div>
 
-				{summary && (
-					<div className="grid gap-4 md:grid-cols-5">
-						{transferStatuses.map((status) => (
-							<Card key={status}>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium">
-										{formatStatus(status)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{summary.byStatus[status] ?? 0}
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
-				)}
-
-				<Card>
-					<CardHeader>
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<CardTitle>Transfer Order List</CardTitle>
-								<CardDescription>
-									View and manage all transfer orders
-								</CardDescription>
-							</div>
-							<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-								<div className="relative">
-									<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-									<Input
-										placeholder="Search transfers..."
-										value={searchTerm}
-										onChange={(e) => {
-											setSearchTerm(e.target.value);
-											setPage(1);
-										}}
-										className="pl-9 sm:w-64"
-									/>
+			{summary && (
+				<div className="grid gap-4 md:grid-cols-5">
+					{transferStatuses.map((status) => (
+						<Card key={status}>
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium">
+									{formatStatus(status)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold">
+									{summary.byStatus[status] ?? 0}
 								</div>
-								<Select
-									value={statusFilter}
-									onValueChange={(value) => {
-										setStatusFilter(value as TransferStatusFilter);
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
+
+			<Card>
+				<CardHeader>
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<CardTitle>Transfer Order List</CardTitle>
+							<CardDescription>
+								View and manage all transfer orders
+							</CardDescription>
+						</div>
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+							<div className="relative">
+								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									placeholder="Search transfers..."
+									value={searchTerm}
+									onChange={(e) => {
+										setSearchTerm(e.target.value);
 										setPage(1);
 									}}
-								>
-									<SelectTrigger className="sm:w-48">
-										<SelectValue placeholder="Filter by status" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="ALL">All Status</SelectItem>
-										{transferStatuses.map((status) => (
-											<SelectItem key={status} value={status}>
-												{formatStatus(status)}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+									className="pl-9 sm:w-64"
+								/>
 							</div>
+							<Select
+								value={statusFilter}
+								onValueChange={(value) => {
+									setStatusFilter(value as TransferStatusFilter);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger className="sm:w-48">
+									<SelectValue placeholder="Filter by status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All Status</SelectItem>
+									{transferStatuses.map((status) => (
+										<SelectItem key={status} value={status}>
+											{formatStatus(status)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-					</CardHeader>
-					<CardContent className="relative">
-						<GlobalLoadingShadow />
-						<div className="overflow-x-auto rounded-lg border">
-							<Table>
-								<TableHeader>
+					</div>
+				</CardHeader>
+				<CardContent className="relative">
+					<GlobalLoadingShadow />
+					<div className="overflow-x-auto rounded-lg border">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>TO Number</TableHead>
+									<TableHead>Outlet</TableHead>
+									<TableHead>Scheduled Delivery</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead>DO Created?</TableHead>
+									<TableHead>NetSuite</TableHead>
+									<TableHead className="text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{isLoading ? (
 									<TableRow>
-										<TableHead>TO Number</TableHead>
-										<TableHead>Outlet</TableHead>
-										<TableHead>Scheduled Delivery</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>DO Created?</TableHead>
-										<TableHead>NetSuite</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
+										<TableCell
+											colSpan={8}
+											className="h-24 text-center text-muted-foreground"
+										>
+											Loading transfer orders...
+										</TableCell>
 									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{isLoading ? (
-										<TableRow>
-											<TableCell
-												colSpan={8}
-												className="h-24 text-center text-muted-foreground"
-											>
-												Loading transfer orders...
-											</TableCell>
-										</TableRow>
-									) : transfers.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={8}
-												className="h-24 text-center text-muted-foreground"
-											>
-												No transfer orders found.
-											</TableCell>
-										</TableRow>
-									) : (
-										transfers.map((transfer) => {
-											// Calculate scheduled delivery date (mock - would come from TO)
-											const scheduledDeliveryDate = new Date(
-												transfer.expectedDeliveryDate,
-											);
-											const doCreated = transfer.status === "DO_Created";
+								) : transfers.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={8}
+											className="h-24 text-center text-muted-foreground"
+										>
+											No transfer orders found.
+										</TableCell>
+									</TableRow>
+								) : (
+									transfers.map((transfer) => {
+										// Calculate scheduled delivery date (mock - would come from TO)
+										const scheduledDeliveryDate = new Date(
+											transfer.expectedDeliveryDate,
+										);
+										const doCreated = transfer.status === "DO_Created";
 
-											return (
-												<TableRow key={transfer.id}>
-													<TableCell className="font-medium">
-														{transfer.transferOrderNumber}
-													</TableCell>
-													<TableCell>
-														{transfer.toLocation} {/* Outlet */}
-													</TableCell>
-													<TableCell>
-														{scheduledDeliveryDate.toLocaleDateString()}
-													</TableCell>
-													<TableCell>
+										return (
+											<TableRow key={transfer.id}>
+												<TableCell className="font-medium">
+													{transfer.transferOrderNumber}
+												</TableCell>
+												<TableCell>
+													{transfer.toLocation} {/* Outlet */}
+												</TableCell>
+												<TableCell>
+													{scheduledDeliveryDate.toLocaleDateString()}
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant="outline"
+														className={getStatusColor(transfer.status)}
+													>
+														{formatStatus(transfer.status)}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													{doCreated ? (
 														<Badge
 															variant="outline"
-															className={getStatusColor(transfer.status)}
+															className="bg-green-500/10 text-green-600 border-green-500/20"
 														>
-															{formatStatus(transfer.status)}
+															Yes
 														</Badge>
-													</TableCell>
-													<TableCell>
-														{doCreated ? (
-															<Badge
-																variant="outline"
-																className="bg-green-500/10 text-green-600 border-green-500/20"
-															>
-																Yes
-															</Badge>
-														) : (
-															<Badge
-																variant="outline"
-																className="bg-gray-500/10 text-gray-600 border-gray-500/20"
-															>
-																No
-															</Badge>
+													) : (
+														<Badge
+															variant="outline"
+															className="bg-gray-500/10 text-gray-600 border-gray-500/20"
+														>
+															No
+														</Badge>
+													)}
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant="outline"
+														className={getNetSuiteStatusColor(
+															transfer.netsuiteStatus,
 														)}
-													</TableCell>
-													<TableCell>
-														<Badge
-															variant="outline"
-															className={getNetSuiteStatusColor(
-																transfer.netsuiteStatus,
-															)}
+													>
+														{transfer.netsuiteStatus || "N/A"}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex justify-end gap-1">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() => handleViewTransfer(transfer)}
 														>
-															{transfer.netsuiteStatus || "N/A"}
-														</Badge>
-													</TableCell>
-													<TableCell className="text-right">
-														<div className="flex justify-end gap-1">
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() => handleViewTransfer(transfer)}
-															>
-																<Eye className="h-4 w-4" />
-															</Button>
-															{hasPermission("to:accept") &&
-																transfer.status === "New" && (
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		onClick={() => {
-																			setSelectedTransfer(transfer);
-																			setIsAcceptDialogOpen(true);
-																		}}
-																	>
-																		<CheckCircle className="h-4 w-4 text-green-600" />
-																	</Button>
-																)}
-															{hasPermission("to:reject") &&
-																transfer.status === "New" && (
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		onClick={() => {
-																			setSelectedTransfer(transfer);
-																			setIsRejectDialogOpen(true);
-																		}}
-																	>
-																		<XCircle className="h-4 w-4 text-red-600" />
-																	</Button>
-																)}
-														</div>
-													</TableCell>
-												</TableRow>
-											);
-										})
-									)}
-								</TableBody>
-							</Table>
-						</div>
+															<Eye className="h-4 w-4" />
+														</Button>
+														{hasPermission("to:accept") &&
+															transfer.status === "New" && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() => {
+																		setSelectedTransfer(transfer);
+																		setIsAcceptDialogOpen(true);
+																	}}
+																>
+																	<CheckCircle className="h-4 w-4 text-green-600" />
+																</Button>
+															)}
+														{hasPermission("to:reject") &&
+															transfer.status === "New" && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() => {
+																		setSelectedTransfer(transfer);
+																		setIsRejectDialogOpen(true);
+																	}}
+																>
+																	<XCircle className="h-4 w-4 text-red-600" />
+																</Button>
+															)}
+													</div>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								)}
+							</TableBody>
+						</Table>
+					</div>
 
-						{data && (
-							<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-								<div>
-									Showing{" "}
-									<span className="font-medium">
-										{(data.page - 1) * data.pageSize + 1}
-									</span>{" "}
-									-{" "}
-									<span className="font-medium">
-										{Math.min(data.page * data.pageSize, data.total)}
-									</span>{" "}
-									of <span className="font-medium">{data.total}</span> transfer
-									orders
-								</div>
-								<div className="flex items-center gap-2">
-									<Button
-										variant="outline"
-										size="icon"
-										disabled={page === 1}
-										onClick={() => setPage((p) => Math.max(1, p - 1))}
-									>
-										<ChevronLeft className="h-4 w-4" />
-									</Button>
-									<span>
-										Page {page} of {totalPages}
-									</span>
-									<Button
-										variant="outline"
-										size="icon"
-										disabled={page === totalPages}
-										onClick={() =>
-											setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
-										}
-									>
-										<ChevronRight className="h-4 w-4" />
-									</Button>
-								</div>
+					{data && (
+						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+							<div>
+								Showing{" "}
+								<span className="font-medium">
+									{(data.page - 1) * data.pageSize + 1}
+								</span>{" "}
+								-{" "}
+								<span className="font-medium">
+									{Math.min(data.page * data.pageSize, data.total)}
+								</span>{" "}
+								of <span className="font-medium">{data.total}</span> transfer
+								orders
 							</div>
-						)}
+							<div className="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="icon"
+									disabled={page === 1}
+									onClick={() => setPage((p) => Math.max(1, p - 1))}
+								>
+									<ChevronLeft className="h-4 w-4" />
+								</Button>
+								<span>
+									Page {page} of {totalPages}
+								</span>
+								<Button
+									variant="outline"
+									size="icon"
+									disabled={page === totalPages}
+									onClick={() =>
+										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
+									}
+								>
+									<ChevronRight className="h-4 w-4" />
+								</Button>
+							</div>
+						</div>
+					)}
 					</CardContent>
-				</Card>
+			</Card>
 
-				{/* View Transfer Order Dialog */}
-				<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-					<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-						<DialogHeader>
-							<DialogTitle>Transfer Order Details</DialogTitle>
-							<DialogDescription>
-								View and manage transfer order information
-							</DialogDescription>
-						</DialogHeader>
-						{selectedTransfer && (
-							<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-								<div className="space-y-6">
-									<div className="grid gap-4 sm:grid-cols-3">
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												TO Number
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.transferOrderNumber}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Outlet
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.toLocation}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Scheduled Delivery
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.expectedDeliveryDate.toLocaleDateString()}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Created Date
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.createdDate.toLocaleDateString()}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Expected Delivery
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.expectedDeliveryDate.toLocaleDateString()}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Status
-											</Label>
+			{/* View Transfer Order Dialog */}
+			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Transfer Order Details</DialogTitle>
+						<DialogDescription>
+							View and manage transfer order information
+						</DialogDescription>
+					</DialogHeader>
+					{selectedTransfer && (
+						<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
+							<div className="space-y-6">
+								<div className="grid gap-4 sm:grid-cols-3">
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											TO Number
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.transferOrderNumber}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Outlet
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.toLocation}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Scheduled Delivery
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.expectedDeliveryDate.toLocaleDateString()}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Created Date
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.createdDate.toLocaleDateString()}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Expected Delivery
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.expectedDeliveryDate.toLocaleDateString()}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Status
+										</Label>
+										<Badge
+											variant="outline"
+											className={getStatusColor(selectedTransfer.status)}
+										>
+											{formatStatus(selectedTransfer.status)}
+										</Badge>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											NetSuite Status
+										</Label>
+										<div className="flex items-center gap-2">
 											<Badge
 												variant="outline"
-												className={getStatusColor(selectedTransfer.status)}
-											>
-												{formatStatus(selectedTransfer.status)}
-											</Badge>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												NetSuite Status
-											</Label>
-											<div className="flex items-center gap-2">
-												<Badge
-													variant="outline"
-													className={getNetSuiteStatusColor(
-														selectedTransfer.netsuiteStatus,
-													)}
-												>
-													{selectedTransfer.netsuiteStatus || "N/A"}
-												</Badge>
-												{selectedTransfer.netsuiteStatus === "error" && (
-													<AlertCircle className="h-4 w-4 text-red-600" />
+												className={getNetSuiteStatusColor(
+													selectedTransfer.netsuiteStatus,
 												)}
-											</div>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Created By
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.createdBy}
-											</p>
-										</div>
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Total Items
-											</Label>
-											<p className="text-sm font-medium">
-												{selectedTransfer.totalItems}
-											</p>
+											>
+												{selectedTransfer.netsuiteStatus || "N/A"}
+											</Badge>
+											{selectedTransfer.netsuiteStatus === "error" && (
+												<AlertCircle className="h-4 w-4 text-red-600" />
+											)}
 										</div>
 									</div>
-
 									<div>
-										<Label className="mb-2 block text-sm font-medium">
-											Items
+										<Label className="text-xs text-muted-foreground">
+											Created By
 										</Label>
-										<div className="rounded-lg border">
-											<Table>
-												<TableHeader>
-													<TableRow>
-														<TableHead>SKU</TableHead>
-														<TableHead>Description</TableHead>
-														<TableHead>Qty</TableHead>
-														<TableHead>Available Qty</TableHead>
-														<TableHead>Status</TableHead>
-													</TableRow>
-												</TableHeader>
-												<TableBody>
-													{selectedTransfer.items.map((item) => {
-														// Mock available quantity (would come from inventory)
-														const availableQty =
-															item.quantity + Math.floor(Math.random() * 10);
-														const canFulfill = availableQty >= item.quantity;
-
-														return (
-															<TableRow key={item.id}>
-																<TableCell className="font-medium">
-																	{item.sku}
-																</TableCell>
-																<TableCell>{item.description}</TableCell>
-																<TableCell>{item.quantity}</TableCell>
-																<TableCell>
-																	<span
-																		className={
-																			canFulfill
-																				? "text-green-600"
-																				: "text-red-600"
-																		}
-																	>
-																		{availableQty}
-																	</span>
-																</TableCell>
-																<TableCell>
-																	{canFulfill ? (
-																		<Badge
-																			variant="outline"
-																			className="bg-green-500/10 text-green-600 border-green-500/20"
-																		>
-																			Available
-																		</Badge>
-																	) : (
-																		<Badge
-																			variant="outline"
-																			className="bg-red-500/10 text-red-600 border-red-500/20"
-																		>
-																			Insufficient
-																		</Badge>
-																	)}
-																</TableCell>
-															</TableRow>
-														);
-													})}
-												</TableBody>
-											</Table>
-										</div>
+										<p className="text-sm font-medium">
+											{selectedTransfer.createdBy}
+										</p>
 									</div>
-
-									{selectedTransfer.notes && (
-										<div>
-											<Label className="text-xs text-muted-foreground">
-												Notes
-											</Label>
-											<p className="text-sm">{selectedTransfer.notes}</p>
-										</div>
-									)}
-
-									{/* Integration Log */}
-									<IntegrationLogPanel
-										entityId={selectedTransfer.id}
-										entityType="to"
-										onRetry={(logId) => {
-											console.log("Retry log:", logId);
-										}}
-									/>
-
-									<DialogFooter>
-										<Button
-											variant="outline"
-											onClick={() => setIsViewOpen(false)}
-										>
-											Close
-										</Button>
-										{hasPermission("to:accept") &&
-											selectedTransfer.status === "New" && (
-												<Button
-													onClick={() => {
-														setIsViewOpen(false);
-														setIsAcceptDialogOpen(true);
-													}}
-												>
-													<CheckCircle className="mr-2 h-4 w-4" />
-													Accept & Create DO
-												</Button>
-											)}
-										{hasPermission("to:reject") &&
-											selectedTransfer.status === "New" && (
-												<Button
-													variant="destructive"
-													onClick={() => {
-														setIsViewOpen(false);
-														setIsRejectDialogOpen(true);
-													}}
-												>
-													<XCircle className="mr-2 h-4 w-4" />
-													Reject
-												</Button>
-											)}
-									</DialogFooter>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Total Items
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.totalItems}
+										</p>
+									</div>
 								</div>
-							</ScrollArea>
-						)}
-					</DialogContent>
-				</Dialog>
 
-				{/* Accept TO Dialog */}
-				<Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Accept Transfer Order</DialogTitle>
-							<DialogDescription>
-								Accepting this TO will create a Delivery Order and reserve
-								stock. Must fulfill full quantity to accept (no partial, no
-								backorder, no split delivery).
-							</DialogDescription>
-						</DialogHeader>
-						{selectedTransfer && (
-							<div className="space-y-4">
-								<div className="rounded-lg border p-3 bg-muted/50">
-									<p className="text-sm font-medium mb-2">
-										TO: {selectedTransfer.transferOrderNumber}
-									</p>
-									<p className="text-xs text-muted-foreground">
-										Outlet: {selectedTransfer.toLocation}
-									</p>
-									<p className="text-xs text-muted-foreground">
-										Items: {selectedTransfer.items.length}
-									</p>
+								<div>
+									<Label className="mb-2 block text-sm font-medium">
+										Items
+									</Label>
+									<div className="rounded-lg border">
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>SKU</TableHead>
+													<TableHead>Description</TableHead>
+													<TableHead>Qty</TableHead>
+													<TableHead>Available Qty</TableHead>
+													<TableHead>Status</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{selectedTransfer.items.map((item) => {
+													// Mock available quantity (would come from inventory)
+													const availableQty =
+														item.quantity + Math.floor(Math.random() * 10);
+													const canFulfill = availableQty >= item.quantity;
+
+													return (
+														<TableRow key={item.id}>
+															<TableCell className="font-medium">
+																{item.sku}
+															</TableCell>
+															<TableCell>{item.description}</TableCell>
+															<TableCell>{item.quantity}</TableCell>
+															<TableCell>
+																<span
+																	className={
+																		canFulfill
+																			? "text-green-600"
+																			: "text-red-600"
+																	}
+																>
+																	{availableQty}
+																</span>
+															</TableCell>
+															<TableCell>
+																{canFulfill ? (
+																	<Badge
+																		variant="outline"
+																		className="bg-green-500/10 text-green-600 border-green-500/20"
+																	>
+																		Available
+																	</Badge>
+																) : (
+																	<Badge
+																		variant="outline"
+																		className="bg-red-500/10 text-red-600 border-red-500/20"
+																	>
+																		Insufficient
+																	</Badge>
+																)}
+															</TableCell>
+														</TableRow>
+													);
+												})}
+											</TableBody>
+										</Table>
+									</div>
 								</div>
-							</div>
-						)}
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => setIsAcceptDialogOpen(false)}
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={() => {
-									if (selectedTransfer) {
-										statusMutation.mutate({
-											id: selectedTransfer.id,
-											status: "Accepted",
-										});
-										setIsAcceptDialogOpen(false);
-									}
-								}}
-								disabled={statusMutation.isPending}
-							>
-								{statusMutation.isPending
-									? "Accepting..."
-									: "Accept & Create DO"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
 
-				{/* Reject TO Dialog */}
-				<Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Reject Transfer Order</DialogTitle>
-							<DialogDescription>
-								Please provide a reason for rejecting this transfer order.
-							</DialogDescription>
-						</DialogHeader>
-						<div className="space-y-4">
-							<Field>
-								<FieldLabel>Rejection Reason</FieldLabel>
-								<Textarea
-									value={rejectReason}
-									onChange={(e) => setRejectReason(e.target.value)}
-									placeholder="Enter rejection reason..."
-									required
-									rows={3}
+								{selectedTransfer.notes && (
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Notes
+										</Label>
+										<p className="text-sm">{selectedTransfer.notes}</p>
+									</div>
+								)}
+
+								{/* Integration Log */}
+								<IntegrationLogPanel
+									entityId={selectedTransfer.id}
+									entityType="to"
+									onRetry={(logId) => {
+										console.log("Retry log:", logId);
+									}}
 								/>
-							</Field>
+
+								<DialogFooter>
+									<Button
+										variant="outline"
+										onClick={() => setIsViewOpen(false)}
+									>
+										Close
+									</Button>
+									{hasPermission("to:accept") &&
+										selectedTransfer.status === "New" && (
+											<Button
+												onClick={() => {
+													setIsViewOpen(false);
+													setIsAcceptDialogOpen(true);
+												}}
+											>
+												<CheckCircle className="mr-2 h-4 w-4" />
+												Accept & Create DO
+											</Button>
+										)}
+									{hasPermission("to:reject") &&
+										selectedTransfer.status === "New" && (
+											<Button
+												variant="destructive"
+												onClick={() => {
+													setIsViewOpen(false);
+													setIsRejectDialogOpen(true);
+												}}
+											>
+												<XCircle className="mr-2 h-4 w-4" />
+												Reject
+											</Button>
+										)}
+								</DialogFooter>
+							</div>
+						</ScrollArea>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			{/* Accept TO Dialog */}
+			<Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Accept Transfer Order</DialogTitle>
+						<DialogDescription>
+							Accepting this TO will create a Delivery Order and reserve
+							stock. Must fulfill full quantity to accept (no partial, no
+							backorder, no split delivery).
+						</DialogDescription>
+					</DialogHeader>
+					{selectedTransfer && (
+						<div className="space-y-4">
+							<div className="rounded-lg border p-3 bg-muted/50">
+								<p className="text-sm font-medium mb-2">
+									TO: {selectedTransfer.transferOrderNumber}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									Outlet: {selectedTransfer.toLocation}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									Items: {selectedTransfer.items.length}
+								</p>
+							</div>
 						</div>
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => {
+					)}
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setIsAcceptDialogOpen(false)}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={() => {
+								if (selectedTransfer) {
+									statusMutation.mutate({
+										id: selectedTransfer.id,
+										status: "Accepted",
+									});
+									setIsAcceptDialogOpen(false);
+								}
+							}}
+							disabled={statusMutation.isPending}
+						>
+							{statusMutation.isPending
+								? "Accepting..."
+								: "Accept & Create DO"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Reject TO Dialog */}
+			<Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Reject Transfer Order</DialogTitle>
+						<DialogDescription>
+							Please provide a reason for rejecting this transfer order.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<Field>
+							<FieldLabel>Rejection Reason</FieldLabel>
+							<Textarea
+								value={rejectReason}
+								onChange={(e) => setRejectReason(e.target.value)}
+								placeholder="Enter rejection reason..."
+								required
+								rows={3}
+							/>
+						</Field>
+					</div>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setIsRejectDialogOpen(false);
+								setRejectReason("");
+							}}
+						>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								if (selectedTransfer && rejectReason) {
+									statusMutation.mutate({
+										id: selectedTransfer.id,
+										status: "Rejected",
+									});
 									setIsRejectDialogOpen(false);
 									setRejectReason("");
-								}}
-							>
-								Cancel
-							</Button>
-							<Button
-								variant="destructive"
-								onClick={() => {
-									if (selectedTransfer && rejectReason) {
-										statusMutation.mutate({
-											id: selectedTransfer.id,
-											status: "Rejected",
-										});
-										setIsRejectDialogOpen(false);
-										setRejectReason("");
-									}
-								}}
-								disabled={statusMutation.isPending || !rejectReason}
-							>
-								{statusMutation.isPending ? "Rejecting..." : "Reject TO"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-			</div>
+								}
+							}}
+							disabled={statusMutation.isPending || !rejectReason}
+						>
+							{statusMutation.isPending ? "Rejecting..." : "Reject TO"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

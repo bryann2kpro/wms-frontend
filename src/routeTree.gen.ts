@@ -18,6 +18,7 @@ import { Route as DemoTableRouteImport } from './routes/demo/table'
 import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
+import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
 import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -89,6 +90,11 @@ const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
   id: '/demo/apollo-client',
   path: '/demo/apollo-client',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
+  id: '/user-management',
+  path: '/user-management',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminTransfersRoute = AdminTransfersRouteImport.update({
   id: '/transfers',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/transfers': typeof AdminTransfersRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/transfers': typeof AdminTransfersRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/transfers': typeof AdminTransfersRoute
+  '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -355,6 +364,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/transfers'
+    | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -392,6 +402,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/transfers'
+    | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/transfers'
+    | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -533,6 +545,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/apollo-client'
       preLoaderRoute: typeof DemoApolloClientRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/user-management': {
+      id: '/admin/user-management'
+      path: '/user-management'
+      fullPath: '/admin/user-management'
+      preLoaderRoute: typeof AdminUserManagementRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/transfers': {
       id: '/admin/transfers'
@@ -747,6 +766,7 @@ interface AdminRouteRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminTransfersRoute: typeof AdminTransfersRoute
+  AdminUserManagementRoute: typeof AdminUserManagementRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -765,6 +785,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminTransfersRoute: AdminTransfersRoute,
+  AdminUserManagementRoute: AdminUserManagementRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

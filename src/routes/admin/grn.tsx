@@ -172,7 +172,8 @@ function GRNRouteComponent() {
 		? Math.max(1, Math.ceil(data.total / data.pageSize))
 		: 1;
 
-	const getStatusColor = (status: GRNStatus) => {
+	const getStatusColor = (status: GRNStatus | null | undefined) => {
+		if (!status) return "bg-gray-500/10 text-gray-600 border-gray-500/20";
 		const colors: Record<GRNStatus, string> = {
 			Draft: "bg-gray-500/10 text-gray-600 border-gray-500/20",
 			Submitted: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -180,7 +181,7 @@ function GRNRouteComponent() {
 			"Sent-to-ES": "bg-purple-500/10 text-purple-600 border-purple-500/20",
 			Failed: "bg-red-500/10 text-red-600 border-red-500/20",
 		};
-		return colors[status];
+		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
 	};
 
 	const formatStatus = (status: string) =>
@@ -560,7 +561,7 @@ function GRNRouteComponent() {
 				</Dialog>
 			</div>
 
-			{summary && (
+			{summary && summary.byStatus && (
 				<div className="grid gap-4 md:grid-cols-4">
 					{grnStatuses.map((status) => (
 						<Card key={status}>
@@ -666,18 +667,22 @@ function GRNRouteComponent() {
 											<TableCell>{grn.transferOrderNumber || "-"}</TableCell>
 											<TableCell>{grn.supplier}</TableCell>
 											<TableCell>
-												{grn.receivedDate.toLocaleDateString()}
+												{grn.receivedDate?.toLocaleDateString() || "-"}
 											</TableCell>
 											<TableCell>
 												{grn.receivedItems}/{grn.totalItems}
 											</TableCell>
 											<TableCell>
-												<Badge
-													variant="outline"
-													className={getStatusColor(grn.status)}
-												>
-													{formatStatus(grn.status)}
-												</Badge>
+												{grn.status ? (
+													<Badge
+														variant="outline"
+														className={getStatusColor(grn.status)}
+													>
+														{formatStatus(grn.status)}
+													</Badge>
+												) : (
+													<span className="text-muted-foreground">-</span>
+												)}
 											</TableCell>
 											<TableCell className="text-right">
 												<div className="flex justify-end gap-1">
@@ -689,6 +694,7 @@ function GRNRouteComponent() {
 														<Eye className="h-4 w-4" />
 													</Button>
 													{hasPermission("grn:edit") &&
+														grn.status &&
 														(grn.status === "Draft" ||
 															grn.status === "Submitted") && (
 															<Button
@@ -822,19 +828,23 @@ function GRNRouteComponent() {
 													Received Date
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.receivedDate.toLocaleString()}
+													{selectedGRN.receivedDate?.toLocaleString() || "-"}
 												</p>
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
 													Status
 												</Label>
-												<Badge
-													variant="outline"
-													className={getStatusColor(selectedGRN.status)}
-												>
-													{formatStatus(selectedGRN.status)}
-												</Badge>
+												{selectedGRN.status ? (
+													<Badge
+														variant="outline"
+														className={getStatusColor(selectedGRN.status)}
+													>
+														{formatStatus(selectedGRN.status)}
+													</Badge>
+												) : (
+													<span className="text-sm text-muted-foreground">-</span>
+												)}
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
@@ -906,7 +916,7 @@ function GRNRouteComponent() {
 										<div>
 											<p className="text-muted-foreground">Created At</p>
 											<p className="font-medium">
-												{selectedGRN.createdAt.toLocaleString()}
+												{selectedGRN.createdAt?.toLocaleString() || "-"}
 											</p>
 										</div>
 									</CardContent>
@@ -926,7 +936,7 @@ function GRNRouteComponent() {
 							Close
 						</Button>
 						{hasPermission("grn:approve") &&
-							selectedGRN.status === "Submitted" && (
+							selectedGRN?.status === "Submitted" && (
 								<Button
 									onClick={() => {
 										handleUpdateStatus(selectedGRN.id, "Approved");
@@ -937,7 +947,7 @@ function GRNRouteComponent() {
 								</Button>
 							)}
 						{hasPermission("grn:send_to_es") &&
-							selectedGRN.status === "Approved" && (
+							selectedGRN?.status === "Approved" && (
 								<Button
 									onClick={() => {
 										handleUpdateStatus(selectedGRN.id, "Sent-to-ES");

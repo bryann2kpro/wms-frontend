@@ -90,6 +90,12 @@ const allNavigationItems: NavigationItem[] = [
 		permission: "reports:view",
 	},
 	{
+		name: "User Management",
+		to: "/admin/user-management",
+		icon: Users,
+		permission: "admin:users",
+	},
+	{
 		name: "Admin / Settings",
 		to: "/admin/settings",
 		icon: Settings,
