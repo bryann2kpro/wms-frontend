@@ -686,7 +686,7 @@ function SecurityCard({
 const mockUsersList = [
 	{
 		id: "1",
-		name: "Supervisor User",
+		name: "Eric Ng",
 		email: "admin@smee.com.my",
 		role: "supervisor" as WMSRole,
 	},

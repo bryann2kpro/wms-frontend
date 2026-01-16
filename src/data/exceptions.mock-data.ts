@@ -74,13 +74,13 @@ let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 		reportedAt: new Date(Date.now() - i * 3600000),
 		status,
 		approvedBy: status === "approved" ? "supervisor_1" : undefined,
-		approvedByName: status === "approved" ? "Supervisor User" : undefined,
+		approvedByName: status === "approved" ? "Eric Ng" : undefined,
 		approvedAt:
 			status === "approved" ? new Date(Date.now() - i * 1800000) : undefined,
 		rejectionReason:
 			status === "rejected" ? "Insufficient evidence provided" : undefined,
 		rejectedBy: status === "rejected" ? "supervisor_1" : undefined,
-		rejectedByName: status === "rejected" ? "Supervisor User" : undefined,
+		rejectedByName: status === "rejected" ? "Eric Ng" : undefined,
 		rejectedAt:
 			status === "rejected" ? new Date(Date.now() - i * 1800000) : undefined,
 	};

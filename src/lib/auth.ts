@@ -26,7 +26,7 @@ const mockUsers: User[] = [
 	{
 		id: "1",
 		email: "admin@smee.com.my",
-		name: "Supervisor User",
+		name: "Eric Ng",
 		role: "supervisor",
 	},
 	{

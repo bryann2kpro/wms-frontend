@@ -181,6 +181,63 @@ export async function getInvoices(
 	};
 }
 
+export interface CreateInvoiceInput {
+	invoiceNumber: string;
+	doNumber: string;
+	doId: string;
+	toNumber?: string;
+	outlet: string;
+	outletAddress?: string;
+	issuedDate: Date;
+	items: Array<{ sku: string; description: string; quantity: number; unitPrice: number }>;
+	subtotal?: number;
+	tax?: number;
+	notes?: string;
+}
+
+export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
+	await delay(300);
+
+	const subtotal =
+		input.subtotal ??
+		input.items.reduce(
+			(sum, item) => sum + item.quantity * item.unitPrice,
+			0,
+		);
+	const tax = input.tax ?? subtotal * 0.1; // 10% tax
+	const totalAmount = subtotal + tax;
+
+	const items: InvoiceItem[] = input.items.map((item, index) => ({
+		id: `${invoices.length}-${index}`,
+		sku: item.sku,
+		description: item.description,
+		quantity: item.quantity,
+		unitPrice: item.unitPrice,
+		totalPrice: item.quantity * item.unitPrice,
+	}));
+
+	const newInvoice: Invoice = {
+		id: `inv-${invoices.length}`,
+		invoiceNumber: input.invoiceNumber,
+		doNumber: input.doNumber,
+		doId: input.doId,
+		toNumber: input.toNumber,
+		outlet: input.outlet,
+		outletAddress: input.outletAddress,
+		status: "Issued",
+		issuedDate: input.issuedDate,
+		items,
+		subtotal,
+		tax,
+		totalAmount,
+		notes: input.notes,
+	};
+
+	invoices = [newInvoice, ...invoices];
+
+	return newInvoice;
+}
+
 export async function getInvoiceById(id: string): Promise<Invoice | undefined> {
 	await delay(200);
 	return invoices.find((inv) => inv.id === id);

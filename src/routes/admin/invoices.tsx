@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
 import {
 	Card,
 	CardContent,
@@ -26,19 +28,47 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
 	Search,
 	Eye,
 	ChevronLeft,
 	ChevronRight,
 	FileText,
-	Download,
+	Plus,
+	Package,
+	Calendar,
+	Building2,
+	Receipt,
+	Clock,
+	Info,
+	Send,
+	DollarSign,
+	Trash2,
 } from "lucide-react";
 import {
-	type Invoice,
 	type InvoiceStatusFilter,
 	getInvoices,
+	createInvoice,
 } from "@/data/invoices.mock-data";
 
 export const Route = createFileRoute("/admin/invoices")({
@@ -52,12 +82,35 @@ const invoiceStatuses: InvoiceStatusFilter[] = [
 	"Cancelled",
 ];
 
+const createInvoiceSchema = z.object({
+	invoiceNumber: z
+		.string()
+		.min(1, "Invoice number is required")
+		.regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
+	doNumber: z.string().min(1, "DO Number is required"),
+	doId: z.string().min(1, "DO ID is required"),
+	toNumber: z.string(),
+	outlet: z.string().min(1, "Outlet is required"),
+	outletAddress: z.string(),
+	issuedDate: z.string().min(1, "Issued date is required"),
+	notes: z.string(),
+});
+
 function InvoicesComponent() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>("ALL");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [invoiceItems, setInvoiceItems] = useState<
+		Array<{ sku: string; description: string; quantity: number; unitPrice: number }>
+	>([]);
+	const [itemSearch, setItemSearch] = useState("");
+	const [itemDescription, setItemDescription] = useState("");
+	const [itemQuantity, setItemQuantity] = useState(1);
+	const [itemUnitPrice, setItemUnitPrice] = useState(0);
 
 	const { data, isLoading } = useQuery({
 		queryKey: ["invoices", { page, pageSize, searchTerm, statusFilter }],
@@ -69,6 +122,51 @@ function InvoicesComponent() {
 				status: statusFilter,
 			}),
 		staleTime: 30_000,
+	});
+
+	const createMutation = useMutation({
+		mutationFn: createInvoice,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["invoices"] });
+			setIsCreateOpen(false);
+			form.reset();
+			setInvoiceItems([]);
+		},
+	});
+
+	const form = useForm({
+		defaultValues: {
+			invoiceNumber: "",
+			doNumber: "",
+			doId: "",
+			toNumber: "",
+			outlet: "",
+			outletAddress: "",
+			issuedDate: "",
+			notes: "",
+		},
+		validators: {
+			onBlur: createInvoiceSchema,
+			onSubmit: createInvoiceSchema,
+		},
+		onSubmit: async ({ value }) => {
+			if (invoiceItems.length === 0) {
+				alert("Please add at least one item to the invoice");
+				return;
+			}
+			const parsedDate = new Date(value.issuedDate);
+			await createMutation.mutateAsync({
+				invoiceNumber: value.invoiceNumber,
+				doNumber: value.doNumber,
+				doId: value.doId,
+				toNumber: value.toNumber || undefined,
+				outlet: value.outlet,
+				outletAddress: value.outletAddress || undefined,
+				issuedDate: parsedDate,
+				items: invoiceItems,
+				notes: value.notes || undefined,
+			});
+		},
 	});
 
 	const invoices = data?.items ?? [];
@@ -95,6 +193,571 @@ function InvoicesComponent() {
 						Manage invoices and export documents
 					</p>
 				</div>
+				<Dialog
+					open={isCreateOpen}
+					onOpenChange={(open) => {
+						setIsCreateOpen(open);
+						if (!open) {
+							form.reset();
+							setInvoiceItems([]);
+							setItemSearch("");
+							setItemDescription("");
+							setItemQuantity(1);
+							setItemUnitPrice(0);
+						}
+					}}
+				>
+					<DialogTrigger asChild>
+						<Button>
+							<Plus className="mr-2 h-4 w-4" />
+							Create Invoice
+						</Button>
+					</DialogTrigger>
+					<DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+						<DialogHeader className="pb-4">
+							<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
+								<Receipt className="h-5 w-5 text-primary" />
+								Create New Invoice
+							</DialogTitle>
+							<DialogDescription className="text-base">
+								Enter the details for the new invoice
+							</DialogDescription>
+						</DialogHeader>
+						<Separator />
+						<ScrollArea className="flex-1 pr-4">
+							<form
+								onSubmit={(e) => {
+									e.preventDefault();
+									form.handleSubmit();
+								}}
+								className="space-y-6 py-4"
+							>
+								<div className="grid gap-6 lg:grid-cols-3">
+									<div className="lg:col-span-2 space-y-6">
+										{/* Invoice Details Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<FileText className="h-4 w-4 text-muted-foreground" />
+													Invoice Details
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<FieldGroup>
+													<div className="grid gap-4 sm:grid-cols-2">
+														<form.Field
+															name="invoiceNumber"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name}>
+																			Invoice Number
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			value={field.state.value}
+																			placeholder="INV-2024-001"
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
+														/>
+														<form.Field
+															name="issuedDate"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name} className="flex items-center gap-2">
+																			<Calendar className="h-4 w-4 text-muted-foreground" />
+																			Issued Date
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			type="date"
+																			value={field.state.value}
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
+														/>
+													</div>
+
+													<div className="grid gap-4 sm:grid-cols-2">
+														<form.Field
+															name="doNumber"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name}>
+																			DO Number
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			value={field.state.value}
+																			placeholder="DO-2024-001"
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
+														/>
+														<form.Field
+															name="doId"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name}>
+																			DO ID
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			value={field.state.value}
+																			placeholder="do-123"
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
+														/>
+													</div>
+
+													<form.Field
+														name="toNumber"
+														children={(field) => (
+															<Field>
+																<FieldLabel htmlFor={field.name}>
+																	TO Number (Optional)
+																</FieldLabel>
+																<Input
+																	id={field.name}
+																	value={field.state.value}
+																	placeholder="TO-2024-001"
+																	onBlur={field.handleBlur}
+																	onChange={(e) =>
+																		field.handleChange(e.target.value)
+																	}
+																/>
+															</Field>
+														)}
+													/>
+												</FieldGroup>
+											</CardContent>
+										</Card>
+
+										{/* Outlet Information Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<Building2 className="h-4 w-4 text-muted-foreground" />
+													Outlet Information
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<FieldGroup>
+													<form.Field
+														name="outlet"
+														children={(field) => {
+															const isInvalid =
+																field.state.meta.isTouched &&
+																!field.state.meta.isValid;
+															return (
+																<Field data-invalid={isInvalid}>
+																	<FieldLabel htmlFor={field.name}>
+																		Outlet Name
+																	</FieldLabel>
+																	<Input
+																		id={field.name}
+																		value={field.state.value}
+																		placeholder="Enter outlet name"
+																		onBlur={field.handleBlur}
+																		onChange={(e) =>
+																			field.handleChange(e.target.value)
+																		}
+																		aria-invalid={isInvalid}
+																	/>
+																	{isInvalid && (
+																		<FieldError errors={field.state.meta.errors} />
+																	)}
+																</Field>
+															);
+														}}
+													/>
+
+													<form.Field
+														name="outletAddress"
+														children={(field) => (
+															<Field>
+																<FieldLabel htmlFor={field.name}>
+																	Outlet Address (Optional)
+																</FieldLabel>
+																<Textarea
+																	id={field.name}
+																	value={field.state.value}
+																	placeholder="Enter outlet address"
+																	onBlur={field.handleBlur}
+																	onChange={(e) =>
+																		field.handleChange(e.target.value)
+																	}
+																	className="min-h-[80px] resize-none"
+																/>
+															</Field>
+														)}
+													/>
+												</FieldGroup>
+											</CardContent>
+										</Card>
+
+										{/* Line Items Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<Package className="h-4 w-4 text-muted-foreground" />
+													Line Items
+												</CardTitle>
+												<CardDescription className="text-xs">
+													Add products/services to this invoice
+												</CardDescription>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<div className="grid gap-4 sm:grid-cols-4">
+													<div className="sm:col-span-1">
+														<Label className="text-xs text-muted-foreground mb-1.5 block">SKU</Label>
+														<Input
+															placeholder="SKU-001"
+															value={itemSearch}
+															onChange={(e) => setItemSearch(e.target.value)}
+														/>
+													</div>
+													<div className="sm:col-span-1">
+														<Label className="text-xs text-muted-foreground mb-1.5 block">Description</Label>
+														<Input
+															placeholder="Product description"
+															value={itemDescription}
+															onChange={(e) => setItemDescription(e.target.value)}
+														/>
+													</div>
+													<div>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">Qty</Label>
+														<Input
+															type="number"
+															min="1"
+															placeholder="1"
+															value={itemQuantity}
+															onChange={(e) => setItemQuantity(Number(e.target.value))}
+														/>
+													</div>
+													<div>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">Unit Price</Label>
+														<Input
+															type="number"
+															min="0"
+															step="0.01"
+															placeholder="0.00"
+															value={itemUnitPrice}
+															onChange={(e) => setItemUnitPrice(Number(e.target.value))}
+														/>
+													</div>
+												</div>
+												<Button
+													type="button"
+													variant="outline"
+													onClick={() => {
+														if (itemSearch.trim() && itemDescription.trim() && itemQuantity > 0 && itemUnitPrice >= 0) {
+															setInvoiceItems([
+																...invoiceItems,
+																{
+																	sku: itemSearch.trim(),
+																	description: itemDescription.trim(),
+																	quantity: itemQuantity,
+																	unitPrice: itemUnitPrice,
+																},
+															]);
+															setItemSearch("");
+															setItemDescription("");
+															setItemQuantity(1);
+															setItemUnitPrice(0);
+														}
+													}}
+													disabled={!itemSearch.trim() || !itemDescription.trim() || itemQuantity <= 0}
+													className="w-full"
+												>
+													<Plus className="mr-2 h-4 w-4" />
+													Add Item
+												</Button>
+
+												<div className="rounded-lg border">
+													<Table>
+														<TableHeader>
+															<TableRow>
+																<TableHead>SKU</TableHead>
+																<TableHead>Description</TableHead>
+																<TableHead className="text-right">Qty</TableHead>
+																<TableHead className="text-right">Unit Price</TableHead>
+																<TableHead className="text-right">Total</TableHead>
+																<TableHead className="w-[60px]" />
+															</TableRow>
+														</TableHeader>
+														<TableBody>
+															{invoiceItems.length === 0 ? (
+																<TableRow>
+																	<TableCell
+																		colSpan={6}
+																		className="h-32 text-center"
+																	>
+																		<div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+																			<Package className="h-8 w-8 opacity-50" />
+																			<p className="text-sm">No items added yet</p>
+																			<p className="text-xs">Fill in the fields above and click Add Item</p>
+																		</div>
+																	</TableCell>
+																</TableRow>
+															) : (
+																<>
+																	{invoiceItems.map((item, index) => (
+																		<TableRow key={index}>
+																			<TableCell className="font-medium">
+																				{item.sku}
+																			</TableCell>
+																			<TableCell className="max-w-[200px] truncate">
+																				{item.description}
+																			</TableCell>
+																			<TableCell className="text-right">
+																				{item.quantity}
+																			</TableCell>
+																			<TableCell className="text-right">
+																				${item.unitPrice.toFixed(2)}
+																			</TableCell>
+																			<TableCell className="text-right font-medium">
+																				${(item.quantity * item.unitPrice).toFixed(2)}
+																			</TableCell>
+																			<TableCell>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="icon"
+																					onClick={() => {
+																						setInvoiceItems(
+																							invoiceItems.filter(
+																								(_, i) => i !== index,
+																							),
+																						);
+																					}}
+																					className="text-destructive hover:text-destructive h-8 w-8"
+																				>
+																					<Trash2 className="h-4 w-4" />
+																				</Button>
+																			</TableCell>
+																		</TableRow>
+																	))}
+																	<TableRow className="bg-muted/50">
+																		<TableCell colSpan={4} className="text-right font-medium">
+																			Subtotal
+																		</TableCell>
+																		<TableCell className="text-right font-medium">
+																			${invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0).toFixed(2)}
+																		</TableCell>
+																		<TableCell />
+																	</TableRow>
+																	<TableRow className="bg-muted/50">
+																		<TableCell colSpan={4} className="text-right font-medium">
+																			Tax (10%)
+																		</TableCell>
+																		<TableCell className="text-right font-medium">
+																			${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1).toFixed(2)}
+																		</TableCell>
+																		<TableCell />
+																	</TableRow>
+																	<TableRow className="bg-primary/5">
+																		<TableCell colSpan={4} className="text-right font-semibold">
+																			Total
+																		</TableCell>
+																		<TableCell className="text-right font-semibold text-primary">
+																			${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1).toFixed(2)}
+																		</TableCell>
+																		<TableCell />
+																	</TableRow>
+																</>
+															)}
+														</TableBody>
+													</Table>
+												</div>
+											</CardContent>
+										</Card>
+
+										{/* Notes Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<FileText className="h-4 w-4 text-muted-foreground" />
+													Additional Notes
+												</CardTitle>
+											</CardHeader>
+											<CardContent>
+												<form.Field
+													name="notes"
+													children={(field) => (
+														<Field>
+															<FieldLabel htmlFor={field.name} className="sr-only">
+																Notes
+															</FieldLabel>
+															<Textarea
+																id={field.name}
+																value={field.state.value}
+																placeholder="Enter any additional notes or comments..."
+																onBlur={field.handleBlur}
+																onChange={(e) => field.handleChange(e.target.value)}
+																className="min-h-[100px] resize-none"
+															/>
+														</Field>
+													)}
+												/>
+											</CardContent>
+										</Card>
+									</div>
+
+									{/* Right Panel: Summary */}
+									<div className="space-y-4">
+										<Card className="sticky top-4">
+											<CardHeader className="pb-3">
+												<CardTitle className="text-sm font-semibold flex items-center gap-2">
+													<DollarSign className="h-4 w-4 text-muted-foreground" />
+													Invoice Summary
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<div className="space-y-2">
+													<div className="flex justify-between text-sm">
+														<span className="text-muted-foreground">Items</span>
+														<span className="font-medium">{invoiceItems.length}</span>
+													</div>
+													<div className="flex justify-between text-sm">
+														<span className="text-muted-foreground">Subtotal</span>
+														<span className="font-medium">
+															${invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0).toFixed(2)}
+														</span>
+													</div>
+													<div className="flex justify-between text-sm">
+														<span className="text-muted-foreground">Tax (10%)</span>
+														<span className="font-medium">
+															${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1).toFixed(2)}
+														</span>
+													</div>
+													<Separator />
+													<div className="flex justify-between">
+														<span className="font-semibold">Total</span>
+														<span className="font-semibold text-primary text-lg">
+															${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1).toFixed(2)}
+														</span>
+													</div>
+												</div>
+											</CardContent>
+										</Card>
+
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-sm font-semibold flex items-center gap-2">
+													<Info className="h-4 w-4 text-muted-foreground" />
+													Status
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-2">
+												<div className="flex items-center gap-2">
+													<div className="h-2 w-2 rounded-full bg-blue-500" />
+													<p className="text-xs font-medium">Will be issued</p>
+												</div>
+												<p className="text-xs text-muted-foreground pl-4">
+													Invoice will be created with "Issued" status
+												</p>
+											</CardContent>
+										</Card>
+									</div>
+								</div>
+
+								<form.Subscribe
+									selector={(state) => [state.isSubmitting, state.canSubmit]}
+								>
+									{([isSubmitting, canSubmit]) => (
+										<>
+											<Separator className="mt-6" />
+											<DialogFooter className="pt-4">
+												<Button
+													type="button"
+													variant="outline"
+													onClick={() => {
+														setIsCreateOpen(false);
+														setInvoiceItems([]);
+													}}
+													disabled={isSubmitting}
+												>
+													Cancel
+												</Button>
+												<Button
+													type="submit"
+													disabled={isSubmitting || !canSubmit || invoiceItems.length === 0}
+													className="min-w-[140px]"
+												>
+													{isSubmitting ? (
+														<>
+															<Clock className="mr-2 h-4 w-4 animate-spin" />
+															Creating...
+														</>
+													) : (
+														<>
+															<Send className="mr-2 h-4 w-4" />
+															Create Invoice
+														</>
+													)}
+												</Button>
+											</DialogFooter>
+										</>
+									)}
+								</form.Subscribe>
+							</form>
+						</ScrollArea>
+					</DialogContent>
+				</Dialog>
 			</div>
 
 			{summary && (
@@ -249,8 +912,8 @@ function InvoicesComponent() {
 													size="icon"
 													onClick={() =>
 														navigate({
-															to: "/admin/invoices/$id",
-															params: { id: invoice.id },
+															to: "/admin/invoice-detail",
+															search: { id: invoice.id },
 														})
 													}
 												>

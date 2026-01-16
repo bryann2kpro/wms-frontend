@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
 	Plus,
 	Search,
@@ -57,6 +58,13 @@ import {
 	ChevronRight,
 	Edit,
 	Send,
+	Package,
+	Calendar,
+	FileText,
+	Upload,
+	User,
+	Clock,
+	Info,
 } from "lucide-react";
 import {
 	type GRNDetail,
@@ -88,8 +96,8 @@ const createGRNSchema = z.object({
 		.string()
 		.min(1, "GRN number is required")
 		.regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
-	transferOrderNumber: z.string(),
-	supplier: z.string().min(1, "Supplier name is required"),
+	poReference: z.string().min(1, "PO Reference is required"),
+	supplierDO: z.string().min(1, "Supplier DO is required"),
 	receivedDate: z.string().min(1, "Received date is required"),
 	notes: z.string(),
 });
@@ -144,8 +152,8 @@ function GRNRouteComponent() {
 	const form = useForm({
 		defaultValues: {
 			grnNumber: "",
-			transferOrderNumber: "",
-			supplier: "",
+			poReference: "",
+			supplierDO: "",
 			receivedDate: "",
 			notes: "",
 		},
@@ -157,8 +165,8 @@ function GRNRouteComponent() {
 			const parsedDate = new Date(value.receivedDate);
 			await createMutation.mutateAsync({
 				grnNumber: value.grnNumber,
-				transferOrderNumber: value.transferOrderNumber || undefined,
-				supplier: value.supplier,
+				poReference: value.poReference,
+				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
 			});
@@ -215,6 +223,7 @@ function GRNRouteComponent() {
 				</div>
 				<Dialog
 					open={isCreateOpen}
+					
 					onOpenChange={(open) => {
 						setIsCreateOpen(open);
 						if (!open) {
@@ -228,142 +237,189 @@ function GRNRouteComponent() {
 							Create GRN
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-						<DialogHeader>
-							<DialogTitle>Create New GRN</DialogTitle>
-							<DialogDescription>
+					<DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+						<DialogHeader className="pb-4">
+							<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
+								<Package className="h-5 w-5 text-primary" />
+								Create New GRN
+							</DialogTitle>
+							<DialogDescription className="text-base">
 								Enter the details for the new goods receipt note
 							</DialogDescription>
 						</DialogHeader>
-						<form
-							onSubmit={(e) => {
-								e.preventDefault();
-								form.handleSubmit();
-							}}
-							className="space-y-4"
-						>
-							<div className="grid gap-6 lg:grid-cols-3">
-								<div className="lg:col-span-2 space-y-4">
-									<FieldGroup>
-										<div className="grid gap-4 sm:grid-cols-2">
-											<form.Field
-												name="grnNumber"
-												children={(field) => {
-													const isInvalid =
-														field.state.meta.isTouched &&
-														!field.state.meta.isValid;
-													return (
-														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>
-																GRN Number
-															</FieldLabel>
-															<Input
-																id={field.name}
-																value={field.state.value}
-																placeholder="GRN-2024-001"
-																onBlur={field.handleBlur}
-																onChange={(e) =>
-																	field.handleChange(e.target.value)
-																}
-																aria-invalid={isInvalid}
-															/>
-															{isInvalid && (
-																<FieldError errors={field.state.meta.errors} />
-															)}
-														</Field>
-													);
-												}}
-											/>
-											<form.Field
-												name="transferOrderNumber"
-												children={(field) => (
-													<Field>
-														<FieldLabel htmlFor={field.name}>
-															PO# / TO# Reference (Optional)
-														</FieldLabel>
-														<Input
-															id={field.name}
-															value={field.state.value}
-															placeholder="TO-2024-001"
-															onBlur={field.handleBlur}
-															onChange={(e) =>
-																field.handleChange(e.target.value)
-															}
+						<Separator />
+						<ScrollArea className="flex-1 pr-4">
+							<form
+								onSubmit={(e) => {
+									e.preventDefault();
+									form.handleSubmit();
+								}}
+								className="space-y-6 py-4"
+							>
+								<div className="grid gap-6 lg:grid-cols-3">
+									<div className="lg:col-span-2 space-y-6">
+										{/* Basic Information Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<FileText className="h-4 w-4 text-muted-foreground" />
+													Basic Information
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<FieldGroup>
+													<div className="grid gap-4 sm:grid-cols-2">
+														<form.Field
+															name="grnNumber"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name}>
+																			GRN Number
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			value={field.state.value}
+																			placeholder="GRN-2024-001"
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
 														/>
-													</Field>
-												)}
-											/>
-										</div>
-
-										<form.Field
-											name="supplier"
-											children={(field) => {
-												const isInvalid =
-													field.state.meta.isTouched &&
-													!field.state.meta.isValid;
-												return (
-													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name}>
-															Supplier
-														</FieldLabel>
-														<Input
-															id={field.name}
-															value={field.state.value}
-															placeholder="Enter supplier name"
-															onBlur={field.handleBlur}
-															onChange={(e) =>
-																field.handleChange(e.target.value)
-															}
-															aria-invalid={isInvalid}
+														<form.Field
+															name="poReference"
+															children={(field) => {
+																const isInvalid =
+																	field.state.meta.isTouched &&
+																	!field.state.meta.isValid;
+																return (
+																	<Field data-invalid={isInvalid}>
+																		<FieldLabel htmlFor={field.name}>
+																			PO Reference
+																		</FieldLabel>
+																		<Input
+																			id={field.name}
+																			value={field.state.value}
+																			placeholder="PO-2024-001"
+																			onBlur={field.handleBlur}
+																			onChange={(e) =>
+																				field.handleChange(e.target.value)
+																			}
+																			aria-invalid={isInvalid}
+																		/>
+																		{isInvalid && (
+																			<FieldError errors={field.state.meta.errors} />
+																		)}
+																	</Field>
+																);
+															}}
 														/>
-														{isInvalid && (
-															<FieldError errors={field.state.meta.errors} />
-														)}
-													</Field>
-												);
-											}}
-										/>
+													</div>
 
-										<form.Field
-											name="receivedDate"
-											children={(field) => {
-												const isInvalid =
-													field.state.meta.isTouched &&
-													!field.state.meta.isValid;
-												return (
-													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name}>
-															Received Date/Time
-														</FieldLabel>
-														<Input
-															id={field.name}
-															type="datetime-local"
-															value={field.state.value}
-															onBlur={field.handleBlur}
-															onChange={(e) =>
-																field.handleChange(e.target.value)
-															}
-															aria-invalid={isInvalid}
-														/>
-														{isInvalid && (
-															<FieldError errors={field.state.meta.errors} />
-														)}
-													</Field>
-												);
-											}}
-										/>
-
-										{/* Line Items */}
-										<div>
-											<Label className="mb-2 block">Line Items</Label>
-											<div className="space-y-2">
-												<div className="flex gap-2">
-													<Input
-														placeholder="Search SKU..."
-														value={skuSearch}
-														onChange={(e) => setSkuSearch(e.target.value)}
-														className="flex-1"
+													<form.Field
+														name="supplierDO"
+														children={(field) => {
+															const isInvalid =
+																field.state.meta.isTouched &&
+																!field.state.meta.isValid;
+															return (
+																<Field data-invalid={isInvalid}>
+																	<FieldLabel htmlFor={field.name}>
+																		Supplier DO
+																	</FieldLabel>
+																	<Input
+																		id={field.name}
+																		value={field.state.value}
+																		placeholder="DO-2024-001"
+																		onBlur={field.handleBlur}
+																		onChange={(e) =>
+																			field.handleChange(e.target.value)
+																		}
+																		aria-invalid={isInvalid}
+																	/>
+																	{isInvalid && (
+																		<FieldError errors={field.state.meta.errors} />
+																	)}
+																</Field>
+															);
+														}}
 													/>
+
+													<form.Field
+														name="receivedDate"
+														children={(field) => {
+															const isInvalid =
+																field.state.meta.isTouched &&
+																!field.state.meta.isValid;
+															return (
+																<Field data-invalid={isInvalid}>
+																	<FieldLabel htmlFor={field.name} className="flex items-center gap-2">
+																		<Calendar className="h-4 w-4 text-muted-foreground" />
+																		Received Date/Time
+																	</FieldLabel>
+																	<Input
+																		id={field.name}
+																		type="datetime-local"
+																		value={field.state.value}
+																		onBlur={field.handleBlur}
+																		onChange={(e) =>
+																			field.handleChange(e.target.value)
+																		}
+																		aria-invalid={isInvalid}
+																	/>
+																	{isInvalid && (
+																		<FieldError errors={field.state.meta.errors} />
+																	)}
+																</Field>
+															);
+														}}
+													/>
+												</FieldGroup>
+											</CardContent>
+										</Card>
+
+										{/* Line Items Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<Package className="h-4 w-4 text-muted-foreground" />
+													Line Items
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<div className="flex gap-2">
+													<div className="relative flex-1">
+														<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+														<Input
+															placeholder="Search or enter SKU..."
+															value={skuSearch}
+															onChange={(e) => setSkuSearch(e.target.value)}
+															className="pl-9"
+															onKeyDown={(e) => {
+																if (e.key === "Enter") {
+																	e.preventDefault();
+																	if (skuSearch.trim()) {
+																		setGrnItems([
+																			...grnItems,
+																			{ sku: skuSearch.trim(), qty: 1 },
+																		]);
+																		setSkuSearch("");
+																	}
+																}
+															}}
+														/>
+													</div>
 													<Button
 														type="button"
 														variant="outline"
@@ -376,8 +432,10 @@ function GRNRouteComponent() {
 																setSkuSearch("");
 															}
 														}}
+														disabled={!skuSearch.trim()}
 													>
-														Add
+														<Plus className="mr-2 h-4 w-4" />
+														Add Item
 													</Button>
 												</div>
 												<div className="rounded-lg border">
@@ -385,8 +443,8 @@ function GRNRouteComponent() {
 														<TableHeader>
 															<TableRow>
 																<TableHead>SKU</TableHead>
-																<TableHead>Qty</TableHead>
-																<TableHead className="text-right">
+																<TableHead>Quantity</TableHead>
+																<TableHead className="text-right w-[80px]">
 																	Actions
 																</TableHead>
 															</TableRow>
@@ -396,9 +454,13 @@ function GRNRouteComponent() {
 																<TableRow>
 																	<TableCell
 																		colSpan={3}
-																		className="h-24 text-center text-muted-foreground"
+																		className="h-32 text-center"
 																	>
-																		No items added
+																		<div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+																			<Package className="h-8 w-8 opacity-50" />
+																			<p className="text-sm">No items added yet</p>
+																			<p className="text-xs">Search and add SKUs above</p>
+																		</div>
 																	</TableCell>
 																</TableRow>
 															) : (
@@ -419,7 +481,7 @@ function GRNRouteComponent() {
 																					);
 																					setGrnItems(newItems);
 																				}}
-																				className="w-20"
+																				className="w-24"
 																			/>
 																		</TableCell>
 																		<TableCell className="text-right">
@@ -434,6 +496,7 @@ function GRNRouteComponent() {
 																						),
 																					);
 																				}}
+																				className="text-destructive hover:text-destructive"
 																			>
 																				<XCircle className="h-4 w-4" />
 																			</Button>
@@ -444,119 +507,169 @@ function GRNRouteComponent() {
 														</TableBody>
 													</Table>
 												</div>
-											</div>
-										</div>
+											</CardContent>
+										</Card>
 
-										{/* Proof Upload */}
-										<div>
-											<Label className="mb-2 block">Proof Upload</Label>
-											<FileUpload
-												files={proofFiles}
-												onFilesChange={setProofFiles}
-												maxFiles={5}
-												accept="image/*,application/pdf"
-											/>
-										</div>
+										{/* Proof Upload Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<Upload className="h-4 w-4 text-muted-foreground" />
+													Proof Upload
+												</CardTitle>
+												<CardDescription className="text-xs">
+													Upload supporting documents (max 5 files)
+												</CardDescription>
+											</CardHeader>
+											<CardContent>
+												<FileUpload
+													files={proofFiles}
+													onFilesChange={setProofFiles}
+													maxFiles={5}
+													accept="image/*,application/pdf"
+												/>
+											</CardContent>
+										</Card>
 
-										<form.Field
-											name="notes"
-											children={(field) => (
-												<Field>
-													<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
-													<Textarea
-														id={field.name}
-														value={field.state.value}
-														placeholder="Enter any additional notes..."
-														onBlur={field.handleBlur}
-														onChange={(e) => field.handleChange(e.target.value)}
-													/>
-												</Field>
-											)}
-										/>
-									</FieldGroup>
-								</div>
+										{/* Notes Section */}
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-base font-semibold flex items-center gap-2">
+													<FileText className="h-4 w-4 text-muted-foreground" />
+													Additional Notes
+												</CardTitle>
+											</CardHeader>
+											<CardContent>
+												<form.Field
+													name="notes"
+													children={(field) => (
+														<Field>
+															<FieldLabel htmlFor={field.name} className="sr-only">
+																Notes
+															</FieldLabel>
+															<Textarea
+																id={field.name}
+																value={field.state.value}
+																placeholder="Enter any additional notes or comments..."
+																onBlur={field.handleBlur}
+																onChange={(e) => field.handleChange(e.target.value)}
+																className="min-h-[100px] resize-none"
+															/>
+														</Field>
+													)}
+												/>
+											</CardContent>
+										</Card>
+									</div>
 
-								{/* Right Panel: Audit Trail + Integration Status */}
-								<div className="space-y-4">
-									<Card>
-										<CardHeader>
-											<CardTitle className="text-sm">Audit Trail</CardTitle>
-										</CardHeader>
-										<CardContent className="text-xs space-y-2">
-											<div>
-												<p className="text-muted-foreground">Created By</p>
-												<p className="font-medium">
-													{user?.name || "Current User"}
+									{/* Right Panel: Audit Trail + Integration Status */}
+									<div className="space-y-4">
+										<Card className="sticky top-4">
+											<CardHeader className="pb-3">
+												<CardTitle className="text-sm font-semibold flex items-center gap-2">
+													<User className="h-4 w-4 text-muted-foreground" />
+													Audit Trail
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-4">
+												<div className="space-y-1">
+													<p className="text-xs text-muted-foreground flex items-center gap-2">
+														<User className="h-3 w-3" />
+														Created By
+													</p>
+													<p className="text-sm font-medium pl-5">
+														{user?.name || "Current User"}
+													</p>
+												</div>
+												<Separator />
+												<div className="space-y-1">
+													<p className="text-xs text-muted-foreground flex items-center gap-2">
+														<Clock className="h-3 w-3" />
+														Created At
+													</p>
+													<p className="text-sm font-medium pl-5">
+														{new Date().toLocaleString()}
+													</p>
+												</div>
+											</CardContent>
+										</Card>
+										<Card>
+											<CardHeader className="pb-3">
+												<CardTitle className="text-sm font-semibold flex items-center gap-2">
+													<Info className="h-4 w-4 text-muted-foreground" />
+													Integration Status
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-2">
+												<div className="flex items-center gap-2">
+													<div className="h-2 w-2 rounded-full bg-yellow-500" />
+													<p className="text-xs font-medium">Not sent</p>
+												</div>
+												<p className="text-xs text-muted-foreground pl-4">
+													GRN will be pushed to NetSuite after approval
 												</p>
-											</div>
-											<div>
-												<p className="text-muted-foreground">Created At</p>
-												<p className="font-medium">
-													{new Date().toLocaleString()}
-												</p>
-											</div>
-										</CardContent>
-									</Card>
-									<Card>
-										<CardHeader>
-											<CardTitle className="text-sm">
-												Integration Status
-											</CardTitle>
-										</CardHeader>
-										<CardContent className="text-xs">
-											<p className="text-muted-foreground">Status: Not sent</p>
-											<p className="text-muted-foreground mt-2">
-												GRN will be pushed to NetSuite after approval
-											</p>
-										</CardContent>
-									</Card>
-								</div>
+											</CardContent>
+										</Card>
+									</div>
 							</div>
 
-							<form.Subscribe
-								selector={(state) => [state.isSubmitting, state.canSubmit]}
-							>
-								{([isSubmitting, canSubmit]) => (
-									<DialogFooter>
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => {
-												setIsCreateOpen(false);
-												setGrnItems([]);
-												setProofFiles([]);
-											}}
-											disabled={isSubmitting}
-										>
-											Cancel
-										</Button>
-										{hasPermission("grn:create") && (
-											<>
+								<form.Subscribe
+									selector={(state) => [state.isSubmitting, state.canSubmit]}
+								>
+									{([isSubmitting, canSubmit]) => (
+										<>
+											<Separator className="mt-6" />
+											<DialogFooter className="pt-4">
 												<Button
 													type="button"
 													variant="outline"
 													onClick={() => {
-														// Save as draft
-														form.handleSubmit();
+														setIsCreateOpen(false);
+														setGrnItems([]);
+														setProofFiles([]);
 													}}
 													disabled={isSubmitting}
 												>
-													Save Draft
+													Cancel
 												</Button>
-												<Button
-													type="submit"
-													disabled={isSubmitting || !canSubmit}
-												>
-													{isSubmitting
-														? "Submitting..."
-														: "Submit for Approval"}
-												</Button>
-											</>
-										)}
-									</DialogFooter>
-								)}
-							</form.Subscribe>
-						</form>
+												{hasPermission("grn:create") && (
+													<>
+														<Button
+															type="button"
+															variant="outline"
+															onClick={() => {
+																// Save as draft
+																form.handleSubmit();
+															}}
+															disabled={isSubmitting}
+														>
+															Save Draft
+														</Button>
+														<Button
+															type="submit"
+															disabled={isSubmitting || !canSubmit}
+															className="min-w-[140px]"
+														>
+															{isSubmitting ? (
+																<>
+																	<Clock className="mr-2 h-4 w-4 animate-spin" />
+																	Submitting...
+																</>
+															) : (
+																<>
+																	<Send className="mr-2 h-4 w-4" />
+																	Submit for Approval
+																</>
+															)}
+														</Button>
+													</>
+												)}
+											</DialogFooter>
+										</>
+									)}
+								</form.Subscribe>
+							</form>
+						</ScrollArea>
 					</DialogContent>
 				</Dialog>
 			</div>
@@ -631,8 +744,8 @@ function GRNRouteComponent() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>GRN Number</TableHead>
-									<TableHead>Transfer Order</TableHead>
-									<TableHead>Supplier</TableHead>
+									<TableHead>PO Reference</TableHead>
+									<TableHead>Supplier DO</TableHead>
 									<TableHead>Received Date</TableHead>
 									<TableHead>Items</TableHead>
 									<TableHead>Status</TableHead>
@@ -664,8 +777,8 @@ function GRNRouteComponent() {
 											<TableCell className="font-medium">
 												{grn.grnNumber}
 											</TableCell>
-											<TableCell>{grn.transferOrderNumber || "-"}</TableCell>
-											<TableCell>{grn.supplier}</TableCell>
+											<TableCell>{grn.poReference || "-"}</TableCell>
+											<TableCell>{grn.supplierDO || "-"}</TableCell>
 											<TableCell>
 												{grn.receivedDate?.toLocaleDateString() || "-"}
 											</TableCell>
@@ -809,18 +922,18 @@ function GRNRouteComponent() {
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
-													Transfer Order
+													PO Reference
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.transferOrderNumber || "-"}
+													{selectedGRN.poReference || "-"}
 												</p>
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
-													Supplier
+													Supplier DO
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.supplier}
+													{selectedGRN.supplierDO || "-"}
 												</p>
 											</div>
 											<div>

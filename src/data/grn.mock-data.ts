@@ -19,7 +19,8 @@ export interface GRNItem {
 
 export interface GRNDetail extends Omit<GRN, "status" | "createdAt"> {
 	status: GRNStatus;
-	transferOrderNumber?: string;
+	poReference?: string;
+	supplierDO?: string;
 	receivedDate: Date;
 	createdAt: Date;
 	createdBy: string;
@@ -117,7 +118,8 @@ let grnDetails: GRNDetail[] = baseGRNs.map((grn, index) => {
 	return {
 		...grn,
 		status,
-		transferOrderNumber: `TO-2024-${String(index + 1).padStart(3, "0")}`,
+		poReference: `PO-2024-${String(index + 1).padStart(3, "0")}`,
+		supplierDO: `DO-2024-${String(index + 1).padStart(3, "0")}`,
 		receivedDate: grn.createdAt,
 		createdAt: grn.createdAt,
 		createdBy: index % 2 === 0 ? "John Doe" : "Jane Smith",
@@ -160,9 +162,10 @@ export async function getGRNs(filters: GRNListFilters): Promise<GRNListResult> {
 		filtered = filtered.filter((grn) => {
 			return (
 				grn.grnNumber.toLowerCase().includes(term) ||
-				grn.supplier.toLowerCase().includes(term) ||
-				(grn.transferOrderNumber &&
-					grn.transferOrderNumber.toLowerCase().includes(term))
+				(grn.poReference &&
+					grn.poReference.toLowerCase().includes(term)) ||
+				(grn.supplierDO &&
+					grn.supplierDO.toLowerCase().includes(term))
 			);
 		});
 	}
@@ -187,8 +190,8 @@ export async function getGRNs(filters: GRNListFilters): Promise<GRNListResult> {
 
 export interface CreateGRNInput {
 	grnNumber: string;
-	transferOrderNumber?: string;
-	supplier: string;
+	poReference: string;
+	supplierDO: string;
 	receivedDate: Date;
 	notes?: string;
 }
@@ -200,9 +203,10 @@ export async function createGRN(input: CreateGRNInput): Promise<GRNDetail> {
 	const newGRN: GRNDetail = {
 		id: (grnDetails.length + 1).toString(),
 		grnNumber: input.grnNumber,
-		supplier: input.supplier,
+		supplier: "N/A", // Supplier field kept for backward compatibility but not used in form
 		status: "Draft",
-		transferOrderNumber: input.transferOrderNumber,
+		poReference: input.poReference,
+		supplierDO: input.supplierDO,
 		receivedDate: input.receivedDate,
 		createdAt: now,
 		totalAmount: 0,
