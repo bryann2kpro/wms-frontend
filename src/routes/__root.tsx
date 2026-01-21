@@ -1,5 +1,6 @@
 import {
 	HeadContent,
+	Link,
 	Scripts,
 	createRootRouteWithContext,
 } from "@tanstack/react-router";
@@ -32,6 +33,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			document.documentElement.setAttribute("lang", getLocale());
 		}
 	},
+
+	notFoundComponent: NotFound,
 
 	head: () => ({
 		meta: [
@@ -81,5 +84,27 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<Scripts />
 			</body>
 		</html>
+	);
+}
+
+function NotFound() {
+	return (
+		<div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+			<div className="text-center">
+				<h1 className="text-8xl font-bold text-primary">404</h1>
+				<h2 className="mt-4 text-2xl font-semibold text-foreground">
+					Page Not Found
+				</h2>
+				<p className="mt-2 text-muted-foreground">
+					Sorry, the page you're looking for doesn't exist or has been moved.
+				</p>
+				<Link
+					to="/"
+					className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				>
+					Go back home
+				</Link>
+			</div>
+		</div>
 	);
 }
