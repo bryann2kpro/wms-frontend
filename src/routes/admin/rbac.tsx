@@ -16,6 +16,7 @@ import {
   fetchUserRoles,
   createModule,
   updateModule,
+  updateRolePermissions,
   type RbacModule,
   type RbacRole,
   type ModulesQueryParams,
@@ -23,6 +24,7 @@ import {
   type UserRolesQueryParams,
   type CreateModuleInput,
   type UpdateModuleInput,
+  type UpdateRolePermissionsInput,
 } from "@/lib/rbac";
 import { StatusFilter } from "@/constants/status-filter";
 import { UserRolesTable } from "@/components/rbac/user-roles-table";
@@ -179,6 +181,19 @@ function RbacComponent() {
       queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
       setIsDeleteModuleDialogOpen(false);
       setSelectedModule(null);
+    },
+  });
+
+  // Update role permissions mutation
+  const updateRolePermissionsMutation = useMutation({
+    mutationFn: (input: UpdateRolePermissionsInput) => updateRolePermissions(input, logout),
+    onSuccess: () => {
+      // Invalidate role permissions query to refetch with updated data
+      queryClient.invalidateQueries({ 
+        queryKey: ["rbac-role-permissions", selectedRoleForPermissions?.roleId] 
+      });
+      setIsRolePermissionsDialogOpen(false);
+      setSelectedRoleForPermissions(null);
     },
   });
 
@@ -421,11 +436,21 @@ function RbacComponent() {
       <RolePermissionsDialog
         open={isRolePermissionsDialogOpen}
         onOpenChange={(open) => {
+          // Don't close if currently saving
+          if (!open && updateRolePermissionsMutation.isPending) return;
           setIsRolePermissionsDialogOpen(open);
-          if (!open) setSelectedRoleForPermissions(null);
+          if (!open) {
+            setSelectedRoleForPermissions(null);
+            // Reset mutation state when dialog closes
+            updateRolePermissionsMutation.reset();
+          }
         }}
         role={selectedRoleForPermissions}
         logout={logout}
+        onSave={(input) => updateRolePermissionsMutation.mutate(input)}
+        isSaving={updateRolePermissionsMutation.isPending}
+        saveError={updateRolePermissionsMutation.error}
+        currentUserIdentifier={currentUserIdentifier}
       />
     </div>
   );

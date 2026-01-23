@@ -12,6 +12,10 @@ import type {
   UserRolesQueryParams,
   RolePermissionsApiResponse,
   RolePermissionsQueryParams,
+  CreateRolePermissionInput,
+  UpdateRolePermissionsInput,
+  RolePermissionApiResponse,
+  RolePermissionsUpdateApiResponse,
 } from "./rbac-types";
 
 /**
@@ -139,5 +143,40 @@ export async function fetchRolePermissions(
   });
 
   const response = await client.get<RolePermissionsApiResponse>(`/rbac/role-permission${queryString}`);
+  return response.data;
+}
+
+/**
+ * Create a single role permission
+ * POST /rbac/role-permission/create
+ * 
+ * @description Creates a new role permission assignment.
+ */
+export async function createRolePermission(
+  input: CreateRolePermissionInput,
+  onRefreshFail: () => void
+): Promise<RolePermissionApiResponse> {
+  const client = getClient(onRefreshFail);
+  const response = await client.post<RolePermissionApiResponse>("/rbac/role-permission/create", input);
+  return response.data;
+}
+
+/**
+ * Update (sync) all permissions for a role
+ * PUT /rbac/role-permission/update/:roleId
+ * 
+ * @description Replaces all existing permissions with the provided list.
+ * Permissions not in the list will be removed.
+ */
+export async function updateRolePermissions(
+  input: UpdateRolePermissionsInput,
+  onRefreshFail: () => void
+): Promise<RolePermissionsUpdateApiResponse> {
+  const client = getClient(onRefreshFail);
+  const { roleId, ...body } = input;
+  const response = await client.put<RolePermissionsUpdateApiResponse>(
+    `/rbac/role-permission/update/${roleId}`,
+    body
+  );
   return response.data;
 }

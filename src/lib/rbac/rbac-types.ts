@@ -186,3 +186,55 @@ export interface RolePermissionsQueryParams {
   pageSize?: number;
   pageNumber?: number;
 }
+
+/**
+ * Role Permission entity (returned from create/update)
+ */
+export interface RolePermission {
+  id: string;
+  roleId: string;
+  permissionId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
+/**
+ * Input for creating a single role permission
+ * POST /rbac/role-permission/create
+ */
+export interface CreateRolePermissionInput {
+  roleId: string;
+  permissionId: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
+/**
+ * Input for updating (syncing) all permissions for a role
+ * PUT /rbac/role-permission/update/:roleId
+ */
+export interface UpdateRolePermissionsInput {
+  roleId: string;
+  permissionIds: string[];
+  updatedBy: string;
+}
+
+/**
+ * API Response for single role permission operations
+ */
+export interface RolePermissionApiResponse {
+  success: boolean;
+  message: string;
+  data: RolePermission;
+}
+
+/**
+ * API Response for bulk role permission update
+ */
+export interface RolePermissionsUpdateApiResponse {
+  success: boolean;
+  message: string;
+  data: RolePermission[];
+}
