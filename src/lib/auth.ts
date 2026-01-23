@@ -10,8 +10,13 @@ export interface User {
 	displayName: string;
 	contactNo: string;
 	isActive: boolean;
-	roles: string[];
+	roles: Role[];
 	permissions: string[];
+}
+
+interface Role {
+	roleName: WMSRole;
+	roleId: string;
 }
 
 // Map legacy roles to new WMS roles
@@ -26,13 +31,16 @@ export function mapLegacyRole(legacyRole: LegacyRole): WMSRole {
 }
 
 // Helper to get primary role from roles array
-export function getPrimaryRole(roles: string[]): WMSRole {
-	if (roles.includes("supervisor") || roles.includes("admin")) {
-		return "supervisor";
-	}
-	if (roles.includes("logistic") || roles.includes("finance")) {
-		return "logistic";
-	}
-	return "store_keeper";
+export function getPrimaryRole(roles: Role[]): WMSRole {
+	// if (roles.includes("supervisor") || roles.includes("admin")) {
+	// 	return "supervisor";
+	// }
+	// if (roles.includes("logistic") || roles.includes("finance")) {
+	// 	return "logistic";
+	// }
+	// return "store_keeper";
+
+	return roles[0].roleName as WMSRole;
+
 }
 
