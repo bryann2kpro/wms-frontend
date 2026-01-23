@@ -114,6 +114,14 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		variant: "default",
 	},
 	{
+		key: "sidebar-rbac",
+		title: "RBAC",
+		href: "/admin/rbac",
+		icon: Shield,
+		allowedPermission: ["*"],
+		variant: "default",
+	},
+	{
 		key: "sidebar-settings",
 		title: "Admin / Settings",
 		href: "/admin/settings",

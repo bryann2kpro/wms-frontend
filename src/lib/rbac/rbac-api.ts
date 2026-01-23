@@ -1,0 +1,66 @@
+// RBAC API functions
+import { getClient } from "@/lib/axios-v1";
+import type {
+  ModulesApiResponse,
+  ModulesQueryParams,
+  RolesApiResponse,
+  RolesQueryParams,
+} from "./rbac-types";
+
+/**
+ * Build URLSearchParams from query object, filtering out undefined values
+ */
+function buildQueryParams(params: Record<string, string | number | undefined>): string {
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") {
+      queryParams.append(key, String(value));
+    }
+  });
+  const queryString = queryParams.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
+/**
+ * Fetch RBAC modules
+ * GET /rbac/modules
+ */
+export async function fetchModules(
+  params: ModulesQueryParams = {},
+  onRefreshFail: () => void
+): Promise<ModulesApiResponse> {
+  const client = getClient(onRefreshFail);
+  
+  const queryString = buildQueryParams({
+    moduleId: params.moduleId,
+    moduleName: params.moduleName,
+    status: params.status,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+
+  const response = await client.get<ModulesApiResponse>(`/rbac/modules${queryString}`);
+  return response.data;
+}
+
+/**
+ * Fetch RBAC roles
+ * GET /rbac/roles
+ */
+export async function fetchRoles(
+  params: RolesQueryParams = {},
+  onRefreshFail: () => void
+): Promise<RolesApiResponse> {
+  const client = getClient(onRefreshFail);
+  
+  const queryString = buildQueryParams({
+    roleId: params.roleId,
+    roleName: params.roleName,
+    status: params.status,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+
+  const response = await client.get<RolesApiResponse>(`/rbac/roles${queryString}`);
+  return response.data;
+}
