@@ -96,6 +96,7 @@ export interface RolesQueryParams {
 export interface RbacUserRole {
   id: string;
   userId: string;
+  userName: string;
   roleId: string;
   roleName: string;
   status: "active" | "inactive";

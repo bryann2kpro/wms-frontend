@@ -927,6 +927,7 @@ function UserRolesTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[300px]">User ID</TableHead>
+                <TableHead className="w-[300px]">User Name</TableHead>
                 <TableHead className="w-[150px]">Role</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead>Created By</TableHead>
@@ -980,6 +981,9 @@ function UserRolesTable({
                   <TableRow key={userRole.id}>
                     <TableCell className="font-mono text-sm">
                       {userRole.userId}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {userRole.userName}
                     </TableCell>
                     <TableCell>
                       <Badge
