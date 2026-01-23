@@ -1,38 +1,12 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Shield,
   Package,
   Users,
   Key,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -40,19 +14,16 @@ import {
   fetchModules,
   fetchRoles,
   fetchUserRoles,
-  fetchRolePermissions,
   createModule,
   updateModule,
   type RbacModule,
   type RbacRole,
-  type RolePermissionModule,
   type ModulesQueryParams,
   type RolesQueryParams,
   type UserRolesQueryParams,
   type CreateModuleInput,
   type UpdateModuleInput,
 } from "@/lib/rbac";
-import { getErrorMessage } from "@/lib/utils";
 import { StatusFilter } from "@/constants/status-filter";
 import { UserRolesTable } from "@/components/rbac/user-roles-table";
 import { SummaryCard } from "@/components/rbac/summary-card";
