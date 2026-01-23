@@ -16,6 +16,7 @@ import {
   fetchUserRoles,
   createModule,
   updateModule,
+  updateRole,
   updateRolePermissions,
   type RbacModule,
   type RbacRole,
@@ -24,6 +25,7 @@ import {
   type UserRolesQueryParams,
   type CreateModuleInput,
   type UpdateModuleInput,
+  type UpdateRoleInput,
   type UpdateRolePermissionsInput,
 } from "@/lib/rbac";
 import { StatusFilter } from "@/constants/status-filter";
@@ -35,6 +37,7 @@ import { RolePermissionsDialog } from "@/components/rbac/role-permissions-dialog
 import { DeleteModuleDialog } from "@/components/rbac/delete-module-dialog";
 import { EditModuleDialog } from "@/components/rbac/edit-module-dialog";
 import { CreateModuleDialog } from "@/components/rbac/create-module-dialog";
+import { EditRoleDialog } from "@/components/rbac/edit-role-dialog";
 
 export const Route = createFileRoute("/admin/rbac")({
   component: RbacComponent,
@@ -81,6 +84,10 @@ function RbacComponent() {
   const [isEditModuleDialogOpen, setIsEditModuleDialogOpen] = useState(false);
   const [isDeleteModuleDialogOpen, setIsDeleteModuleDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<RbacModule | null>(null);
+
+  // Role dialogs state
+  const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RbacRole | null>(null);
 
   // Role permissions dialog state
   const [isRolePermissionsDialogOpen, setIsRolePermissionsDialogOpen] = useState(false);
@@ -184,6 +191,16 @@ function RbacComponent() {
     },
   });
 
+  // Update role mutation
+  const updateRoleMutation = useMutation({
+    mutationFn: (input: UpdateRoleInput) => updateRole(input, logout),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rbac-roles"] });
+      setIsEditRoleDialogOpen(false);
+      setSelectedRole(null);
+    },
+  });
+
   // Update role permissions mutation
   const updateRolePermissionsMutation = useMutation({
     mutationFn: (input: UpdateRolePermissionsInput) => updateRolePermissions(input, logout),
@@ -237,6 +254,11 @@ function RbacComponent() {
   const handleDeleteModule = (module: RbacModule) => {
     setSelectedModule(module);
     setIsDeleteModuleDialogOpen(true);
+  };
+
+  const handleEditRole = (role: RbacRole) => {
+    setSelectedRole(role);
+    setIsEditRoleDialogOpen(true);
   };
 
   const handleViewRolePermissions = (role: RbacRole) => {
@@ -365,6 +387,7 @@ function RbacComponent() {
             page={rolesPage}
             onPageChange={setRolesPage}
             onRetry={() => refetchRoles()}
+            onEditClick={handleEditRole}
             onViewPermissionsClick={handleViewRolePermissions}
           />
         )}
@@ -429,6 +452,24 @@ function RbacComponent() {
         onConfirm={(input) => deactivateModuleMutation.mutate(input)}
         isSubmitting={deactivateModuleMutation.isPending}
         error={deactivateModuleMutation.error}
+        currentUserIdentifier={currentUserIdentifier}
+      />
+
+      {/* Edit Role Dialog */}
+      <EditRoleDialog
+        open={isEditRoleDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && updateRoleMutation.isPending) return;
+          setIsEditRoleDialogOpen(open);
+          if (!open) {
+            setSelectedRole(null);
+            updateRoleMutation.reset();
+          }
+        }}
+        role={selectedRole}
+        onSubmit={(input) => updateRoleMutation.mutate(input)}
+        isSubmitting={updateRoleMutation.isPending}
+        error={updateRoleMutation.error}
         currentUserIdentifier={currentUserIdentifier}
       />
 

@@ -10,7 +10,7 @@ import { StatusFilter } from "@/constants/status-filter";
 import { RbacRole } from "@/lib/rbac";
 import { Pagination as PaginationType } from "@/lib/pagination/pagination";
 import { formatDate, getErrorMessage, statusColors } from "@/lib/utils";
-import { CheckCircle2, XCircle, RefreshCw, AlertCircle, Shield, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, AlertCircle, Shield, Eye, Pencil } from "lucide-react";
 import { Pagination } from "../pagination";
 
 // Roles Table Component
@@ -28,6 +28,7 @@ interface RolesTableProps {
   page: number;
   onPageChange: (page: number) => void;
   onRetry: () => void;
+  onEditClick: (role: RbacRole) => void;
   onViewPermissionsClick: (role: RbacRole) => void;
 }
 
@@ -45,6 +46,7 @@ function RolesTable({
   page,
   onPageChange,
   onRetry,
+  onEditClick,
   onViewPermissionsClick,
 }: RolesTableProps) {
   return (
@@ -106,7 +108,7 @@ function RolesTable({
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead>Created By</TableHead>
                 <TableHead className="w-[180px]">Last Updated</TableHead>
-                <TableHead className="w-[80px] text-right">Actions</TableHead>
+                <TableHead className="w-[120px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,14 +177,24 @@ function RolesTable({
                       {formatDate(role.updatedAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onViewPermissionsClick(role)}
-                        aria-label={`View permissions for ${role.roleName}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEditClick(role)}
+                          aria-label={`Edit ${role.roleName} role`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onViewPermissionsClick(role)}
+                          aria-label={`View permissions for ${role.roleName}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

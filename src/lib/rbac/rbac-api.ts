@@ -8,6 +8,8 @@ import type {
   UpdateModuleInput,
   RolesApiResponse,
   RolesQueryParams,
+  UpdateRoleInput,
+  RoleApiResponse,
   UserRolesApiResponse,
   UserRolesQueryParams,
   RolePermissionsApiResponse,
@@ -100,6 +102,22 @@ export async function fetchRoles(
   });
 
   const response = await client.get<RolesApiResponse>(`/rbac/roles${queryString}`);
+  return response.data;
+}
+
+/**
+ * Update an existing RBAC role
+ * PUT /rbac/roles/update/:roleId
+ * 
+ * @description Updates an existing role's details.
+ */
+export async function updateRole(
+  input: UpdateRoleInput,
+  onRefreshFail: () => void
+): Promise<RoleApiResponse> {
+  const client = getClient(onRefreshFail);
+  const { roleId, ...body } = input;
+  const response = await client.put<RoleApiResponse>(`/rbac/roles/update/${roleId}`, body);
   return response.data;
 }
 

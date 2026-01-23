@@ -110,6 +110,26 @@ export interface RolesQueryParams {
 }
 
 /**
+ * Input for updating an existing role
+ * PUT /rbac/roles/update/:roleId
+ */
+export interface UpdateRoleInput {
+  roleId: string;
+  roleName?: string;
+  status?: "active" | "inactive";
+  updatedBy: string;
+}
+
+/**
+ * API Response for single role operations (update)
+ */
+export interface RoleApiResponse {
+  success: boolean;
+  message: string;
+  data: RbacRole;
+}
+
+/**
  * User Role assignment entity
  */
 export interface RbacUserRole {
