@@ -89,3 +89,39 @@ export interface RolesQueryParams {
   page?: number;
   pageSize?: number;
 }
+
+/**
+ * User Role assignment entity
+ */
+export interface RbacUserRole {
+  id: string;
+  userId: string;
+  roleId: string;
+  roleName: string;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
+/**
+ * API Response for user roles endpoint
+ */
+export interface UserRolesApiResponse {
+  success: boolean;
+  message: string;
+  pagination: RbacPagination;
+  data: RbacUserRole[];
+}
+
+/**
+ * Query parameters for fetching user roles
+ */
+export interface UserRolesQueryParams {
+  userId?: string;
+  roleId?: string;
+  status?: "active" | "inactive";
+  page?: number;
+  pageSize?: number;
+}

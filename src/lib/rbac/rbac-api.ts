@@ -5,6 +5,8 @@ import type {
   ModulesQueryParams,
   RolesApiResponse,
   RolesQueryParams,
+  UserRolesApiResponse,
+  UserRolesQueryParams,
 } from "./rbac-types";
 
 /**
@@ -62,5 +64,27 @@ export async function fetchRoles(
   });
 
   const response = await client.get<RolesApiResponse>(`/rbac/roles${queryString}`);
+  return response.data;
+}
+
+/**
+ * Fetch RBAC user roles
+ * GET /rbac/user-role
+ */
+export async function fetchUserRoles(
+  params: UserRolesQueryParams = {},
+  onRefreshFail: () => void
+): Promise<UserRolesApiResponse> {
+  const client = getClient(onRefreshFail);
+  
+  const queryString = buildQueryParams({
+    userId: params.userId,
+    roleId: params.roleId,
+    status: params.status,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+
+  const response = await client.get<UserRolesApiResponse>(`/rbac/user-role${queryString}`);
   return response.data;
 }

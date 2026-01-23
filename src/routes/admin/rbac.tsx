@@ -45,10 +45,13 @@ import { useAuth } from "@/lib/auth-context";
 import {
   fetchModules,
   fetchRoles,
+  fetchUserRoles,
   type RbacModule,
   type RbacRole,
+  type RbacUserRole,
   type ModulesQueryParams,
   type RolesQueryParams,
+  type UserRolesQueryParams,
   type RbacPagination,
 } from "@/lib/rbac";
 
@@ -68,7 +71,7 @@ const tabs: Array<{
 }> = [
   { id: "modules", label: "Modules", icon: Package },
   { id: "roles", label: "Roles", icon: Shield },
-  { id: "user-roles", label: "User Roles", icon: Users, disabled: true },
+  { id: "user-roles", label: "User Roles", icon: Users },
 ];
 
 // Status filter type
@@ -89,6 +92,14 @@ const permissionTypeColors: Record<string, string> = {
   Delete: "bg-red-500/10 text-red-600 border-red-500/20",
 };
 
+// Role badge colors
+const roleBadgeColors: Record<string, string> = {
+  Admin: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  Storekeeper: "bg-green-500/10 text-green-600 border-green-500/20",
+  Logistic: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  Management: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+};
+
 function RbacComponent() {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("modules");
@@ -102,6 +113,11 @@ function RbacComponent() {
   const [rolesSearchTerm, setRolesSearchTerm] = useState("");
   const [rolesStatusFilter, setRolesStatusFilter] = useState<StatusFilter>("all");
   const [rolesPage, setRolesPage] = useState(1);
+
+  // User Roles state
+  const [userRolesSearchTerm, setUserRolesSearchTerm] = useState("");
+  const [userRolesStatusFilter, setUserRolesStatusFilter] = useState<StatusFilter>("all");
+  const [userRolesPage, setUserRolesPage] = useState(1);
 
   // Build modules query params
   const modulesQueryParams: ModulesQueryParams = { page: modulesPage };
@@ -119,6 +135,12 @@ function RbacComponent() {
   }
   if (rolesStatusFilter !== "all") {
     rolesQueryParams.status = rolesStatusFilter;
+  }
+
+  // Build user roles query params
+  const userRolesQueryParams: UserRolesQueryParams = { page: userRolesPage };
+  if (userRolesStatusFilter !== "all") {
+    userRolesQueryParams.status = userRolesStatusFilter;
   }
 
   // Fetch modules
@@ -151,8 +173,24 @@ function RbacComponent() {
     retry: 2,
   });
 
+  // Fetch user roles
+  const {
+    data: userRolesData,
+    isLoading: isLoadingUserRoles,
+    isError: isErrorUserRoles,
+    error: userRolesError,
+    isFetching: isFetchingUserRoles,
+    refetch: refetchUserRoles,
+  } = useQuery({
+    queryKey: ["rbac-user-roles", userRolesQueryParams],
+    queryFn: () => fetchUserRoles(userRolesQueryParams, logout),
+    staleTime: 30_000,
+    retry: 2,
+  });
+
   const modules = modulesData?.data ?? [];
   const roles = rolesData?.data ?? [];
+  const userRoles = userRolesData?.data ?? [];
 
   // Filter modules client-side for search (API might not support partial matching)
   const filteredModules = modules.filter((module) => {
@@ -164,6 +202,16 @@ function RbacComponent() {
   const filteredRoles = roles.filter((role) => {
     if (!rolesSearchTerm.trim()) return true;
     return role.roleName.toLowerCase().includes(rolesSearchTerm.toLowerCase());
+  });
+
+  // Filter user roles client-side for search (by role name or user ID)
+  const filteredUserRoles = userRoles.filter((userRole) => {
+    if (!userRolesSearchTerm.trim()) return true;
+    const searchLower = userRolesSearchTerm.toLowerCase();
+    return (
+      userRole.roleName.toLowerCase().includes(searchLower) ||
+      userRole.userId.toLowerCase().includes(searchLower)
+    );
   });
 
   // Calculate total permissions across all modules
@@ -202,14 +250,14 @@ function RbacComponent() {
           value={rolesData?.pagination?.totalCount ?? 0}
           icon={Shield}
           isLoading={isLoadingRoles}
-          description="User roles"
+          description="System roles"
         />
         <SummaryCard
           title="User Roles"
-          value="-"
+          value={userRolesData?.pagination?.totalCount ?? 0}
           icon={Users}
-          isLoading={false}
-          description="Coming soon"
+          isLoading={isLoadingUserRoles}
+          description="Role assignments"
         />
       </div>
 
@@ -291,10 +339,26 @@ function RbacComponent() {
         )}
 
         {activeTab === "user-roles" && (
-          <PlaceholderContent
-            title="User Roles"
-            description="User role assignment will be available soon."
-            icon={Users}
+          <UserRolesTable
+            userRoles={filteredUserRoles}
+            pagination={userRolesData?.pagination}
+            isLoading={isLoadingUserRoles}
+            isFetching={isFetchingUserRoles}
+            isError={isErrorUserRoles}
+            error={userRolesError}
+            searchTerm={userRolesSearchTerm}
+            onSearchChange={(value) => {
+              setUserRolesSearchTerm(value);
+              setUserRolesPage(1);
+            }}
+            statusFilter={userRolesStatusFilter}
+            onStatusFilterChange={(value) => {
+              setUserRolesStatusFilter(value);
+              setUserRolesPage(1);
+            }}
+            page={userRolesPage}
+            onPageChange={setUserRolesPage}
+            onRetry={() => refetchUserRoles()}
           />
         )}
       </div>
@@ -775,20 +839,189 @@ function RolesTable({
   );
 }
 
-// Placeholder Content for Coming Soon tabs
-interface PlaceholderContentProps {
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
+// User Roles Table Component
+interface UserRolesTableProps {
+  userRoles: RbacUserRole[];
+  pagination: RbacPagination | undefined;
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  error: Error | null;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (value: StatusFilter) => void;
+  page: number;
+  onPageChange: (page: number) => void;
+  onRetry: () => void;
 }
 
-function PlaceholderContent({ title, description, icon: Icon }: PlaceholderContentProps) {
+function UserRolesTable({
+  userRoles,
+  pagination,
+  isLoading,
+  isFetching,
+  isError,
+  error,
+  searchTerm,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  page,
+  onPageChange,
+  onRetry,
+}: UserRolesTableProps) {
   return (
     <Card>
-      <CardContent className="flex flex-col items-center justify-center py-16">
-        <Icon className="h-12 w-12 text-muted-foreground/50 mb-4" aria-hidden="true" />
-        <h3 className="text-lg font-semibold text-muted-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground/80 mt-1">{description}</p>
+      <CardHeader>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              User Role Assignments
+              {isFetching && !isLoading && (
+                <Loader2
+                  className="h-4 w-4 animate-spin text-muted-foreground"
+                  aria-label="Refreshing data"
+                />
+              )}
+            </CardTitle>
+            <CardDescription>
+              View all user role assignments in the system
+            </CardDescription>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* Search Input */}
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                placeholder="Search by role or user ID..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-9 sm:w-64"
+                aria-label="Search user roles by role name or user ID"
+              />
+            </div>
+            {/* Status Filter */}
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => onStatusFilterChange(value as StatusFilter)}
+            >
+              <SelectTrigger className="sm:w-40" aria-label="Filter by status">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[300px]">User ID</TableHead>
+                <TableHead className="w-[150px]">Role</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead className="w-[180px]">Last Updated</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32">
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+                      <span>Loading user roles...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
+                      <div className="text-center">
+                        <p className="font-medium text-destructive">Failed to load user roles</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {getErrorMessage(error)}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
+                        <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+                        Try Again
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : userRoles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32">
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <Users className="h-6 w-6" aria-hidden="true" />
+                      <span>No user role assignments found</span>
+                      {searchTerm && (
+                        <span className="text-sm">
+                          Try adjusting your search or filter criteria
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                userRoles.map((userRole) => (
+                  <TableRow key={userRole.id}>
+                    <TableCell className="font-mono text-sm">
+                      {userRole.userId}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={roleBadgeColors[userRole.roleName] || ""}
+                      >
+                        {userRole.roleName}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`${statusColors[userRole.status]} flex w-fit items-center gap-1`}
+                      >
+                        {userRole.status === "active" ? (
+                          <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <XCircle className="h-3 w-3" aria-hidden="true" />
+                        )}
+                        <span className="capitalize">{userRole.status}</span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {userRole.createdBy}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDate(userRole.updatedAt)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        <Pagination
+          pagination={pagination}
+          page={page}
+          onPageChange={onPageChange}
+          itemName="assignment"
+        />
       </CardContent>
     </Card>
   );
