@@ -10,6 +10,8 @@ import type {
   RolesQueryParams,
   UserRolesApiResponse,
   UserRolesQueryParams,
+  RolePermissionsApiResponse,
+  RolePermissionsQueryParams,
 } from "./rbac-types";
 
 /**
@@ -116,5 +118,26 @@ export async function fetchUserRoles(
   });
 
   const response = await client.get<UserRolesApiResponse>(`/rbac/user-role${queryString}`);
+  return response.data;
+}
+
+/**
+ * Fetch RBAC role permissions
+ * GET /rbac/role-permission
+ */
+export async function fetchRolePermissions(
+  params: RolePermissionsQueryParams,
+  onRefreshFail: () => void
+): Promise<RolePermissionsApiResponse> {
+  const client = getClient(onRefreshFail);
+  
+  const queryString = buildQueryParams({
+    roleId: params.roleId,
+    permissionId: params.permissionId,
+    pageSize: params.pageSize,
+    pageNumber: params.pageNumber,
+  });
+
+  const response = await client.get<RolePermissionsApiResponse>(`/rbac/role-permission${queryString}`);
   return response.data;
 }

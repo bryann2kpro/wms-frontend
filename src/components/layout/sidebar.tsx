@@ -4,7 +4,7 @@ import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { Sidebar as SidebarOld } from "./sidebar-old";
-import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/sidebar";
+import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenuItem } from "@/components/ui/sidebar";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";

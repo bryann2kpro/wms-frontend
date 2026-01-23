@@ -1,16 +1,6 @@
 // RBAC API Types
 
-/**
- * Common pagination structure for RBAC APIs
- */
-export interface RbacPagination {
-  count: number;
-  totalCount: number;
-  currentPage: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+import { Pagination } from "../pagination/pagination";
 
 /**
  * Permission within a module
@@ -41,7 +31,7 @@ export interface RbacModule {
 export interface ModulesApiResponse {
   success: boolean;
   message: string;
-  pagination: RbacPagination;
+  pagination: Pagination;
   data: RbacModule[];
 }
 
@@ -104,7 +94,7 @@ export interface RbacRole {
 export interface RolesApiResponse {
   success: boolean;
   message: string;
-  pagination: RbacPagination;
+  pagination: Pagination;
   data: RbacRole[];
 }
 
@@ -141,7 +131,7 @@ export interface RbacUserRole {
 export interface UserRolesApiResponse {
   success: boolean;
   message: string;
-  pagination: RbacPagination;
+  pagination: Pagination;
   data: RbacUserRole[];
 }
 
@@ -154,4 +144,45 @@ export interface UserRolesQueryParams {
   status?: "active" | "inactive";
   page?: number;
   pageSize?: number;
+}
+
+/**
+ * Permission detail within a role permission module
+ */
+export interface RolePermissionDetail {
+  id: string;
+  roleId: string;
+  permissionId: string;
+  permissionType: "View" | "Read" | "Create" | "Update" | "Delete";
+  moduleId: string;
+  moduleName: string;
+  hasPermission: boolean;
+}
+
+/**
+ * Module with its permissions for a role
+ */
+export interface RolePermissionModule {
+  module: string;
+  permissions: RolePermissionDetail[];
+}
+
+/**
+ * API Response for role permissions endpoint
+ */
+export interface RolePermissionsApiResponse {
+  success: boolean;
+  message: string;
+  pagination: Pagination;
+  data: RolePermissionModule[];
+}
+
+/**
+ * Query parameters for fetching role permissions
+ */
+export interface RolePermissionsQueryParams {
+  roleId: string;
+  permissionId?: string;
+  pageSize?: number;
+  pageNumber?: number;
 }
