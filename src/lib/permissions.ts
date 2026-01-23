@@ -127,14 +127,17 @@ export function getPermissions(role: WMSRole): Permission[] {
 // React hook for permissions
 import { useMemo } from "react";
 import type { User } from "./auth";
+import { getPrimaryRole } from "./auth";
 
 export function usePermissions(user: User | null) {
 	return useMemo(() => {
 		if (!user) return { hasPermission: () => false, permissions: [] };
-		const permissions = getPermissions(user.role);
+		// Get primary role from roles array
+		const primaryRole = getPrimaryRole(user.roles);
+		const permissions = getPermissions(primaryRole);
 		return {
 			hasPermission: (permission: Permission) =>
-				hasPermission(user.role, permission),
+				hasPermission(primaryRole, permission),
 			permissions,
 		};
 	}, [user]);

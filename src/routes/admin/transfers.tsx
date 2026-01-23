@@ -70,7 +70,7 @@ import {
 	updateTransferStatus,
 } from "@/data/transfers.mock-data";
 import { usePermissions } from "@/lib/permissions";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 
 export const Route = createFileRoute("/admin/transfers")({
@@ -106,7 +106,7 @@ const createTransferSchema = z.object({
 });
 
 function TransfersRouteComponent() {
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;

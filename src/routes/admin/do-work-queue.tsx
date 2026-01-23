@@ -28,7 +28,8 @@ import {
 	ChevronLeft,
 	ChevronRight,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { getPrimaryRole } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import {
 	type DeliveryOrder,
@@ -53,7 +54,7 @@ const doStatuses: DOStatus[] = [
 
 function DOWorkQueueComponent() {
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
@@ -61,9 +62,10 @@ function DOWorkQueueComponent() {
 	const [statusFilter, setStatusFilter] = useState<DOStatusFilter>("ALL");
 
 	// Filter by assigned user for Store Keeper and Logistic roles
+	const userRole = user ? getPrimaryRole(user.roles) : null;
 	const assignedTo =
-		user?.role === "store_keeper" || user?.role === "logistic"
-			? user.id
+		userRole === "store_keeper" || userRole === "logistic"
+			? user?.id
 			: undefined;
 
 	const { data, isLoading } = useQuery({

@@ -29,7 +29,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { getPrimaryRole } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import {
 	User,
@@ -82,7 +83,7 @@ export const Route = createFileRoute("/admin/settings")({
 });
 
 function SettingsPage() {
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -305,7 +306,7 @@ function UserProfileCard({
 						<Label htmlFor="role">Role</Label>
 						<Input
 							id="role"
-							value={user?.role || ""}
+							value={user ? getPrimaryRole(user.roles) : ""}
 							disabled
 							className="capitalize"
 						/>
@@ -682,25 +683,25 @@ function SecurityCard({
 	);
 }
 
-// Mock users data
+// Mock users data (using new User structure)
 const mockUsersList = [
 	{
 		id: "1",
-		name: "Eric Ng",
+		displayName: "Eric Ng",
 		email: "admin@smee.com.my",
-		role: "supervisor" as WMSRole,
+		roles: ["supervisor"] as string[],
 	},
 	{
 		id: "2",
-		name: "Logistic User",
+		displayName: "Logistic User",
 		email: "finance@smee.com.my",
-		role: "logistic" as WMSRole,
+		roles: ["logistic"] as string[],
 	},
 	{
 		id: "3",
-		name: "Store Keeper User",
+		displayName: "Store Keeper User",
 		email: "warehouse@smee.com.my",
-		role: "store_keeper" as WMSRole,
+		roles: ["store_keeper"] as string[],
 	},
 ];
 
@@ -735,13 +736,15 @@ function UsersRolesCard() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{users.map((user) => (
+							{users.map((user) => {
+							const primaryRole = getPrimaryRole(user.roles);
+							return (
 								<TableRow key={user.id}>
-									<TableCell className="font-medium">{user.name}</TableCell>
+									<TableCell className="font-medium">{user.displayName}</TableCell>
 									<TableCell>{user.email}</TableCell>
 									<TableCell>
 										<Badge variant="outline">
-											{user.role.replace("_", " ").toUpperCase()}
+											{primaryRole.replace("_", " ").toUpperCase()}
 										</Badge>
 									</TableCell>
 									<TableCell className="text-right">
@@ -755,7 +758,8 @@ function UsersRolesCard() {
 										</div>
 									</TableCell>
 								</TableRow>
-							))}
+							);
+						})}
 						</TableBody>
 					</Table>
 				</div>

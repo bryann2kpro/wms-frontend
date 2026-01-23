@@ -3,8 +3,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
-import { authenticateUser } from "@/lib/auth";
+import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -26,6 +25,7 @@ import {
 	InputGroupInput,
 } from "@/components/ui/input-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import axios from "axios";
 
 export const Route = createFileRoute("/login")({
 	component: RouteComponent,
@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 function RouteComponent() {
 	const navigate = useNavigate();
-	const { login } = useAuth();
+	const { login } = useAuthActions();
 	const [error, setError] = useState<string>("");
 	const [showPassword, setShowPassword] = useState(false);
 
@@ -54,15 +54,24 @@ function RouteComponent() {
 		onSubmit: async ({ value }) => {
 			setError("");
 			try {
-				const user = authenticateUser(value.email, value.password);
-				if (user) {
-					login(user);
-					navigate({ to: "/admin/dashboard" });
-				} else {
-					setError("Invalid email or password");
-				}
+				// API expects username field, using email as username
+				await login({
+					username: value.email,
+					password: value.password,
+				});
+				navigate({ to: "/admin/dashboard" });
 			} catch (err) {
-				setError("An error occurred during login");
+				if (axios.isAxiosError(err)) {
+					// Handle API error responses
+					const message =
+						(err.response?.data as { message?: string })?.message ||
+						"Invalid email or password";
+					setError(message);
+				} else if (err instanceof Error) {
+					setError(err.message);
+				} else {
+					setError("An error occurred during login");
+				}
 			}
 		},
 	});

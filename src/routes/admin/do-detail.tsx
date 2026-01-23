@@ -56,7 +56,7 @@ import {
 	ChevronLeft,
 	Printer,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
 	getDOById,
@@ -74,7 +74,7 @@ export const Route = createFileRoute("/admin/do-detail")({
 function DODetailComponent() {
 	const { id } = useParams({ from: "/admin/do-detail/$id" });
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [isExceptionDialogOpen, setIsExceptionDialogOpen] = useState(false);

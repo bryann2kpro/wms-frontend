@@ -75,7 +75,7 @@ import {
 	updateGRNStatus,
 } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 
@@ -103,7 +103,7 @@ const createGRNSchema = z.object({
 });
 
 function GRNRouteComponent() {
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;

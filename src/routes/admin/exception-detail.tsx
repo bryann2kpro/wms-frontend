@@ -32,7 +32,7 @@ import {
 	AlertTriangle,
 	Image as ImageIcon,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
 	getExceptionById,
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/admin/exception-detail")({
 function ExceptionDetailComponent() {
 	const { id } = useParams({ from: "/admin/exceptions/$id" });
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);

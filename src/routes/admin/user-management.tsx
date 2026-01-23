@@ -47,6 +47,7 @@ import {
 	Key,
 } from "lucide-react";
 import type { WMSRole } from "@/lib/auth";
+import { getPrimaryRole } from "@/lib/auth";
 import {
 	type UserRoleFilter,
 	type CreateUserInput,
@@ -126,15 +127,15 @@ function UserManagementComponent() {
 
 	const handleEditRole = (user: {
 		id: string;
-		name: string;
+		displayName: string;
 		email: string;
-		role: WMSRole;
+		roles: string[];
 	}) => {
 		setSelectedUser({
 			id: user.id,
-			name: user.name,
+			name: user.displayName,
 			email: user.email,
-			currentRole: user.role,
+			currentRole: getPrimaryRole(user.roles),
 		});
 		setIsEditRoleDialogOpen(true);
 	};
@@ -276,10 +277,12 @@ function UserManagementComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									users.map((user) => (
+									users.map((user) => {
+									const primaryRole = getPrimaryRole(user.roles);
+									return (
 										<TableRow key={user.id}>
 											<TableCell className="font-medium">
-												{user.name}
+												{user.displayName}
 											</TableCell>
 											<TableCell className="text-muted-foreground">
 												{user.email}
@@ -287,9 +290,9 @@ function UserManagementComponent() {
 											<TableCell>
 												<Badge
 													variant="outline"
-													className={roleColors[user.role]}
+													className={roleColors[primaryRole]}
 												>
-													{roleLabels[user.role]}
+													{roleLabels[primaryRole]}
 												</Badge>
 											</TableCell>
 											<TableCell className="text-right">
@@ -299,9 +302,9 @@ function UserManagementComponent() {
 													onClick={() =>
 														handleEditRole({
 															id: user.id,
-															name: user.name,
+															displayName: user.displayName,
 															email: user.email,
-															role: user.role,
+															roles: user.roles,
 														})
 													}
 												>
@@ -309,7 +312,8 @@ function UserManagementComponent() {
 												</Button>
 											</TableCell>
 										</TableRow>
-									))
+									);
+								})
 								)}
 							</TableBody>
 						</Table>

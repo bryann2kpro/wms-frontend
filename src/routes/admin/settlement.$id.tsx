@@ -29,7 +29,7 @@ import {
 	FileText,
 	ExternalLink,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
 	getDOById,
@@ -77,7 +77,7 @@ function isFullySettled(checklist: SettlementChecklist): boolean {
 function SettlementDetailComponent() {
 	const { id } = useParams({ from: "/admin/settlement/$id" });
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 

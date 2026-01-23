@@ -27,7 +27,7 @@ import {
 	Clock,
 	FileText,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import type { DashboardData } from "@/data/dashboard.mock-data";
 import { getDashboardData } from "@/data/dashboard.mock-data";
 
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/admin/dashboard")({
 });
 
 function DashboardComponent() {
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 
 	const { data, isLoading, isFetching } = useQuery<DashboardData>({
 		queryKey: ["dashboard"],
@@ -121,7 +121,7 @@ function DashboardComponent() {
 					<CardContent>
 						<div className="text-2xl font-bold">{stats.tosPulledToday}</div>
 						<p className="text-xs text-muted-foreground">
-							Last: {stats.tosLastPullTime?.toLocaleTimeString() || "N/A"}
+							Last: {stats.tosLastPullTime ? new Date(stats.tosLastPullTime).toLocaleTimeString() : "N/A"}
 						</p>
 					</CardContent>
 				</Card>

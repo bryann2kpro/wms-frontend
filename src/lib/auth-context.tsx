@@ -3,52 +3,65 @@ import {
 	useContext,
 	useState,
 	useEffect,
+	useCallback,
 	ReactNode,
 } from "react";
-import type { User } from "./auth";
+import { hasValidTokens, clearAuthTokens } from "./auth/auth-storage";
 import {
-	getUserFromStorage,
-	saveUserToStorage,
-	removeUserFromStorage,
-} from "./auth";
+	login as apiLogin,
+	type LoginRequest,
+	type LoginResponse,
+	type ApiResponse,
+} from "./auth/auth-api";
 
 interface AuthContextType {
-	user: User | null;
-	login: (user: User) => void;
-	logout: () => void;
 	isAuthenticated: boolean;
+	setAuthenticated: (value: boolean) => void;
+	login: (credentials: LoginRequest) => Promise<ApiResponse<LoginResponse>>;
+	logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [user, setUser] = useState<User | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+	// Check auth status on mount
 	useEffect(() => {
-		// Load user from storage on mount
-		const storedUser = getUserFromStorage();
-		if (storedUser) {
-			setUser(storedUser);
-		}
+		setIsAuthenticated(hasValidTokens());
 	}, []);
 
-	const login = (userData: User) => {
-		setUser(userData);
-		saveUserToStorage(userData);
-	};
+	const setAuthenticated = useCallback((value: boolean) => {
+		setIsAuthenticated(value);
+	}, []);
 
-	const logout = () => {
-		setUser(null);
-		removeUserFromStorage();
-	};
+	const login = useCallback(async (credentials: LoginRequest) => {
+		const loginResponse = await apiLogin(credentials);
+
+		if (!loginResponse.success) {
+			throw new Error(loginResponse.message || "Login failed");
+		}
+
+		// Tokens are saved by apiLogin
+		setIsAuthenticated(true);
+
+		return loginResponse;
+	}, []);
+
+	const logout = useCallback(() => {
+		// Clear tokens
+		clearAuthTokens();
+		// Update state
+		setIsAuthenticated(false);
+	}, []);
 
 	return (
 		<AuthContext.Provider
 			value={{
-				user,
+				isAuthenticated,
+				setAuthenticated,
 				login,
 				logout,
-				isAuthenticated: !!user,
 			}}
 		>
 			{children}

@@ -31,7 +31,7 @@ import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, Upload, ChevronLeft, ChevronRight, Clock } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
 	getDOs,
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/admin/delivery-proof")({
 
 function DeliveryProofComponent() {
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);

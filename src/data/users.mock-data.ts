@@ -1,4 +1,5 @@
 import type { User, WMSRole } from "@/lib/auth";
+import { getPrimaryRole } from "@/lib/auth";
 
 export type UserRoleFilter = WMSRole | "ALL";
 
@@ -44,25 +45,34 @@ export interface UpdateUserInput {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Mock users database - starting with the existing users from auth.ts
+// Mock users database - matching the API response structure
 let users: User[] = [
 	{
 		id: "1",
 		email: "admin@smee.com.my",
-		name: "Eric Ng",
-		role: "supervisor",
+		displayName: "Eric Ng",
+		contactNo: "+60123456789",
+		isActive: true,
+		roles: ["supervisor"],
+		permissions: [],
 	},
 	{
 		id: "2",
 		email: "finance@smee.com.my",
-		name: "Logistic User",
-		role: "logistic",
+		displayName: "Logistic User",
+		contactNo: "+60123456790",
+		isActive: true,
+		roles: ["logistic"],
+		permissions: [],
 	},
 	{
 		id: "3",
 		email: "warehouse@smee.com.my",
-		name: "Store Keeper User",
-		role: "store_keeper",
+		displayName: "Store Keeper User",
+		contactNo: "+60123456791",
+		isActive: true,
+		roles: ["store_keeper"],
+		permissions: [],
 	},
 ];
 
@@ -74,7 +84,9 @@ function buildSummary(source: User[]): UserSummary {
 	};
 
 	const byRole = source.reduce((acc, user) => {
-		acc[user.role] = (acc[user.role] ?? 0) + 1;
+		// Use getPrimaryRole to get the main role from roles array
+		const primaryRole = getPrimaryRole(user.roles);
+		acc[primaryRole] = (acc[primaryRole] ?? 0) + 1;
 		return acc;
 	}, initial);
 
@@ -98,13 +110,13 @@ export async function getUsers(
 		filtered = filtered.filter((user) => {
 			return (
 				user.email.toLowerCase().includes(term) ||
-				user.name.toLowerCase().includes(term)
+				user.displayName.toLowerCase().includes(term)
 			);
 		});
 	}
 
 	if (role && role !== "ALL") {
-		filtered = filtered.filter((user) => user.role === role);
+		filtered = filtered.filter((user) => user.roles.includes(role));
 	}
 
 	const total = filtered.length;
@@ -140,8 +152,11 @@ export async function createUser(input: CreateUserInput): Promise<User> {
 	const newUser: User = {
 		id: newId,
 		email: input.email,
-		name: input.name,
-		role: input.role,
+		displayName: input.name,
+		contactNo: "",
+		isActive: true,
+		roles: [input.role],
+		permissions: [],
 	};
 
 	users.push(newUser);
@@ -165,7 +180,7 @@ export async function updateUserRole(
 
 	const updated: User = {
 		...users[index],
-		role: input.role,
+		roles: [input.role],
 	};
 
 	users[index] = updated;
@@ -182,7 +197,7 @@ export async function updateUser(input: UpdateUserInput): Promise<User> {
 
 	const updated: User = {
 		...users[index],
-		role: input.role,
+		roles: [input.role],
 	};
 
 	users[index] = updated;

@@ -29,7 +29,7 @@ import {
 	FileText,
 	ExternalLink,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import { getDOs, type DeliveryOrder, type DOStatus } from "@/data/do.mock-data";
 
@@ -72,7 +72,7 @@ function isFullySettled(checklist: SettlementChecklist): boolean {
 
 function SettlementComponent() {
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);

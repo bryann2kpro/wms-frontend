@@ -52,7 +52,7 @@ import {
 	ChevronRight,
 	AlertTriangle,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
 	type Exception,
@@ -82,7 +82,7 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 
 function ExceptionsComponent() {
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);

@@ -1,13 +1,14 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { usePermissions } from "@/lib/permissions";
+import { getPrimaryRole } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
 import {
 	LayoutDashboard,
 	Package,
 	ArrowRightLeft,
-	Truck,
 	Settings,
 	LogOut,
 	Warehouse,
@@ -106,8 +107,11 @@ const allNavigationItems: NavigationItem[] = [
 export function Sidebar() {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const { user, logout } = useAuth();
+	const { user } = useCurrentUser();
+	const { logout } = useAuthActions();
 	const { hasPermission } = usePermissions(user);
+
+	console.log("user", user);
 
 	const handleLogout = () => {
 		logout();
@@ -122,9 +126,6 @@ export function Sidebar() {
 
 	const formatRoleName = (role: string) => {
 		return role
-			.split("_")
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(" ");
 	};
 
 	return (
@@ -158,10 +159,10 @@ export function Sidebar() {
 
 			<div className="border-t p-4">
 				<div className="mb-3 rounded-lg bg-muted p-3">
-					<p className="text-sm font-medium">{user?.name}</p>
+					<p className="text-sm font-medium">{user?.displayName}</p>
 					<p className="text-xs text-muted-foreground">{user?.email}</p>
 					<p className="mt-1 text-xs font-medium text-primary">
-						{user ? formatRoleName(user.role) : ""}
+						{user ? formatRoleName(getPrimaryRole(user.roles)) : ""}
 					</p>
 				</div>
 				<Button
