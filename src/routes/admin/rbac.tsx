@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -26,6 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
@@ -40,12 +49,18 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
   fetchModules,
   fetchRoles,
   fetchUserRoles,
+  createModule,
+  updateModule,
   type RbacModule,
   type RbacRole,
   type RbacUserRole,
@@ -53,6 +68,8 @@ import {
   type RolesQueryParams,
   type UserRolesQueryParams,
   type RbacPagination,
+  type CreateModuleInput,
+  type UpdateModuleInput,
 } from "@/lib/rbac";
 
 export const Route = createFileRoute("/admin/rbac")({
@@ -102,6 +119,8 @@ const roleBadgeColors: Record<string, string> = {
 
 function RbacComponent() {
   const { logout } = useAuth();
+  const { user } = useCurrentUser();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>("modules");
 
   // Modules state
@@ -118,6 +137,12 @@ function RbacComponent() {
   const [userRolesSearchTerm, setUserRolesSearchTerm] = useState("");
   const [userRolesStatusFilter, setUserRolesStatusFilter] = useState<StatusFilter>("all");
   const [userRolesPage, setUserRolesPage] = useState(1);
+
+  // Module dialogs state
+  const [isCreateModuleDialogOpen, setIsCreateModuleDialogOpen] = useState(false);
+  const [isEditModuleDialogOpen, setIsEditModuleDialogOpen] = useState(false);
+  const [isDeleteModuleDialogOpen, setIsDeleteModuleDialogOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<RbacModule | null>(null);
 
   // Build modules query params
   const modulesQueryParams: ModulesQueryParams = { page: modulesPage };
@@ -188,6 +213,35 @@ function RbacComponent() {
     retry: 2,
   });
 
+  // Create module mutation
+  const createModuleMutation = useMutation({
+    mutationFn: (input: CreateModuleInput) => createModule(input, logout),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+      setIsCreateModuleDialogOpen(false);
+    },
+  });
+
+  // Update module mutation
+  const updateModuleMutation = useMutation({
+    mutationFn: (input: UpdateModuleInput) => updateModule(input, logout),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+      setIsEditModuleDialogOpen(false);
+      setSelectedModule(null);
+    },
+  });
+
+  // Deactivate module mutation (soft delete)
+  const deactivateModuleMutation = useMutation({
+    mutationFn: (input: UpdateModuleInput) => updateModule(input, logout),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+      setIsDeleteModuleDialogOpen(false);
+      setSelectedModule(null);
+    },
+  });
+
   const modules = modulesData?.data ?? [];
   const roles = rolesData?.data ?? [];
   const userRoles = userRolesData?.data ?? [];
@@ -216,6 +270,19 @@ function RbacComponent() {
 
   // Calculate total permissions across all modules
   const totalPermissions = modules.reduce((acc, m) => acc + m.permission.length, 0);
+
+  // Get current user identifier for createdBy/updatedBy
+  const currentUserIdentifier = user?.email || user?.id || "system";
+
+  const handleEditModule = (module: RbacModule) => {
+    setSelectedModule(module);
+    setIsEditModuleDialogOpen(true);
+  };
+
+  const handleDeleteModule = (module: RbacModule) => {
+    setSelectedModule(module);
+    setIsDeleteModuleDialogOpen(true);
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -311,6 +378,9 @@ function RbacComponent() {
             page={modulesPage}
             onPageChange={setModulesPage}
             onRetry={() => refetchModules()}
+            onCreateClick={() => setIsCreateModuleDialogOpen(true)}
+            onEditClick={handleEditModule}
+            onDeleteClick={handleDeleteModule}
           />
         )}
 
@@ -362,6 +432,44 @@ function RbacComponent() {
           />
         )}
       </div>
+
+      {/* Create Module Dialog */}
+      <CreateModuleDialog
+        open={isCreateModuleDialogOpen}
+        onOpenChange={setIsCreateModuleDialogOpen}
+        onSubmit={(input) => createModuleMutation.mutate(input)}
+        isSubmitting={createModuleMutation.isPending}
+        error={createModuleMutation.error}
+        currentUserIdentifier={currentUserIdentifier}
+      />
+
+      {/* Edit Module Dialog */}
+      <EditModuleDialog
+        open={isEditModuleDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditModuleDialogOpen(open);
+          if (!open) setSelectedModule(null);
+        }}
+        module={selectedModule}
+        onSubmit={(input) => updateModuleMutation.mutate(input)}
+        isSubmitting={updateModuleMutation.isPending}
+        error={updateModuleMutation.error}
+        currentUserIdentifier={currentUserIdentifier}
+      />
+
+      {/* Delete (Deactivate) Module Dialog */}
+      <DeleteModuleDialog
+        open={isDeleteModuleDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteModuleDialogOpen(open);
+          if (!open) setSelectedModule(null);
+        }}
+        module={selectedModule}
+        onConfirm={(input) => deactivateModuleMutation.mutate(input)}
+        isSubmitting={deactivateModuleMutation.isPending}
+        error={deactivateModuleMutation.error}
+        currentUserIdentifier={currentUserIdentifier}
+      />
     </div>
   );
 }
@@ -413,7 +521,7 @@ function getErrorMessage(err: Error | null): string {
     return "Session expired. Please log in again.";
   }
   if (axiosError.response?.status === 403) {
-    return "You don't have permission to view this data.";
+    return "You don't have permission to perform this action.";
   }
   if (axiosError.response?.status === 500) {
     return "Server error. Please try again later.";
@@ -489,6 +597,9 @@ interface ModulesTableProps {
   page: number;
   onPageChange: (page: number) => void;
   onRetry: () => void;
+  onCreateClick: () => void;
+  onEditClick: (module: RbacModule) => void;
+  onDeleteClick: (module: RbacModule) => void;
 }
 
 function ModulesTable({
@@ -505,6 +616,9 @@ function ModulesTable({
   page,
   onPageChange,
   onRetry,
+  onCreateClick,
+  onEditClick,
+  onDeleteClick,
 }: ModulesTableProps) {
   return (
     <Card>
@@ -521,7 +635,7 @@ function ModulesTable({
               )}
             </CardTitle>
             <CardDescription>
-              View all system modules and their permissions
+              View and manage system modules and their permissions
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -553,6 +667,11 @@ function ModulesTable({
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+            {/* Create Button */}
+            <Button onClick={onCreateClick}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              Create Module
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -565,12 +684,13 @@ function ModulesTable({
                 <TableHead>Permissions</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[180px]">Last Updated</TableHead>
+                <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32">
+                  <TableCell colSpan={5} className="h-32">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
                       <span>Loading modules...</span>
@@ -579,7 +699,7 @@ function ModulesTable({
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32">
+                  <TableCell colSpan={5} className="h-32">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
                       <div className="text-center">
@@ -597,7 +717,7 @@ function ModulesTable({
                 </TableRow>
               ) : modules.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32">
+                  <TableCell colSpan={5} className="h-32">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       <Package className="h-6 w-6" aria-hidden="true" />
                       <span>No modules found</span>
@@ -643,6 +763,27 @@ function ModulesTable({
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDate(module.updatedAt)}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEditClick(module)}
+                          aria-label={`Edit ${module.moduleName}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDeleteClick(module)}
+                          aria-label={`Deactivate ${module.moduleName}`}
+                          disabled={module.status === "inactive"}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -659,6 +800,407 @@ function ModulesTable({
         />
       </CardContent>
     </Card>
+  );
+}
+
+// Create Module Dialog Component
+interface CreateModuleDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (input: CreateModuleInput) => void;
+  isSubmitting: boolean;
+  error: Error | null;
+  currentUserIdentifier: string;
+}
+
+function CreateModuleDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isSubmitting,
+  error,
+  currentUserIdentifier,
+}: CreateModuleDialogProps) {
+  const [moduleName, setModuleName] = useState("");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+
+    if (!moduleName.trim()) {
+      errors.moduleName = "Module name is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    onSubmit({
+      moduleName: moduleName.trim(),
+      status,
+      createdBy: currentUserIdentifier,
+      updatedBy: currentUserIdentifier,
+    });
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      onOpenChange(false);
+      setModuleName("");
+      setStatus("active");
+      setValidationErrors({});
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Create New Module</DialogTitle>
+          <DialogDescription>
+            Add a new module to the system. Permissions can be configured after creation.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="moduleName">Module Name *</Label>
+              <Input
+                id="moduleName"
+                placeholder="Enter module name"
+                value={moduleName}
+                onChange={(e) => {
+                  setModuleName(e.target.value);
+                  if (validationErrors.moduleName) {
+                    setValidationErrors({ ...validationErrors, moduleName: "" });
+                  }
+                }}
+                disabled={isSubmitting}
+                aria-invalid={!!validationErrors.moduleName}
+              />
+              {validationErrors.moduleName && (
+                <p className="text-sm text-destructive">{validationErrors.moduleName}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus(value as "active" | "inactive")}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {getErrorMessage(error)}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  Creating...
+                </>
+              ) : (
+                "Create Module"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Edit Module Dialog Component
+interface EditModuleDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  module: RbacModule | null;
+  onSubmit: (input: UpdateModuleInput) => void;
+  isSubmitting: boolean;
+  error: Error | null;
+  currentUserIdentifier: string;
+}
+
+function EditModuleDialog({
+  open,
+  onOpenChange,
+  module,
+  onSubmit,
+  isSubmitting,
+  error,
+  currentUserIdentifier,
+}: EditModuleDialogProps) {
+  const [moduleName, setModuleName] = useState("");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Update form when module changes
+  useState(() => {
+    if (module) {
+      setModuleName(module.moduleName);
+      setStatus(module.status);
+    }
+  });
+
+  // Reset form when dialog opens with a module
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen && module) {
+      setModuleName(module.moduleName);
+      setStatus(module.status);
+      setValidationErrors({});
+    }
+    onOpenChange(newOpen);
+  };
+
+  // Also reset when module changes while dialog is open
+  if (open && module && moduleName !== module.moduleName && !isSubmitting) {
+    setModuleName(module.moduleName);
+    setStatus(module.status);
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!module) return;
+
+    const errors: Record<string, string> = {};
+
+    if (!moduleName.trim()) {
+      errors.moduleName = "Module name is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    // Get moduleId from the first permission (since module doesn't have its own ID in the response)
+    const moduleId = module.permission[0]?.moduleId;
+    if (!moduleId) {
+      setValidationErrors({ moduleName: "Unable to identify module for update" });
+      return;
+    }
+
+    onSubmit({
+      moduleId,
+      moduleName: moduleName.trim(),
+      status,
+      updatedBy: currentUserIdentifier,
+    });
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      onOpenChange(false);
+      setValidationErrors({});
+    }
+  };
+
+  if (!module) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Module</DialogTitle>
+          <DialogDescription>
+            Update the module details. Changes will be applied immediately.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-moduleName">Module Name *</Label>
+              <Input
+                id="edit-moduleName"
+                placeholder="Enter module name"
+                value={moduleName}
+                onChange={(e) => {
+                  setModuleName(e.target.value);
+                  if (validationErrors.moduleName) {
+                    setValidationErrors({ ...validationErrors, moduleName: "" });
+                  }
+                }}
+                disabled={isSubmitting}
+                aria-invalid={!!validationErrors.moduleName}
+              />
+              {validationErrors.moduleName && (
+                <p className="text-sm text-destructive">{validationErrors.moduleName}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus(value as "active" | "inactive")}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {getErrorMessage(error)}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  Updating...
+                </>
+              ) : (
+                "Update Module"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Delete (Deactivate) Module Dialog Component
+interface DeleteModuleDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  module: RbacModule | null;
+  onConfirm: (input: UpdateModuleInput) => void;
+  isSubmitting: boolean;
+  error: Error | null;
+  currentUserIdentifier: string;
+}
+
+function DeleteModuleDialog({
+  open,
+  onOpenChange,
+  module,
+  onConfirm,
+  isSubmitting,
+  error,
+  currentUserIdentifier,
+}: DeleteModuleDialogProps) {
+  const handleConfirm = () => {
+    if (!module) return;
+
+    // Get moduleId from the first permission
+    const moduleId = module.permission[0]?.moduleId;
+    if (!moduleId) return;
+
+    onConfirm({
+      moduleId,
+      status: "inactive",
+      updatedBy: currentUserIdentifier,
+    });
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      onOpenChange(false);
+    }
+  };
+
+  if (!module) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Deactivate Module</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to deactivate this module? This will set the module status to inactive.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" aria-hidden="true" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Module: {module.moduleName}
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  This module has {module.permission.length} permission{module.permission.length !== 1 ? "s" : ""} associated with it.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mt-4 rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+              {getErrorMessage(error)}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                Deactivating...
+              </>
+            ) : (
+              "Deactivate Module"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -927,7 +1469,6 @@ function UserRolesTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[300px]">User ID</TableHead>
-                <TableHead className="w-[300px]">User Name</TableHead>
                 <TableHead className="w-[150px]">Role</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead>Created By</TableHead>
@@ -982,9 +1523,6 @@ function UserRolesTable({
                     <TableCell className="font-mono text-sm">
                       {userRole.userId}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {userRole.userName}
-                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -1035,7 +1573,7 @@ function UserRolesTable({
 function formatDate(dateString: string): string {
   try {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-MY", {
+    return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",

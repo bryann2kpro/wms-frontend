@@ -57,6 +57,35 @@ export interface ModulesQueryParams {
 }
 
 /**
+ * Input for creating a new module
+ */
+export interface CreateModuleInput {
+  moduleName: string;
+  status?: "active" | "inactive";
+  createdBy: string;
+  updatedBy: string;
+}
+
+/**
+ * Input for updating an existing module
+ */
+export interface UpdateModuleInput {
+  moduleId: string;
+  moduleName?: string;
+  status?: "active" | "inactive";
+  updatedBy: string;
+}
+
+/**
+ * API Response for single module operations (create/update)
+ */
+export interface ModuleApiResponse {
+  success: boolean;
+  message: string;
+  data: RbacModule;
+}
+
+/**
  * Role entity
  */
 export interface RbacRole {

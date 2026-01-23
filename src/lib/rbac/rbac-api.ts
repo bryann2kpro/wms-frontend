@@ -3,6 +3,9 @@ import { getClient } from "@/lib/axios-v1";
 import type {
   ModulesApiResponse,
   ModulesQueryParams,
+  ModuleApiResponse,
+  CreateModuleInput,
+  UpdateModuleInput,
   RolesApiResponse,
   RolesQueryParams,
   UserRolesApiResponse,
@@ -42,6 +45,33 @@ export async function fetchModules(
   });
 
   const response = await client.get<ModulesApiResponse>(`/rbac/modules${queryString}`);
+  return response.data;
+}
+
+/**
+ * Create a new RBAC module
+ * POST /rbac/modules/create
+ */
+export async function createModule(
+  input: CreateModuleInput,
+  onRefreshFail: () => void
+): Promise<ModuleApiResponse> {
+  const client = getClient(onRefreshFail);
+  const response = await client.post<ModuleApiResponse>("/rbac/modules/create", input);
+  return response.data;
+}
+
+/**
+ * Update an existing RBAC module
+ * PUT /rbac/modules/update/:moduleId
+ */
+export async function updateModule(
+  input: UpdateModuleInput,
+  onRefreshFail: () => void
+): Promise<ModuleApiResponse> {
+  const client = getClient(onRefreshFail);
+  const { moduleId, ...body } = input;
+  const response = await client.put<ModuleApiResponse>(`/rbac/modules/update/${moduleId}`, body);
   return response.data;
 }
 
