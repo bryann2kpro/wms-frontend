@@ -8,6 +8,8 @@ import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, Side
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
+import { LogOut } from "lucide-react";
+import { Button } from "../ui/button";
 
 export function Sidebar() {
 	const location = useLocation();
@@ -117,7 +119,26 @@ export function Sidebar() {
                     </SidebarGroup>
                 </ScrollArea>
             </SidebarContent>
-            <SidebarFooter />
+            <SidebarFooter>
+                <div>
+                    <div className="mb-3 rounded-lg bg-muted p-3">
+                        <p className="text-sm font-medium">{user?.displayName}</p>
+                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                        <p className="mt-1 text-xs font-medium text-primary">
+                            {/* {user ? formatRoleName(getPrimaryRole(user.roles)) : ""} */}
+                            {user?.roles[0].roleName}
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2 bg-transparent"
+                        onClick={handleLogout}
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                    </Button>   
+                </div>
+            </SidebarFooter>
         </SidebarUi>
 	);
 }
