@@ -1,4 +1,4 @@
-export type WMSRole = "store_keeper" | "logistic" | "supervisor" | "super_admin";
+export type WMSRole = "store_keeper" | "logistic" | "supervisor" | "Super Admin";
 
 // Legacy role mapping for backward compatibility
 export type LegacyRole = "admin" | "finance" | "warehouse" | "user";

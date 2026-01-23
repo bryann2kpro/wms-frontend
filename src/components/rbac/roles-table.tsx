@@ -191,6 +191,7 @@ function RolesTable({
                           size="icon"
                           onClick={() => onViewPermissionsClick(role)}
                           aria-label={`View permissions for ${role.roleName}`}
+                          disabled={role.roleName === "Super Admin"} // Prevent Idiot Users from removing super_admin access
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
