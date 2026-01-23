@@ -20,8 +20,6 @@ export function Sidebar() {
 		from: "/admin"
 	});
 
-	const [test] = useState(false);
-
 	const handleLogout = () => {
 		logout();
 		navigate({ to: "/login" });
@@ -66,15 +64,14 @@ export function Sidebar() {
 
 	// Filter navigation based on permissions
 	const accessControl = (link: NavLinkSchemaType) => {
-		if (!user?.permissions) return false;
+		if (!user?.readPermission) return false;
 		
 		return link.allowedPermission.some(permission => 
-			// permission === '*' || user.readPermission.includes(permission) || user.createPermission?.includes(permission)
-            permission === '*' || user.permissions.includes(permission)
+			permission === '*' || user.readPermission.includes(permission) || user.createPermission?.includes(permission)
 		);
 	};
 
-	return test ? <SidebarOld /> : (
+	return (
 		<SidebarUi className="space-y-4 rounded-lg" collapsible="icon">
             <SidebarHeader>
                 <div className="relative z-20 flex items-center justify-center text-base font-medium">

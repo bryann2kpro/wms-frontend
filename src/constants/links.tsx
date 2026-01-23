@@ -118,7 +118,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "RBAC",
 		href: "/admin/rbac",
 		icon: Shield,
-		allowedPermission: ["*"],
+		allowedPermission: ["Role"],
 		variant: "default",
 	},
 	{
