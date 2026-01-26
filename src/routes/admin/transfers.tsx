@@ -98,7 +98,7 @@ const createTransferSchema = z.object({
 	transferOrderNumber: z
 		.string()
 		.min(1, "Transfer order number is required")
-		.regex(/^TO-20\d{2}-[A-Z0-9]+$/, "Use format like TO-2024-001"),
+		.regex(/^PO-20\d{2}-[A-Z0-9]+$/, "Use format like PO-2024-001"),
 	fromLocation: z.string().min(1, "From location is required"),
 	toLocation: z.string().min(1, "To location is required"),
 	expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
@@ -294,7 +294,7 @@ function TransfersRouteComponent() {
 													<Input
 														id={field.name}
 														value={field.state.value}
-														placeholder="TO-2024-001"
+														placeholder="PO-2024-001"
 														onBlur={field.handleBlur}
 														onChange={(e) => field.handleChange(e.target.value)}
 														aria-invalid={isInvalid}

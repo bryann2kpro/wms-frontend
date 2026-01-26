@@ -23,6 +23,7 @@ import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -114,6 +115,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminReportsRoute = AdminReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminRbacRoute = AdminRbacRouteImport.update({
+  id: '/rbac',
+  path: '/rbac',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
@@ -360,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
@@ -579,6 +591,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/admin/reports'
       preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/rbac': {
+      id: '/admin/rbac'
+      path: '/rbac'
+      fullPath: '/admin/rbac'
+      preLoaderRoute: typeof AdminRbacRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -762,6 +781,7 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
@@ -781,6 +801,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,

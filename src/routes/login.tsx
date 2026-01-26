@@ -77,7 +77,7 @@ function RouteComponent() {
 	});
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4">
+		<div className="w-screen flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4">
 			<Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
 				<CardHeader className="space-y-1 pb-6">
 					<CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-slate-800 bg-clip-text text-transparent">
