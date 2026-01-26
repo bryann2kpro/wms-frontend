@@ -114,7 +114,7 @@ function DashboardComponent() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							TOs Pulled Today
+							POs from ES Pulled Today
 						</CardTitle>
 						<ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
@@ -180,16 +180,16 @@ function DashboardComponent() {
 					</CardContent>
 				</Card>
 
-				{/* <Card>
+				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							Inventory Info
+							SKU Qty
 						</CardTitle>
 						<TrendingUp className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							${stats.inventoryValue.toLocaleString()}
+							1,245
 						</div>
 						<p className="text-xs text-muted-foreground">
 							<span className="font-medium text-red-600">
@@ -197,7 +197,7 @@ function DashboardComponent() {
 							</span>
 						</p>
 					</CardContent>
-				</Card> */}
+				</Card>
 			</div>
 
 			{/* Integration Health & Pending Proof */}
@@ -211,7 +211,7 @@ function DashboardComponent() {
 					<CardContent className="space-y-4">
 						<div className="space-y-2">
 							<div className="flex items-center justify-between text-sm">
-								<span className="text-muted-foreground">Last TO Pull:</span>
+								<span className="text-muted-foreground">Last PO Pull:</span>
 								<span className="font-medium">
 									{integrationHealth.lastTOPullTime.toLocaleString()}
 								</span>
@@ -322,12 +322,12 @@ function DashboardComponent() {
 					</CardContent>
 				</Card>
 
-				{/* Active Transfer Orders */}
+				{/* Branch GRN - ES Branch Received SMEE's Stock */}
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between">
 						<div>
-							<CardTitle>Active Transfers</CardTitle>
-							<CardDescription>In progress transfer orders</CardDescription>
+							<CardTitle>Branch GRN</CardTitle>
+							<CardDescription>ES branch received SMEE's stock</CardDescription>
 						</div>
 						<Button variant="outline" size="sm" asChild>
 							<Link to="/">View All</Link>
@@ -338,7 +338,79 @@ function DashboardComponent() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Transfer Order</TableHead>
+									<TableHead>GRN Number</TableHead>
+									<TableHead>Branch</TableHead>
+									<TableHead className="text-right">Status</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								<TableRow>
+									<TableCell className="font-medium">BGRN-2024-001</TableCell>
+									<TableCell className="text-muted-foreground">ES Kuala Lumpur</TableCell>
+									<TableCell className="text-right">
+										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+											Completed
+										</Badge>
+									</TableCell>
+								</TableRow>
+								<TableRow>
+									<TableCell className="font-medium">BGRN-2024-002</TableCell>
+									<TableCell className="text-muted-foreground">ES Penang</TableCell>
+									<TableCell className="text-right">
+										<Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+											Pending
+										</Badge>
+									</TableCell>
+								</TableRow>
+								<TableRow>
+									<TableCell className="font-medium">BGRN-2024-003</TableCell>
+									<TableCell className="text-muted-foreground">ES Johor Bahru</TableCell>
+									<TableCell className="text-right">
+										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+											Completed
+										</Badge>
+									</TableCell>
+								</TableRow>
+								<TableRow>
+									<TableCell className="font-medium">BGRN-2024-004</TableCell>
+									<TableCell className="text-muted-foreground">ES Kuching</TableCell>
+									<TableCell className="text-right">
+										<Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+											Pending
+										</Badge>
+									</TableCell>
+								</TableRow>
+								<TableRow>
+									<TableCell className="font-medium">BGRN-2024-005</TableCell>
+									<TableCell className="text-muted-foreground">ES Kota Kinabalu</TableCell>
+									<TableCell className="text-right">
+										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+											Completed
+										</Badge>
+									</TableCell>
+								</TableRow>
+							</TableBody>
+						</Table>
+					</CardContent>
+				</Card>
+
+				{/* Active Purchase Orders from ES */}
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<div>
+							<CardTitle>Active Purchase Orders from ES</CardTitle>
+							<CardDescription>In progress purchase orders from ES</CardDescription>
+						</div>
+						<Button variant="outline" size="sm" asChild>
+							<Link to="/">View All</Link>
+						</Button>
+					</CardHeader>
+					<CardContent className="relative">
+						<TableLoadingShadow active={isFetching} />
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Purchase Order</TableHead>
 									<TableHead>Route</TableHead>
 									<TableHead className="text-right">Status</TableHead>
 								</TableRow>
@@ -384,7 +456,7 @@ function DashboardComponent() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>Delivery Number</TableHead>
-									<TableHead>Customer</TableHead>
+									<TableHead>Branch</TableHead>
 									<TableHead className="text-right">Date</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -441,7 +513,7 @@ function DashboardComponent() {
 								<div className="flex-1">
 									<p className="text-sm font-medium">NetSuite Sync Pending</p>
 									<p className="text-xs text-muted-foreground">
-										2 transfer orders waiting to sync
+										2 purchase orders from ES waiting to sync
 									</p>
 								</div>
 							</div>
