@@ -20,6 +20,7 @@ import appCss from "../styles.css?url";
 import type { ApolloClientIntegration } from "@apollo/client-integration-tanstack-start";
 
 import type { QueryClient } from "@tanstack/react-query";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 interface MyRouterContext extends ApolloClientIntegration.RouterContext {
 	queryClient: QueryClient;
@@ -67,7 +68,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
-				<AuthProvider>{children}</AuthProvider>
+				<AuthProvider>
+					<SidebarProvider defaultOpen={true}>
+						{children}
+					</SidebarProvider>
+				</AuthProvider>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

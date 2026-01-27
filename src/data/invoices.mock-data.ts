@@ -87,7 +87,7 @@ let invoices: Invoice[] = Array.from({ length: 25 }, (_, i) => {
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		doId: `do-${i}`,
 		toNumber:
-			i % 2 === 0 ? `TO-2024-${String(i + 1).padStart(4, "0")}` : undefined,
+			i % 2 === 0 ? `PO-2024-${String(i + 1).padStart(4, "0")}` : undefined,
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,

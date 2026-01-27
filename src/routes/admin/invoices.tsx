@@ -373,7 +373,7 @@ function InvoicesComponent() {
 																<Input
 																	id={field.name}
 																	value={field.state.value}
-																	placeholder="TO-2024-001"
+																	placeholder="PO-2024-001"
 																	onBlur={field.handleBlur}
 																	onChange={(e) =>
 																		field.handleChange(e.target.value)

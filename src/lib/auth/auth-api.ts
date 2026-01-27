@@ -29,7 +29,9 @@ export interface ProfileResponse {
   contactNo: string;
   isActive: boolean;
   roles: string[];
-  permissions: string[];
+  readPermission: string[];
+  createPermission: string[];
+  updatePermission: string[];
 }
 
 /**

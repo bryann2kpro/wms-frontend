@@ -155,7 +155,7 @@ export const mockGRNs: GRN[] = [
 export const mockTransferOrders: TransferOrder[] = [
 	{
 		id: "1",
-		transferOrderNumber: "TO-2024-001",
+		transferOrderNumber: "PO-2024-001",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse B",
 		status: "in_transit",
@@ -164,7 +164,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "2",
-		transferOrderNumber: "TO-2024-002",
+		transferOrderNumber: "PO-2024-002",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse C",
 		status: "pending",
@@ -173,7 +173,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "3",
-		transferOrderNumber: "TO-2024-003",
+		transferOrderNumber: "PO-2024-003",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse D",
 		status: "completed",
@@ -182,7 +182,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "4",
-		transferOrderNumber: "TO-2024-004",
+		transferOrderNumber: "PO-2024-004",
 		fromLocation: "Warehouse C",
 		toLocation: "Warehouse A",
 		status: "in_transit",
@@ -191,7 +191,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "5",
-		transferOrderNumber: "TO-2024-005",
+		transferOrderNumber: "PO-2024-005",
 		fromLocation: "Warehouse D",
 		toLocation: "Warehouse B",
 		status: "pending",
@@ -200,7 +200,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "6",
-		transferOrderNumber: "TO-2024-006",
+		transferOrderNumber: "PO-2024-006",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse C",
 		status: "in_transit",
@@ -209,7 +209,7 @@ export const mockTransferOrders: TransferOrder[] = [
 	},
 	{
 		id: "7",
-		transferOrderNumber: "TO-2024-007",
+		transferOrderNumber: "PO-2024-007",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse D",
 		status: "completed",

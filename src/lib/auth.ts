@@ -1,4 +1,4 @@
-export type WMSRole = "store_keeper" | "logistic" | "supervisor";
+export type WMSRole = "store_keeper" | "logistic" | "supervisor" | "Super Admin";
 
 // Legacy role mapping for backward compatibility
 export type LegacyRole = "admin" | "finance" | "warehouse" | "user";
@@ -11,7 +11,9 @@ export interface User {
 	contactNo: string;
 	isActive: boolean;
 	roles: Role[];
-	permissions: string[];
+	readPermission: string[];
+	createPermission: string[];
+	updatePermission: string[];
 }
 
 interface Role {
