@@ -375,11 +375,11 @@ function DashboardComponent() {
 					</CardContent>
 				</Card>
 
-				{/* Active Purchase Orders from ES */}
+				{/* Purchase Orders from ES */}
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between">
 						<div>
-							<CardTitle>Active Purchase Orders from ES</CardTitle>
+							<CardTitle>Purchase Orders from ES</CardTitle>
 							<CardDescription>In progress purchase orders from ES</CardDescription>
 						</div>
 						<Button variant="outline" size="sm" asChild>
