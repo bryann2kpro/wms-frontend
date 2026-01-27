@@ -118,7 +118,7 @@ export function Sidebar() {
                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                         <p className="mt-1 text-xs font-medium text-primary">
                             {/* {user ? formatRoleName(getPrimaryRole(user.roles)) : ""} */}
-                            {/* {user?.roles[0].roleName} */}
+                            {user?.roles[0]}
                         </p>
                     </div>
                     <Button

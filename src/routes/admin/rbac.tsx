@@ -261,6 +261,7 @@ function RbacComponent() {
     setIsEditRoleDialogOpen(true);
   };
 
+  
   const handleViewRolePermissions = (role: RbacRole) => {
     setSelectedRoleForPermissions(role);
     setIsRolePermissionsDialogOpen(true);

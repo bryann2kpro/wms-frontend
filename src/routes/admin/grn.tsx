@@ -112,7 +112,6 @@ function GRNRouteComponent() {
 	const [selectedGRN, setSelectedGRN] = useState<GRNDetail | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
-	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const [grnItems, setGrnItems] = useState<Array<{ sku: string; qty: number }>>(
 		[],
@@ -578,7 +577,7 @@ function GRNRouteComponent() {
 														Created By
 													</p>
 													<p className="text-sm font-medium pl-5">
-														{user?.name || "Current User"}
+														{user?.displayName || "Current User"}
 													</p>
 												</div>
 												<Separator />
@@ -815,7 +814,7 @@ function GRNRouteComponent() {
 																size="icon"
 																onClick={() => {
 																	setSelectedGRN(grn);
-																	setIsEditOpen(true);
+																	// setIsEditOpen(true);
 																}}
 															>
 																<Edit className="h-4 w-4" />

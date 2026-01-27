@@ -160,7 +160,7 @@ function UserRolesTable({
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={roleBadgeColors[userRole.roleName] || ""}
+                        className={roleBadgeColors[userRole.roleName] || "bg-gray-500/10 text-gray-600 border-gray-500/20"}
                       >
                         {userRole.roleName}
                       </Badge>
