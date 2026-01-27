@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -30,7 +30,7 @@ import {
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, Upload, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { Search, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import {
@@ -44,7 +44,6 @@ export const Route = createFileRoute("/admin/proof-of-delivery")({
 });
 
 function DeliveryProofComponent() {
-	const navigate = useNavigate();
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
@@ -142,11 +141,10 @@ function DeliveryProofComponent() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>DO Number</TableHead>
-									<TableHead>TO Number</TableHead>
+									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Dispatched Time</TableHead>
 									<TableHead>Delivered Time</TableHead>
-									<TableHead>Days Pending</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -189,33 +187,14 @@ function DeliveryProofComponent() {
 														? do_.deliveredAt.toLocaleString()
 														: "-"}
 												</TableCell>
-												<TableCell>
-													<div className="flex items-center gap-1">
-														<Clock className="h-4 w-4 text-muted-foreground" />
-														<span
-															className={
-																daysPending > 3
-																	? "font-medium text-red-600"
-																	: daysPending > 1
-																		? "font-medium text-orange-600"
-																		: ""
-															}
-														>
-															{daysPending} day{daysPending !== 1 ? "s" : ""}
-														</span>
-													</div>
-												</TableCell>
 												<TableCell className="text-right">
-													{hasPermission("delivery_proof:upload") && (
-														<Button
-															variant="outline"
-															size="sm"
-															onClick={() => handleUploadProof(do_)}
-														>
-															<Upload className="mr-2 h-4 w-4" />
-															Upload Proof
-														</Button>
-													)}
+													<Button
+														variant="ghost"
+														size="icon"
+														onClick={() => handleUploadProof(do_)}
+													>
+														<Upload className="h-4 w-4" />
+													</Button>
 												</TableCell>
 											</TableRow>
 										)
