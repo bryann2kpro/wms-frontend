@@ -91,7 +91,7 @@ function DashboardComponent() {
 			{/* Header */}
 			<div className="space-y-1">
 				<h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-				<p className="text-muted-foreground">Welcome back, {user?.name}</p>
+				<p className="text-muted-foreground">Welcome back, {user?.displayName}</p>
 			</div>
 
 			{/* KPI Cards */}
@@ -249,7 +249,7 @@ function DashboardComponent() {
 								Delivery orders are waiting for signed proof of delivery upload.
 							</p>
 							<Button asChild>
-								<Link to="/admin/delivery-proof">View Pending Proof</Link>
+								<Link to="/admin/delivery-proof">View Proof of Delivery</Link>
 							</Button>
 						</div>
 					</CardContent>
