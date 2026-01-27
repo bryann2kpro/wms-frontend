@@ -299,20 +299,21 @@ function ExceptionsComponent() {
 									<TableHead>SKU</TableHead>
 									<TableHead>Description</TableHead>
 									<TableHead className="text-center">
-										Opening Qty (Dozen)
-									</TableHead>
-									<TableHead className="text-center">
-										Opening Qty (Loss)
+										Opening Qty
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
 									</TableHead>
 									<TableHead>Stock Count Date</TableHead>
 									<TableHead className="text-center">
-										Closed Qty (Dozen)
+										Qty
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
 									</TableHead>
 									<TableHead className="text-center">
-										Closed Qty (Loss)
+										Diff
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
 									</TableHead>
-									<TableHead className="text-center">Diff (Dozen)</TableHead>
-									<TableHead className="text-center">Diff (Loss)</TableHead>
 									<TableHead>Action</TableHead>
 									<TableHead className="text-center">Approval</TableHead>
 									<TableHead className="text-center">Close Action</TableHead>
@@ -322,7 +323,7 @@ function ExceptionsComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={13}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading exceptions...
@@ -331,7 +332,7 @@ function ExceptionsComponent() {
 								) : exceptions.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={13}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No exceptions found.
@@ -359,43 +360,25 @@ function ExceptionsComponent() {
 													{exc.description}
 												</TableCell>
 												<TableCell className="text-center">
-													{exc.openingQtyDozen}
-												</TableCell>
-												<TableCell className="text-center">
-													{exc.openingQtyLoss}
+													{exc.openingQtyDozen} / {exc.openingQtyLoss}
 												</TableCell>
 												<TableCell>
-													{exc.stockCountDate.toLocaleDateString('en-MY')}
+													{exc.stockCountDate.toLocaleDateString("en-MY")}
 												</TableCell>
 												<TableCell className="text-center">
-													{closedDozen}
-												</TableCell>
-												<TableCell className="text-center">
-													{closedLoss}
+													{closedDozen} / {closedLoss}
 												</TableCell>
 												<TableCell className="text-center">
 													<span
 														className={
-															diffDozen !== 0
-																? diffDozen > 0
+															diffDozen !== 0 || diffLoss !== 0
+																? diffDozen > 0 || diffLoss > 0
 																	? "text-red-600 font-medium"
 																	: "text-green-600 font-medium"
 																: ""
 														}
 													>
-														{diffDozen > 0 ? `+${diffDozen}` : diffDozen}
-													</span>
-												</TableCell>
-												<TableCell className="text-center">
-													<span
-														className={
-															diffLoss !== 0
-																? diffLoss > 0
-																	? "text-red-600 font-medium"
-																	: "text-green-600 font-medium"
-																: ""
-														}
-													>
+														{diffDozen > 0 ? `+${diffDozen}` : diffDozen} /{" "}
 														{diffLoss > 0 ? `+${diffLoss}` : diffLoss}
 													</span>
 												</TableCell>
