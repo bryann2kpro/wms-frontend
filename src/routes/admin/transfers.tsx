@@ -97,7 +97,7 @@ const locations = [
 const createTransferSchema = z.object({
 	transferOrderNumber: z
 		.string()
-		.min(1, "Transfer order number is required")
+		.min(1, "Delivery order number is required")
 		.regex(/^PO-20\d{2}-[A-Z0-9]+$/, "Use format like PO-2024-001"),
 	fromLocation: z.string().min(1, "From location is required"),
 	toLocation: z.string().min(1, "To location is required"),
@@ -236,7 +236,7 @@ function TransfersRouteComponent() {
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">Pucrchase Orders from ES</h1>
 					<p className="text-muted-foreground">
-						Manage purchase orders from ES and create transfer orders
+						Manage purchase orders from ES and create delivery orders
 					</p>
 				</div>
 				<div className="flex gap-2">
@@ -263,14 +263,14 @@ function TransfersRouteComponent() {
 						<DialogTrigger asChild>
 							<Button>
 								<Plus className="mr-2 h-4 w-4" />
-								Create Transfer Order
+								Create Delivery Order
 							</Button>
 						</DialogTrigger>
 						<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 							<DialogHeader>
-								<DialogTitle>Create New Transfer Order</DialogTitle>
+								<DialogTitle>Create New Delivery Order</DialogTitle>
 								<DialogDescription>
-									Enter the details for the new transfer order
+									Enter the details for the new Delivery order
 								</DialogDescription>
 							</DialogHeader>
 							<form
@@ -289,7 +289,7 @@ function TransfersRouteComponent() {
 											return (
 												<Field data-invalid={isInvalid}>
 													<FieldLabel htmlFor={field.name}>
-														Transfer Order Number
+														Delivery Order Number
 													</FieldLabel>
 													<Input
 														id={field.name}
@@ -444,7 +444,7 @@ function TransfersRouteComponent() {
 												type="submit"
 												disabled={isSubmitting || !canSubmit}
 											>
-												{isSubmitting ? "Creating..." : "Create Transfer Order"}
+												{isSubmitting ? "Creating..." : "Create Delivery Order"}
 											</Button>
 										</DialogFooter>
 									)}
@@ -478,9 +478,9 @@ function TransfersRouteComponent() {
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Transfer Order List</CardTitle>
+							<CardTitle>Delivery Order List</CardTitle>
 							<CardDescription>
-								View and manage all transfer orders
+								View and manage all delivery orders
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -526,9 +526,9 @@ function TransfersRouteComponent() {
 								<TableRow>
 									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
+									<TableHead>DO Created?</TableHead>
 									<TableHead>Scheduled Delivery</TableHead>
 									<TableHead>Status</TableHead>
-									<TableHead>DO Created?</TableHead>
 									<TableHead>NetSuite</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
@@ -540,7 +540,7 @@ function TransfersRouteComponent() {
 											colSpan={8}
 											className="h-24 text-center text-muted-foreground"
 										>
-											Loading transfer orders...
+											Loading delivery orders...
 										</TableCell>
 									</TableRow>
 								) : transfers.length === 0 ? (
@@ -549,7 +549,7 @@ function TransfersRouteComponent() {
 											colSpan={8}
 											className="h-24 text-center text-muted-foreground"
 										>
-											No transfer orders found.
+											No delivery orders found.
 										</TableCell>
 									</TableRow>
 								) : (
@@ -567,6 +567,23 @@ function TransfersRouteComponent() {
 												</TableCell>
 												<TableCell>
 													{transfer.toLocation} {/* Outlet */}
+												</TableCell>
+												<TableCell>
+													{doCreated ? (
+														<Badge
+															variant="outline"
+															className="bg-green-500/10 text-green-600 border-green-500/20"
+														>
+															Yes
+														</Badge>
+													) : (
+														<Badge
+															variant="outline"
+															className="bg-gray-500/10 text-gray-600 border-gray-500/20"
+														>
+															No
+														</Badge>
+													)}
 												</TableCell>
 												<TableCell>
 													{scheduledDeliveryDate.toLocaleDateString()}
@@ -693,13 +710,13 @@ function TransfersRouteComponent() {
 					</CardContent>
 			</Card>
 
-			{/* View Transfer Order Dialog */}
+			{/* View Delivery Order Dialog */}
 			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
 				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Transfer Order Details</DialogTitle>
+						<DialogTitle>Delivery Order Details</DialogTitle>
 						<DialogDescription>
-							View and manage transfer order information
+							View and manage Delivery order information
 						</DialogDescription>
 					</DialogHeader>
 					{selectedTransfer && (
@@ -919,7 +936,7 @@ function TransfersRouteComponent() {
 			<Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Accept Transfer Order</DialogTitle>
+						<DialogTitle>Accept Delivery Order</DialogTitle>
 						<DialogDescription>
 							Accepting this TO will create a Delivery Order and reserve
 							stock. Must fulfill full quantity to accept (no partial, no
@@ -972,9 +989,9 @@ function TransfersRouteComponent() {
 			<Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Reject Transfer Order</DialogTitle>
+						<DialogTitle>Reject Delivery Order</DialogTitle>
 						<DialogDescription>
-							Please provide a reason for rejecting this transfer order.
+							Please provide a reason for rejecting this Delivery order.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
