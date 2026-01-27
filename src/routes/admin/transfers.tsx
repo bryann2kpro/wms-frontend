@@ -524,7 +524,7 @@ function TransfersRouteComponent() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>TO Number</TableHead>
+									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Scheduled Delivery</TableHead>
 									<TableHead>Status</TableHead>
