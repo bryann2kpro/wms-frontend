@@ -86,8 +86,6 @@ export const Route = createFileRoute("/admin/grn")({
 const grnStatuses: GRNStatus[] = [
 	"Draft",
 	"Submitted",
-	"Approved",
-	"Sent-to-ES",
 	"Failed",
 ];
 
@@ -674,7 +672,7 @@ function GRNRouteComponent() {
 			</div>
 
 			{summary && summary.byStatus && (
-				<div className="grid gap-4 md:grid-cols-4">
+				<div className="grid gap-3 md:grid-cols-3">
 					{grnStatuses.map((status) => (
 						<Card key={status}>
 							<CardHeader className="pb-2">
