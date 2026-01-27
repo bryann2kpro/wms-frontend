@@ -58,9 +58,9 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		variant: "default",
 	},
 	{
-		key: "sidebar-delivery-proof",
-		title: "Delivery Proof",
-		href: "/admin/delivery-proof",
+		key: "sidebar-proof-of-delivery",
+		title: "Proof of Delivery",
+		href: "/admin/proof-of-delivery",
 		icon: FileCheck,
 		allowedPermission: ["*"],
 		variant: "default",
