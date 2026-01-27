@@ -27,6 +27,7 @@ export interface InventoryListFilters {
 	search?: string;
 	location?: string;
 	lowStock?: boolean;
+	lowStockThreshold?: number;
 }
 
 export interface InventoryListResult {
@@ -73,7 +74,7 @@ export async function getInventory(
 ): Promise<InventoryListResult> {
 	await delay(300);
 
-	const { page, pageSize, search, location, lowStock } = filters;
+	const { page, pageSize, search, location, lowStock, lowStockThreshold } = filters;
 
 	let filtered = [...inventoryItems];
 
@@ -92,9 +93,10 @@ export async function getInventory(
 	}
 
 	if (lowStock) {
-		filtered = filtered.filter(
-			(item) => item.availableQuantity <= item.minimumStockLevel,
-		);
+		filtered = filtered.filter((item) => {
+			const threshold = lowStockThreshold ?? item.minimumStockLevel;
+			return item.availableQuantity <= threshold;
+		});
 	}
 
 	const total = filtered.length;

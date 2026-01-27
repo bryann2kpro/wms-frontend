@@ -39,7 +39,7 @@ import {
 	type DeliveryOrder,
 } from "@/data/do.mock-data";
 
-export const Route = createFileRoute("/admin/delivery-proof")({
+export const Route = createFileRoute("/admin/proof-of-delivery")({
 	component: DeliveryProofComponent,
 });
 
@@ -66,7 +66,7 @@ function DeliveryProofComponent() {
 				status: "DELIVERED_PENDING_PROOF",
 			}),
 		staleTime: 30_000,
-	});
+	})
 
 	const uploadMutation = useMutation({
 		mutationFn: (doId: string) => updateDOStatus(doId, "DELIVERED_CONFIRMED"),
@@ -77,29 +77,29 @@ function DeliveryProofComponent() {
 			setProofFiles([]);
 			setSelectedDO(null);
 		},
-	});
+	})
 
 	const dos = data?.items ?? [];
 	const totalPages = data
 		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1;
+		: 1
 
 	const calculateDaysPending = (deliveredAt?: Date) => {
 		if (!deliveredAt) return 0;
 		const diff = Date.now() - deliveredAt.getTime();
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
-	};
+	}
 
 	const handleUploadProof = (do_: DeliveryOrder) => {
 		setSelectedDO(do_);
 		setIsUploadDialogOpen(true);
-	};
+	}
 
 	const handleSubmitProof = () => {
 		if (selectedDO && proofFiles.length > 0) {
 			uploadMutation.mutate(selectedDO.id);
 		}
-	};
+	}
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -128,7 +128,7 @@ function DeliveryProofComponent() {
 								value={searchTerm}
 								onChange={(e) => {
 									setSearchTerm(e.target.value);
-									setPage(1);
+									setPage(1)
 								}}
 								className="pl-9 sm:w-64"
 							/>
@@ -218,7 +218,7 @@ function DeliveryProofComponent() {
 													)}
 												</TableCell>
 											</TableRow>
-										);
+										)
 									})
 								)}
 							</TableBody>
@@ -313,5 +313,5 @@ function DeliveryProofComponent() {
 				</DialogContent>
 			</Dialog>
 		</div>
-	);
+	)
 }
