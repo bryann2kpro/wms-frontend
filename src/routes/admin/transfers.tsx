@@ -234,9 +234,9 @@ function TransfersRouteComponent() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Transfer Orders</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Pucrchase Orders from ES</h1>
 					<p className="text-muted-foreground">
-						Manage transfer orders from NetSuite and create delivery orders
+						Manage purchase orders from ES and create transfer orders
 					</p>
 				</div>
 				<div className="flex gap-2">

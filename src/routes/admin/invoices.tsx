@@ -368,7 +368,7 @@ function InvoicesComponent() {
 														children={(field) => (
 															<Field>
 																<FieldLabel htmlFor={field.name}>
-																	TO Number (Optional)
+																	PO Number (Optional)
 																</FieldLabel>
 																<Input
 																	id={field.name}
@@ -856,7 +856,7 @@ function InvoicesComponent() {
 								<TableRow>
 									<TableHead>Invoice Number</TableHead>
 									<TableHead>DO Number</TableHead>
-									<TableHead>TO Number</TableHead>
+									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Amount</TableHead>
 									<TableHead>Issued Date</TableHead>
