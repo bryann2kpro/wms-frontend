@@ -3,7 +3,6 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
@@ -73,13 +72,10 @@ export function Sidebar() {
 		<SidebarUi className="space-y-4 rounded-lg" collapsible="icon">
             <SidebarHeader>
                 <div className="relative z-20 flex items-center justify-center text-base font-medium">
-                    <Avatar className="w-8 h-8 mr-2">
-                        <AvatarImage src="/mdeal.svg" alt="Mdeal Logo" width={32} height={32} />
-                    </Avatar>
                     {/* {!state || state === "expanded" ? ( */}
                         <div className="flex flex-col">
                             {/* <h2 className="text-xl font-bold">SME Ederan WMS</h2> */}
-                            <img src="/smg-logo.jpg" alt="SMG Logo" width={100} height={100} />
+                            <img src="/sme-logo.jpg" alt="SME Logo" width={100} height={100} />
                         </div>
                     {/* ) : null} */}
                 </div>
