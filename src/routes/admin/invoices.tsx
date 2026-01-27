@@ -84,9 +84,9 @@ const invoiceStatuses: InvoiceStatusFilter[] = [
 
 const createInvoiceSchema = z.object({
 	invoiceNumber: z
-		.string()
-		.min(1, "Invoice number is required")
-		.regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
+		.string(),
+		// .min(1, "Invoice number is required"),
+		// .regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
 	doNumber: z.string().min(1, "DO Number is required"),
 	doId: z.string().min(1, "DO ID is required"),
 	toNumber: z.string(),
@@ -224,7 +224,7 @@ function InvoicesComponent() {
 							</DialogDescription>
 						</DialogHeader>
 						<Separator />
-						<ScrollArea className="flex-1 pr-4">
+						<ScrollArea className="flex-1 pr-4 h-full overflow-y-auto">
 							<form
 								onSubmit={(e) => {
 									e.preventDefault();
@@ -232,7 +232,7 @@ function InvoicesComponent() {
 								}}
 								className="space-y-6 py-4"
 							>
-								<div className="grid gap-6 lg:grid-cols-3">
+								<div className="lg:grid-cols-3">
 									<div className="lg:col-span-2 space-y-6">
 										{/* Invoice Details Section */}
 										<Card>
@@ -655,10 +655,8 @@ function InvoicesComponent() {
 												/>
 											</CardContent>
 										</Card>
-									</div>
 
-									{/* Right Panel: Summary */}
-									<div className="space-y-4">
+										{/* Invoice Summary */}
 										<Card className="sticky top-4">
 											<CardHeader className="pb-3">
 												<CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -692,24 +690,6 @@ function InvoicesComponent() {
 														</span>
 													</div>
 												</div>
-											</CardContent>
-										</Card>
-
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="text-sm font-semibold flex items-center gap-2">
-													<Info className="h-4 w-4 text-muted-foreground" />
-													Status
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-2">
-												<div className="flex items-center gap-2">
-													<div className="h-2 w-2 rounded-full bg-blue-500" />
-													<p className="text-xs font-medium">Will be issued</p>
-												</div>
-												<p className="text-xs text-muted-foreground pl-4">
-													Invoice will be created with "Issued" status
-												</p>
 											</CardContent>
 										</Card>
 									</div>
