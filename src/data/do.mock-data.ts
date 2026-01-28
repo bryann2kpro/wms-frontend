@@ -20,6 +20,16 @@ export interface DOItem {
 	pickedQuantity: number;
 	packedQuantity: number;
 	location?: string;
+	// Stock reconciliation fields
+	openingQtyDozen: number;
+	openingQtyLoss: number;
+	stockInDozen: number;
+	stockInLoss: number;
+	stockOutDozen: number;
+	stockOutLoss: number;
+	closeQtyDozen: number;
+	closeQtyLoss: number;
+	storageRack: string;
 }
 
 export interface ShortageDamageReport {
@@ -93,29 +103,53 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 	];
 	const status = statuses[i % statuses.length];
 
-	const items: DOItem[] = Array.from({ length: 3 + (i % 3) }, (_, j) => ({
-		id: `${i}-${j}`,
-		sku: `SKU-${String(i + 1).padStart(3, "0")}-${String(j + 1).padStart(2, "0")}`,
-		description: faker.commerce.productName(),
-		requiredQuantity: 10 + j * 5,
-		pickedQuantity:
-			status === "CREATED"
-				? 0
-				: status === "PICKING"
-					? Math.floor((10 + j * 5) * 0.5)
-					: 10 + j * 5,
-		packedQuantity:
-			status === "PACKED" ||
-			status === "READY_FOR_COLLECTION" ||
-			status === "COLLECTED" ||
-			status === "DELIVERED_PENDING_PROOF" ||
-			status === "DELIVERED_CONFIRMED"
-				? 10 + j * 5
-				: status === "PICKING"
-					? Math.floor((10 + j * 5) * 0.3)
-					: 0,
-		location: `A-${String(Math.floor(Math.random() * 10)).padStart(2, "0")}-${String(Math.floor(Math.random() * 10)).padStart(2, "0")}`,
-	}));
+	const items: DOItem[] = Array.from({ length: 3 + (i % 3) }, (_, j) => {
+		const openingQtyDozen = faker.number.int({ min: 10, max: 100 });
+		const openingQtyLoss = faker.number.int({ min: 0, max: 5 });
+		const stockInDozen = faker.number.int({ min: 0, max: 20 });
+		const stockInLoss = faker.number.int({ min: 0, max: 3 });
+		const stockOutDozen = faker.number.int({ min: 0, max: 15 });
+		const stockOutLoss = faker.number.int({ min: 0, max: 2 });
+		const closeQtyDozen = openingQtyDozen + stockInDozen - stockOutDozen;
+		const closeQtyLoss = openingQtyLoss + stockInLoss - stockOutLoss;
+		const rackRow = String.fromCharCode(65 + (j % 6)); // A-F
+		const rackCol = String(Math.floor(Math.random() * 10) + 1).padStart(2, "0");
+		const rackLevel = Math.floor(Math.random() * 4) + 1;
+
+		return {
+			id: `${i}-${j}`,
+			sku: `SKU-${String(i + 1).padStart(3, "0")}-${String(j + 1).padStart(2, "0")}`,
+			description: faker.commerce.productName(),
+			requiredQuantity: 10 + j * 5,
+			pickedQuantity:
+				status === "CREATED"
+					? 0
+					: status === "PICKING"
+						? Math.floor((10 + j * 5) * 0.5)
+						: 10 + j * 5,
+			packedQuantity:
+				status === "PACKED" ||
+				status === "READY_FOR_COLLECTION" ||
+				status === "COLLECTED" ||
+				status === "DELIVERED_PENDING_PROOF" ||
+				status === "DELIVERED_CONFIRMED"
+					? 10 + j * 5
+					: status === "PICKING"
+						? Math.floor((10 + j * 5) * 0.3)
+						: 0,
+			location: `A-${String(Math.floor(Math.random() * 10)).padStart(2, "0")}-${String(Math.floor(Math.random() * 10)).padStart(2, "0")}`,
+			// Stock reconciliation fields
+			openingQtyDozen,
+			openingQtyLoss,
+			stockInDozen,
+			stockInLoss,
+			stockOutDozen,
+			stockOutLoss,
+			closeQtyDozen,
+			closeQtyLoss,
+			storageRack: `${rackRow}-${rackCol}-${rackLevel}`,
+		};
+	});
 
 	const shortageDamageReports: ShortageDamageReport[] =
 		i % 5 === 0 && status !== "CREATED"
@@ -267,9 +301,9 @@ export async function reportShortageDamage(
 	itemId: string,
 	type: ExceptionType,
 	quantity: number,
+	reportedBy: string,
 	notes?: string,
 	photoUrl?: string,
-	reportedBy: string,
 ): Promise<ShortageDamageReport> {
 	await delay(300);
 

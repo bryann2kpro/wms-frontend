@@ -1,26 +1,19 @@
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenuItem } from "@/components/ui/sidebar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
-import { LogOut } from "lucide-react";
-import { Button } from "../ui/button";
 
 export function Sidebar() {
 	const location = useLocation();
-	const navigate = useNavigate();
+	
 	const { user } = useCurrentUser();
-	const { logout } = useAuthActions();
 	const searchParams = useSearch({
 		from: "/admin"
 	});
 
-	const handleLogout = () => {
-		logout();
-		navigate({ to: "/login" });
-	};
+	
 
 	const isActive = (href: string) => {
         // Remove /en prefix if it exists in the pathname
@@ -75,7 +68,7 @@ export function Sidebar() {
                     {/* {!state || state === "expanded" ? ( */}
                         <div className="flex flex-col">
                             {/* <h2 className="text-xl font-bold">SME Ederan WMS</h2> */}
-                            <img src="/sme-logo.jpg" alt="SME Logo" width={100} height={100} />
+                            <img src={`https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg`} alt="SME Logo" width={100} height={100} />
                         </div>
                     {/* ) : null} */}
                 </div>
@@ -111,26 +104,6 @@ export function Sidebar() {
                     </SidebarGroup>
                 </ScrollArea>
             </SidebarContent>
-            <SidebarFooter>
-                <div>
-                    <div className="mb-3 rounded-lg bg-muted p-3">
-                        <p className="text-sm font-medium">{user?.displayName}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                        <p className="mt-1 text-xs font-medium text-primary">
-                            {/* {user ? formatRoleName(getPrimaryRole(user.roles)) : ""} */}
-                            {user?.roles[0]}
-                        </p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        className="w-full justify-start gap-2 bg-transparent"
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="h-4 w-4" />
-                        Logout
-                    </Button>   
-                </div>
-            </SidebarFooter>
         </SidebarUi>
 	);
 }

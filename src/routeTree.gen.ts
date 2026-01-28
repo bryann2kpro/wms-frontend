@@ -24,6 +24,7 @@ import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
+import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -32,7 +33,6 @@ import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
 import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
 import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-queue'
 import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
-import { Route as AdminDeliveryProofRouteImport } from './routes/admin/delivery-proof'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
@@ -122,6 +122,11 @@ const AdminRbacRoute = AdminRbacRouteImport.update({
   path: '/rbac',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
+  id: '/proof-of-delivery',
+  path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
@@ -160,11 +165,6 @@ const AdminDoWorkQueueRoute = AdminDoWorkQueueRouteImport.update({
 const AdminDoDetailRoute = AdminDoDetailRouteImport.update({
   id: '/do-detail',
   path: '/do-detail',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminDeliveryProofRoute = AdminDeliveryProofRouteImport.update({
-  id: '/delivery-proof',
-  path: '/delivery-proof',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
@@ -240,7 +240,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
-  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
@@ -249,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -270,7 +270,7 @@ export interface FileRoutesByFullPath {
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -279,7 +279,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
-  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
@@ -288,6 +287,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -319,7 +319,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
-  '/admin/delivery-proof': typeof AdminDeliveryProofRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
@@ -328,6 +327,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -360,7 +360,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
-    | '/admin/delivery-proof'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
     | '/admin/exception-detail'
@@ -369,6 +368,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -390,7 +390,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr/'
+    | '/demo/start/ssr'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -399,7 +399,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
-    | '/admin/delivery-proof'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
     | '/admin/exception-detail'
@@ -408,6 +407,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -438,7 +438,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/dashboard'
     | '/admin/deliveries'
-    | '/admin/delivery-proof'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
     | '/admin/exception-detail'
@@ -447,6 +446,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -600,6 +600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRbacRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/proof-of-delivery': {
+      id: '/admin/proof-of-delivery'
+      path: '/proof-of-delivery'
+      fullPath: '/admin/proof-of-delivery'
+      preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/invoices': {
       id: '/admin/invoices'
       path: '/invoices'
@@ -654,13 +661,6 @@ declare module '@tanstack/react-router' {
       path: '/do-detail'
       fullPath: '/admin/do-detail'
       preLoaderRoute: typeof AdminDoDetailRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/delivery-proof': {
-      id: '/admin/delivery-proof'
-      path: '/delivery-proof'
-      fullPath: '/admin/delivery-proof'
-      preLoaderRoute: typeof AdminDeliveryProofRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/deliveries': {
@@ -729,7 +729,7 @@ declare module '@tanstack/react-router' {
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
-      fullPath: '/demo/start/ssr/'
+      fullPath: '/demo/start/ssr'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -772,7 +772,6 @@ const AdminSettlementRouteWithChildren = AdminSettlementRoute._addFileChildren(
 interface AdminRouteRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
-  AdminDeliveryProofRoute: typeof AdminDeliveryProofRoute
   AdminDoDetailRoute: typeof AdminDoDetailRoute
   AdminDoWorkQueueRoute: typeof AdminDoWorkQueueRoute
   AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
@@ -781,6 +780,7 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -792,7 +792,6 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
-  AdminDeliveryProofRoute: AdminDeliveryProofRoute,
   AdminDoDetailRoute: AdminDoDetailRoute,
   AdminDoWorkQueueRoute: AdminDoWorkQueueRoute,
   AdminExceptionDetailRoute: AdminExceptionDetailRoute,
@@ -801,6 +800,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,

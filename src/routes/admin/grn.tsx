@@ -86,16 +86,14 @@ export const Route = createFileRoute("/admin/grn")({
 const grnStatuses: GRNStatus[] = [
 	"Draft",
 	"Submitted",
-	"Approved",
-	"Sent-to-ES",
 	"Failed",
 ];
 
 const createGRNSchema = z.object({
 	grnNumber: z
-		.string()
-		.min(1, "GRN number is required")
-		.regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
+		.string(),
+		// .min(1, "GRN number is required")
+		// .regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
 	poReference: z.string().min(1, "PO Reference is required"),
 	supplierDO: z.string().min(1, "Supplier DO is required"),
 	receivedDate: z.string().min(1, "Received date is required"),
@@ -156,10 +154,10 @@ function GRNRouteComponent() {
 			receivedDate: "",
 			notes: "",
 		},
-		validators: {
-			onBlur: createGRNSchema,
-			onSubmit: createGRNSchema,
-		},
+		// validators: {
+		// 	onBlur: createGRNSchema,
+		// 	onSubmit: createGRNSchema,
+		// },
 		onSubmit: async ({ value }) => {
 			const parsedDate = new Date(value.receivedDate);
 			await createMutation.mutateAsync({
@@ -247,7 +245,7 @@ function GRNRouteComponent() {
 							</DialogDescription>
 						</DialogHeader>
 						<Separator />
-						<ScrollArea className="flex-1 pr-4">
+						<ScrollArea className="flex-1 pr-4 h-full overflow-y-auto">
 							<form
 								onSubmit={(e) => {
 									e.preventDefault();
@@ -255,7 +253,7 @@ function GRNRouteComponent() {
 								}}
 								className="space-y-6 py-4"
 							>
-								<div className="grid gap-6 lg:grid-cols-3">
+								<div className="lg:grid-cols-3">
 									<div className="lg:col-span-2 space-y-6">
 										{/* Basic Information Section */}
 										<Card>
@@ -560,56 +558,6 @@ function GRNRouteComponent() {
 											</CardContent>
 										</Card>
 									</div>
-
-									{/* Right Panel: Audit Trail + Integration Status */}
-									<div className="space-y-4">
-										<Card className="sticky top-4">
-											<CardHeader className="pb-3">
-												<CardTitle className="text-sm font-semibold flex items-center gap-2">
-													<User className="h-4 w-4 text-muted-foreground" />
-													Audit Trail
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<div className="space-y-1">
-													<p className="text-xs text-muted-foreground flex items-center gap-2">
-														<User className="h-3 w-3" />
-														Created By
-													</p>
-													<p className="text-sm font-medium pl-5">
-														{user?.displayName || "Current User"}
-													</p>
-												</div>
-												<Separator />
-												<div className="space-y-1">
-													<p className="text-xs text-muted-foreground flex items-center gap-2">
-														<Clock className="h-3 w-3" />
-														Created At
-													</p>
-													<p className="text-sm font-medium pl-5">
-														{new Date().toLocaleString()}
-													</p>
-												</div>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="text-sm font-semibold flex items-center gap-2">
-													<Info className="h-4 w-4 text-muted-foreground" />
-													Integration Status
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-2">
-												<div className="flex items-center gap-2">
-													<div className="h-2 w-2 rounded-full bg-yellow-500" />
-													<p className="text-xs font-medium">Not sent</p>
-												</div>
-												<p className="text-xs text-muted-foreground pl-4">
-													GRN will be pushed to NetSuite after approval
-												</p>
-											</CardContent>
-										</Card>
-									</div>
 							</div>
 
 								<form.Subscribe
@@ -674,7 +622,7 @@ function GRNRouteComponent() {
 			</div>
 
 			{summary && summary.byStatus && (
-				<div className="grid gap-4 md:grid-cols-4">
+				<div className="grid gap-3 md:grid-cols-3">
 					{grnStatuses.map((status) => (
 						<Card key={status}>
 							<CardHeader className="pb-2">

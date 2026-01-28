@@ -12,6 +12,14 @@ export interface Exception {
 	description: string;
 	type: ExceptionType;
 	quantity: number;
+	// New fields for stock reconciliation
+	openingQtyDozen: number;
+	openingQtyLoss: number;
+	stockCountDate: Date;
+	closedQtyDozen: number;
+	closedQtyLoss: number;
+	action?: "tally" | "compensate";
+	isApproved: boolean;
 	notes?: string;
 	photoUrl?: string;
 	reportedBy: string;
@@ -59,6 +67,12 @@ let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 	const status = statuses[i % statuses.length];
 	const type: ExceptionType = i % 2 === 0 ? "SHORTAGE" : "DAMAGE";
 
+	// Generate random quantities for stock reconciliation
+	const openingQtyDozen = faker.number.int({ min: 10, max: 100 });
+	const openingQtyLoss = faker.number.int({ min: 0, max: 5 });
+	const closedQtyDozen = faker.number.int({ min: 5, max: openingQtyDozen });
+	const closedQtyLoss = faker.number.int({ min: 0, max: 8 });
+
 	return {
 		id: `exc-${i}`,
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
@@ -68,6 +82,14 @@ let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 		description: faker.commerce.productName(),
 		type,
 		quantity: 1 + (i % 5),
+		// New stock reconciliation fields
+		openingQtyDozen,
+		openingQtyLoss,
+		stockCountDate: new Date(Date.now() - i * 86400000), // Different days
+		closedQtyDozen,
+		closedQtyLoss,
+		action: undefined,
+		isApproved: status === "approved",
 		notes: faker.lorem.sentence(),
 		reportedBy: "store_keeper_1",
 		reportedByName: "Store Keeper User",

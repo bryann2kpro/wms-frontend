@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useCallback } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -27,7 +27,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Select,
@@ -36,24 +35,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import {
-	Search,
-	Eye,
-	CheckCircle2,
-	XCircle,
-	ChevronLeft,
-	ChevronRight,
-	AlertTriangle,
-} from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { usePermissions } from "@/lib/permissions";
 import {
 	type Exception,
 	type ExceptionStatusFilter,
@@ -81,9 +66,7 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 ];
 
 function ExceptionsComponent() {
-	const navigate = useNavigate();
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
@@ -96,6 +79,42 @@ function ExceptionsComponent() {
 	);
 	const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 	const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+
+	// Track actions selected per row
+	const [rowActions, setRowActions] = useState<
+		Record<string, "tally" | "compensate" | undefined>
+	>({});
+	// Track approval status per row (for demo)
+	const [rowApprovals, setRowApprovals] = useState<Record<string, boolean>>({});
+	// Track closed quantities (for close action demo)
+	const [closedQuantities, setClosedQuantities] = useState<
+		Record<string, { dozen: number; loss: number }>
+	>({});
+
+	const handleActionChange = useCallback(
+		(id: string, action: "tally" | "compensate") => {
+			setRowActions((prev) => ({ ...prev, [id]: action }));
+		},
+		[],
+	);
+
+	const handleApprovalClick = useCallback((id: string) => {
+		setRowApprovals((prev) => ({ ...prev, [id]: true }));
+	}, []);
+
+	const handleCloseAction = useCallback(
+		(exc: Exception) => {
+			// Demo: Replace closed qty with opening qty
+			setClosedQuantities((prev) => ({
+				...prev,
+				[exc.id]: {
+					dozen: exc.openingQtyDozen,
+					loss: exc.openingQtyLoss,
+				},
+			}));
+		},
+		[],
+	);
 
 	const { data, isLoading } = useQuery({
 		queryKey: [
@@ -115,7 +134,7 @@ function ExceptionsComponent() {
 
 	const approveMutation = useMutation({
 		mutationFn: (id: string) =>
-			approveException(id, user?.id || "", user?.name || ""),
+			approveException(id, user?.id || "", user?.displayName || ""),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["exceptions"] });
 			setIsApproveDialogOpen(false);
@@ -125,7 +144,7 @@ function ExceptionsComponent() {
 
 	const rejectMutation = useMutation({
 		mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-			rejectException(id, reason, user?.id || "", user?.name || ""),
+			rejectException(id, reason, user?.id || "", user?.displayName || ""),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["exceptions"] });
 			setIsRejectDialogOpen(false);
@@ -138,21 +157,6 @@ function ExceptionsComponent() {
 	const totalPages = data
 		? Math.max(1, Math.ceil(data.total / data.pageSize))
 		: 1;
-
-	const getStatusColor = (status: string) => {
-		const colors: Record<string, string> = {
-			pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-			approved: "bg-green-500/10 text-green-600 border-green-500/20",
-			rejected: "bg-red-500/10 text-red-600 border-red-500/20",
-		};
-		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
-	};
-
-	const getTypeColor = (type: ExceptionType) => {
-		return type === "SHORTAGE"
-			? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-			: "bg-orange-500/10 text-orange-600 border-orange-500/20";
-	};
 
 	const formatStatus = (status: string) => {
 		return status.charAt(0).toUpperCase() + status.slice(1);
@@ -291,21 +295,35 @@ function ExceptionsComponent() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>DO Number</TableHead>
+									<TableHead className="w-16">Item</TableHead>
 									<TableHead>SKU</TableHead>
-									<TableHead>Type</TableHead>
-									<TableHead>Quantity</TableHead>
-									<TableHead>Reported By</TableHead>
-									<TableHead>Reported At</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+									<TableHead>Description</TableHead>
+									<TableHead className="text-center">
+										Opening Qty
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
+									</TableHead>
+									<TableHead>Stock Count Date</TableHead>
+									<TableHead className="text-center">
+										Qty
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
+									</TableHead>
+									<TableHead className="text-center">
+										Diff
+										<br />
+										<span className="text-xs font-normal">(Dozen/Loss)</span>
+									</TableHead>
+									<TableHead>Action</TableHead>
+									<TableHead className="text-center">Approval</TableHead>
+									<TableHead className="text-center">Close Action</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading exceptions...
@@ -314,83 +332,109 @@ function ExceptionsComponent() {
 								) : exceptions.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No exceptions found.
 										</TableCell>
 									</TableRow>
 								) : (
-									exceptions.map((exc) => (
-										<TableRow key={exc.id}>
-											<TableCell className="font-medium">
-												{exc.doNumber}
-											</TableCell>
-											<TableCell>{exc.sku}</TableCell>
-											<TableCell>
-												<Badge
-													variant="outline"
-													className={getTypeColor(exc.type)}
-												>
-													{exc.type}
-												</Badge>
-											</TableCell>
-											<TableCell>{exc.quantity}</TableCell>
-											<TableCell>{exc.reportedByName}</TableCell>
-											<TableCell>
-												{exc.reportedAt.toLocaleDateString()}
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant="outline"
-													className={getStatusColor(exc.status)}
-												>
-													{formatStatus(exc.status)}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="flex justify-end gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() =>
-															navigate({
-																to: "/admin/exceptions/$id",
-																params: { id: exc.id },
-															})
+									exceptions.map((exc, index) => {
+										const closedDozen =
+											closedQuantities[exc.id]?.dozen ?? exc.closedQtyDozen;
+										const closedLoss =
+											closedQuantities[exc.id]?.loss ?? exc.closedQtyLoss;
+										const diffDozen = exc.openingQtyDozen - closedDozen;
+										const diffLoss = exc.openingQtyLoss - closedLoss;
+										const isApproved =
+											rowApprovals[exc.id] ?? exc.isApproved;
+										const selectedAction = rowActions[exc.id] ?? exc.action;
+
+										return (
+											<TableRow key={exc.id}>
+												<TableCell className="font-medium">
+													{(page - 1) * pageSize + index + 1}
+												</TableCell>
+												<TableCell>{exc.sku}</TableCell>
+												<TableCell className="max-w-[200px] truncate">
+													{exc.description}
+												</TableCell>
+												<TableCell className="text-center">
+													{exc.openingQtyDozen} / {exc.openingQtyLoss}
+												</TableCell>
+												<TableCell>
+													{exc.stockCountDate.toLocaleDateString("en-MY")}
+												</TableCell>
+												<TableCell className="text-center">
+													{closedDozen} / {closedLoss}
+												</TableCell>
+												<TableCell className="text-center">
+													<span
+														className={
+															diffDozen !== 0 || diffLoss !== 0
+																? diffDozen > 0 || diffLoss > 0
+																	? "text-red-600 font-medium"
+																	: "text-green-600 font-medium"
+																: ""
 														}
 													>
-														<Eye className="h-4 w-4" />
+														{diffDozen > 0 ? `+${diffDozen}` : diffDozen} /{" "}
+														{diffLoss > 0 ? `+${diffLoss}` : diffLoss}
+													</span>
+												</TableCell>
+												<TableCell>
+													<Select
+														value={selectedAction || ""}
+														onValueChange={(value) =>
+															handleActionChange(
+																exc.id,
+																value as "tally" | "compensate",
+															)
+														}
+													>
+														<SelectTrigger className="w-[130px]">
+															<SelectValue placeholder="Select..." />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="tally">Tally</SelectItem>
+															<SelectItem value="compensate">
+																Compensate
+															</SelectItem>
+														</SelectContent>
+													</Select>
+												</TableCell>
+												<TableCell className="text-center">
+													{isApproved ? (
+														<Badge
+															variant="outline"
+															className="bg-green-500/10 text-green-600 border-green-500/20"
+														>
+															Approved
+														</Badge>
+													) : (
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() => handleApprovalClick(exc.id)}
+															disabled={!selectedAction}
+														>
+															Approve
+														</Button>
+													)}
+												</TableCell>
+												<TableCell className="text-center">
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => handleCloseAction(exc)}
+														disabled={!isApproved}
+													>
+														Close
 													</Button>
-													{hasPermission("exception:approve") &&
-														exc.status === "pending" && (
-															<>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	onClick={() => {
-																		setSelectedException(exc);
-																		setIsApproveDialogOpen(true);
-																	}}
-																>
-																	<CheckCircle2 className="h-4 w-4 text-green-600" />
-																</Button>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	onClick={() => {
-																		setSelectedException(exc);
-																		setIsRejectDialogOpen(true);
-																	}}
-																>
-																	<XCircle className="h-4 w-4 text-red-600" />
-																</Button>
-															</>
-														)}
-												</div>
-											</TableCell>
-										</TableRow>
-									))
+												</TableCell>
+											</TableRow>
+										);
+									})
 								)}
 							</TableBody>
 						</Table>

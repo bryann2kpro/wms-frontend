@@ -39,11 +39,18 @@ function InventoryComponent() {
 	const pageSize = 20;
 	const [searchTerm, setSearchTerm] = useState("");
 	const [lowStockFilter, setLowStockFilter] = useState(false);
+	const [lowStockThreshold, setLowStockThreshold] = useState<number>(20);
 
 	const { data, isLoading } = useQuery({
 		queryKey: [
 			"inventory",
-			{ page, pageSize, searchTerm, lowStock: lowStockFilter },
+			{
+				page,
+				pageSize,
+				searchTerm,
+				lowStock: lowStockFilter,
+				lowStockThreshold,
+			},
 		],
 		queryFn: () =>
 			getInventory({
@@ -51,6 +58,7 @@ function InventoryComponent() {
 				pageSize,
 				search: searchTerm,
 				lowStock: lowStockFilter,
+				lowStockThreshold,
 			}),
 		staleTime: 30_000,
 	});
@@ -62,7 +70,7 @@ function InventoryComponent() {
 		: 1;
 
 	const isLowStock = (item: InventoryItem) => {
-		return item.availableQuantity <= item.minimumStockLevel;
+		return item.availableQuantity <= lowStockThreshold;
 	};
 
 	return (
@@ -144,6 +152,20 @@ function InventoryComponent() {
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+							<div className="flex items-center gap-2 mr-2">
+								<span className="text-sm text-muted-foreground whitespace-nowrap">
+									Threshold:
+								</span>
+								<Input
+									type="number"
+									value={lowStockThreshold}
+									onChange={(e) => {
+										setLowStockThreshold(Number(e.target.value));
+										setPage(1);
+									}}
+									className="w-20"
+								/>
+							</div>
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
