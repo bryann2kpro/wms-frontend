@@ -68,7 +68,7 @@ export function Sidebar() {
                     {/* {!state || state === "expanded" ? ( */}
                         <div className="flex flex-col">
                             {/* <h2 className="text-xl font-bold">SME Ederan WMS</h2> */}
-                            <img src="/sme-logo.jpg" alt="SME Logo" width={100} height={100} />
+                            <img src={`https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg`} alt="SME Logo" width={100} height={100} />
                         </div>
                     {/* ) : null} */}
                 </div>
