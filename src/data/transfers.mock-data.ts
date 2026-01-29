@@ -24,9 +24,22 @@ export interface TransferDetail
 	items: TransferItem[];
 	totalItems: number;
 	netsuiteStatus?: NetSuiteStatus;
+	/** Region name (e.g. Klang Valley). Outlet belongs to one region. */
+	regionName?: string | null;
+	/** Region code (e.g. KV). */
+	regionCode?: string | null;
 }
 
 export type TransferStatusFilter = TransferStatus | "ALL";
+
+/** Default regions: Klang Valley (KV), Perlis, North, South, East Coast */
+const REGIONS: { name: string; code: string }[] = [
+	{ name: "Klang Valley", code: "KV" },
+	{ name: "Perlis", code: "PRS" },
+	{ name: "North", code: "N" },
+	{ name: "South", code: "S" },
+	{ name: "East Coast", code: "EC" },
+];
 
 export interface TransferListFilters {
 	page: number;
@@ -210,6 +223,7 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 	const createdDate = new Date(expectedDeliveryDate);
 	createdDate.setDate(createdDate.getDate() - 3);
 
+	const region = REGIONS[index % REGIONS.length];
 	return {
 		...transfer,
 		status,
@@ -220,6 +234,8 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 		items,
 		totalItems,
 		netsuiteStatus,
+		regionName: region.name,
+		regionCode: region.code,
 	};
 });
 
@@ -231,6 +247,7 @@ const outlets = ["Outlet North", "Outlet South", "Outlet East", "Outlet West", "
 const statuses: TransferStatus[] = ["New", "Accepted", "DO_Created"];
 for (let i = 0; i < 4; i++) {
 	const base = baseTransfers[i % baseTransfers.length];
+	const region = REGIONS[i % REGIONS.length];
 	extraTransfersForNextAndPast.push({
 		id: `next-${i + 100}`,
 		transferOrderNumber: `PO-2025-N${i + 1}`,
@@ -244,6 +261,8 @@ for (let i = 0; i < 4; i++) {
 		],
 		totalItems: 10,
 		netsuiteStatus: i % 2 === 0 ? "pending" : "synced",
+		regionName: region.name,
+		regionCode: region.code,
 	} as TransferDetail);
 }
 const extraNextDeliveryDates: Date[] = [
@@ -275,6 +294,7 @@ for (let i = 0; i < 6; i++) {
 	const expectedDeliveryDate = pastDeliveryDates[i];
 	const createdDate = new Date(expectedDeliveryDate);
 	createdDate.setDate(createdDate.getDate() - 2);
+	const region = REGIONS[i % REGIONS.length];
 	transferDetails.push({
 		id: `past-${i + 200}`,
 		transferOrderNumber: `PO-2025-P${i + 1}`,
@@ -290,6 +310,8 @@ for (let i = 0; i < 6; i++) {
 		],
 		totalItems: 15,
 		netsuiteStatus: "synced" as NetSuiteStatus,
+		regionName: region.name,
+		regionCode: region.code,
 	});
 }
 

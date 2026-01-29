@@ -662,6 +662,7 @@ function TransfersRouteComponent() {
 								<TableRow>
 									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
+									<TableHead>Region</TableHead>
 									<TableHead>DO Created?</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>NetSuite</TableHead>
@@ -672,7 +673,7 @@ function TransfersRouteComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={7}
+											colSpan={8}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading delivery orders...
@@ -681,7 +682,7 @@ function TransfersRouteComponent() {
 								) : dateKeys.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={7}
+											colSpan={8}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No delivery orders found.
@@ -695,7 +696,7 @@ function TransfersRouteComponent() {
 										return [
 											<TableRow key={dateKey} className="bg-muted/50 hover:bg-muted/50">
 												<TableCell
-													colSpan={7}
+													colSpan={8}
 													className="font-semibold text-foreground py-3"
 												>
 													{headerLabel}
@@ -710,6 +711,11 @@ function TransfersRouteComponent() {
 														</TableCell>
 														<TableCell>
 															{transfer.toLocation}
+														</TableCell>
+														<TableCell>
+															{transfer.regionName
+																? `${transfer.regionName}${transfer.regionCode ? ` (${transfer.regionCode})` : ""}`
+																: "—"}
 														</TableCell>
 														<TableCell>
 															{doCreated ? (
@@ -871,6 +877,16 @@ function TransfersRouteComponent() {
 										</Label>
 										<p className="text-sm font-medium">
 											{selectedTransfer.toLocation}
+										</p>
+									</div>
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Region
+										</Label>
+										<p className="text-sm font-medium">
+											{selectedTransfer.regionName
+												? `${selectedTransfer.regionName}${selectedTransfer.regionCode ? ` (${selectedTransfer.regionCode})` : ""}`
+												: "—"}
 										</p>
 									</div>
 									<div>
@@ -1086,6 +1102,12 @@ function TransfersRouteComponent() {
 								<p className="text-xs text-muted-foreground">
 									Outlet: {selectedTransfer.toLocation}
 								</p>
+								{selectedTransfer.regionName && (
+									<p className="text-xs text-muted-foreground">
+										Region: {selectedTransfer.regionName}
+										{selectedTransfer.regionCode ? ` (${selectedTransfer.regionCode})` : ""}
+									</p>
+								)}
 								<p className="text-xs text-muted-foreground">
 									Items: {selectedTransfer.items.length}
 								</p>
