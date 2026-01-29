@@ -161,10 +161,13 @@ function formatDeliveryDateHeader(date: Date): string {
 	return `${dayName} (${dd}/${mm}/${yyyy})`;
 }
 
+/** Date key in local date (YYYY-MM-DD). Use local, not UTC, so day-of-week stays correct. */
 function getDateKey(date: Date): string {
 	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d.toISOString().slice(0, 10);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
 }
 
 function TransfersRouteComponent() {
