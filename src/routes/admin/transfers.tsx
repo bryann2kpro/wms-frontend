@@ -47,19 +47,18 @@ import {
 } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
 import {
 	Plus,
 	Search,
 	Eye,
-	Package,
-	Truck,
 	CheckCircle,
 	AlertCircle,
 	ChevronLeft,
 	ChevronRight,
 	RefreshCw,
 	XCircle,
+	Calendar,
+	Clock,
 } from "lucide-react";
 import {
 	type TransferDetail,
@@ -72,6 +71,10 @@ import {
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
+import {
+	BACKEND_DAY_OF_WEEK,
+	getBackendDayOfWeek,
+} from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/transfers")({
 	component: TransfersRouteComponent,
@@ -105,9 +108,69 @@ const createTransferSchema = z.object({
 	notes: z.string(),
 });
 
+type DeliveryTab = "current-week" | "past-weeks";
+
+// Helper function to get the start of the current week (Monday) at midnight for comparison
+function getStartOfWeek(date: Date = new Date()): Date {
+	const d = new Date(date);
+	const day = d.getDay();
+	const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+	d.setDate(diff);
+	d.setHours(0, 0, 0, 0);
+	return d;
+}
+
+// Backend day-of-week: Monday = 1, ..., Sunday = 7. Delivery days are Tuesday (2) and Thursday (4).
+function isDeliveryDay(date: Date): boolean {
+	const dayOfWeek = getBackendDayOfWeek(date);
+	return (
+		dayOfWeek === BACKEND_DAY_OF_WEEK.TUESDAY ||
+		dayOfWeek === BACKEND_DAY_OF_WEEK.THURSDAY
+	);
+}
+
+// Helper function to check if a date is in the current week (compare by week Monday at midnight)
+function isInCurrentWeek(date: Date): boolean {
+	const now = new Date();
+	const startOfCurrentWeek = getStartOfWeek(now);
+	const startOfDateWeek = getStartOfWeek(date);
+	return (
+		startOfCurrentWeek.getTime() === startOfDateWeek.getTime() &&
+		isDeliveryDay(date)
+	);
+}
+
+// Helper function to check if a date is in a past week
+function isInPastWeeks(date: Date): boolean {
+	const now = new Date();
+	const startOfCurrentWeek = getStartOfWeek(now);
+	const startOfDateWeek = getStartOfWeek(date);
+	return (
+		startOfDateWeek.getTime() < startOfCurrentWeek.getTime() &&
+		isDeliveryDay(date)
+	);
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function formatDeliveryDateHeader(date: Date): string {
+	const dayName = DAY_NAMES[date.getDay()];
+	const dd = String(date.getDate()).padStart(2, "0");
+	const mm = String(date.getMonth() + 1).padStart(2, "0");
+	const yyyy = date.getFullYear();
+	return `${dayName} (${dd}/${mm}/${yyyy})`;
+}
+
+function getDateKey(date: Date): string {
+	const d = new Date(date);
+	d.setHours(0, 0, 0, 0);
+	return d.toISOString().slice(0, 10);
+}
+
 function TransfersRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
+	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -175,11 +238,73 @@ function TransfersRouteComponent() {
 		},
 	});
 
-	const transfers = data?.items ?? [];
-	const summary = data?.summary;
-	const totalPages = data
-		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1;
+	// Filter transfers based on active tab
+	const allTransfers = data?.items ?? [];
+	const filteredTransfers = allTransfers.filter((transfer) => {
+		const deliveryDate = new Date(transfer.expectedDeliveryDate);
+		if (activeTab === "current-week") {
+			return isInCurrentWeek(deliveryDate);
+		} else {
+			return isInPastWeeks(deliveryDate);
+		}
+	});
+
+	// Apply search and status filters to the filtered transfers
+	const transfers = filteredTransfers.filter((transfer) => {
+		const matchesSearch =
+			!searchTerm ||
+			transfer.transferOrderNumber
+				.toLowerCase()
+				.includes(searchTerm.toLowerCase()) ||
+			transfer.toLocation.toLowerCase().includes(searchTerm.toLowerCase());
+		const matchesStatus =
+			statusFilter === "ALL" || transfer.status === statusFilter;
+		return matchesSearch && matchesStatus;
+	});
+
+	// Group transfers by delivery date
+	const transfersByDate = transfers.reduce<Record<string, TransferDetail[]>>(
+		(acc, transfer) => {
+			const key = getDateKey(new Date(transfer.expectedDeliveryDate));
+			if (!acc[key]) acc[key] = [];
+			acc[key].push(transfer);
+			return acc;
+		},
+		{},
+	);
+
+	const dateKeys = Object.keys(transfersByDate).sort((a, b) =>
+		activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),
+	);
+
+	// Paginate by date groups (each page shows a few delivery dates)
+	const dateGroupsPerPage = 5;
+	const totalDateGroups = dateKeys.length;
+	const startDateIndex = (page - 1) * dateGroupsPerPage;
+	const paginatedDateKeys = dateKeys.slice(
+		startDateIndex,
+		startDateIndex + dateGroupsPerPage,
+	);
+	const totalPages = Math.max(1, Math.ceil(totalDateGroups / dateGroupsPerPage));
+	const filteredTotal = transfers.length;
+
+	// Recalculate summary based on filtered transfers
+	const summary = filteredTransfers.reduce(
+		(acc, transfer) => {
+			acc.byStatus[transfer.status] = (acc.byStatus[transfer.status] ?? 0) + 1;
+			acc.total += 1;
+			return acc;
+		},
+		{
+			byStatus: {
+				New: 0,
+				Accepted: 0,
+				Rejected: 0,
+				DO_Created: 0,
+			} as Record<TransferStatus, number>,
+			total: 0,
+		},
+	);
 
 	const getStatusColor = (status: TransferStatus) => {
 		const colors: Record<TransferStatus, string> = {
@@ -206,28 +331,9 @@ function TransfersRouteComponent() {
 		return status;
 	};
 
-	const calculateProgress = (transfer: TransferDetail) => {
-		const totalQuantity = transfer.items.reduce(
-			(sum, item) => sum + item.quantity,
-			0,
-		);
-		const pickedQuantity = transfer.items.reduce(
-			(sum, item) => sum + item.pickedQuantity,
-			0,
-		);
-		return totalQuantity > 0 ? (pickedQuantity / totalQuantity) * 100 : 0;
-	};
-
 	const handleViewTransfer = (transfer: TransferDetail) => {
 		setSelectedTransfer(transfer);
 		setIsViewOpen(true);
-	};
-
-	const handleUpdateStatus = (id: string, status: TransferStatus) => {
-		statusMutation.mutate({ id, status });
-		if (isViewOpen) {
-			setIsViewOpen(false);
-		}
 	};
 
 	return (
@@ -476,45 +582,72 @@ function TransfersRouteComponent() {
 
 			<Card>
 				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle>Delivery Order List</CardTitle>
-							<CardDescription>
-								View and manage all delivery orders
-							</CardDescription>
-						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-								<Input
-									placeholder="Search transfers..."
-									value={searchTerm}
-									onChange={(e) => {
-										setSearchTerm(e.target.value);
+					<div className="flex flex-col gap-4">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle>Delivery Order List</CardTitle>
+								<CardDescription>
+									View and manage all delivery orders
+								</CardDescription>
+							</div>
+							<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+									<Input
+										placeholder="Search transfers..."
+										value={searchTerm}
+										onChange={(e) => {
+											setSearchTerm(e.target.value);
+											setPage(1);
+										}}
+										className="pl-9 sm:w-64"
+									/>
+								</div>
+								<Select
+									value={statusFilter}
+									onValueChange={(value) => {
+										setStatusFilter(value as TransferStatusFilter);
 										setPage(1);
 									}}
-									className="pl-9 sm:w-64"
-								/>
+								>
+									<SelectTrigger className="sm:w-48">
+										<SelectValue placeholder="Filter by status" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ALL">All Status</SelectItem>
+										{transferStatuses.map((status) => (
+											<SelectItem key={status} value={status}>
+												{formatStatus(status)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
-							<Select
-								value={statusFilter}
-								onValueChange={(value) => {
-									setStatusFilter(value as TransferStatusFilter);
+						</div>
+						{/* Tabs */}
+						<div className="flex gap-2 border-b">
+							<Button
+								variant={activeTab === "current-week" ? "default" : "ghost"}
+								onClick={() => {
+									setActiveTab("current-week");
 									setPage(1);
 								}}
+								className="rounded-b-none"
 							>
-								<SelectTrigger className="sm:w-48">
-									<SelectValue placeholder="Filter by status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ALL">All Status</SelectItem>
-									{transferStatuses.map((status) => (
-										<SelectItem key={status} value={status}>
-											{formatStatus(status)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+								<Calendar className="mr-2 h-4 w-4" />
+								Next Delivery
+							</Button>
+							<Button
+								variant={activeTab === "past-weeks" ? "default" : "ghost"}
+								onClick={() => {
+									setActiveTab("past-weeks");
+									setPage(1);
+								}}
+								className="rounded-b-none"
+							>
+								<Clock className="mr-2 h-4 w-4" />
+								Past Deliveries
+							</Button>
 						</div>
 					</div>
 				</CardHeader>
@@ -527,7 +660,6 @@ function TransfersRouteComponent() {
 									<TableHead>PO Number</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>DO Created?</TableHead>
-									<TableHead>Scheduled Delivery</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>NetSuite</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
@@ -537,150 +669,151 @@ function TransfersRouteComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={7}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading delivery orders...
 										</TableCell>
 									</TableRow>
-								) : transfers.length === 0 ? (
+								) : dateKeys.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
+											colSpan={7}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No delivery orders found.
 										</TableCell>
 									</TableRow>
 								) : (
-									transfers.map((transfer) => {
-										// Calculate scheduled delivery date (mock - would come from TO)
-										const scheduledDeliveryDate = new Date(
-											transfer.expectedDeliveryDate,
-										);
-										const doCreated = transfer.status === "DO_Created";
-
-										return (
-											<TableRow key={transfer.id}>
-												<TableCell className="font-medium">
-													{transfer.transferOrderNumber}
+									paginatedDateKeys.flatMap((dateKey) => {
+										const dateTransfers = transfersByDate[dateKey] ?? [];
+										const deliveryDate = new Date(dateKey + "T12:00:00");
+										const headerLabel = formatDeliveryDateHeader(deliveryDate);
+										return [
+											<TableRow key={dateKey} className="bg-muted/50 hover:bg-muted/50">
+												<TableCell
+													colSpan={7}
+													className="font-semibold text-foreground py-3"
+												>
+													{headerLabel}
 												</TableCell>
-												<TableCell>
-													{transfer.toLocation} {/* Outlet */}
-												</TableCell>
-												<TableCell>
-													{doCreated ? (
-														<Badge
-															variant="outline"
-															className="bg-green-500/10 text-green-600 border-green-500/20"
-														>
-															Yes
-														</Badge>
-													) : (
-														<Badge
-															variant="outline"
-															className="bg-gray-500/10 text-gray-600 border-gray-500/20"
-														>
-															No
-														</Badge>
-													)}
-												</TableCell>
-												<TableCell>
-													{scheduledDeliveryDate.toLocaleDateString()}
-												</TableCell>
-												<TableCell>
-													<Badge
-														variant="outline"
-														className={getStatusColor(transfer.status)}
-													>
-														{formatStatus(transfer.status)}
-													</Badge>
-												</TableCell>
-												<TableCell>
-													{doCreated ? (
-														<Badge
-															variant="outline"
-															className="bg-green-500/10 text-green-600 border-green-500/20"
-														>
-															Yes
-														</Badge>
-													) : (
-														<Badge
-															variant="outline"
-															className="bg-gray-500/10 text-gray-600 border-gray-500/20"
-														>
-															No
-														</Badge>
-													)}
-												</TableCell>
-												<TableCell>
-													<Badge
-														variant="outline"
-														className={getNetSuiteStatusColor(
-															transfer.netsuiteStatus,
-														)}
-													>
-														{transfer.netsuiteStatus || "N/A"}
-													</Badge>
-												</TableCell>
-												<TableCell className="text-right">
-													<div className="flex justify-end gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															onClick={() => handleViewTransfer(transfer)}
-														>
-															<Eye className="h-4 w-4" />
-														</Button>
-														{hasPermission("to:accept") &&
-															transfer.status === "New" && (
+											</TableRow>,
+											...dateTransfers.map((transfer) => {
+												const doCreated = transfer.status === "DO_Created";
+												return (
+													<TableRow key={transfer.id}>
+														<TableCell className="font-medium">
+															{transfer.transferOrderNumber}
+														</TableCell>
+														<TableCell>
+															{transfer.toLocation}
+														</TableCell>
+														<TableCell>
+															{doCreated ? (
+																<Badge
+																	variant="outline"
+																	className="bg-green-500/10 text-green-600 border-green-500/20"
+																>
+																	Yes
+																</Badge>
+															) : (
+																<Badge
+																	variant="outline"
+																	className="bg-gray-500/10 text-gray-600 border-gray-500/20"
+																>
+																	No
+																</Badge>
+															)}
+														</TableCell>
+														<TableCell>
+															<Badge
+																variant="outline"
+																className={getStatusColor(transfer.status)}
+															>
+																{formatStatus(transfer.status)}
+															</Badge>
+														</TableCell>
+														<TableCell>
+															<Badge
+																variant="outline"
+																className={getNetSuiteStatusColor(
+																	transfer.netsuiteStatus,
+																)}
+															>
+																{transfer.netsuiteStatus || "N/A"}
+															</Badge>
+														</TableCell>
+														<TableCell className="text-right">
+															<div className="flex justify-end gap-1">
 																<Button
 																	variant="ghost"
 																	size="icon"
-																	onClick={() => {
-																		setSelectedTransfer(transfer);
-																		setIsAcceptDialogOpen(true);
-																	}}
+																	onClick={() => handleViewTransfer(transfer)}
 																>
-																	<CheckCircle className="h-4 w-4 text-green-600" />
+																	<Eye className="h-4 w-4" />
 																</Button>
-															)}
-														{hasPermission("to:reject") &&
-															transfer.status === "New" && (
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	onClick={() => {
-																		setSelectedTransfer(transfer);
-																		setIsRejectDialogOpen(true);
-																	}}
-																>
-																	<XCircle className="h-4 w-4 text-red-600" />
-																</Button>
-															)}
-													</div>
-												</TableCell>
-											</TableRow>
-										);
+																{hasPermission("to:accept") &&
+																	transfer.status === "New" && (
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => {
+																				setSelectedTransfer(transfer);
+																				setIsAcceptDialogOpen(true);
+																			}}
+																		>
+																			<CheckCircle className="h-4 w-4 text-green-600" />
+																		</Button>
+																	)}
+																{hasPermission("to:reject") &&
+																	transfer.status === "New" && (
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => {
+																				setSelectedTransfer(transfer);
+																				setIsRejectDialogOpen(true);
+																			}}
+																		>
+																			<XCircle className="h-4 w-4 text-red-600" />
+																		</Button>
+																	)}
+															</div>
+														</TableCell>
+													</TableRow>
+												);
+											}),
+										];
 									})
 								)}
 							</TableBody>
 						</Table>
 					</div>
 
-					{data && (
+					{(totalDateGroups > 0 || filteredTotal > 0) && (
 						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
 							<div>
-								Showing{" "}
-								<span className="font-medium">
-									{(data.page - 1) * data.pageSize + 1}
-								</span>{" "}
-								-{" "}
-								<span className="font-medium">
-									{Math.min(data.page * data.pageSize, data.total)}
-								</span>{" "}
-								of <span className="font-medium">{data.total}</span> transfer
-								orders
+								{totalDateGroups > 0 ? (
+									<>
+										Showing delivery dates{" "}
+										<span className="font-medium">
+											{startDateIndex + 1}
+										</span>{" "}
+										-{" "}
+										<span className="font-medium">
+											{startDateIndex + paginatedDateKeys.length}
+										</span>{" "}
+										of <span className="font-medium">{totalDateGroups}</span>
+										{" "}
+										(<span className="font-medium">{filteredTotal}</span>{" "}
+										orders)
+									</>
+								) : (
+									<>
+										<span className="font-medium">0</span> delivery dates (
+										<span className="font-medium">{filteredTotal}</span> orders)
+									</>
+								)}
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -698,16 +831,14 @@ function TransfersRouteComponent() {
 									variant="outline"
 									size="icon"
 									disabled={page === totalPages}
-									onClick={() =>
-										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
-									}
+									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 								>
 									<ChevronRight className="h-4 w-4" />
 								</Button>
 							</div>
 						</div>
 					)}
-					</CardContent>
+				</CardContent>
 			</Card>
 
 			{/* View Delivery Order Dialog */}

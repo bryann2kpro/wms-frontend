@@ -15,6 +15,7 @@ import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
+import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
 	type DOItem,
 	type DOStatusFilter,
@@ -33,6 +34,7 @@ interface FlattenedItem extends DOItem {
 
 function DOWorkQueueComponent() {
 	const { user } = useCurrentUser();
+	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -113,22 +115,22 @@ function DOWorkQueueComponent() {
 								<TableHead className="text-center">
 									Opening Qty
 									<br />
-									<span className="text-xs font-normal">(Dozen/Loss)</span>
+									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
 								<TableHead className="text-center">
 									Stock In
 									<br />
-									<span className="text-xs font-normal">(Dozen/Loss)</span>
+									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
 								<TableHead className="text-center">
 									Stock Out
 									<br />
-									<span className="text-xs font-normal">(Dozen/Loss)</span>
+									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
 								<TableHead className="text-center">
 									Close Qty
 									<br />
-									<span className="text-xs font-normal">(Dozen/Loss)</span>
+									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
 								<TableHead>Storage Rack</TableHead>
 							</TableRow>

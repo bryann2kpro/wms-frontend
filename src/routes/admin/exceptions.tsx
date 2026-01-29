@@ -39,6 +39,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
 	type Exception,
 	type ExceptionStatusFilter,
@@ -68,6 +69,7 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 function ExceptionsComponent() {
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
+	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -301,18 +303,18 @@ function ExceptionsComponent() {
 									<TableHead className="text-center">
 										Opening Qty
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead>Stock Count Date</TableHead>
 									<TableHead className="text-center">
 										Qty
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead className="text-center">
 										Diff
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead>Action</TableHead>
 									<TableHead className="text-center">Approval</TableHead>
