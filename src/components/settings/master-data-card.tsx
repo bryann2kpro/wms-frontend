@@ -72,8 +72,48 @@ import {
 	type ToggleDeliveryScheduleActiveMutationData,
 	type DeleteDeliveryScheduleMutationData,
 } from "@/lib/graphql/delivery-schedules";
-import type { Supplier, Region, DeliverySchedule } from "@/lib/graphql/types";
-import { Plus, Edit, Trash2, Search, MapPin, Truck, CalendarClock } from "lucide-react";
+import {
+	OUTLETS_QUERY,
+	CREATE_OUTLET_MUTATION,
+	UPDATE_OUTLET_MUTATION,
+	DELETE_OUTLET_MUTATION,
+	type OutletsQueryData,
+	type OutletsQueryVariables,
+	type CreateOutletMutationData,
+	type UpdateOutletMutationData,
+	type DeleteOutletMutationData,
+} from "@/lib/graphql/outlets";
+import {
+	STOCK_UNITS_QUERY,
+	CREATE_STOCK_UNIT_MUTATION,
+	UPDATE_STOCK_UNIT_MUTATION,
+	TOGGLE_STOCK_UNIT_ACTIVE_MUTATION,
+	DELETE_STOCK_UNIT_MUTATION,
+	type StockUnitsQueryData,
+	type StockUnitsQueryVariables,
+	type CreateStockUnitMutationData,
+	type UpdateStockUnitMutationData,
+	type ToggleStockUnitActiveMutationData,
+	type DeleteStockUnitMutationData,
+} from "@/lib/graphql/stock-units";
+import type {
+	Supplier,
+	Region,
+	DeliverySchedule,
+	Outlet,
+	StockUnit,
+} from "@/lib/graphql/types";
+import {
+	Plus,
+	Edit,
+	Trash2,
+	Search,
+	MapPin,
+	Truck,
+	CalendarClock,
+	Store,
+	Package,
+} from "lucide-react";
 
 const DAYS_OF_WEEK = [
 	{ value: 0, label: "Sunday" },
@@ -89,12 +129,12 @@ const PAGE_SIZE = 10;
 
 export function MasterDataCard() {
 	const [subTab, setSubTab] = useState<
-		"supplier" | "region" | "delivery-schedule"
+		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit"
 	>("supplier");
 
 	return (
 		<div className="space-y-4">
-			<div className="flex gap-2 border-b pb-2">
+			<div className="flex flex-wrap gap-2 border-b pb-2">
 				<Button
 					variant={subTab === "supplier" ? "default" : "ghost"}
 					size="sm"
@@ -122,10 +162,30 @@ export function MasterDataCard() {
 					<CalendarClock className="mr-2 h-4 w-4" />
 					Delivery Schedules
 				</Button>
+				<Button
+					variant={subTab === "outlet" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("outlet")}
+					className="rounded-b-none"
+				>
+					<Store className="mr-2 h-4 w-4" />
+					Outlets
+				</Button>
+				<Button
+					variant={subTab === "stock-unit" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("stock-unit")}
+					className="rounded-b-none"
+				>
+					<Package className="mr-2 h-4 w-4" />
+					Stock Units
+				</Button>
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}
 			{subTab === "delivery-schedule" && <DeliveryScheduleSection />}
+			{subTab === "outlet" && <OutletSection />}
+			{subTab === "stock-unit" && <StockUnitSection />}
 		</div>
 	);
 }
@@ -889,6 +949,766 @@ function DeliveryScheduleSection() {
 				/>
 			)}
 		</Card>
+	);
+}
+
+function OutletSection() {
+	const { user } = useCurrentUser();
+	const [page, setPage] = useState(1);
+	const [search, setSearch] = useState("");
+	const [regionIdFilter, setRegionIdFilter] = useState<string>("");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [editing, setEditing] = useState<Outlet | null>(null);
+	const [deleting, setDeleting] = useState<Outlet | null>(null);
+
+	const { data: regionsData } = useQuery<RegionsQueryData, RegionsQueryVariables>(
+		REGIONS_QUERY,
+		{ variables: { pageSize: 200, pageNumber: 1 } }
+	);
+	const regions = regionsData?.regions?.query ?? [];
+
+	const filter: OutletsQueryVariables["filter"] = {
+		...(search.trim() ? { outletName: search.trim() } : {}),
+		...(regionIdFilter ? { regionId: regionIdFilter } : {}),
+	};
+
+	const { data, loading, refetch } = useQuery<
+		OutletsQueryData,
+		OutletsQueryVariables
+	>(OUTLETS_QUERY, {
+		variables: {
+			pageSize: PAGE_SIZE,
+			pageNumber: page,
+			filter: Object.keys(filter).length > 0 ? filter : undefined,
+		},
+	});
+
+	const [createOutlet, { loading: createLoading }] =
+		useMutation<CreateOutletMutationData>(CREATE_OUTLET_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setIsCreateOpen(false);
+			},
+		});
+	const [updateOutlet, { loading: updateLoading }] =
+		useMutation<UpdateOutletMutationData>(UPDATE_OUTLET_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setEditing(null);
+			},
+		});
+	const [deleteOutlet, { loading: deleteLoading }] =
+		useMutation<DeleteOutletMutationData>(DELETE_OUTLET_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
+			},
+		});
+
+	const outletsList = data?.outlets?.query ?? [];
+	const outletsPagination = data?.outlets?.pagination;
+	const createdBy = user?.id ?? "";
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle>Outlets</CardTitle>
+						<CardDescription>
+							Store/outlet locations; each outlet can be assigned to a region
+						</CardDescription>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Search by name..."
+								value={search}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
+								className="pl-9 w-48"
+							/>
+						</div>
+						<Select
+							value={regionIdFilter || "all"}
+							onValueChange={(v) => {
+								setRegionIdFilter(v === "all" ? "" : v);
+								setPage(1);
+							}}
+						>
+							<SelectTrigger className="w-40">
+								<SelectValue placeholder="All regions" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All regions</SelectItem>
+								{regions.map((r) => (
+									<SelectItem key={r.regionId} value={r.regionId}>
+										{r.regionName}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Button
+							onClick={() => setIsCreateOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to create" : undefined}
+						>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Outlet
+						</Button>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="relative">
+				<GlobalLoadingShadow />
+				<div className="overflow-x-auto rounded-lg border">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Code</TableHead>
+								<TableHead>Name</TableHead>
+								<TableHead>Region</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{loading ? (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="h-24 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
+								</TableRow>
+							) : outletsList.length === 0 ? (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="h-24 text-center text-muted-foreground"
+									>
+										No outlets found.
+									</TableCell>
+								</TableRow>
+							) : (
+								outletsList.map((row) => (
+									<TableRow key={row.outletId}>
+										<TableCell className="font-mono text-sm">
+											{row.outletCode}
+										</TableCell>
+										<TableCell className="font-medium">
+											{row.outletName}
+										</TableCell>
+										<TableCell className="text-muted-foreground">
+											{row.regionName
+												? `${row.regionName} (${row.regionCode ?? ""})`
+												: "Unassigned"}
+										</TableCell>
+										<TableCell className="text-right">
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive"
+												onClick={() => setDeleting(row)}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</TableCell>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				{outletsPagination && outletsPagination.totalPages > 1 && (
+					<div className="mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground">
+							Page {outletsPagination.currentPage} of {outletsPagination.totalPages}{" "}
+							({outletsPagination.totalCount} total)
+						</p>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!outletsPagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!outletsPagination.hasNextPage}
+								onClick={() =>
+									setPage((p) =>
+										Math.min(outletsPagination.totalPages, p + 1)
+									)
+								}
+							>
+								Next
+							</Button>
+						</div>
+					</div>
+				)}
+			</CardContent>
+
+			<OutletFormDialog
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+				regions={regions}
+				onSubmit={(values) =>
+					createOutlet({
+						variables: {
+							input: {
+								outletName: values.outletName,
+								outletCode: values.outletCode,
+								regionId: values.regionId || null,
+								createdBy,
+								updatedBy: createdBy,
+							},
+						},
+					})
+				}
+				loading={createLoading}
+				title="Add Outlet"
+				description="Create a new outlet. Region is optional."
+			/>
+
+			{editing && (
+				<OutletFormDialog
+					key={editing.outletId}
+					open={!!editing}
+					onOpenChange={(open) => !open && setEditing(null)}
+					regions={regions}
+					initial={{
+						outletName: editing.outletName,
+						outletCode: editing.outletCode,
+						regionId: editing.regionId ?? undefined,
+					}}
+					onSubmit={(values) =>
+						updateOutlet({
+							variables: {
+								id: editing.outletId,
+								input: {
+									outletName: values.outletName,
+									outletCode: values.outletCode,
+									regionId: values.regionId || null,
+									updatedBy: createdBy,
+								},
+							},
+						})
+					}
+					loading={updateLoading}
+					title="Edit Outlet"
+					description="Update outlet and assign to a region."
+				/>
+			)}
+
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.outletName}
+					onConfirm={() =>
+						deleteOutlet({ variables: { id: deleting.outletId } })
+					}
+					loading={deleteLoading}
+				/>
+			)}
+		</Card>
+	);
+}
+
+function StockUnitSection() {
+	const { user } = useCurrentUser();
+	const [page, setPage] = useState(1);
+	const [search, setSearch] = useState("");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [editing, setEditing] = useState<StockUnit | null>(null);
+	const [deleting, setDeleting] = useState<StockUnit | null>(null);
+
+	const { data, loading, refetch } = useQuery<
+		StockUnitsQueryData,
+		StockUnitsQueryVariables
+	>(STOCK_UNITS_QUERY, {
+		variables: {
+			pageSize: PAGE_SIZE,
+			pageNumber: page,
+			...(search.trim()
+				? { filter: { unitName: search.trim() } }
+				: {}),
+		},
+	});
+
+	const [createStockUnit, { loading: createLoading }] =
+		useMutation<CreateStockUnitMutationData>(CREATE_STOCK_UNIT_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setIsCreateOpen(false);
+			},
+		});
+	const [updateStockUnit, { loading: updateLoading }] =
+		useMutation<UpdateStockUnitMutationData>(UPDATE_STOCK_UNIT_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setEditing(null);
+			},
+		});
+	const [toggleActive] = useMutation<ToggleStockUnitActiveMutationData>(
+		TOGGLE_STOCK_UNIT_ACTIVE_MUTATION,
+		{ onCompleted: () => refetch() }
+	);
+	const [deleteStockUnit, { loading: deleteLoading }] =
+		useMutation<DeleteStockUnitMutationData>(DELETE_STOCK_UNIT_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
+			},
+		});
+
+	const list = data?.stockUnits?.query ?? [];
+	const pagination = data?.stockUnits?.pagination;
+	const totalPages = pagination?.totalPages ?? 1;
+	const currentPage = pagination?.currentPage ?? 1;
+	const createdBy = user?.id ?? "";
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle>Stock Units (UOM)</CardTitle>
+						<CardDescription>Units of measurement for inventory</CardDescription>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Search by name..."
+								value={search}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
+								className="pl-9 w-48"
+							/>
+						</div>
+						<Button
+							onClick={() => setIsCreateOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to create" : undefined}
+						>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Stock Unit
+						</Button>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="relative">
+				<GlobalLoadingShadow />
+				<div className="overflow-x-auto rounded-lg border">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Code</TableHead>
+								<TableHead>Name</TableHead>
+								<TableHead>Active</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{loading ? (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="h-24 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
+								</TableRow>
+							) : list.length === 0 ? (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="h-24 text-center text-muted-foreground"
+									>
+										No stock units found.
+									</TableCell>
+								</TableRow>
+							) : (
+								list.map((row) => (
+									<TableRow key={row.stockUnitId}>
+										<TableCell className="font-mono text-sm">
+											{row.unitCode}
+										</TableCell>
+										<TableCell className="font-medium">
+											{row.unitName}
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant="outline"
+												className={
+													row.isActive
+														? "bg-green-500/10 text-green-600 border-green-500/20"
+														: "bg-muted text-muted-foreground"
+												}
+											>
+												{row.isActive ? "Active" : "Inactive"}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-right">
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() =>
+													toggleActive({
+														variables: {
+															id: row.stockUnitId,
+															isActive: !row.isActive,
+															updatedBy: createdBy,
+														},
+													})
+												}
+												title={row.isActive ? "Deactivate" : "Activate"}
+											>
+												{row.isActive ? "Deactivate" : "Activate"}
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive"
+												onClick={() => setDeleting(row)}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</TableCell>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				{pagination && totalPages > 1 && (
+					<div className="mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground">
+							Page {currentPage} of {totalPages} ({pagination.totalCount} total)
+						</p>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasNextPage}
+								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+							>
+								Next
+							</Button>
+						</div>
+					</div>
+				)}
+			</CardContent>
+
+			<StockUnitFormDialog
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+				onSubmit={(values) =>
+					createStockUnit({
+						variables: {
+							input: {
+								unitName: values.unitName,
+								unitCode: values.unitCode,
+								isActive: values.isActive ?? true,
+								createdBy,
+								updatedBy: createdBy,
+							},
+						},
+					})
+				}
+				loading={createLoading}
+				title="Add Stock Unit"
+				description="Create a new unit of measurement."
+			/>
+
+			{editing && (
+				<StockUnitFormDialog
+					key={editing.stockUnitId}
+					open={!!editing}
+					onOpenChange={(open) => !open && setEditing(null)}
+					initial={{
+						unitName: editing.unitName,
+						unitCode: editing.unitCode,
+						isActive: editing.isActive,
+					}}
+					onSubmit={(values) =>
+						updateStockUnit({
+							variables: {
+								id: editing.stockUnitId,
+								input: {
+									unitName: values.unitName,
+									unitCode: values.unitCode,
+									isActive: values.isActive,
+									updatedBy: createdBy,
+								},
+							},
+						})
+					}
+					loading={updateLoading}
+					title="Edit Stock Unit"
+					description="Update unit details."
+				/>
+			)}
+
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.unitName}
+					onConfirm={() =>
+						deleteStockUnit({ variables: { id: deleting.stockUnitId } })
+					}
+					loading={deleteLoading}
+				/>
+			)}
+		</Card>
+	);
+}
+
+function OutletFormDialog({
+	open,
+	onOpenChange,
+	regions,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	regions: Region[];
+	initial?: {
+		outletName: string;
+		outletCode: string;
+		regionId?: string;
+	};
+	onSubmit: (v: {
+		outletName: string;
+		outletCode: string;
+		regionId?: string;
+	}) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [outletName, setOutletName] = useState(initial?.outletName ?? "");
+	const [outletCode, setOutletCode] = useState(initial?.outletCode ?? "");
+	const [regionId, setRegionId] = useState<string>(initial?.regionId ?? "");
+
+	useEffect(() => {
+		if (open) {
+			setOutletName(initial?.outletName ?? "");
+			setOutletCode(initial?.outletCode ?? "");
+			setRegionId(initial?.regionId ?? "");
+		}
+	}, [open, initial?.outletName, initial?.outletCode, initial?.regionId]);
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) {
+			setOutletName(initial?.outletName ?? "");
+			setOutletCode(initial?.outletCode ?? "");
+			setRegionId(initial?.regionId ?? "");
+		}
+		onOpenChange(next);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-4 py-4">
+					<div className="grid gap-2">
+						<Label htmlFor="outlet-code">Code</Label>
+						<Input
+							id="outlet-code"
+							value={outletCode}
+							onChange={(e) => setOutletCode(e.target.value)}
+							placeholder="e.g. OUT001"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="outlet-name">Name</Label>
+						<Input
+							id="outlet-name"
+							value={outletName}
+							onChange={(e) => setOutletName(e.target.value)}
+							placeholder="Outlet name"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label>Region (optional)</Label>
+						<Select
+							value={regionId || "none"}
+							onValueChange={(v) => setRegionId(v === "none" ? "" : v)}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Unassigned" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">Unassigned</SelectItem>
+								{regions.map((r) => (
+									<SelectItem key={r.regionId} value={r.regionId}>
+										{r.regionName} ({r.regionCode})
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => handleOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						disabled={!outletName.trim() || !outletCode.trim() || loading}
+						onClick={() =>
+							onSubmit({
+								outletName: outletName.trim(),
+								outletCode: outletCode.trim(),
+								regionId: regionId || undefined,
+							})
+						}
+					>
+						{loading ? "Saving..." : "Save"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function StockUnitFormDialog({
+	open,
+	onOpenChange,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	initial?: { unitName: string; unitCode: string; isActive?: boolean };
+	onSubmit: (v: {
+		unitName: string;
+		unitCode: string;
+		isActive?: boolean;
+	}) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [unitName, setUnitName] = useState(initial?.unitName ?? "");
+	const [unitCode, setUnitCode] = useState(initial?.unitCode ?? "");
+	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+
+	useEffect(() => {
+		if (open) {
+			setUnitName(initial?.unitName ?? "");
+			setUnitCode(initial?.unitCode ?? "");
+			setIsActive(initial?.isActive ?? true);
+		}
+	}, [open, initial?.unitName, initial?.unitCode, initial?.isActive]);
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) {
+			setUnitName(initial?.unitName ?? "");
+			setUnitCode(initial?.unitCode ?? "");
+			setIsActive(initial?.isActive ?? true);
+		}
+		onOpenChange(next);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-4 py-4">
+					<div className="grid gap-2">
+						<Label htmlFor="unit-code">Code</Label>
+						<Input
+							id="unit-code"
+							value={unitCode}
+							onChange={(e) => setUnitCode(e.target.value)}
+							placeholder="e.g. EA, KG, CTN"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="unit-name">Name</Label>
+						<Input
+							id="unit-name"
+							value={unitName}
+							onChange={(e) => setUnitName(e.target.value)}
+							placeholder="Unit name"
+						/>
+					</div>
+					<div className="flex items-center justify-between">
+						<Label htmlFor="unit-active">Active</Label>
+						<Switch
+							id="unit-active"
+							checked={isActive}
+							onCheckedChange={setIsActive}
+						/>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => handleOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						disabled={!unitName.trim() || !unitCode.trim() || loading}
+						onClick={() =>
+							onSubmit({
+								unitName: unitName.trim(),
+								unitCode: unitCode.trim(),
+								isActive,
+							})
+						}
+					>
+						{loading ? "Saving..." : "Save"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 

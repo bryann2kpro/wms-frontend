@@ -106,3 +106,67 @@ export interface UpdateDeliveryScheduleInput {
 	isActive?: boolean;
 	updatedBy: string;
 }
+
+export interface Outlet {
+	outletId: string;
+	outletName: string;
+	outletCode: string;
+	regionId: string | null;
+	regionName: string | null;
+	regionCode: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface OutletPaginatedResponse {
+	query: Outlet[];
+	pagination: Pagination;
+}
+
+export interface CreateOutletInput {
+	outletName: string;
+	outletCode: string;
+	regionId?: string | null;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateOutletInput {
+	outletName?: string;
+	outletCode?: string;
+	regionId?: string | null;
+	updatedBy: string;
+}
+
+export interface StockUnit {
+	stockUnitId: string;
+	unitName: string;
+	unitCode: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface StockUnitPaginatedResponse {
+	query: StockUnit[];
+	pagination: Pagination;
+}
+
+export interface CreateStockUnitInput {
+	unitName: string;
+	unitCode: string;
+	isActive?: boolean;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateStockUnitInput {
+	unitName?: string;
+	unitCode?: string;
+	isActive?: boolean;
+	updatedBy: string;
+}
