@@ -70,3 +70,10 @@ export const permissionTypeColors: Record<string, string> = {
   Update: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
   Delete: "bg-red-500/10 text-red-600 border-red-500/20",
 };
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
+  }).format(amount);
+}

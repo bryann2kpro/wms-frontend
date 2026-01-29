@@ -83,7 +83,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	},
 	{
 		key: "sidebar-invoices",
-		title: "Invoices",
+		title: "Proforma Invoices",
 		href: "/admin/invoices",
 		icon: FileText,
 		allowedPermission: ["*"],
