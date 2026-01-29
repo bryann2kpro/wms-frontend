@@ -188,7 +188,7 @@ function SettlementComponent() {
 												<TableCell className="font-medium">
 													{do_.doNumber}
 												</TableCell>
-												<TableCell>{do_.toNumber || "-"}</TableCell>
+												<TableCell>{do_.toNumber}</TableCell>
 												<TableCell>{do_.outlet}</TableCell>
 												<TableCell>
 													<Badge variant="outline">

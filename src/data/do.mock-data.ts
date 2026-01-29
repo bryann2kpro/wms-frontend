@@ -51,7 +51,8 @@ export interface ShortageDamageReport {
 export interface DeliveryOrder {
 	id: string;
 	doNumber: string;
-	toNumber?: string;
+	/** PO Number (not nullable) */
+	toNumber: string;
 	outlet: string;
 	outletAddress?: string;
 	status: DOStatus;
@@ -172,8 +173,7 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 	return {
 		id: `do-${i}`,
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
-		toNumber:
-			i % 2 === 0 ? `PO-2024-${String(i + 1).padStart(4, "0")}` : undefined,
+		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,
@@ -233,7 +233,7 @@ export async function getDOs(filters: DOListFilters): Promise<DOListResult> {
 			return (
 				do_.doNumber.toLowerCase().includes(term) ||
 				do_.outlet.toLowerCase().includes(term) ||
-				do_.toNumber?.toLowerCase().includes(term)
+				do_.toNumber.toLowerCase().includes(term)
 			);
 		});
 	}

@@ -172,7 +172,7 @@ function DeliveryProofComponent() {
 										const daysPending = calculateDaysPending(do_.deliveredAt);
 										return (
 											<TableRow key={do_.id}>
-												<TableCell>{do_.toNumber || "-"}</TableCell>
+												<TableCell>{do_.toNumber}</TableCell>
 												<TableCell className="font-medium">
 													{do_.doNumber}
 												</TableCell>

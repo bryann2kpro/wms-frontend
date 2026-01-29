@@ -90,7 +90,7 @@ const createInvoiceSchema = z.object({
 		// .regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
 	doNumber: z.string().min(1, "DO Number is required"),
 	doId: z.string().min(1, "DO ID is required"),
-	toNumber: z.string(),
+	toNumber: z.string().min(1, "PO Number is required"),
 	outlet: z.string().min(1, "Outlet is required"),
 	outletAddress: z.string(),
 	issuedDate: z.string().min(1, "Issued date is required"),
@@ -160,7 +160,7 @@ function InvoicesComponent() {
 				invoiceNumber: value.invoiceNumber,
 				doNumber: value.doNumber,
 				doId: value.doId,
-				toNumber: value.toNumber || undefined,
+				toNumber: value.toNumber,
 				outlet: value.outlet,
 				outletAddress: value.outletAddress || undefined,
 				issuedDate: parsedDate,
@@ -871,7 +871,7 @@ function InvoicesComponent() {
 												{invoice.invoiceNumber}
 											</TableCell>
 											<TableCell>{invoice.doNumber}</TableCell>
-											<TableCell>{invoice.toNumber || "-"}</TableCell>
+											<TableCell>{invoice.toNumber}</TableCell>
 											<TableCell>{invoice.outlet}</TableCell>
 											<TableCell>
 												{formatCurrency(invoice.totalAmount)}

@@ -16,7 +16,8 @@ export interface Invoice {
 	invoiceNumber: string;
 	doNumber: string;
 	doId: string;
-	toNumber?: string;
+	/** PO Number (not nullable) */
+	toNumber: string;
 	outlet: string;
 	outletAddress?: string;
 	status: InvoiceStatus;
@@ -86,8 +87,7 @@ let invoices: Invoice[] = Array.from({ length: 25 }, (_, i) => {
 		invoiceNumber: `INV-2024-${String(i + 1).padStart(4, "0")}`,
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		doId: `do-${i}`,
-		toNumber:
-			i % 2 === 0 ? `PO-2024-${String(i + 1).padStart(4, "0")}` : undefined,
+		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,
@@ -185,7 +185,8 @@ export interface CreateInvoiceInput {
 	invoiceNumber: string;
 	doNumber: string;
 	doId: string;
-	toNumber?: string;
+	/** PO Number (not nullable) */
+	toNumber: string;
 	outlet: string;
 	outletAddress?: string;
 	issuedDate: Date;
