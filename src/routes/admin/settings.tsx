@@ -32,6 +32,7 @@ import {
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
+import { MasterDataCard } from "@/components/settings/master-data-card";
 import {
 	User,
 	Building,
@@ -40,7 +41,6 @@ import {
 	Loader2,
 	Users,
 	Database,
-	Route as RouteIcon,
 	Plug,
 	Plus,
 	Edit,
@@ -88,7 +88,7 @@ function SettingsPage() {
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<
-		"profile" | "users" | "master-data" | "delivery-rules" | "integration"
+		"profile" | "users" | "master-data" | "integration"
 	>("profile");
 
 	// Mock mutation functions
@@ -145,15 +145,6 @@ function SettingsPage() {
 		...(hasPermission("admin:master_data")
 			? [{ id: "master-data" as const, label: "Master Data", icon: Database }]
 			: []),
-		...(hasPermission("admin:delivery_rules")
-			? [
-					{
-						id: "delivery-rules" as const,
-						label: "Delivery Rules",
-						icon: RouteIcon,
-					},
-				]
-			: []),
 		...(hasPermission("admin:integration_status")
 			? [
 					{
@@ -170,7 +161,7 @@ function SettingsPage() {
 			<div>
 				<h1 className="text-3xl font-bold tracking-tight">Admin / Settings</h1>
 				<p className="text-muted-foreground">
-					Manage users, master data, delivery rules, and integration settings
+					Manage users, master data, and integration settings
 				</p>
 			</div>
 
@@ -224,9 +215,6 @@ function SettingsPage() {
 			{activeTab === "master-data" && hasPermission("admin:master_data") && (
 				<MasterDataCard />
 			)}
-
-			{activeTab === "delivery-rules" &&
-				hasPermission("admin:delivery_rules") && <DeliveryRulesCard />}
 
 			{activeTab === "integration" &&
 				hasPermission("admin:integration_status") && <IntegrationStatusCard />}
@@ -762,90 +750,6 @@ function UsersRolesCard() {
 						})}
 						</TableBody>
 					</Table>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-function MasterDataCard() {
-	return (
-		<div className="grid gap-6 md:grid-cols-3">
-			<Card>
-				<CardHeader>
-					<CardTitle>Suppliers</CardTitle>
-					<CardDescription>Manage supplier master data</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Button variant="outline" className="w-full">
-						<Plus className="mr-2 h-4 w-4" />
-						Add Supplier
-					</Button>
-					<div className="mt-4 text-sm text-muted-foreground">
-						Suppliers: 15
-					</div>
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader>
-					<CardTitle>Outlets</CardTitle>
-					<CardDescription>Manage outlet master data</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Button variant="outline" className="w-full">
-						<Plus className="mr-2 h-4 w-4" />
-						Add Outlet
-					</Button>
-					<div className="mt-4 text-sm text-muted-foreground">Outlets: 8</div>
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader>
-					<CardTitle>SKUs</CardTitle>
-					<CardDescription>Manage SKU master data</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Button variant="outline" className="w-full">
-						<Plus className="mr-2 h-4 w-4" />
-						Add SKU
-					</Button>
-					<div className="mt-4 text-sm text-muted-foreground">SKUs: 245</div>
-				</CardContent>
-			</Card>
-		</div>
-	);
-}
-
-function DeliveryRulesCard() {
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Delivery Rules</CardTitle>
-				<CardDescription>
-					Configure delivery scheduling and routing rules
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-4">
-				<div className="rounded-lg border p-4">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="font-medium">Default Delivery Window</p>
-							<p className="text-sm text-muted-foreground">9:00 AM - 5:00 PM</p>
-						</div>
-						<Button variant="outline" size="sm">
-							<Edit className="mr-2 h-4 w-4" />
-							Edit
-						</Button>
-					</div>
-				</div>
-				<div className="rounded-lg border p-4">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="font-medium">Auto-Assign Delivery Routes</p>
-							<p className="text-sm text-muted-foreground">Enabled</p>
-						</div>
-						<Switch defaultChecked />
-					</div>
 				</div>
 			</CardContent>
 		</Card>
