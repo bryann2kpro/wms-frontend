@@ -8,22 +8,39 @@ import {
 	InMemoryCache,
 } from "@apollo/client-integration-tanstack-start";
 import { HttpLink } from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
+import { getAccessToken } from "@/lib/auth/auth-storage";
+import { env } from "@/env";
 
 import { deLocalizeUrl, localizeUrl } from "./paraglide/runtime";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
+const graphqlUri =
+	env.VITE_GRAPHQL_ENDPOINT ?? `${env.VITE_API_URL.replace(/\/$/, "")}/graphql`;
+
+const authLink = setContext((_, { headers }) => {
+	const token = getAccessToken();
+	return {
+		headers: {
+			...headers,
+			...(token ? { authorization: `Bearer ${token}` } : {}),
+		},
+	};
+});
+
 // Create a new router instance
 export const getRouter = () => {
 	// Configure Apollo Client
 	const apolloClient = new ApolloClient({
 		cache: new InMemoryCache(),
-		link: new HttpLink({
-			uri:
-				import.meta.env.VITE_GRAPHQL_ENDPOINT ||
-				"https://countries.trevorblades.com/",
-		}),
+		link: authLink.concat(
+			new HttpLink({
+				uri: graphqlUri,
+				headers: { "Content-Type": "application/json" },
+			})
+		),
 	});
 
 	const rqContext = TanstackQuery.getContext();
