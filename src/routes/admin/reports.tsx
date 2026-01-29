@@ -18,19 +18,19 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
-	FileText,
 	Download,
 	BarChart3,
 	Package,
 	Truck,
-	AlertTriangle,
+	ArrowRightLeft,
+	Receipt,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
 });
 
-type ReportType = "GRN" | "DO" | "Inventory" | "Exception";
+type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
 
 interface ReportConfig {
 	type: ReportType;
@@ -47,7 +47,8 @@ const reportTypes: {
 	{ value: "GRN", label: "GRN Reports", icon: Package },
 	{ value: "DO", label: "DO Reports", icon: Truck },
 	{ value: "Inventory", label: "Inventory Reports", icon: BarChart3 },
-	{ value: "Exception", label: "Exception Reports", icon: AlertTriangle },
+	{ value: "Movement", label: "Movement Reports", icon: ArrowRightLeft },
+	{ value: "InvoiceSummary", label: "Invoices Summary", icon: Receipt },
 ];
 
 function ReportsComponent() {
