@@ -3,6 +3,11 @@ import { faker } from "@faker-js/faker";
 export type ExceptionType = "SHORTAGE" | "DAMAGE";
 export type ExceptionStatus = "pending" | "approved" | "rejected";
 
+export type StockCountAction =
+	| "tally_to_opening"
+	| "tally_to_stock_count"
+	| "manual_key_in";
+
 export interface Exception {
 	id: string;
 	doNumber: string;
@@ -18,7 +23,7 @@ export interface Exception {
 	stockCountDate: Date;
 	closedQtyDozen: number;
 	closedQtyLoss: number;
-	action?: "tally" | "compensate";
+	action?: StockCountAction;
 	isApproved: boolean;
 	notes?: string;
 	photoUrl?: string;

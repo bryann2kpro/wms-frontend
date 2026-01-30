@@ -44,6 +44,7 @@ import {
 	type Exception,
 	type ExceptionStatusFilter,
 	type ExceptionType,
+	type StockCountAction,
 	getExceptions,
 	approveException,
 	rejectException,
@@ -82,9 +83,13 @@ function ExceptionsComponent() {
 	const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 	const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
-	// Track actions selected per row
+	// Track actions selected per row (Stock Count)
 	const [rowActions, setRowActions] = useState<
-		Record<string, "tally" | "compensate" | undefined>
+		Record<string, StockCountAction | undefined>
+	>({});
+	// Manual key-in amounts per row (when action is "manual_key_in")
+	const [rowManualAmounts, setRowManualAmounts] = useState<
+		Record<string, { dozen: number; loss: number }>
 	>({});
 	// Track approval status per row (for demo)
 	const [rowApprovals, setRowApprovals] = useState<Record<string, boolean>>({});
@@ -94,8 +99,15 @@ function ExceptionsComponent() {
 	>({});
 
 	const handleActionChange = useCallback(
-		(id: string, action: "tally" | "compensate") => {
+		(id: string, action: StockCountAction) => {
 			setRowActions((prev) => ({ ...prev, [id]: action }));
+		},
+		[],
+	);
+
+	const handleManualAmountChange = useCallback(
+		(id: string, update: { dozen: number; loss: number }) => {
+			setRowManualAmounts((prev) => ({ ...prev, [id]: update }));
 		},
 		[],
 	);
@@ -316,7 +328,7 @@ function ExceptionsComponent() {
 										<br />
 										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
-									<TableHead>Action</TableHead>
+									<TableHead>Stock Count</TableHead>
 									<TableHead className="text-center">Approval</TableHead>
 									<TableHead className="text-center">Close Action</TableHead>
 								</TableRow>
@@ -342,15 +354,28 @@ function ExceptionsComponent() {
 									</TableRow>
 								) : (
 									exceptions.map((exc, index) => {
+										const selectedAction = rowActions[exc.id] ?? exc.action;
+										const isManualKeyIn = selectedAction === "manual_key_in";
+										const baseClosed = closedQuantities[exc.id] ?? {
+											dozen: exc.closedQtyDozen,
+											loss: exc.closedQtyLoss,
+										};
 										const closedDozen =
-											closedQuantities[exc.id]?.dozen ?? exc.closedQtyDozen;
+											isManualKeyIn && rowManualAmounts[exc.id] != null
+												? rowManualAmounts[exc.id].dozen
+												: baseClosed.dozen;
 										const closedLoss =
-											closedQuantities[exc.id]?.loss ?? exc.closedQtyLoss;
+											isManualKeyIn && rowManualAmounts[exc.id] != null
+												? rowManualAmounts[exc.id].loss
+												: baseClosed.loss;
 										const diffDozen = exc.openingQtyDozen - closedDozen;
 										const diffLoss = exc.openingQtyLoss - closedLoss;
 										const isApproved =
 											rowApprovals[exc.id] ?? exc.isApproved;
-										const selectedAction = rowActions[exc.id] ?? exc.action;
+										const displayDozen =
+											rowManualAmounts[exc.id]?.dozen ?? baseClosed.dozen;
+										const displayLoss =
+											rowManualAmounts[exc.id]?.loss ?? baseClosed.loss;
 
 										return (
 											<TableRow key={exc.id}>
@@ -368,7 +393,41 @@ function ExceptionsComponent() {
 													{exc.stockCountDate.toLocaleDateString("en-MY")}
 												</TableCell>
 												<TableCell className="text-center">
-													{closedDozen} / {closedLoss}
+													{isManualKeyIn ? (
+														<div className="flex items-center justify-center gap-1">
+															<Input
+																type="number"
+																min={0}
+																className="h-8 w-16 text-center"
+																placeholder={String(exc.closedQtyDozen)}
+																value={displayDozen}
+																onChange={(e) => {
+																	const v = e.target.value;
+																	handleManualAmountChange(exc.id, {
+																		dozen: v === "" ? 0 : Number(v),
+																		loss: displayLoss,
+																	});
+																}}
+															/>
+															<span className="text-muted-foreground">/</span>
+															<Input
+																type="number"
+																min={0}
+																className="h-8 w-16 text-center"
+																placeholder={String(exc.closedQtyLoss)}
+																value={displayLoss}
+																onChange={(e) => {
+																	const v = e.target.value;
+																	handleManualAmountChange(exc.id, {
+																		dozen: displayDozen,
+																		loss: v === "" ? 0 : Number(v),
+																	});
+																}}
+															/>
+														</div>
+													) : (
+														`${closedDozen} / ${closedLoss}`
+													)}
 												</TableCell>
 												<TableCell className="text-center">
 													<span
@@ -385,25 +444,32 @@ function ExceptionsComponent() {
 													</span>
 												</TableCell>
 												<TableCell>
-													<Select
-														value={selectedAction || ""}
-														onValueChange={(value) =>
-															handleActionChange(
-																exc.id,
-																value as "tally" | "compensate",
-															)
-														}
-													>
-														<SelectTrigger className="w-[130px]">
-															<SelectValue placeholder="Select..." />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="tally">Tally</SelectItem>
-															<SelectItem value="compensate">
-																Compensate
-															</SelectItem>
-														</SelectContent>
-													</Select>
+													<div className="flex flex-col gap-2">
+														<Select
+															value={selectedAction || ""}
+															onValueChange={(value) =>
+																handleActionChange(
+																	exc.id,
+																	value as StockCountAction,
+																)
+															}
+														>
+															<SelectTrigger className="w-[160px]">
+																<SelectValue placeholder="Select..." />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="tally_to_opening">
+																	Tally to opening
+																</SelectItem>
+																<SelectItem value="tally_to_stock_count">
+																	Tally to Stock Count
+																</SelectItem>
+																<SelectItem value="manual_key_in">
+																	Manual Key in amount
+																</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
 												</TableCell>
 												<TableCell className="text-center">
 													{isApproved ? (
