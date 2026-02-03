@@ -170,3 +170,34 @@ export interface UpdateStockUnitInput {
 	isActive?: boolean;
 	updatedBy: string;
 }
+
+export interface Rack {
+	rackId: string;
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface RackPaginatedResponse {
+	query: Rack[];
+	pagination: Pagination;
+}
+
+export interface CreateRackInput {
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateRackInput {
+	rackRow?: string;
+	rackColumn?: string;
+	rackLevel?: string;
+	updatedBy: string;
+}
