@@ -81,10 +81,12 @@ export const Route = createFileRoute("/admin/transfers")({
 });
 
 const transferStatuses: TransferStatus[] = [
-	"New",
-	"Accepted",
-	"Rejected",
-	"DO_Created",
+	"preparing",
+	"in-transit",
+	"to-ship",
+	"cancel",
+	"return",
+	"other",
 ];
 
 const locations = [
@@ -300,10 +302,12 @@ function TransfersRouteComponent() {
 		},
 		{
 			byStatus: {
-				New: 0,
-				Accepted: 0,
-				Rejected: 0,
-				DO_Created: 0,
+				preparing: 0,
+				"in-transit": 0,
+				"to-ship": 0,
+				cancel: 0,
+				return: 0,
+				other: 0,
 			} as Record<TransferStatus, number>,
 			total: 0,
 		},
@@ -311,12 +315,14 @@ function TransfersRouteComponent() {
 
 	const getStatusColor = (status: TransferStatus) => {
 		const colors: Record<TransferStatus, string> = {
-			New: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-			Accepted: "bg-green-500/10 text-green-600 border-green-500/20",
-			Rejected: "bg-red-500/10 text-red-600 border-red-500/20",
-			DO_Created: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+			preparing: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+			"in-transit": "bg-blue-500/10 text-blue-600 border-blue-500/20",
+			"to-ship": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+			cancel: "bg-red-500/10 text-red-600 border-red-500/20",
+			return: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+			other: "bg-gray-500/10 text-gray-600 border-gray-500/20",
 		};
-		return colors[status];
+		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
 	};
 
 	const getNetSuiteStatusColor = (status?: string) => {
@@ -330,8 +336,31 @@ function TransfersRouteComponent() {
 	};
 
 	const formatStatus = (status: string) => {
-		if (status === "DO_Created") return "DO Created";
+		if (status === "to-ship") return "To Ship";
+		if (status === "in-transit") return "In Transit";
+		if (status === "preparing") return "Preparing";
+		if (status === "cancel") return "Cancel";
+		if (status === "return") return "Return";
+		if (status === "other") return "Other";
 		return status;
+	};
+
+	const getTransferStatusColor = (status: TransferStatus) => {
+		const colors: Record<TransferStatus, string> = {
+			preparing:
+				"!text-yellow-600 data-[highlighted]:!bg-yellow-500/10 data-[highlighted]:!text-yellow-700 focus:!bg-yellow-500/10 focus:!text-yellow-700",
+			"in-transit":
+				"!text-blue-600 data-[highlighted]:!bg-blue-500/10 data-[highlighted]:!text-blue-700 focus:!bg-blue-500/10 focus:!text-blue-700",
+			"to-ship":
+				"!text-indigo-600 data-[highlighted]:!bg-indigo-500/10 data-[highlighted]:!text-indigo-700 focus:!bg-indigo-500/10 focus:!text-indigo-700",
+			cancel:
+				"!text-red-600 data-[highlighted]:!bg-red-500/10 data-[highlighted]:!text-red-700 focus:!bg-red-500/10 focus:!text-red-700",
+			"return":
+				"!text-orange-600 data-[highlighted]:!bg-orange-500/10 data-[highlighted]:!text-orange-700 focus:!bg-orange-500/10 focus:!text-orange-700",
+			other:
+				"!text-gray-600 data-[highlighted]:!bg-gray-500/10 data-[highlighted]:!text-gray-700 focus:!bg-gray-500/10 focus:!text-gray-700",
+		};
+		return colors[status] || "text-gray-600";
 	};
 
 	const handleViewTransfer = (transfer: TransferDetail) => {
@@ -619,7 +648,11 @@ function TransfersRouteComponent() {
 									<SelectContent>
 										<SelectItem value="ALL">All Status</SelectItem>
 										{transferStatuses.map((status) => (
-											<SelectItem key={status} value={status}>
+											<SelectItem
+												key={status}
+												value={status}
+												className={getTransferStatusColor(status)}
+											>
 												{formatStatus(status)}
 											</SelectItem>
 										))}
@@ -665,7 +698,7 @@ function TransfersRouteComponent() {
 									<TableHead>Region</TableHead>
 									<TableHead>DO Created?</TableHead>
 									<TableHead>Status</TableHead>
-									<TableHead>NetSuite</TableHead>
+									<TableHead>NetSuite (API)</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -703,7 +736,9 @@ function TransfersRouteComponent() {
 												</TableCell>
 											</TableRow>,
 											...dateTransfers.map((transfer) => {
-												const doCreated = transfer.status === "DO_Created";
+												const doCreated =
+													transfer.status === "to-ship" ||
+													transfer.status === "in-transit";
 												return (
 													<TableRow key={transfer.id}>
 														<TableCell className="font-medium">
@@ -762,7 +797,7 @@ function TransfersRouteComponent() {
 																	<Eye className="h-4 w-4" />
 																</Button>
 																{hasPermission("to:accept") &&
-																	transfer.status === "New" && (
+																	transfer.status === "preparing" && (
 																		<Button
 																			variant="ghost"
 																			size="icon"
@@ -775,7 +810,7 @@ function TransfersRouteComponent() {
 																		</Button>
 																	)}
 																{hasPermission("to:reject") &&
-																	transfer.status === "New" && (
+																	transfer.status === "preparing" && (
 																		<Button
 																			variant="ghost"
 																			size="icon"
@@ -852,7 +887,10 @@ function TransfersRouteComponent() {
 
 			{/* View Delivery Order Dialog */}
 			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+					<DialogContent
+						className="max-h-[90vh] overflow-y-auto"
+						style={{ maxWidth: "min(95vw, 1400px)" }}
+					>
 					<DialogHeader>
 						<DialogTitle>Delivery Order Details</DialogTitle>
 						<DialogDescription>
@@ -865,7 +903,7 @@ function TransfersRouteComponent() {
 								<div className="grid gap-4 sm:grid-cols-3">
 									<div>
 										<Label className="text-xs text-muted-foreground">
-											TO Number
+											PO Number
 										</Label>
 										<p className="text-sm font-medium">
 											{selectedTransfer.transferOrderNumber}
@@ -926,7 +964,7 @@ function TransfersRouteComponent() {
 									</div>
 									<div>
 										<Label className="text-xs text-muted-foreground">
-											NetSuite Status
+											NetSuite Status (API)
 										</Label>
 										<div className="flex items-center gap-2">
 											<Badge
@@ -1037,7 +1075,7 @@ function TransfersRouteComponent() {
 								{/* Integration Log */}
 								<IntegrationLogPanel
 									entityId={selectedTransfer.id}
-									entityType="to"
+									entityType="po"
 									onRetry={(logId) => {
 										console.log("Retry log:", logId);
 									}}
@@ -1051,7 +1089,7 @@ function TransfersRouteComponent() {
 										Close
 									</Button>
 									{hasPermission("to:accept") &&
-										selectedTransfer.status === "New" && (
+										selectedTransfer.status === "preparing" && (
 											<Button
 												onClick={() => {
 													setIsViewOpen(false);
@@ -1063,7 +1101,7 @@ function TransfersRouteComponent() {
 											</Button>
 										)}
 									{hasPermission("to:reject") &&
-										selectedTransfer.status === "New" && (
+										selectedTransfer.status === "preparing" && (
 											<Button
 												variant="destructive"
 												onClick={() => {
@@ -1126,7 +1164,7 @@ function TransfersRouteComponent() {
 								if (selectedTransfer) {
 									statusMutation.mutate({
 										id: selectedTransfer.id,
-										status: "Accepted",
+										status: "to-ship",
 									});
 									setIsAcceptDialogOpen(false);
 								}
@@ -1178,7 +1216,7 @@ function TransfersRouteComponent() {
 								if (selectedTransfer && rejectReason) {
 									statusMutation.mutate({
 										id: selectedTransfer.id,
-										status: "Rejected",
+										status: "cancel",
 									});
 									setIsRejectDialogOpen(false);
 									setRejectReason("");

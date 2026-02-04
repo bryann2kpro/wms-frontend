@@ -30,7 +30,7 @@ export interface IntegrationLog {
 
 interface IntegrationLogPanelProps {
 	entityId: string;
-	entityType: "grn" | "to" | "do" | "invoice";
+	entityType: "grn" | "po" | "do" | "invoice";
 	onRetry?: (logId: string) => void;
 	className?: string;
 }
@@ -76,7 +76,7 @@ async function fetchIntegrationLogs(
 function getActionName(entityType: string): string {
 	const actions: Record<string, string> = {
 		grn: "GRN Push to NetSuite",
-		to: "TO Pull from NetSuite",
+		po: "PO Pull from NetSuite",
 		do: "Delivery Confirmation Push",
 		invoice: "Invoice Push to NetSuite",
 	};
@@ -86,7 +86,7 @@ function getActionName(entityType: string): string {
 function getEndpoint(entityType: string): string {
 	const endpoints: Record<string, string> = {
 		grn: "/api/netsuite/grn",
-		to: "/api/netsuite/transfer-orders",
+		po: "/api/netsuite/transfer-orders",
 		do: "/api/netsuite/delivery-confirmation",
 		invoice: "/api/netsuite/invoice",
 	};

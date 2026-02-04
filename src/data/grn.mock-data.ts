@@ -188,18 +188,47 @@ export async function getGRNs(filters: GRNListFilters): Promise<GRNListResult> {
 	};
 }
 
+export interface CreateGRNLineItemInput {
+	sku: string;
+	description?: string;
+	qty: number;
+	uom?: string;
+	unitPrice?: number;
+}
+
 export interface CreateGRNInput {
 	grnNumber: string;
 	poReference: string;
 	supplierDO: string;
 	receivedDate: Date;
 	notes?: string;
+	items?: CreateGRNLineItemInput[];
 }
 
 export async function createGRN(input: CreateGRNInput): Promise<GRNDetail> {
 	await delay(300);
 
 	const now = new Date();
+	const lineItems = (input.items ?? []).filter((i) => i.sku?.trim());
+	const grnItems: GRNItem[] =
+		lineItems.length > 0
+			? lineItems.map((it, idx) => ({
+					id: `${grnDetails.length + 1}-${idx + 1}`,
+					sku: it.sku.trim(),
+					description: it.description ?? "Item",
+					expectedQuantity: it.qty || 1,
+					receivedQuantity: 0,
+				}))
+			: [
+					{
+						id: `${grnDetails.length + 1}-1`,
+						sku: "SKU-NEW-001",
+						description: "Newly created item",
+						expectedQuantity: 1,
+						receivedQuantity: 0,
+					},
+				];
+	const totalItems = grnItems.reduce((s, i) => s + i.expectedQuantity, 0);
 	const newGRN: GRNDetail = {
 		id: (grnDetails.length + 1).toString(),
 		grnNumber: input.grnNumber,
@@ -212,16 +241,8 @@ export async function createGRN(input: CreateGRNInput): Promise<GRNDetail> {
 		totalAmount: 0,
 		createdBy: "Current User",
 		notes: input.notes,
-		items: [
-			{
-				id: `${grnDetails.length + 1}-1`,
-				sku: "SKU-NEW-001",
-				description: "Newly created item",
-				expectedQuantity: 1,
-				receivedQuantity: 0,
-			},
-		],
-		totalItems: 1,
+		items: grnItems,
+		totalItems,
 		receivedItems: 0,
 	};
 

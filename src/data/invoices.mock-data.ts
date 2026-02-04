@@ -18,6 +18,7 @@ export interface Invoice {
 	doId: string;
 	/** PO Number (not nullable) */
 	toNumber: string;
+	region: string;
 	outlet: string;
 	outletAddress?: string;
 	status: InvoiceStatus;
@@ -40,6 +41,7 @@ export interface InvoiceListFilters {
 	search?: string;
 	status?: InvoiceStatusFilter;
 	outlet?: string;
+	region?: string;
 	dateFrom?: Date;
 	dateTo?: Date;
 }
@@ -88,6 +90,7 @@ let invoices: Invoice[] = Array.from({ length: 25 }, (_, i) => {
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		doId: `do-${i}`,
 		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
+		region: faker.location.state(),
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,
@@ -136,7 +139,7 @@ export async function getInvoices(
 ): Promise<InvoiceListResult> {
 	await delay(300);
 
-	const { page, pageSize, search, status, outlet, dateFrom, dateTo } = filters;
+	const { page, pageSize, search, status, region, outlet, dateFrom, dateTo } = filters;
 
 	let filtered = [...invoices];
 
@@ -157,6 +160,10 @@ export async function getInvoices(
 
 	if (outlet) {
 		filtered = filtered.filter((inv) => inv.outlet === outlet);
+	}
+
+	if (region) {
+		filtered = filtered.filter((inv) => inv.region === region);
 	}
 
 	if (dateFrom) {
@@ -223,6 +230,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
 		doNumber: input.doNumber,
 		doId: input.doId,
 		toNumber: input.toNumber,
+		region: faker.location.state(),
 		outlet: input.outlet,
 		outletAddress: input.outletAddress,
 		status: "Issued",

@@ -16,6 +16,9 @@ export interface DOItem {
 	id: string;
 	sku: string;
 	description: string;
+	grnNumber: string;
+	doNumber: string;
+	deliveryDate: Date;
 	requiredQuantity: number;
 	pickedQuantity: number;
 	packedQuantity: number;
@@ -53,6 +56,7 @@ export interface DeliveryOrder {
 	doNumber: string;
 	/** PO Number (not nullable) */
 	toNumber: string;
+	region: string;
 	outlet: string;
 	outletAddress?: string;
 	status: DOStatus;
@@ -105,6 +109,9 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 	const status = statuses[i % statuses.length];
 
 	const items: DOItem[] = Array.from({ length: 3 + (i % 3) }, (_, j) => {
+		const grnNumber = `GRN-2024-${String(i + 1).padStart(4, "0")}`;
+		const doNumber = `DO-2024-${String(i + 1).padStart(4, "0")}`;
+		const deliveryDate = new Date(Date.now() + (i % 7) * 86400000);
 		const openingQtyDozen = faker.number.int({ min: 10, max: 100 });
 		const openingQtyLoss = faker.number.int({ min: 0, max: 5 });
 		const stockInDozen = faker.number.int({ min: 0, max: 20 });
@@ -121,6 +128,9 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 			id: `${i}-${j}`,
 			sku: `SKU-${String(i + 1).padStart(3, "0")}-${String(j + 1).padStart(2, "0")}`,
 			description: faker.commerce.productName(),
+			grnNumber: grnNumber as string,
+			doNumber: doNumber as string,
+			deliveryDate: deliveryDate as Date,
 			requiredQuantity: 10 + j * 5,
 			pickedQuantity:
 				status === "CREATED"
@@ -174,6 +184,7 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 		id: `do-${i}`,
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
+		region: faker.location.state(),
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,

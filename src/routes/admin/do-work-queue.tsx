@@ -112,6 +112,9 @@ function DOWorkQueueComponent() {
 								<TableHead className="w-16">Item</TableHead>
 								<TableHead>SKU</TableHead>
 								<TableHead>Description</TableHead>
+								<TableHead>GRN</TableHead>
+								<TableHead>DO</TableHead>
+								<TableHead>Date</TableHead>
 								<TableHead className="text-center">
 									Opening Qty
 									<br />
@@ -164,6 +167,9 @@ function DOWorkQueueComponent() {
 										<TableCell className="max-w-[200px] truncate">
 											{item.description}
 										</TableCell>
+										<TableCell>{item.grnNumber}</TableCell>
+										<TableCell>{item.doNumber}</TableCell>
+										<TableCell>{item.deliveryDate?.toLocaleDateString() || "-"}</TableCell>
 										<TableCell className="text-center">
 											{item.openingQtyDozen} / {item.openingQtyLoss}
 										</TableCell>

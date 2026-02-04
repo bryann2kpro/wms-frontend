@@ -25,19 +25,19 @@ import {
 	ArrowRightLeft,
 	Receipt,
 } from "lucide-react";
+import { useMutation } from "@apollo/client/react";
+import {
+	GENERATE_REPORT_MUTATION,
+	type GenerateReportMutationData,
+	type GenerateReportMutationVariables,
+} from "@/lib/graphql/reports";
+import { downloadPdfFromBase64 } from "@/lib/reports";
 
 export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
 });
 
 type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
-
-interface ReportConfig {
-	type: ReportType;
-	dateFrom?: Date;
-	dateTo?: Date;
-	format: "PDF" | "Excel" | "TXT";
-}
 
 const reportTypes: {
 	value: ReportType;
@@ -57,21 +57,32 @@ function ReportsComponent() {
 	const [dateTo, setDateTo] = useState("");
 	const [format, setFormat] = useState<"PDF" | "Excel" | "TXT">("PDF");
 
+	const [generateReportMutation, { loading: generatingReport }] = useMutation<
+		GenerateReportMutationData,
+		GenerateReportMutationVariables
+	>(GENERATE_REPORT_MUTATION);
+
 	const handleGenerateReport = async () => {
 		if (!selectedReport) return;
 
-		// Mock report generation
-		const config: ReportConfig = {
-			type: selectedReport,
-			dateFrom: dateFrom ? new Date(dateFrom) : undefined,
-			dateTo: dateTo ? new Date(dateTo) : undefined,
-			format,
-		};
+		// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
+		if (format === "PDF" && (selectedReport === "Movement" || selectedReport === "InvoiceSummary")) {
+			const reportType = selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
+			const input: GenerateReportMutationVariables["input"] = {
+				type: reportType,
+				...(dateFrom && { dateFrom }),
+				...(dateTo && { dateTo }),
+			};
+			const result = await generateReportMutation({ variables: { input } });
+			const payload = result.data?.generateReport;
+			if (payload?.pdfBase64 && payload?.filename) {
+				downloadPdfFromBase64(payload.pdfBase64, payload.filename);
+			}
+			return;
+		}
 
-		// Simulate report generation
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-
-		// Mock download
+		// Other report types or formats: mock download
+		await new Promise((resolve) => setTimeout(resolve, 800));
 		const blob = new Blob([`Mock ${selectedReport} Report`], {
 			type:
 				format === "PDF"
@@ -182,11 +193,11 @@ function ReportsComponent() {
 						</div>
 						<Button
 							onClick={handleGenerateReport}
-							disabled={!selectedReport}
+							disabled={!selectedReport || generatingReport}
 							className="w-full"
 						>
 							<Download className="mr-2 h-4 w-4" />
-							Generate & Download Report
+							{generatingReport ? "Generating…" : "Generate & Download Report"}
 						</Button>
 					</CardContent>
 				</Card>

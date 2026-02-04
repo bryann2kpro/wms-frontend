@@ -2,7 +2,7 @@ import type { TransferOrder } from "./dashboard.mock-data";
 import { mockTransferOrders as baseTransfers } from "./dashboard.mock-data";
 import { BACKEND_DAY_OF_WEEK } from "@/lib/utils";
 
-export type TransferStatus = "New" | "Accepted" | "Rejected" | "DO_Created";
+export type TransferStatus = "preparing" | "in-transit" | "to-ship" | "cancel" | "return" | "other";
 export type NetSuiteStatus = "synced" | "pending" | "error" | undefined;
 
 export interface TransferItem {
@@ -144,15 +144,15 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Standard inventory item",
 			quantity: 20,
 			pickedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 20
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 10
 						: 0,
 			packedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 20
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 5
 						: 0,
 		},
@@ -162,15 +162,15 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Secondary item",
 			quantity: 15,
 			pickedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 15
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 8
 						: 0,
 			packedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 15
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 3
 						: 0,
 		},
@@ -180,15 +180,15 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 			description: "Tertiary item",
 			quantity: 10,
 			pickedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 10
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 5
 						: 0,
 			packedQuantity:
-				transfer.status === "completed" || transfer.status === "in_transit"
+				transfer.status === "to-ship" || transfer.status === "in-transit"
 					? 10
-					: transfer.status === "pending"
+					: transfer.status === "preparing"
 						? 2
 						: 0,
 		},
@@ -197,22 +197,23 @@ let transferDetails: TransferDetail[] = baseTransfers.map((transfer, index) => {
 	const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 	// Map old statuses to new ones for mock data
 	const statusMap: Record<string, TransferStatus> = {
-		completed: "DO_Created",
-		cancelled: "Rejected",
-		in_transit: "Accepted",
-		pending: "Accepted",
-		draft: "New",
+		"To Ship": "to-ship",
+		"Cancel": "cancel",
+		"in-transit": "in-transit",
+		"preparing": "preparing",
+		"return": "return",
+		"other": "other",
 	};
-	const status: TransferStatus = statusMap[transfer.status] || "New";
+	const status: TransferStatus = statusMap[transfer.status] || "preparing";
 
 	const netsuiteStatus: NetSuiteStatus =
-		status === "DO_Created"
+		status === "to-ship"
 			? index % 3 === 0
 				? "synced"
 				: index % 3 === 1
 					? "error"
 					: "pending"
-			: status === "Accepted"
+			: status === "preparing"
 				? index % 2 === 0
 					? "synced"
 					: "pending"
@@ -244,7 +245,7 @@ const extraTransfersForNextAndPast: Omit<TransferDetail, "expectedDeliveryDate" 
 const nextTuesday = getDayInCurrentWeek(BACKEND_DAY_OF_WEEK.TUESDAY);
 const nextThursday = getDayInCurrentWeek(BACKEND_DAY_OF_WEEK.THURSDAY);
 const outlets = ["Outlet North", "Outlet South", "Outlet East", "Outlet West", "Outlet Central"];
-const statuses: TransferStatus[] = ["New", "Accepted", "DO_Created"];
+const statuses: TransferStatus[] = ["preparing", "in-transit", "to-ship", "cancel", "return", "other"];
 for (let i = 0; i < 4; i++) {
 	const base = baseTransfers[i % baseTransfers.length];
 	const region = REGIONS[i % REGIONS.length];
@@ -260,7 +261,7 @@ for (let i = 0; i < 4; i++) {
 			{ id: `next-${i}-1`, sku: `SKU-N${i}01`, description: "Item", quantity: 10, pickedQuantity: 0, packedQuantity: 0 },
 		],
 		totalItems: 10,
-		netsuiteStatus: i % 2 === 0 ? "pending" : "synced",
+		netsuiteStatus: i % 2 === 0 ? "pending" : "synced" as NetSuiteStatus,
 		regionName: region.name,
 		regionCode: region.code,
 	} as TransferDetail);
@@ -300,7 +301,7 @@ for (let i = 0; i < 6; i++) {
 		transferOrderNumber: `PO-2025-P${i + 1}`,
 		fromLocation: base.fromLocation,
 		toLocation: pastOutlets[i],
-		status: (["DO_Created", "DO_Created", "Accepted", "DO_Created", "Rejected", "DO_Created"] as TransferStatus[])[i],
+		status: (["preparing", "in-transit", "to-ship", "cancel", "return", "other"] as TransferStatus[])[i],
 		createdDate,
 		expectedDeliveryDate: new Date(expectedDeliveryDate.getTime()),
 		createdBy: i % 2 === 0 ? "John Doe" : "Jane Smith",
@@ -317,10 +318,12 @@ for (let i = 0; i < 6; i++) {
 
 function buildSummary(source: TransferDetail[]): TransferSummary {
 	const initial: Record<TransferStatus, number> = {
-		New: 0,
-		Accepted: 0,
-		Rejected: 0,
-		DO_Created: 0,
+		"in-transit": 0,
+		preparing: 0,
+		"to-ship": 0,
+		cancel: 0,
+		return: 0,
+		other: 0,
 	};
 
 	const byStatus = source.reduce((acc, transfer) => {
@@ -391,7 +394,7 @@ export async function createTransfer(
 		transferOrderNumber: input.transferOrderNumber,
 		fromLocation: input.fromLocation,
 		toLocation: input.toLocation,
-		status: "New",
+		status: "preparing",
 		createdDate: now,
 		expectedDeliveryDate: input.expectedDeliveryDate,
 		createdBy: "Current User",

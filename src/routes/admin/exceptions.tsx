@@ -192,7 +192,7 @@ function ExceptionsComponent() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Exeptions</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
 					<p className="text-muted-foreground">
 						Manage shortage and damage reports
 					</p>
@@ -246,16 +246,16 @@ function ExceptionsComponent() {
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Exception List</CardTitle>
+							<CardTitle>Inventory List</CardTitle>
 							<CardDescription>
-								View and manage all exception reports
+								View and manage all inventory reports
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search exceptions..."
+									placeholder="Search inventory..."
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
@@ -329,6 +329,7 @@ function ExceptionsComponent() {
 										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead>Stock Count</TableHead>
+									<TableHead>Reason</TableHead>
 									<TableHead className="text-center">Approval</TableHead>
 									<TableHead className="text-center">Close Action</TableHead>
 								</TableRow>
@@ -340,7 +341,7 @@ function ExceptionsComponent() {
 											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
-											Loading exceptions...
+											Loading inventory...
 										</TableCell>
 									</TableRow>
 								) : exceptions.length === 0 ? (
@@ -349,7 +350,7 @@ function ExceptionsComponent() {
 											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
-											No exceptions found.
+											No inventory found.
 										</TableCell>
 									</TableRow>
 								) : (
@@ -439,8 +440,8 @@ function ExceptionsComponent() {
 																: ""
 														}
 													>
-														{diffDozen > 0 ? `+${diffDozen}` : diffDozen} /{" "}
-														{diffLoss > 0 ? `+${diffLoss}` : diffLoss}
+														{diffDozen > 0 ? `-${diffDozen}` : diffDozen} /{" "}
+														{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
 													</span>
 												</TableCell>
 												<TableCell>
@@ -471,6 +472,7 @@ function ExceptionsComponent() {
 														</Select>
 													</div>
 												</TableCell>
+												<TableCell>{exc.reason}</TableCell>
 												<TableCell className="text-center">
 													{isApproved ? (
 														<Badge
@@ -519,7 +521,7 @@ function ExceptionsComponent() {
 								<span className="font-medium">
 									{Math.min(data.page * data.pageSize, data.total)}
 								</span>{" "}
-								of <span className="font-medium">{data.total}</span> exceptions
+								of <span className="font-medium">{data.total}</span> inventory
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -553,9 +555,9 @@ function ExceptionsComponent() {
 			<Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Approve Exception</DialogTitle>
+						<DialogTitle>Approve Inventory</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to approve this exception? This will trigger
+							Are you sure you want to approve this inventory? This will trigger
 							an inventory adjustment.
 						</DialogDescription>
 					</DialogHeader>
@@ -580,9 +582,9 @@ function ExceptionsComponent() {
 			<Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Reject Exception</DialogTitle>
+						<DialogTitle>Reject Inventory</DialogTitle>
 						<DialogDescription>
-							Please provide a reason for rejecting this exception.
+							Please provide a reason for rejecting this inventory.
 						</DialogDescription>
 					</DialogHeader>
 					<form

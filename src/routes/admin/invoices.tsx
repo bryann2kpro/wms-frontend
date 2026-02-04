@@ -838,6 +838,7 @@ function InvoicesComponent() {
 									<TableHead>Invoice Number</TableHead>
 									<TableHead>DO Number</TableHead>
 									<TableHead>PO Number</TableHead>
+									<TableHead>Region</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Amount</TableHead>
 									<TableHead>Issued Date</TableHead>
@@ -872,6 +873,7 @@ function InvoicesComponent() {
 											</TableCell>
 											<TableCell>{invoice.doNumber}</TableCell>
 											<TableCell>{invoice.toNumber}</TableCell>
+											<TableCell>{invoice.region}</TableCell>
 											<TableCell>{invoice.outlet}</TableCell>
 											<TableCell>
 												{formatCurrency(invoice.totalAmount)}
