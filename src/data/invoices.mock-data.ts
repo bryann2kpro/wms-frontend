@@ -11,6 +11,14 @@ export interface InvoiceItem {
 	totalPrice?: number;
 }
 
+const regions = [
+	"Klang Valley",
+	"Perlis",
+	"North",
+	"South",
+	"East Coast",
+]
+
 export interface Invoice {
 	id: string;
 	invoiceNumber: string;
@@ -90,7 +98,7 @@ let invoices: Invoice[] = Array.from({ length: 25 }, (_, i) => {
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		doId: `do-${i}`,
 		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
-		region: faker.location.state(),
+		region: regions[i % regions.length],
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,
