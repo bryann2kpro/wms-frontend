@@ -4,3 +4,4 @@ export * from "./regions";
 export * from "./delivery-schedules";
 export * from "./outlets";
 export * from "./stock-units";
+export * from "./racks";

@@ -3,6 +3,11 @@ import { faker } from "@faker-js/faker";
 export type ExceptionType = "SHORTAGE" | "DAMAGE";
 export type ExceptionStatus = "pending" | "approved" | "rejected";
 
+export type StockCountAction =
+	| "tally_to_opening"
+	| "tally_to_stock_count"
+	| "manual_key_in";
+
 export interface Exception {
 	id: string;
 	doNumber: string;
@@ -12,13 +17,14 @@ export interface Exception {
 	description: string;
 	type: ExceptionType;
 	quantity: number;
+	reason: string;
 	// New fields for stock reconciliation
 	openingQtyDozen: number;
 	openingQtyLoss: number;
 	stockCountDate: Date;
 	closedQtyDozen: number;
 	closedQtyLoss: number;
-	action?: "tally" | "compensate";
+	action?: StockCountAction;
 	isApproved: boolean;
 	notes?: string;
 	photoUrl?: string;
@@ -66,7 +72,7 @@ let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 	const statuses: ExceptionStatus[] = ["pending", "approved", "rejected"];
 	const status = statuses[i % statuses.length];
 	const type: ExceptionType = i % 2 === 0 ? "SHORTAGE" : "DAMAGE";
-
+	const reason = 'Item damaged during delivery';
 	// Generate random quantities for stock reconciliation
 	const openingQtyDozen = faker.number.int({ min: 10, max: 100 });
 	const openingQtyLoss = faker.number.int({ min: 0, max: 5 });
@@ -82,6 +88,7 @@ let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 		description: faker.commerce.productName(),
 		type,
 		quantity: 1 + (i % 5),
+		reason,
 		// New stock reconciliation fields
 		openingQtyDozen,
 		openingQtyLoss,

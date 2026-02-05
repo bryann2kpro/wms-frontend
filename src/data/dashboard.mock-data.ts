@@ -42,7 +42,7 @@ export interface TransferOrder {
 	transferOrderNumber: string;
 	fromLocation: string;
 	toLocation: string;
-	status: "pending" | "in_transit" | "completed" | "cancelled";
+	status: "preparing" | "in-transit" | "to-ship" | "cancel" | "return" | "other";
 	createdAt: Date;
 	itemCount: number;
 }
@@ -158,7 +158,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-001",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse B",
-		status: "in_transit",
+		status: "in-transit",
 		createdAt: new Date("2024-01-15"),
 		itemCount: 45,
 	},
@@ -167,7 +167,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-002",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse C",
-		status: "pending",
+		status: "preparing",
 		createdAt: new Date("2024-01-16"),
 		itemCount: 32,
 	},
@@ -176,7 +176,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-003",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse D",
-		status: "completed",
+		status: "to-ship",
 		createdAt: new Date("2024-01-17"),
 		itemCount: 28,
 	},
@@ -185,7 +185,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-004",
 		fromLocation: "Warehouse C",
 		toLocation: "Warehouse A",
-		status: "in_transit",
+		status: "in-transit",
 		createdAt: new Date("2024-01-18"),
 		itemCount: 56,
 	},
@@ -194,7 +194,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-005",
 		fromLocation: "Warehouse D",
 		toLocation: "Warehouse B",
-		status: "pending",
+		status: "preparing",
 		createdAt: new Date("2024-01-19"),
 		itemCount: 19,
 	},
@@ -203,7 +203,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-006",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse C",
-		status: "in_transit",
+		status: "in-transit",
 		createdAt: new Date("2024-01-20"),
 		itemCount: 67,
 	},
@@ -212,7 +212,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-007",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse D",
-		status: "completed",
+		status: "to-ship",
 		createdAt: new Date("2024-01-21"),
 		itemCount: 41,
 	},
@@ -281,7 +281,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "8",
 		deliveryNumber: "DEL-2024-008",
 		customerName: "Global Trading Co",
-		status: "scheduled",
+		status: "CREATED",
 		scheduledDate: new Date("2024-01-29"),
 		totalAmount: 16700.0,
 	},

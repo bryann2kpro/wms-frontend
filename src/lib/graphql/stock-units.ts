@@ -79,6 +79,30 @@ export const DELETE_STOCK_UNIT_MUTATION = gql`
 	}
 `;
 
+// Simple query without pagination (matches user's API format)
+export const STOCK_UNITS_SIMPLE_QUERY = gql`
+	query StockUnitsSimple {
+		stockUnits {
+			query {
+				stockUnitId
+				unitName
+				unitCode
+				isActive
+				createdAt
+				updatedAt
+				createdBy
+				updatedBy
+			}
+		}
+	}
+`;
+
+export type StockUnitsSimpleQueryData = {
+	stockUnits: {
+		query: StockUnit[];
+	};
+};
+
 export type StockUnitsQueryVariables = {
 	filter?: {
 		stockUnitId?: string;

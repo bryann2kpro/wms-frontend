@@ -70,3 +70,30 @@ export const permissionTypeColors: Record<string, string> = {
   Update: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
   Delete: "bg-red-500/10 text-red-600 border-red-500/20",
 };
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
+  }).format(amount);
+}
+
+/**
+ * Backend day-of-week convention: Monday = 1, Tuesday = 2, ..., Sunday = 7.
+ * Use these when comparing or sending dayOfWeek to the API.
+ */
+export const BACKEND_DAY_OF_WEEK = {
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+  SUNDAY: 7,
+} as const;
+
+/** Convert a Date to backend day-of-week (Monday = 1, ..., Sunday = 7). */
+export function getBackendDayOfWeek(date: Date): number {
+  const js = date.getDay(); // JS: 0 = Sun, 1 = Mon, ..., 6 = Sat
+  return js === 0 ? BACKEND_DAY_OF_WEEK.SUNDAY : js;
+}

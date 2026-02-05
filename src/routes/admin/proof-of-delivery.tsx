@@ -142,6 +142,7 @@ function DeliveryProofComponent() {
 								<TableRow>
 									<TableHead>PO Number</TableHead>
 									<TableHead>DO Number</TableHead>
+									<TableHead>Region</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Dispatched Time</TableHead>
 									<TableHead>Delivered Time</TableHead>
@@ -172,11 +173,11 @@ function DeliveryProofComponent() {
 										const daysPending = calculateDaysPending(do_.deliveredAt);
 										return (
 											<TableRow key={do_.id}>
-												<TableCell>{do_.toNumber || "-"}</TableCell>
+												<TableCell>{do_.toNumber}</TableCell>
 												<TableCell className="font-medium">
 													{do_.doNumber}
 												</TableCell>
-												
+												<TableCell>{do_.region}</TableCell>
 												<TableCell>{do_.outlet}</TableCell>
 												<TableCell>
 													{do_.dispatchedAt

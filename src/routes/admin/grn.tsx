@@ -78,6 +78,8 @@ import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
+import { useQuery as useApolloQuery } from "@apollo/client/react";
+import { STOCK_UNITS_QUERY, type StockUnitsQueryData, type StockUnitsQueryVariables } from "@/lib/graphql/stock-units";
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
@@ -88,6 +90,14 @@ const grnStatuses: GRNStatus[] = [
 	"Submitted",
 	"Failed",
 ];
+
+export type CreateGRNLineItem = {
+	sku: string;
+	description: string;
+	qty: number;
+	uom: string;
+	unitPrice: number;
+};
 
 const createGRNSchema = z.object({
 	grnNumber: z
@@ -111,10 +121,10 @@ function GRNRouteComponent() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
-	const [grnItems, setGrnItems] = useState<Array<{ sku: string; qty: number }>>(
-		[],
-	);
-	const [skuSearch, setSkuSearch] = useState("");
+	const { data: stockUnitsData } = useApolloQuery<
+		StockUnitsQueryData
+	>(STOCK_UNITS_QUERY);
+	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
 
 	const queryClient = useQueryClient();
 
@@ -153,6 +163,7 @@ function GRNRouteComponent() {
 			supplierDO: "",
 			receivedDate: "",
 			notes: "",
+			items: [] as CreateGRNLineItem[],
 		},
 		// validators: {
 		// 	onBlur: createGRNSchema,
@@ -166,6 +177,7 @@ function GRNRouteComponent() {
 				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
+				items: value.items ?? [],
 			});
 			form.reset();
 		},
@@ -225,6 +237,8 @@ function GRNRouteComponent() {
 						setIsCreateOpen(open);
 						if (!open) {
 							form.reset();
+							form.setFieldValue("items", []);
+							setProofFiles([]);
 						}
 					}}
 				>
@@ -234,7 +248,10 @@ function GRNRouteComponent() {
 							Create GRN
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+					<DialogContent
+						className="max-h-[90vh] overflow-y-auto"
+						style={{ maxWidth: "min(95vw, 1400px)" }}
+					>
 						<DialogHeader className="pb-4">
 							<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
 								<Package className="h-5 w-5 text-primary" />
@@ -340,6 +357,7 @@ function GRNRouteComponent() {
 																		value={field.state.value}
 																		placeholder="DO-2024-001"
 																		onBlur={field.handleBlur}
+																		required
 																		onChange={(e) =>
 																			field.handleChange(e.target.value)
 																		}
@@ -386,85 +404,122 @@ function GRNRouteComponent() {
 											</CardContent>
 										</Card>
 
-										{/* Line Items Section */}
+										{/* Line Items Section - Form-based */}
 										<Card>
 											<CardHeader className="pb-3">
-												<CardTitle className="text-base font-semibold flex items-center gap-2">
-													<Package className="h-4 w-4 text-muted-foreground" />
-													Line Items
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<div className="flex gap-2">
-													<div className="relative flex-1">
-														<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-														<Input
-															placeholder="Search or enter SKU..."
-															value={skuSearch}
-															onChange={(e) => setSkuSearch(e.target.value)}
-															className="pl-9"
-															onKeyDown={(e) => {
-																if (e.key === "Enter") {
-																	e.preventDefault();
-																	if (skuSearch.trim()) {
-																		setGrnItems([
-																			...grnItems,
-																			{ sku: skuSearch.trim(), qty: 1 },
-																		]);
-																		setSkuSearch("");
-																	}
-																}
-															}}
-														/>
+												<div className="flex items-center justify-between gap-4">
+													<div>
+														<CardTitle className="text-base font-semibold flex items-center gap-2">
+															<Package className="h-4 w-4 text-muted-foreground" />
+															Line Items
+														</CardTitle>
+														<CardDescription className="text-xs mt-1">
+															Add line items and fill in the details below
+														</CardDescription>
 													</div>
-													<Button
-														type="button"
-														variant="outline"
-														onClick={() => {
-															if (skuSearch.trim()) {
-																setGrnItems([
-																	...grnItems,
-																	{ sku: skuSearch.trim(), qty: 1 },
-																]);
-																setSkuSearch("");
-															}
+													<form.Field name="items">
+														{(field) => {
+															const items =
+																(field.state.value as CreateGRNLineItem[]) ?? [];
+															return (
+																<Button
+																	type="button"
+																	variant="default"
+																	size="sm"
+																	onClick={() => {
+																		field.handleChange([
+																			...items,
+																			{
+																				sku: "",
+																				description: "",
+																				qty: 1,
+																				uom: "",
+																				unitPrice: 0,
+																			},
+																		]);
+																	}}
+																>
+																	<Plus className="mr-2 h-4 w-4" />
+																	Add Line Item
+																</Button>
+															);
 														}}
-														disabled={!skuSearch.trim()}
-													>
-														<Plus className="mr-2 h-4 w-4" />
-														Add Item
-													</Button>
+													</form.Field>
 												</div>
-												<div className="rounded-lg border">
-													<Table>
-														<TableHeader>
-															<TableRow>
-																<TableHead>SKU</TableHead>
-																<TableHead>Quantity</TableHead>
-																<TableHead className="text-right w-[80px]">
-																	Actions
-																</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{grnItems.length === 0 ? (
-																<TableRow>
-																	<TableCell
-																		colSpan={3}
-																		className="h-32 text-center"
-																	>
-																		<div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-																			<Package className="h-8 w-8 opacity-50" />
-																			<p className="text-sm">No items added yet</p>
-																			<p className="text-xs">Search and add SKUs above</p>
-																		</div>
-																	</TableCell>
-																</TableRow>
-															) : (
-																grnItems.map((item, index) => (
+											</CardHeader>
+											<CardContent>
+												<form.Field name="items">
+													{(field) => {
+														const items =
+															(field.state.value as CreateGRNLineItem[]) ?? [];
+														return (
+															<>
+																<div className="rounded-lg border">
+																	<Table>
+																		<TableHeader>
+																			<TableRow>
+																				<TableHead>SKU</TableHead>
+																				<TableHead>Description</TableHead>
+																				<TableHead>Qty</TableHead>
+																				<TableHead>UOM</TableHead>
+																				<TableHead className="text-right w-[80px]">
+																					Actions
+																				</TableHead>
+																			</TableRow>
+																		</TableHeader>
+																		<TableBody>
+																			{items.length === 0 ? (
+																				<TableRow>
+																					<TableCell
+																						colSpan={7}
+																						className="h-40 text-center"
+																					>
+																						<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+																							<div className="rounded-full bg-muted p-3">
+																								<Package className="h-10 w-10 opacity-60" />
+																							</div>
+																							<div>
+																								<p className="text-sm font-medium">
+																									No line items yet
+																								</p>
+																								<p className="text-xs mt-1">
+																									Click &quot;Add Line Item&quot; above to add your first item, then fill in the table
+																								</p>
+																							</div>
+																						</div>
+																					</TableCell>
+																				</TableRow>
+																			) : (
+																				items.map((item, index) => (
 																	<TableRow key={index}>
-																		<TableCell className="font-medium">
-																			{item.sku}
+																		<TableCell>
+																			<Input
+																				value={item.sku}
+																				onChange={(e) => {
+																					const newItems = [...items];
+																					newItems[index] = {
+																						...newItems[index],
+																						sku: e.target.value,
+																					};
+																					field.handleChange(newItems);
+																				}}
+																				placeholder="SKU"
+																				className="font-medium"
+																			/>
+																		</TableCell>
+																		<TableCell>
+																			<Input
+																				value={item.description}
+																				onChange={(e) => {
+																					const newItems = [...items];
+																					newItems[index] = {
+																						...newItems[index],
+																						description: e.target.value,
+																					};
+																					field.handleChange(newItems);
+																				}}
+																				placeholder="Description"
+																			/>
 																		</TableCell>
 																		<TableCell>
 																			<Input
@@ -472,14 +527,42 @@ function GRNRouteComponent() {
 																				min="1"
 																				value={item.qty}
 																				onChange={(e) => {
-																					const newItems = [...grnItems];
-																					newItems[index].qty = Number(
-																						e.target.value,
-																					);
-																					setGrnItems(newItems);
+																					const newItems = [...items];
+																					newItems[index] = {
+																						...newItems[index],
+																						qty: Number(e.target.value) || 1,
+																					};
+																					field.handleChange(newItems);
 																				}}
-																				className="w-24"
+																				className="w-20"
 																			/>
+																		</TableCell>
+																		<TableCell>
+																			<Select
+																				value={item.uom}
+																				onValueChange={(value) => {
+																					const newItems = [...items];
+																					newItems[index] = {
+																						...newItems[index],
+																						uom: value,
+																					};
+																					field.handleChange(newItems);
+																				}}
+																			>
+																				<SelectTrigger className="w-[120px]">
+																					<SelectValue placeholder="UOM" />
+																				</SelectTrigger>
+																				<SelectContent>
+																					{stockUnits.map((unit) => (
+																						<SelectItem
+																							key={unit.stockUnitId}
+																							value={unit.unitCode}
+																						>
+																							{unit.unitCode}
+																						</SelectItem>
+																					))}
+																				</SelectContent>
+																			</Select>
 																		</TableCell>
 																		<TableCell className="text-right">
 																			<Button
@@ -487,10 +570,8 @@ function GRNRouteComponent() {
 																				variant="ghost"
 																				size="icon"
 																				onClick={() => {
-																					setGrnItems(
-																						grnItems.filter(
-																							(_, i) => i !== index,
-																						),
+																					field.handleChange(
+																						items.filter((_, i) => i !== index),
 																					);
 																				}}
 																				className="text-destructive hover:text-destructive"
@@ -501,9 +582,13 @@ function GRNRouteComponent() {
 																	</TableRow>
 																))
 															)}
-														</TableBody>
-													</Table>
-												</div>
+																		</TableBody>
+																	</Table>
+																</div>
+															</>
+														);
+													}}
+												</form.Field>
 											</CardContent>
 										</Card>
 
@@ -572,7 +657,7 @@ function GRNRouteComponent() {
 													variant="outline"
 													onClick={() => {
 														setIsCreateOpen(false);
-														setGrnItems([]);
+														form.setFieldValue("items", []);
 														setProofFiles([]);
 													}}
 													disabled={isSubmitting}
@@ -694,7 +779,6 @@ function GRNRouteComponent() {
 									<TableHead>PO Reference</TableHead>
 									<TableHead>Supplier DO</TableHead>
 									<TableHead>Received Date</TableHead>
-									<TableHead>Items</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead className="text-right">Actions</TableHead>
 								</TableRow>
@@ -728,9 +812,6 @@ function GRNRouteComponent() {
 											<TableCell>{grn.supplierDO || "-"}</TableCell>
 											<TableCell>
 												{grn.receivedDate?.toLocaleDateString() || "-"}
-											</TableCell>
-											<TableCell>
-												{grn.receivedItems}/{grn.totalItems}
 											</TableCell>
 											<TableCell>
 												{grn.status ? (
@@ -846,7 +927,10 @@ function GRNRouteComponent() {
 
 			{/* View GRN Dialog */}
 			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-				<DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+				<DialogContent
+					className="max-h-[90vh] overflow-y-auto"
+					style={{ maxWidth: "min(95vw, 1400px)" }}
+				>
 					<DialogHeader>
 						<DialogTitle>GRN Details</DialogTitle>
 						<DialogDescription>

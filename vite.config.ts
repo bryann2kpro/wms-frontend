@@ -35,6 +35,9 @@ const config = defineConfig({
       },
     }),
   ],
+  server: {
+    allowedHosts: ['0.0.0.0', 'smee.gremoryyx.com']
+  }
 })
 
 export default config

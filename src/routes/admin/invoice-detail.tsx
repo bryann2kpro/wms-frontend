@@ -167,7 +167,7 @@ function InvoiceDetailComponent() {
 						<CardTitle className="text-sm font-medium">TO Number</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm font-medium">{invoice.toNumber || "-"}</p>
+						<p className="text-sm font-medium">{invoice.toNumber}</p>
 					</CardContent>
 				</Card>
 				<Card>

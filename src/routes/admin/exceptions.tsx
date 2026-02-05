@@ -39,10 +39,12 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
 	type Exception,
 	type ExceptionStatusFilter,
 	type ExceptionType,
+	type StockCountAction,
 	getExceptions,
 	approveException,
 	rejectException,
@@ -68,6 +70,7 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 function ExceptionsComponent() {
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
+	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -80,9 +83,13 @@ function ExceptionsComponent() {
 	const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 	const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
-	// Track actions selected per row
+	// Track actions selected per row (Stock Count)
 	const [rowActions, setRowActions] = useState<
-		Record<string, "tally" | "compensate" | undefined>
+		Record<string, StockCountAction | undefined>
+	>({});
+	// Manual key-in amounts per row (when action is "manual_key_in")
+	const [rowManualAmounts, setRowManualAmounts] = useState<
+		Record<string, { dozen: number; loss: number }>
 	>({});
 	// Track approval status per row (for demo)
 	const [rowApprovals, setRowApprovals] = useState<Record<string, boolean>>({});
@@ -92,8 +99,15 @@ function ExceptionsComponent() {
 	>({});
 
 	const handleActionChange = useCallback(
-		(id: string, action: "tally" | "compensate") => {
+		(id: string, action: StockCountAction) => {
 			setRowActions((prev) => ({ ...prev, [id]: action }));
+		},
+		[],
+	);
+
+	const handleManualAmountChange = useCallback(
+		(id: string, update: { dozen: number; loss: number }) => {
+			setRowManualAmounts((prev) => ({ ...prev, [id]: update }));
 		},
 		[],
 	);
@@ -178,7 +192,7 @@ function ExceptionsComponent() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Exeptions</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
 					<p className="text-muted-foreground">
 						Manage shortage and damage reports
 					</p>
@@ -232,16 +246,16 @@ function ExceptionsComponent() {
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Exception List</CardTitle>
+							<CardTitle>Inventory List</CardTitle>
 							<CardDescription>
-								View and manage all exception reports
+								View and manage all inventory reports
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search exceptions..."
+									placeholder="Search inventory..."
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
@@ -301,20 +315,21 @@ function ExceptionsComponent() {
 									<TableHead className="text-center">
 										Opening Qty
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead>Stock Count Date</TableHead>
 									<TableHead className="text-center">
 										Qty
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
 									<TableHead className="text-center">
 										Diff
 										<br />
-										<span className="text-xs font-normal">(Dozen/Loss)</span>
+										<span className="text-xs font-normal">({unitName}/Loss)</span>
 									</TableHead>
-									<TableHead>Action</TableHead>
+									<TableHead>Stock Count</TableHead>
+									<TableHead>Reason</TableHead>
 									<TableHead className="text-center">Approval</TableHead>
 									<TableHead className="text-center">Close Action</TableHead>
 								</TableRow>
@@ -326,7 +341,7 @@ function ExceptionsComponent() {
 											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
-											Loading exceptions...
+											Loading inventory...
 										</TableCell>
 									</TableRow>
 								) : exceptions.length === 0 ? (
@@ -335,20 +350,33 @@ function ExceptionsComponent() {
 											colSpan={10}
 											className="h-24 text-center text-muted-foreground"
 										>
-											No exceptions found.
+											No inventory found.
 										</TableCell>
 									</TableRow>
 								) : (
 									exceptions.map((exc, index) => {
+										const selectedAction = rowActions[exc.id] ?? exc.action;
+										const isManualKeyIn = selectedAction === "manual_key_in";
+										const baseClosed = closedQuantities[exc.id] ?? {
+											dozen: exc.closedQtyDozen,
+											loss: exc.closedQtyLoss,
+										};
 										const closedDozen =
-											closedQuantities[exc.id]?.dozen ?? exc.closedQtyDozen;
+											isManualKeyIn && rowManualAmounts[exc.id] != null
+												? rowManualAmounts[exc.id].dozen
+												: baseClosed.dozen;
 										const closedLoss =
-											closedQuantities[exc.id]?.loss ?? exc.closedQtyLoss;
+											isManualKeyIn && rowManualAmounts[exc.id] != null
+												? rowManualAmounts[exc.id].loss
+												: baseClosed.loss;
 										const diffDozen = exc.openingQtyDozen - closedDozen;
 										const diffLoss = exc.openingQtyLoss - closedLoss;
 										const isApproved =
 											rowApprovals[exc.id] ?? exc.isApproved;
-										const selectedAction = rowActions[exc.id] ?? exc.action;
+										const displayDozen =
+											rowManualAmounts[exc.id]?.dozen ?? baseClosed.dozen;
+										const displayLoss =
+											rowManualAmounts[exc.id]?.loss ?? baseClosed.loss;
 
 										return (
 											<TableRow key={exc.id}>
@@ -366,7 +394,41 @@ function ExceptionsComponent() {
 													{exc.stockCountDate.toLocaleDateString("en-MY")}
 												</TableCell>
 												<TableCell className="text-center">
-													{closedDozen} / {closedLoss}
+													{isManualKeyIn ? (
+														<div className="flex items-center justify-center gap-1">
+															<Input
+																type="number"
+																min={0}
+																className="h-8 w-16 text-center"
+																placeholder={String(exc.closedQtyDozen)}
+																value={displayDozen}
+																onChange={(e) => {
+																	const v = e.target.value;
+																	handleManualAmountChange(exc.id, {
+																		dozen: v === "" ? 0 : Number(v),
+																		loss: displayLoss,
+																	});
+																}}
+															/>
+															<span className="text-muted-foreground">/</span>
+															<Input
+																type="number"
+																min={0}
+																className="h-8 w-16 text-center"
+																placeholder={String(exc.closedQtyLoss)}
+																value={displayLoss}
+																onChange={(e) => {
+																	const v = e.target.value;
+																	handleManualAmountChange(exc.id, {
+																		dozen: displayDozen,
+																		loss: v === "" ? 0 : Number(v),
+																	});
+																}}
+															/>
+														</div>
+													) : (
+														`${closedDozen} / ${closedLoss}`
+													)}
 												</TableCell>
 												<TableCell className="text-center">
 													<span
@@ -378,31 +440,39 @@ function ExceptionsComponent() {
 																: ""
 														}
 													>
-														{diffDozen > 0 ? `+${diffDozen}` : diffDozen} /{" "}
-														{diffLoss > 0 ? `+${diffLoss}` : diffLoss}
+														{diffDozen > 0 ? `-${diffDozen}` : diffDozen} /{" "}
+														{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
 													</span>
 												</TableCell>
 												<TableCell>
-													<Select
-														value={selectedAction || ""}
-														onValueChange={(value) =>
-															handleActionChange(
-																exc.id,
-																value as "tally" | "compensate",
-															)
-														}
-													>
-														<SelectTrigger className="w-[130px]">
-															<SelectValue placeholder="Select..." />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="tally">Tally</SelectItem>
-															<SelectItem value="compensate">
-																Compensate
-															</SelectItem>
-														</SelectContent>
-													</Select>
+													<div className="flex flex-col gap-2">
+														<Select
+															value={selectedAction || ""}
+															onValueChange={(value) =>
+																handleActionChange(
+																	exc.id,
+																	value as StockCountAction,
+																)
+															}
+														>
+															<SelectTrigger className="w-[160px]">
+																<SelectValue placeholder="Select..." />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="tally_to_opening">
+																	Tally to opening
+																</SelectItem>
+																<SelectItem value="tally_to_stock_count">
+																	Tally to Stock Count
+																</SelectItem>
+																<SelectItem value="manual_key_in">
+																	Manual Key in amount
+																</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
 												</TableCell>
+												<TableCell>{exc.reason}</TableCell>
 												<TableCell className="text-center">
 													{isApproved ? (
 														<Badge
@@ -451,7 +521,7 @@ function ExceptionsComponent() {
 								<span className="font-medium">
 									{Math.min(data.page * data.pageSize, data.total)}
 								</span>{" "}
-								of <span className="font-medium">{data.total}</span> exceptions
+								of <span className="font-medium">{data.total}</span> inventory
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -485,9 +555,9 @@ function ExceptionsComponent() {
 			<Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Approve Exception</DialogTitle>
+						<DialogTitle>Approve Inventory</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to approve this exception? This will trigger
+							Are you sure you want to approve this inventory? This will trigger
 							an inventory adjustment.
 						</DialogDescription>
 					</DialogHeader>
@@ -512,9 +582,9 @@ function ExceptionsComponent() {
 			<Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Reject Exception</DialogTitle>
+						<DialogTitle>Reject Inventory</DialogTitle>
 						<DialogDescription>
-							Please provide a reason for rejecting this exception.
+							Please provide a reason for rejecting this inventory.
 						</DialogDescription>
 					</DialogHeader>
 					<form

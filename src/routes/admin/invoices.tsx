@@ -70,6 +70,7 @@ import {
 	getInvoices,
 	createInvoice,
 } from "@/data/invoices.mock-data";
+import { formatCurrency } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/invoices")({
 	component: InvoicesComponent,
@@ -89,7 +90,7 @@ const createInvoiceSchema = z.object({
 		// .regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
 	doNumber: z.string().min(1, "DO Number is required"),
 	doId: z.string().min(1, "DO ID is required"),
-	toNumber: z.string(),
+	toNumber: z.string().min(1, "PO Number is required"),
 	outlet: z.string().min(1, "Outlet is required"),
 	outletAddress: z.string(),
 	issuedDate: z.string().min(1, "Issued date is required"),
@@ -159,7 +160,7 @@ function InvoicesComponent() {
 				invoiceNumber: value.invoiceNumber,
 				doNumber: value.doNumber,
 				doId: value.doId,
-				toNumber: value.toNumber || undefined,
+				toNumber: value.toNumber,
 				outlet: value.outlet,
 				outletAddress: value.outletAddress || undefined,
 				issuedDate: parsedDate,
@@ -188,9 +189,9 @@ function InvoicesComponent() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Proforma Invoices</h1>
 					<p className="text-muted-foreground">
-						Manage invoices and export documents
+						Manage proforma invoices and export proforma invoices.
 					</p>
 				</div>
 				<Dialog
@@ -210,14 +211,14 @@ function InvoicesComponent() {
 					<DialogTrigger asChild>
 						<Button>
 							<Plus className="mr-2 h-4 w-4" />
-							Create Invoice
+							Create Proforma Invoice
 						</Button>
 					</DialogTrigger>
 					<DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
 						<DialogHeader className="pb-4">
 							<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
 								<Receipt className="h-5 w-5 text-primary" />
-								Create New Invoice
+								Create New Proforma Invoice
 							</DialogTitle>
 							<DialogDescription className="text-base">
 								Enter the details for the new invoice
@@ -239,7 +240,7 @@ function InvoicesComponent() {
 											<CardHeader className="pb-3">
 												<CardTitle className="text-base font-semibold flex items-center gap-2">
 													<FileText className="h-4 w-4 text-muted-foreground" />
-													Invoice Details
+													Proforma Invoice Details
 												</CardTitle>
 											</CardHeader>
 											<CardContent className="space-y-4">
@@ -254,7 +255,7 @@ function InvoicesComponent() {
 																return (
 																	<Field data-invalid={isInvalid}>
 																		<FieldLabel htmlFor={field.name}>
-																			Invoice Number
+																			Proforma Invoice Number
 																		</FieldLabel>
 																		<Input
 																			id={field.name}
@@ -596,7 +597,7 @@ function InvoicesComponent() {
 																			Subtotal
 																		</TableCell>
 																		<TableCell className="text-right font-medium">
-																			${invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0).toFixed(2)}
+																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
@@ -605,7 +606,7 @@ function InvoicesComponent() {
 																			Tax (10%)
 																		</TableCell>
 																		<TableCell className="text-right font-medium">
-																			${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1).toFixed(2)}
+																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1)}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
@@ -614,7 +615,7 @@ function InvoicesComponent() {
 																			Total
 																		</TableCell>
 																		<TableCell className="text-right font-semibold text-primary">
-																			${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1).toFixed(2)}
+																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1)}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
@@ -673,20 +674,20 @@ function InvoicesComponent() {
 													<div className="flex justify-between text-sm">
 														<span className="text-muted-foreground">Subtotal</span>
 														<span className="font-medium">
-															${invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0).toFixed(2)}
+															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
 														</span>
 													</div>
 													<div className="flex justify-between text-sm">
 														<span className="text-muted-foreground">Tax (10%)</span>
 														<span className="font-medium">
-															${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1).toFixed(2)}
+															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1)}
 														</span>
 													</div>
 													<Separator />
 													<div className="flex justify-between">
 														<span className="font-semibold">Total</span>
 														<span className="font-semibold text-primary text-lg">
-															${(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1).toFixed(2)}
+															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1)}
 														</span>
 													</div>
 												</div>
@@ -726,7 +727,7 @@ function InvoicesComponent() {
 													) : (
 														<>
 															<Send className="mr-2 h-4 w-4" />
-															Create Invoice
+															Create Proforma Invoice
 														</>
 													)}
 												</Button>
@@ -780,7 +781,7 @@ function InvoicesComponent() {
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
-								${summary.totalAmount.toLocaleString()}
+								{formatCurrency(summary.totalAmount)}
 							</div>
 						</CardContent>
 					</Card>
@@ -791,8 +792,8 @@ function InvoicesComponent() {
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Invoice List</CardTitle>
-							<CardDescription>View and manage all invoices</CardDescription>
+							<CardTitle>Proforma Invoices List</CardTitle>
+							<CardDescription>View and manage all proforma invoices</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 							<div className="relative">
@@ -837,6 +838,7 @@ function InvoicesComponent() {
 									<TableHead>Invoice Number</TableHead>
 									<TableHead>DO Number</TableHead>
 									<TableHead>PO Number</TableHead>
+									<TableHead>Region</TableHead>
 									<TableHead>Outlet</TableHead>
 									<TableHead>Amount</TableHead>
 									<TableHead>Issued Date</TableHead>
@@ -870,10 +872,11 @@ function InvoicesComponent() {
 												{invoice.invoiceNumber}
 											</TableCell>
 											<TableCell>{invoice.doNumber}</TableCell>
-											<TableCell>{invoice.toNumber || "-"}</TableCell>
+											<TableCell>{invoice.toNumber}</TableCell>
+											<TableCell>{invoice.region}</TableCell>
 											<TableCell>{invoice.outlet}</TableCell>
 											<TableCell>
-												${invoice.totalAmount.toLocaleString()}
+												{formatCurrency(invoice.totalAmount)}
 											</TableCell>
 											<TableCell>
 												{invoice.issuedDate.toLocaleDateString()}
