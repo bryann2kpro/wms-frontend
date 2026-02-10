@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import {
 	SKUS_QUERY,
 	CREATE_SKU_MUTATION,
-	type SkusQueryData,
 	type Sku,
 	type CreateSkuInput,
 } from "@/lib/graphql/skus";
