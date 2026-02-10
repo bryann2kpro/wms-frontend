@@ -201,3 +201,45 @@ export interface UpdateRackInput {
 	rackLevel?: string;
 	updatedBy: string;
 }
+
+export interface Skus {
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	skuPrice: number;
+	skuQuantity: number;
+	skuExpiryDate: string;
+	skuSuppliers: Supplier[];
+	skuUom: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface createSkusInput {
+	skuCode: string;
+	skuDescription: string;
+	skuPrice: number;
+	skuQuantity: number;
+	skuExpiryDate: string;
+	skuSuppliers: string[];
+	skuUom: string;
+	isActive?: boolean;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSkusInput {
+	skuCode?: string;
+	skuDescription?: string;
+	skuPrice?: number;
+	skuQuantity?: number;
+	skuExpiryDate?: string;
+	skuSuppliers?: string[];
+	skuUom?: string;
+	isActive?: boolean;
+	updatedBy: string;
+}
+

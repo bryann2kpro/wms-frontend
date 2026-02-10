@@ -21,6 +21,45 @@ export function formatDate(dateString: string): string {
   }
 }
 
+// Utility function to format dates (date only, no time)
+export function formatDateOnly(dateValue: string | number | Date): string {
+  try {
+    let date: Date;
+    
+    // Handle number (timestamp)
+    if (typeof dateValue === "number") {
+      date = new Date(dateValue);
+    }
+    // Handle Date object
+    else if (dateValue instanceof Date) {
+      date = dateValue;
+    }
+    // Handle string - check if it's a numeric string (timestamp)
+    else if (typeof dateValue === "string") {
+      // Check if string is a pure number (timestamp)
+      if (/^\d+$/.test(dateValue.trim())) {
+        date = new Date(Number(dateValue));
+      } else {
+        date = new Date(dateValue);
+      }
+    } else {
+      return String(dateValue);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return String(dateValue);
+    }
+    
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch {
+    return String(dateValue);
+  }
+}
+
 // Extract error message from various error types
 export function getErrorMessage(err: Error | null): string {
   if (!err) return "An unexpected error occurred";

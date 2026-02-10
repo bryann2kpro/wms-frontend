@@ -136,13 +136,9 @@ function ExceptionsComponent() {
 			{ page, pageSize, searchTerm, statusFilter, typeFilter },
 		],
 		queryFn: () =>
-			getExceptions({
-				page,
-				pageSize,
-				search: searchTerm,
-				status: statusFilter,
-				type: typeFilter,
-			}),
+		{
+
+		},
 		staleTime: 30_000,
 	});
 
