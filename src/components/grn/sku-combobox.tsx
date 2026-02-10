@@ -25,7 +25,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
-	SKUS_QUERY,
+	SKUS_AND_UOM_QUERY,
 	CREATE_SKU_MUTATION,
 	type Sku,
 	type CreateSkuInput,
@@ -34,6 +34,7 @@ import { useForm } from "@tanstack/react-form";
 import z from "zod";
 import { Field as UiField, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 
 
 const createSkuSchema = z.object({
@@ -48,7 +49,7 @@ export type SkuLineValue = {
 	description: string;
 	uom: string;
 	unitPrice: number;
-	skuId?: string;
+	skuId: string;
 };
 
 type SkuComboboxProps = {
@@ -58,6 +59,11 @@ type SkuComboboxProps = {
 	className?: string;
 	createdBy?: string;
 	stockUnitCodes?: string[];
+};
+
+type StockUnit = {
+	stockUnitId: string;
+	unitCode: string;
 };
 
 export function SkuCombobox({
@@ -71,14 +77,14 @@ export function SkuCombobox({
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data: { skus, uoms }, isLoading: loading } = useQuery({
+	const { data: { skus, stockUnits: { query: uoms } }, isLoading: loading } = useQuery({
 		queryKey: ['skus'],
 		queryFn: () => {
 
 			const headers = new Headers();
 			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
 
-			return request(env.VITE_GRAPHQL_ENDPOINT, SKUS_QUERY, {}, headers)
+			return request(env.VITE_GRAPHQL_ENDPOINT, SKUS_AND_UOM_QUERY, {}, headers)
 		},
 	});
 
@@ -103,23 +109,17 @@ export function SkuCombobox({
 
 	const form = useForm({
 		defaultValues: {
-			skuName: "",
+			skuCode: "",
 			skuDescription: "",
-			skuPrice: 0,
 			skuQuantity: 0,
-			skuUom: "CTN",
+			skuUom: uoms[0].stockUnitId,
 		},
 		validators: {
 			onBlur: createSkuSchema.safeParse,
 			onSubmit: createSkuSchema.safeParseAsync,
 		},
 		onSubmit: async ({ value }) => {
-			const payload: CreateSkuInput = {
-				...value,
-				skuCode: value.skuName.trim(),
-				skuName: value.skuName.trim(),
-			};
-			createSku.mutate(payload);
+			createSku.mutate(value);
 		},
 	})
 
@@ -356,20 +356,33 @@ export function SkuCombobox({
 													<div className="grid gap-2">
 														<form.Field
 															name="skuUom"
-															children={(field) => (
-																<UiField className="grid gap-2">
-																	<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
-																	<Input
-																		id={field.name}
-																		name={field.name}
-																		value={field.state.value}
-																		onBlur={field.handleBlur}
-																		onChange={(e) => field.handleChange(e.target.value)}
-																		placeholder="e.g. CTN, EA"
-																	/>
-																	{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
-																</UiField>
-															)}
+															children={(field) => {
+
+																console.log("field", field.state.value, uoms[0]?.stockUnitId);
+
+																return (
+																	<UiField className="grid gap-2">
+																		<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
+																		<Select 
+																			name={field.name} 
+																			value={field.state.value} 
+																			onValueChange={(value) => field.handleChange(value)}
+																			disabled // Remove this if we want to allow selection of UOM
+																			defaultValue={uoms[0]?.stockUnitId}
+																		>
+																			<SelectTrigger>
+																				<SelectValue placeholder="Select UOM" />
+																			</SelectTrigger>
+																			<SelectContent>
+																				{uoms.map((uom: StockUnit) => (
+																					<SelectItem key={`${uom.stockUnitId}-${uom.unitCode}`} value={uom.stockUnitId}>{uom.unitCode}</SelectItem>
+																				))}
+																			</SelectContent>
+																		</Select>
+																		{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
+																	</UiField>
+																)
+															}}
 														/>
 													</div>
 												</div>

@@ -18,15 +18,16 @@ export const SKUS_AND_UOM_QUERY = gql`
 	query SkusAndUom {
 		skus {
 			skuId
-			skuName
+			skuCode
 			skuDescription
-
 		}
-		uom {
-			uomId
-			uomCode
-			uomName
-		}
+        stockUnits {
+            query {
+                stockUnitId
+                unitCode
+            }
+        }
+		
 	}
 `;
 
@@ -59,10 +60,8 @@ export type SkusQueryData = {
 };
 
 export type CreateSkuInput = {
-	skuName: string;
-	skuDescription: string;
 	skuCode: string;
+	skuDescription: string;
 	skuQuantity: number;
 	skuUom: string;
-	skuExpiryDate?: string | null;
 };
