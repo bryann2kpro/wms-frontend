@@ -99,13 +99,8 @@ const grnStatuses: GRNStatus[] = [
 ];
 
 export type CreateGRNLineItem = {
-	sku: string;
-	description: string;
+	skuId: string;
 	qty: number;
-	uom: string;
-	unitPrice: number;
-	/** Set when selected from SKU combobox for display and future API use */
-	skuId?: string;
 };
 
 const createGRNSchema = z.object({
@@ -531,12 +526,8 @@ function GRNRouteComponent() {
 																		field.handleChange([
 																			...items,
 																			{
-																				sku: "",
-																				description: "",
+																				skuId: "",
 																				qty: 1,
-																				uom: "",
-																				unitPrice: 0,
-																				skuId: undefined,
 																			},
 																		]);
 																	}}
@@ -593,112 +584,102 @@ function GRNRouteComponent() {
 																				</TableRow>
 																			) : (
 																				items.map((item, index) => (
-																	<TableRow key={index}>
-																		<TableCell className="min-w-[200px]">
-																			<SkuCombobox
-																				value={
-																					item.sku
-																						? {
-																								sku: item.sku,
-																								description: item.description,
-																								uom: item.uom,
-																								unitPrice: item.unitPrice,
-																								skuId: item.skuId,
-																							}
-																						: null
-																				}
-																				onChange={(v) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						sku: v.sku,
-																						description: v.description,
-																						uom: v.uom,
-																						unitPrice: v.unitPrice,
-																						skuId: v.skuId,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="Search or select SKU..."
-																				createdBy={user?.id ?? ""}
-																				stockUnitCodes={stockUnits.map((u) => u.unitCode)}
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				value={item.description}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						description: e.target.value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="Description"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				type="number"
-																				min="1"
-																				value={item.qty}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						qty: Number(e.target.value) || 1,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				className="w-20"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Select
-																				value={item.uom}
-																				onValueChange={(value) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						uom: value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																			>
-																				<SelectTrigger className="w-[120px]">
-																					<SelectValue placeholder="UOM" />
-																				</SelectTrigger>
-																				<SelectContent>
-																					{stockUnits.map((unit) => (
-																						<SelectItem
-																							key={unit.stockUnitId}
-																							value={unit.unitCode}
-																						>
-																							{unit.unitCode}
-																						</SelectItem>
-																					))}
-																				</SelectContent>
-																			</Select>
-																		</TableCell>
-																		<TableCell className="text-right">
-																			<Button
-																				type="button"
-																				variant="ghost"
-																				size="icon"
-																				onClick={() => {
-																					field.handleChange(
-																						items.filter((_, i) => i !== index),
-																					);
-																				}}
-																				className="text-destructive hover:text-destructive"
-																			>
-																				<XCircle className="h-4 w-4" />
-																			</Button>
-																		</TableCell>
-																	</TableRow>
-																))
-															)}
+																						<TableRow key={`row-${item.skuId}`}>
+																							<TableCell className="min-w-[200px]">
+																								<SkuCombobox
+																									value={{ skuId: item.skuId, qty: item.qty }}
+																									onChange={(v) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											sku: v.sku,
+																											description: v.description,
+																											uom: v.uom,
+																											unitPrice: v.unitPrice,
+																											skuId: v.skuId,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									placeholder="Search or select SKU..."
+																									createdBy={user?.id ?? ""}
+																									stockUnitCodes={stockUnits.map((u) => u.unitCode)}
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Input
+																									value={item.description}
+																									onChange={(e) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											description: e.target.value,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									placeholder="Description"
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Input
+																									type="number"
+																									min="1"
+																									value={item.qty}
+																									onChange={(e) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											qty: Number(e.target.value) || 1,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									className="w-20"
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Select
+																									value={item.uom}
+																									onValueChange={(value) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											uom: value,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																								>
+																									<SelectTrigger className="w-[120px]">
+																										<SelectValue placeholder="UOM" />
+																									</SelectTrigger>
+																									<SelectContent>
+																										{stockUnits.map((unit) => (
+																											<SelectItem
+																												key={unit.stockUnitId}
+																												value={unit.unitCode}
+																											>
+																												{unit.unitCode}
+																											</SelectItem>
+																										))}
+																									</SelectContent>
+																								</Select>
+																							</TableCell>
+																							<TableCell className="text-right">
+																								<Button
+																									type="button"
+																									variant="ghost"
+																									size="icon"
+																									onClick={() => {
+																										field.handleChange(
+																											items.filter((_, i) => i !== index),
+																										);
+																									}}
+																									className="text-destructive hover:text-destructive"
+																								>
+																									<XCircle className="h-4 w-4" />
+																								</Button>
+																							</TableCell>
+																						</TableRow>
+																					))
+																				)}
 																		</TableBody>
 																	</Table>
 																</div>

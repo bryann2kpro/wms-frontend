@@ -244,16 +244,15 @@ export function SkuCombobox({
 										id="create-sku-form"
 										onSubmit={(e) => {
 											e.preventDefault()
-											form.handleSubmit()
 										}}
 									>
 										<FieldGroup>
 											<div className="grid gap-4 py-4">
 												<form.Field
-													name="skuName"
+													name="skuCode"
 													children={(field) => (
 														<UiField className="grid gap-2">
-															<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+															<FieldLabel htmlFor={field.name}>Code</FieldLabel>
 															<Input
 																id={field.name}
 																name={field.name}
@@ -286,23 +285,6 @@ export function SkuCombobox({
 													)}
 												/>
 												<div className="grid grid-cols-2 gap-2">
-													{/* <form.Field
-														name="skuPrice"
-														children={(field) => (
-															<UiField className="grid gap-2">
-																<FieldLabel htmlFor={field.name}>Unit price</FieldLabel>
-																<Input
-																	id={field.name}
-																	name={field.name}
-																	value={field.state.value}
-																	onBlur={field.handleBlur}
-																	onChange={(e) => field.handleChange(e.target.value)}
-																	placeholder="0.00"
-																/>
-																{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
-															</UiField>
-														)}
-													/> */}
 													<form.Field
 														name="skuQuantity"
 														children={(field) => (
@@ -357,9 +339,6 @@ export function SkuCombobox({
 														<form.Field
 															name="skuUom"
 															children={(field) => {
-
-																console.log("field", field.state.value, uoms[0]?.stockUnitId);
-
 																return (
 																	<UiField className="grid gap-2">
 																		<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
@@ -400,7 +379,13 @@ export function SkuCombobox({
 										</Button>
 										<Button
 											type="button"
-											onClick={form.handleSubmit}
+											onClick={() => {
+												toast.promise(form.handleSubmit(), {
+													loading: "Creating SKU...",
+													success: "SKU created successfully",
+													error: "Failed to create SKU",
+												});
+											}}
 											disabled={form.state.isSubmitting}
 										>
 											{form.state.isSubmitting ? "Creating..." : "Create SKU"}
