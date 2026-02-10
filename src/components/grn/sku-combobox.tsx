@@ -66,14 +66,13 @@ export function SkuCombobox({
 	onChange,
 	placeholder = "Search or select SKU...",
 	className,
-	stockUnitCodes = [],
 }: SkuComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data: { skus }, isLoading: loading } = useQuery({
+	const { data: { skus, uoms }, isLoading: loading } = useQuery({
 		queryKey: ['skus'],
 		queryFn: () => {
 
@@ -109,7 +108,7 @@ export function SkuCombobox({
 			skuDescription: "",
 			skuPrice: 0,
 			skuQuantity: 0,
-			skuUom: stockUnitCodes[0] ?? "CTN",
+			skuUom: "CTN",
 		},
 		validators: {
 			onBlur: createSkuSchema.safeParse,
