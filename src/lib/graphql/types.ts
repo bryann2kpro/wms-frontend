@@ -202,6 +202,11 @@ export interface UpdateRackInput {
 	updatedBy: string;
 }
 
+export interface SkuSupplier {
+	supplierId: string;
+	originalSkuCode: string | null;
+}
+
 export interface Skus {
 	skuId: string;
 	skuCode: string;
@@ -209,7 +214,7 @@ export interface Skus {
 	skuPrice: number;
 	skuQuantity: number;
 	skuExpiryDate: string;
-	skuSuppliers: Supplier[];
+	skuSuppliers: SkuSupplier[];
 	skuUom: string;
 	isActive: boolean;
 	createdAt: string;
@@ -224,7 +229,7 @@ export interface createSkusInput {
 	skuPrice: number;
 	skuQuantity: number;
 	skuExpiryDate: string;
-	skuSuppliers: string[];
+	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
 	isActive?: boolean;
 	createdBy: string;
@@ -237,9 +242,14 @@ export interface UpdateSkusInput {
 	skuPrice?: number;
 	skuQuantity?: number;
 	skuExpiryDate?: string;
-	skuSuppliers?: string[];
+	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
 	isActive?: boolean;
 	updatedBy: string;
+}
+
+export interface SkusPaginatedResponse {
+	query: Skus[];
+	pagination: Pagination;
 }
 

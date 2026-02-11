@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import type {
 	Skus,
+	SkusPaginatedResponse,
 	createSkusInput,
 	UpdateSkusInput,
 } from "./types";
@@ -15,8 +16,7 @@ export const SKUS_FRAGMENT = gql`
 		skuExpiryDate
 		skuSuppliers {
 			supplierId
-			supplierName
-			supplierCode
+			originalSkuCode
 		}
 		skuUom
 		isActive
@@ -30,7 +30,17 @@ export const SKUS_FRAGMENT = gql`
 export const SKUS_QUERY = gql`
 	query Skus {
 		skus {
-			...SkuFields
+			query {
+				...SkuFields
+			}
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
 		}
 	}
 	${SKUS_FRAGMENT}
@@ -72,7 +82,7 @@ export const DELETE_SKUS_MUTATION = gql`
 export type SkusQueryVariables = {};
 
 export type SkusQueryData = {
-	skus: Skus[];
+	skus: SkusPaginatedResponse;
 };
 
 export type SkuQueryVariables = { id: string };
