@@ -1671,11 +1671,17 @@ function SkusSection() {
 								} else {
 									uomName = row.skuUom;
 								}
+								let price: string | null = row.skuPrice?.toString() ?? null;
+								if(price === null) {
+									price = 'N/A';
+								} else {
+									price = Number(price).toFixed(2);
+								}
 								return (
 									<TableRow key={row.skuId}>
 										<TableCell>{row.skuCode}</TableCell>
 										<TableCell>{row.skuDescription}</TableCell>
-										<TableCell>{Number(row.skuPrice).toFixed(2)}</TableCell>
+										<TableCell>{price}</TableCell>
 										<TableCell>{Number(row.skuQuantity).toFixed(2)}</TableCell>
 										<TableCell>{formatDateOnly(row.skuExpiryDate)}</TableCell>
 										<TableCell>{uomName}</TableCell>
@@ -1749,7 +1755,7 @@ function SkusSection() {
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
-								skuPrice: Number(values.skuPrice),
+								skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
 								skuQuantity: Number(values.skuQuantity),
 								skuExpiryDate: expiryDate,
 								skuUom: values.skuUom,
@@ -1795,7 +1801,7 @@ function SkusSection() {
 								input: {
 									skuCode: values.skuCode,
 									skuDescription: values.skuDescription,
-									skuPrice: Number(values.skuPrice),
+									skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
 									skuQuantity: Number(values.skuQuantity),
 									skuExpiryDate: expiryDate,
 									skuUom: values.skuUom,
@@ -1920,7 +1926,7 @@ function SkusFormDialog({
 	initial?: {
 		skuCode: string;
 		skuDescription: string;
-		skuPrice: number;
+		skuPrice: number | null;
 		skuQuantity: number;
 		skuExpiryDate: string;
 		skuUom: string;
@@ -1930,7 +1936,7 @@ function SkusFormDialog({
 	onSubmit: (v: {
 		skuCode: string;
 		skuDescription: string;
-		skuPrice: number;
+		skuPrice: number | null;
 		skuQuantity: number;
 		skuExpiryDate: string;
 		skuUom: string;
@@ -1943,7 +1949,7 @@ function SkusFormDialog({
 }) {
 	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
 	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
-	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "0");
+	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
 	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "");
 	const parseDate = (dateValue: string | number | undefined): Date | undefined => {
 		if (!dateValue) return undefined;
@@ -2010,12 +2016,19 @@ function SkusFormDialog({
 	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 	const [step, setStep] = useState(1);
 	const [supplierSearch, setSupplierSearch] = useState("");
+	const [errors, setErrors] = useState<{
+		skuCode?: string;
+		skuDescription?: string;
+		skuQuantity?: string;
+		skuExpiryDate?: string;
+		skuUom?: string;
+	}>({});
 
 	useEffect(() => {
 		if (open) {
 			setSkuCode(initial?.skuCode ?? "");
 			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "0");
+			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
 			const parsedDate = parseDate(initial?.skuExpiryDate);
 			setSkuExpiryDate(parsedDate);
@@ -2024,6 +2037,7 @@ function SkusFormDialog({
 			setIsActive(initial?.isActive ?? true);
 			setStep(1);
 			setSupplierSearch("");
+			setErrors({});
 		}
 	}, [open, initial]);
 
@@ -2031,7 +2045,7 @@ function SkusFormDialog({
 		if (!next) {
 			setSkuCode(initial?.skuCode ?? "");
 			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "0");
+			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
@@ -2039,6 +2053,7 @@ function SkusFormDialog({
 			setIsActive(initial?.isActive ?? true);
 			setStep(1);
 			setSupplierSearch("");
+			setErrors({});
 		}
 		onOpenChange(next);
 	};
@@ -2087,13 +2102,43 @@ function SkusFormDialog({
 	const canProceedToStep2 = 
 		skuCode.trim() &&
 		skuDescription.trim() &&
-		skuPrice &&
 		skuQuantity &&
 		skuExpiryDate !== undefined &&
 		skuUom;
 
+	const validateStep1 = () => {
+		const newErrors: {
+			skuCode?: string;
+			skuDescription?: string;
+			skuQuantity?: string;
+			skuExpiryDate?: string;
+			skuUom?: string;
+		} = {};
+
+		if (!skuCode.trim()) {
+			newErrors.skuCode = "Code is required";
+		}
+		if (!skuDescription.trim()) {
+			newErrors.skuDescription = "Description is required";
+		}
+		if (!skuQuantity || skuQuantity.trim() === "") {
+			newErrors.skuQuantity = "Quantity is required";
+		}
+		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) {
+			newErrors.skuExpiryDate = "Expiry date is required";
+		}
+		if (!skuUom) {
+			newErrors.skuUom = "Unit of measure is required";
+		}
+
+		setErrors(newErrors);
+		return Object.keys(newErrors).length === 0;
+	};
+
 	const handleNext = () => {
-		if (canProceedToStep2) {
+		const isValid = validateStep1();
+		if (isValid) {
+			setErrors({});
 			setStep(2);
 		}
 	};
@@ -2105,10 +2150,17 @@ function SkusFormDialog({
 	const handleSubmit = () => {
 		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) return;
 		const expiryDateString = skuExpiryDate.toISOString().split("T")[0];
+		let priceValue: number | null = null;
+		if (skuPrice.trim() !== "") {
+			const parsed = parseFloat(skuPrice);
+			if (!isNaN(parsed)) {
+				priceValue = parsed;
+			}
+		}
 		onSubmit({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
-			skuPrice: parseFloat(skuPrice),
+			skuPrice: priceValue,
 			skuQuantity: parseInt(skuQuantity, 10),
 			skuExpiryDate: expiryDateString,
 			skuUom,
@@ -2126,25 +2178,58 @@ function SkusFormDialog({
 				</DialogHeader>
 				{(() => {
 					if (step === 1) {
+						const hasErrors = Object.keys(errors).length > 0;
 						return (
 							<div className="grid gap-4 py-4">
+								{hasErrors && (
+									<div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+										<p className="text-sm text-destructive font-medium mb-1">
+											Please fix the following errors to continue:
+										</p>
+										<ul className="text-sm text-destructive list-disc list-inside space-y-1">
+											{errors.skuCode && <li>Code is required</li>}
+											{errors.skuDescription && <li>Description is required</li>}
+											{errors.skuQuantity && <li>Quantity is required</li>}
+											{errors.skuExpiryDate && <li>Expiry date is required</li>}
+											{errors.skuUom && <li>Unit of measure is required</li>}
+										</ul>
+									</div>
+								)}
 								<div className="grid gap-2">
 									<Label htmlFor="sku-code">Code</Label>
 									<Input
 										id="sku-code"
 										value={skuCode}
-										onChange={(e) => setSkuCode(e.target.value)}
+										onChange={(e) => {
+											setSkuCode(e.target.value);
+											if (errors.skuCode) {
+												setErrors((prev) => ({ ...prev, skuCode: undefined }));
+											}
+										}}
 										placeholder="SKU name"
+										className={errors.skuCode ? "border-destructive" : ""}
 									/>
+									{errors.skuCode && (
+										<p className="text-sm text-destructive">{errors.skuCode}</p>
+									)}
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="sku-description">Description</Label>
 									<Input
 										id="sku-description"
 										value={skuDescription}
-										onChange={(e) => setSkuDescription(e.target.value)}
+										onChange={(e) => {
+											setSkuDescription(e.target.value);
+											if (errors.skuDescription) {
+												setErrors((prev) => ({ ...prev, skuDescription: undefined }));
+											}
+										}}
 										placeholder="SKU description"
+										className={errors.skuDescription ? "border-destructive" : ""}
 									/>
+									{errors.skuDescription && (
+										<p className="text-sm text-destructive">{errors.skuDescription}</p>
+									)}
 								</div>
 								<div className="grid grid-cols-2 gap-4">
 									<div className="grid gap-2">
@@ -2163,10 +2248,24 @@ function SkusFormDialog({
 										<Input
 											id="sku-quantity"
 											type="number"
+											min="0"
 											value={skuQuantity}
-											onChange={(e) => setSkuQuantity(e.target.value)}
+											onChange={(e) => {
+												const value = e.target.value;
+												// Allow empty string or positive numbers only
+												if (value === "" || (!isNaN(Number(value)) && Number(value) >= 0)) {
+													setSkuQuantity(value);
+													if (errors.skuQuantity) {
+														setErrors((prev) => ({ ...prev, skuQuantity: undefined }));
+													}
+												}
+											}}
 											placeholder="0"
+											className={errors.skuQuantity ? "border-destructive" : ""}
 										/>
+										{errors.skuQuantity && (
+											<p className="text-sm text-destructive">{errors.skuQuantity}</p>
+										)}
 									</div>
 								</div>
 								<div className="grid gap-2">
@@ -2178,6 +2277,9 @@ function SkusFormDialog({
 												dateButtonClassName += " text-muted-foreground";
 											} else {
 												dateButtonClassName += " text-foreground";
+											}
+											if (errors.skuExpiryDate) {
+												dateButtonClassName += " border-destructive";
 											}
 											return (
 												<PopoverTrigger asChild>
@@ -2209,6 +2311,9 @@ function SkusFormDialog({
 												onSelect={(date) => {
 													if (date) {
 														setSkuExpiryDate(date);
+														if (errors.skuExpiryDate) {
+															setErrors((prev) => ({ ...prev, skuExpiryDate: undefined }));
+														}
 													}
 												}}
 												defaultMonth={skuExpiryDate || new Date()}
@@ -2219,11 +2324,22 @@ function SkusFormDialog({
 											/>
 										</PopoverContent>
 									</Popover>
+									{errors.skuExpiryDate && (
+										<p className="text-sm text-destructive">{errors.skuExpiryDate}</p>
+									)}
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="sku-uom">Unit of Measure</Label>
-									<Select value={skuUom} onValueChange={setSkuUom}>
-										<SelectTrigger>
+									<Select 
+										value={skuUom} 
+										onValueChange={(value) => {
+											setSkuUom(value);
+											if (errors.skuUom) {
+												setErrors((prev) => ({ ...prev, skuUom: undefined }));
+											}
+										}}
+									>
+										<SelectTrigger className={errors.skuUom ? "border-destructive" : ""}>
 											<SelectValue placeholder="Select UOM" />
 										</SelectTrigger>
 										<SelectContent>
@@ -2236,6 +2352,9 @@ function SkusFormDialog({
 												))}
 										</SelectContent>
 									</Select>
+									{errors.skuUom && (
+										<p className="text-sm text-destructive">{errors.skuUom}</p>
+									)}
 								</div>
 							</div>
 						);
@@ -2361,7 +2480,10 @@ function SkusFormDialog({
 					{(() => {
 						if (step === 1) {
 							return (
-								<Button onClick={handleNext} disabled={!canProceedToStep2}>
+								<Button 
+									onClick={handleNext}
+									className={!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : ""}
+								>
 									Next
 								</Button>
 							);
