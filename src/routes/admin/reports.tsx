@@ -204,7 +204,7 @@ function ReportsComponent() {
 							<form.Field name="regionId">
 								{(field) => (
 									<div className="space-y-2">
-										<FieldLabel htmlFor="regionId">Region (Optional)</FieldLabel>
+										<FieldLabel htmlFor="regionId">Region</FieldLabel>
 										<Select
 											value={field.state.value || "all"}
 											onValueChange={(v) => {
@@ -216,7 +216,7 @@ function ReportsComponent() {
 												<SelectValue placeholder="Select Region" />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="all">Select Region</SelectItem>
+												<SelectItem value="all" disabled>Select Region</SelectItem>
 												{regions.map((r) => (
 													<SelectItem key={r.regionId} value={r.regionId}>
 														{r.regionName}
@@ -228,7 +228,7 @@ function ReportsComponent() {
 								)}
 							</form.Field>
 							<div className="space-y-2">
-								<Label>Date Range (Optional)</Label>
+								<Label>Date Range</Label>
 								<div className="grid gap-2 sm:grid-cols-2">
 									<form.Field name="dateFrom">
 										{(field) => (
