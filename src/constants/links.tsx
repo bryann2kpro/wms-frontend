@@ -129,4 +129,12 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		allowedPermission: ["*"],
 		variant: "default",
 	},
+	{
+		key: "sidebar-audit-log",
+		title: "Audit Log",
+		href: "/admin/audit-log",
+		icon: FileText,
+		allowedPermission: ["*"],
+		variant: "default",
+	}
 ];
