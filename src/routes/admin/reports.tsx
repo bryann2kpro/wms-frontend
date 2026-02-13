@@ -40,29 +40,10 @@ import {
 	REGIONS_QUERY,
 	type RegionsQueryData,
 } from "@/lib/graphql/regions";
-import type { Region } from "@/lib/graphql/types";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
-	loader: async (): Promise<{ regions: Region[] }> => {
-		try {
-			const token = getAccessToken();
-			if (!token) return { regions: [] };
-			const headers = new Headers();
-			headers.set("Authorization", `Bearer ${token}`);
-			const data = await request<RegionsQueryData>(
-				env.VITE_GRAPHQL_ENDPOINT,
-				REGIONS_QUERY,
-				{ pageSize: 500 },
-				headers,
-			);
-			const list = data?.regions?.query ?? [];
-			return { regions: list };
-		} catch (error) {
-			console.error("Error fetching regions:", error);
-			return { regions: [] };
-		}
-	},
 });
 
 type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
@@ -89,12 +70,21 @@ const reportTypes: {
 ];
 
 function ReportsComponent() {
-	const { regions } = Route.useLoaderData();
-
+	const { data } = useQuery({
+		queryKey: ['regions'],
+		queryFn: async () => {
+			const headers = new Headers();
+			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
+			const data = await request<RegionsQueryData>(env.VITE_GRAPHQL_ENDPOINT, REGIONS_QUERY, { }, headers);
+			return data;
+		},
+	});
 	const [generateReportMutation, { loading: generatingReport }] = useMutation<
 		GenerateReportMutationData,
 		GenerateReportMutationVariables
 	>(GENERATE_REPORT_MUTATION);
+
+	const regions = data?.regions?.query ?? [];
 
 	const form = useForm({
 		defaultValues: {
