@@ -13,6 +13,7 @@ export type ReportType = "INVOICE_SUMMARY" | "MOVEMENT_REPORT";
 
 export type GenerateReportInput = {
 	type: ReportType;
+	regionId?: string;
 	dateFrom?: string;
 	dateTo?: string;
 };

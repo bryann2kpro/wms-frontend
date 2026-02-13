@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useForm } from "@tanstack/react-form";
 import {
 	Card,
 	CardContent,
@@ -32,12 +32,49 @@ import {
 	type GenerateReportMutationVariables,
 } from "@/lib/graphql/reports";
 import { downloadPdfFromBase64 } from "@/lib/reports";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { getAccessToken } from "@/lib/auth/auth-storage";
+import request from "graphql-request";
+import { env } from "@/env";
+import {
+	REGIONS_QUERY,
+	type RegionsQueryData,
+} from "@/lib/graphql/regions";
+import type { Region } from "@/lib/graphql/types";
 
 export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
+	loader: async (): Promise<{ regions: Region[] }> => {
+		try {
+			const token = getAccessToken();
+			if (!token) return { regions: [] };
+			const headers = new Headers();
+			headers.set("Authorization", `Bearer ${token}`);
+			const data = await request<RegionsQueryData>(
+				env.VITE_GRAPHQL_ENDPOINT,
+				REGIONS_QUERY,
+				{ pageSize: 500 },
+				headers,
+			);
+			const list = data?.regions?.query ?? [];
+			return { regions: list };
+		} catch (error) {
+			console.error("Error fetching regions:", error);
+			return { regions: [] };
+		}
+	},
 });
 
 type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
+type ExportFormat = "PDF" | "Excel";
+
+type ReportFormValues = {
+	selectedReport: ReportType | null;
+	regionId: string;
+	dateFrom: string;
+	dateTo: string;
+	format: ExportFormat;
+};
 
 const reportTypes: {
 	value: ReportType;
@@ -52,52 +89,60 @@ const reportTypes: {
 ];
 
 function ReportsComponent() {
-	const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
-	const [dateFrom, setDateFrom] = useState("");
-	const [dateTo, setDateTo] = useState("");
-	const [format, setFormat] = useState<"PDF" | "Excel" | "TXT">("PDF");
+	const { regions } = Route.useLoaderData();
 
 	const [generateReportMutation, { loading: generatingReport }] = useMutation<
 		GenerateReportMutationData,
 		GenerateReportMutationVariables
 	>(GENERATE_REPORT_MUTATION);
 
-	const handleGenerateReport = async () => {
-		if (!selectedReport) return;
+	const form = useForm({
+		defaultValues: {
+			selectedReport: null as ReportType | null,
+			regionId: "",
+			dateFrom: "",
+			dateTo: "",
+			format: "PDF" as ExportFormat,
+		} satisfies ReportFormValues,
+		onSubmit: async ({ value }) => {
+			const { selectedReport, regionId, dateFrom, dateTo, format } = value;
+			if (!selectedReport) return;
 
-		// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
-		if (format === "PDF" && (selectedReport === "Movement" || selectedReport === "InvoiceSummary")) {
-			const reportType = selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
-			const input: GenerateReportMutationVariables["input"] = {
-				type: reportType,
-				...(dateFrom && { dateFrom }),
-				...(dateTo && { dateTo }),
-			};
-			const result = await generateReportMutation({ variables: { input } });
-			const payload = result.data?.generateReport;
-			if (payload?.pdfBase64 && payload?.filename) {
-				downloadPdfFromBase64(payload.pdfBase64, payload.filename);
+			// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
+			if (format === "PDF" && (selectedReport === "Movement" || selectedReport === "InvoiceSummary")) {
+				const reportType = selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
+				const input: GenerateReportMutationVariables["input"] = {
+					type: reportType,
+					...(regionId && { regionId }),
+					...(dateFrom && { dateFrom }),
+					...(dateTo && { dateTo }),
+				};
+				const result = await generateReportMutation({ variables: { input } });
+				const payload = result.data?.generateReport;
+				if (payload?.pdfBase64 && payload?.filename) {
+					downloadPdfFromBase64(payload.pdfBase64, payload.filename);
+				}
+				return;
 			}
-			return;
-		}
 
-		// Other report types or formats: mock download
-		await new Promise((resolve) => setTimeout(resolve, 800));
-		const blob = new Blob([`Mock ${selectedReport} Report`], {
-			type:
-				format === "PDF"
-					? "application/pdf"
-					: format === "Excel"
-						? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-						: "text/plain",
-		});
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `${selectedReport}_Report_${new Date().toISOString().split("T")[0]}.${format.toLowerCase() === "excel" ? "xlsx" : format.toLowerCase()}`;
-		a.click();
-		URL.revokeObjectURL(url);
-	};
+			// Other report types or formats: mock download
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			const blob = new Blob([`Mock ${selectedReport} Report`], {
+				type:
+					format === "PDF"
+						? "application/pdf"
+						: format === "Excel"
+							? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+							: "text/plain",
+			});
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${selectedReport}_Report_${new Date().toISOString().split("T")[0]}.${format.toLowerCase() === "excel" ? "xlsx" : format.toLowerCase()}`;
+			a.click();
+			URL.revokeObjectURL(url);
+		},
+	});
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -110,98 +155,172 @@ function ReportsComponent() {
 				</div>
 			</div>
 
-			<div className="grid gap-6 lg:grid-cols-2">
-				{/* Report Types */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Available Reports</CardTitle>
-						<CardDescription>Select a report type to generate</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid gap-3 sm:grid-cols-2">
-							{reportTypes.map((report) => {
-								const Icon = report.icon;
-								return (
-									<Button
-										key={report.value}
-										variant={
-											selectedReport === report.value ? "default" : "outline"
-										}
-										className="h-auto flex-col gap-2 p-4"
-										onClick={() => setSelectedReport(report.value)}
-									>
-										<Icon className="h-6 w-6" />
-										<span>{report.label}</span>
-									</Button>
-								);
-							})}
-						</div>
-					</CardContent>
-				</Card>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					form.handleSubmit();
+				}}
+			>
+				<FieldGroup className="grid gap-6 lg:grid-cols-2">
+					{/* Report Types */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Available Reports</CardTitle>
+							<CardDescription>Select a report type to generate</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<form.Field name="selectedReport">
+								{(field) => (
+									<Field className="grid gap-3 sm:grid-cols-2">
+										{reportTypes.map((report) => {
+											const Icon = report.icon;
+											return (
+												<Field key={report.value}>
+													<Button
+														id={report.value}
+														name={report.value}
+														value={report.value}
+														onBlur={field.handleBlur}
+														type="button"
+														variant={
+															field.state.value === report.value
+																? "default"
+																: "outline"
+														}
+														className="h-auto flex-col gap-2 p-4"
+														onClick={() => field.handleChange(report.value)}
+													>
+														<Icon className="h-6 w-6" />
+														<span>{report.label}</span>
+													</Button>
+												</Field>
+											);
+										})}
+									</Field>
+								)}
+							</form.Field>
+						</CardContent>
+					</Card>
 
-				{/* Report Configuration */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Report Configuration</CardTitle>
-						<CardDescription>
-							Configure report parameters and export format
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<Label>Date Range (Optional)</Label>
-							<div className="grid gap-2 sm:grid-cols-2">
-								<div>
-									<Label htmlFor="dateFrom" className="text-xs">
-										From
-									</Label>
-									<Input
-										id="dateFrom"
-										type="date"
-										value={dateFrom}
-										onChange={(e) => setDateFrom(e.target.value)}
-									/>
-								</div>
-								<div>
-									<Label htmlFor="dateTo" className="text-xs">
-										To
-									</Label>
-									<Input
-										id="dateTo"
-										type="date"
-										value={dateTo}
-										onChange={(e) => setDateTo(e.target.value)}
-									/>
+					{/* Report Configuration */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Report Configuration</CardTitle>
+							<CardDescription>
+								Configure report parameters and export format
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<form.Field name="regionId">
+								{(field) => (
+									<div className="space-y-2">
+										<FieldLabel htmlFor="regionId">Region (Optional)</FieldLabel>
+										<Select
+											value={field.state.value || "all"}
+											onValueChange={(v) => {
+												field.handleChange(v === "all" ? "" : v);
+												field.handleBlur();
+											}}
+										>
+											<SelectTrigger id="regionId">
+												<SelectValue placeholder="Select Region" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="all">Select Region</SelectItem>
+												{regions.map((r) => (
+													<SelectItem key={r.regionId} value={r.regionId}>
+														{r.regionName}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</form.Field>
+							<div className="space-y-2">
+								<Label>Date Range (Optional)</Label>
+								<div className="grid gap-2 sm:grid-cols-2">
+									<form.Field name="dateFrom">
+										{(field) => (
+											<Field>
+												<FieldLabel htmlFor="dateFrom" className="text-xs">
+													From
+												</FieldLabel>
+												<Input
+													id="dateFrom"
+													type="date"
+													value={field.state.value}
+													onChange={(e) => field.handleChange(e.target.value)}
+													onBlur={field.handleBlur}
+												/>
+											</Field>
+										)}
+									</form.Field>
+									<form.Field name="dateTo">
+										{(field) => (
+											<Field>
+												<FieldLabel htmlFor="dateTo" className="text-xs">
+													To
+												</FieldLabel>
+												<Input
+													id="dateTo"
+													type="date"
+													value={field.state.value}
+													onChange={(e) => field.handleChange(e.target.value)}
+													onBlur={field.handleBlur}
+												/>
+											</Field>
+										)}
+									</form.Field>
 								</div>
 							</div>
-						</div>
-						<div className="space-y-2">
-							<Label>Export Format</Label>
-							<Select
-								value={format}
-								onValueChange={(v) => setFormat(v as "PDF" | "Excel" | "TXT")}
+							<form.Field name="format">
+								{(field) => (
+									<div className="space-y-2">
+										<FieldLabel htmlFor="format">Export Format</FieldLabel>
+										<Select
+											value={field.state.value}
+											onValueChange={(v) => {
+												field.handleChange(v as ExportFormat);
+												field.handleBlur();
+											}}
+										>
+											<SelectTrigger id="format">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="PDF">PDF</SelectItem>
+												<SelectItem value="Excel">Excel (XLSX)</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</form.Field>
+							<form.Subscribe
+								selector={(state) => ({
+									selectedReport: state.values.selectedReport,
+									isSubmitting: state.isSubmitting,
+								})}
 							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="PDF">PDF</SelectItem>
-									<SelectItem value="Excel">Excel (XLSX)</SelectItem>
-									<SelectItem value="TXT">Text (TXT)</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-						<Button
-							onClick={handleGenerateReport}
-							disabled={!selectedReport || generatingReport}
-							className="w-full"
-						>
-							<Download className="mr-2 h-4 w-4" />
-							{generatingReport ? "Generating…" : "Generate & Download Report"}
-						</Button>
-					</CardContent>
-				</Card>
-			</div>
+								{({ selectedReport, isSubmitting }) => (
+									<Button
+										type="submit"
+										disabled={
+											!selectedReport || isSubmitting || generatingReport
+										}
+										className="w-full"
+									>
+										<Download className="mr-2 h-4 w-4" />
+										{generatingReport || isSubmitting
+											? "Generating…"
+											: "Generate & Download Report"}
+									</Button>
+								)}
+							</form.Subscribe>
+						</CardContent>
+					</Card>
+				</FieldGroup>
+			</form>
 		</div>
 	);
 }
