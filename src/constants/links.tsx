@@ -134,7 +134,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Audit Log",
 		href: "/admin/audit-log",
 		icon: FileText,
-		allowedPermission: ["*"],
+		allowedPermission: ["Audit Log"],
 		variant: "default",
 	}
 ];
