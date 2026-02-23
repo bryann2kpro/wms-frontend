@@ -7,6 +7,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,6 +113,17 @@ import {
 	type UpdateRackMutationData,
 	type DeleteRackMutationData,
 } from "@/lib/graphql/racks";
+import {
+	SKUS_QUERY,
+	CREATE_SKUS_MUTATION,
+	UPDATE_SKUS_MUTATION,
+	DELETE_SKUS_MUTATION,
+	type SkusQueryData,
+	type SkusQueryVariables,
+	type CreateSkusMutationData,
+	type UpdateSkusMutationData,
+	type DeleteSkusMutationData,
+} from "@/lib/graphql/skus";
 import type {
 	Supplier,
 	Region,
@@ -114,6 +131,7 @@ import type {
 	Outlet,
 	StockUnit,
 	Rack,
+	Skus,
 } from "@/lib/graphql/types";
 import {
 	Plus,
@@ -126,7 +144,12 @@ import {
 	Store,
 	Package,
 	LayoutGrid,
+	X,
+	Eye,
+	Calendar as CalendarIcon,
 } from "lucide-react";
+import { formatDateOnly, statusColors } from "@/lib/utils";
+import { format } from "date-fns";
 
 const DAYS_OF_WEEK = [
 	{ value: 0, label: "Sunday" },
@@ -142,7 +165,7 @@ const PAGE_SIZE = 10;
 
 export function MasterDataCard() {
 	const [subTab, setSubTab] = useState<
-		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit" | "rack"
+		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit" | "rack" | "skus"
 	>("supplier");
 
 	return (
@@ -202,6 +225,15 @@ export function MasterDataCard() {
 					<LayoutGrid className="mr-2 h-4 w-4" />
 					Racks
 				</Button>
+				<Button
+					variant={subTab === "skus" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("skus")}
+					className="rounded-b-none"
+				>
+					<Package className="mr-2 h-4 w-4" />
+					SKUS
+				</Button>
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}
@@ -209,6 +241,7 @@ export function MasterDataCard() {
 			{subTab === "outlet" && <OutletSection />}
 			{subTab === "stock-unit" && <StockUnitSection />}
 			{subTab === "rack" && <RackSection />}
+			{subTab === "skus" && <SkusSection />}
 		</div>
 	);
 }
@@ -1490,7 +1523,996 @@ function RackSection() {
 	);
 }
 
-function StockUnitSection() {	
+function SkusSection() {
+	const { user } = useCurrentUser();
+	const [page, setPage] = useState(1);
+	const [search, setSearch] = useState("");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [editing, setEditing] = useState<Skus | null>(null);
+	const [deleting, setDeleting] = useState<Skus | null>(null);
+	const [viewingSuppliers, setViewingSuppliers] = useState<Skus | null>(null);
+
+
+	const { data, loading, refetch } = useQuery<
+		SkusQueryData,
+		SkusQueryVariables
+	>(SKUS_QUERY, {
+		variables: {},
+	});
+	const allSkus: Skus[] = data?.skus?.query ?? [];
+	
+	// Client-side filtering
+	const list = search.trim()
+		? allSkus.filter((sku: Skus) =>
+				sku.skuCode.toLowerCase().includes(search.toLowerCase().trim()) ||
+				sku.skuDescription.toLowerCase().includes(search.toLowerCase().trim())
+			)
+		: allSkus;
+	
+	const createdBy = user?.id ?? "";
+
+	const { data: suppliersData } = useQuery<SuppliersQueryData, SuppliersQueryVariables>(
+		SUPPLIERS_QUERY,
+		{ variables: {} }
+	);
+	const suppliers = suppliersData?.suppliers.query ?? [];
+
+	const { data: stockUnitsData } = useQuery<StockUnitsQueryData, StockUnitsQueryVariables>(
+		STOCK_UNITS_QUERY,
+		{ variables: {} }
+	);
+	const stockUnits = stockUnitsData?.stockUnits.query ?? [];
+
+	const [createSkus, { loading: createLoading }] =
+		useMutation<CreateSkusMutationData>(CREATE_SKUS_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setIsCreateOpen(false);
+			},
+		});
+
+	const [updateSkus, { loading: updateLoading }] =
+		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setEditing(null);
+			},
+		});
+
+	const [deleteSkus, { loading: deleteLoading }] =
+		useMutation<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
+			},
+		});
+
+
+	return (
+		<Card>
+			<CardHeader>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle>Skus</CardTitle>
+						<CardDescription>
+							Stock Keeping Units
+						</CardDescription>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Search by name..."
+								value={search}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
+								className="pl-9 w-48"
+							/>
+						</div>
+						<Button
+							onClick={() => setIsCreateOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to create" : undefined}
+						>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Skus
+						</Button>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Code</TableHead>
+							<TableHead>Description</TableHead>
+							<TableHead>Price (RM)</TableHead>
+							<TableHead>Quantity</TableHead>
+							<TableHead>Expiry Date</TableHead>
+							<TableHead>UOM</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead className="text-right">Actions</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{(() => {
+							if (loading) {
+								return (
+									<TableRow>
+										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+											Loading...
+										</TableCell>
+									</TableRow>
+								);
+							}
+							if (list.length === 0) {
+								return (
+									<TableRow>
+										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+											No data found.
+										</TableCell>
+									</TableRow>
+								);
+							}
+							return list.map((row: Skus) => {
+								let status: string;
+								if (row.isActive) {
+									status = "active";
+								} else {
+									status = "inactive";
+								}
+								const badgeStyle = statusColors[status];
+								const uom = stockUnits.find((unit) => unit.stockUnitId === row.skuUom);
+								let uomName: string;
+								if (uom) {
+									uomName = `${uom.unitName} (${uom.unitCode})`;
+								} else {
+									uomName = row.skuUom;
+								}
+								let price: string | null = row.skuPrice?.toString() ?? null;
+								if(price === null) {
+									price = 'N/A';
+								} else {
+									price = Number(price).toFixed(2);
+								}
+								return (
+									<TableRow key={row.skuId}>
+										<TableCell>{row.skuCode}</TableCell>
+										<TableCell>{row.skuDescription}</TableCell>
+										<TableCell>{price}</TableCell>
+										<TableCell>{Number(row.skuQuantity).toFixed(2)}</TableCell>
+										<TableCell>{formatDateOnly(row.skuExpiryDate)}</TableCell>
+										<TableCell>{uomName}</TableCell>
+										<TableCell>
+											<Badge variant="outline" className={badgeStyle}>
+												{row.isActive ? "Active" : "Inactive"}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-right">
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setViewingSuppliers(row)}
+												title="View Suppliers"
+											>
+												<Eye className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive"
+												onClick={() => setDeleting(row)}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</TableCell>
+									</TableRow>
+								);
+							});
+						})()}
+					</TableBody>
+				</Table>
+			</CardContent>
+			<SkusSuppliersViewDialog
+				open={viewingSuppliers !== null}
+				onOpenChange={(open) => {
+					if (!open) setViewingSuppliers(null);
+				}}
+				sku={viewingSuppliers}
+				suppliers={suppliers}
+			/>
+			<SkusSuppliersViewDialog
+				open={viewingSuppliers !== null}
+				onOpenChange={(open) => {
+					if (!open) setViewingSuppliers(null);
+				}}
+				sku={viewingSuppliers}
+				suppliers={suppliers}
+			/>
+			<SkusFormDialog
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+				suppliers={suppliers}
+				stockUnits={stockUnits}
+				onSubmit={(values) => {
+					// Convert date from YYYY-MM-DD to format: YYYY-MM-DD HH:mm:ss.SSSSSS
+					// expiryDate is required, so values.skuExpiryDate should always be present
+					// Use the date string directly and append time with microseconds
+					const expiryDate = values.skuExpiryDate
+						? `${values.skuExpiryDate} 00:00:00.000000`
+						: "";
+					createSkus({
+						variables: {
+							input: {
+								skuCode: values.skuCode,
+								skuDescription: values.skuDescription,
+								skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
+								skuQuantity: Number(values.skuQuantity),
+								skuExpiryDate: expiryDate,
+								skuUom: values.skuUom,
+								skuSuppliers: values.skuSuppliers?.map((s) => ({
+									supplierId: s.supplierId,
+									originalSkuCode: s.originalSkuCode || null,
+								})) || [],
+								isActive: true,
+								createdBy,
+								updatedBy: createdBy,
+							},
+						},
+					});
+				}}
+				loading={createLoading}
+				title="Add SKU"
+				description="Create a new Stock Keeping Unit"
+			/>
+			{editing && (
+				<SkusFormDialog
+					open={!!editing}
+					onOpenChange={(open) => !open && setEditing(null)}
+					suppliers={suppliers}
+					stockUnits={stockUnits}
+					initial={{
+						skuCode: editing.skuCode,
+						skuDescription: editing.skuDescription,
+						skuPrice: editing.skuPrice,
+						skuQuantity: editing.skuQuantity,
+						skuExpiryDate: editing.skuExpiryDate, // Pass full date string
+						skuUom: editing.skuUom,
+						skuSuppliers: editing.skuSuppliers,
+						isActive: editing.isActive,
+					}}
+					onSubmit={(values) => {
+						// Convert date from YYYY-MM-DD to format: YYYY-MM-DD HH:mm:ss.SSSSSS
+						const expiryDate = values.skuExpiryDate
+							? `${values.skuExpiryDate} 00:00:00.000000`
+							: "";
+						updateSkus({
+							variables: {
+								id: editing.skuId,
+								input: {
+									skuCode: values.skuCode,
+									skuDescription: values.skuDescription,
+									skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
+									skuQuantity: Number(values.skuQuantity),
+									skuExpiryDate: expiryDate,
+									skuUom: values.skuUom,
+									skuSuppliers: values.skuSuppliers?.map((s) => ({
+										supplierId: s.supplierId,
+										originalSkuCode: s.originalSkuCode || null,
+									})) || [],
+									isActive: values.isActive,
+									updatedBy: createdBy,
+								},
+							},
+						});
+					}}
+					loading={updateLoading}
+					title="Edit SKU"
+					description="Update Stock Keeping Unit details"
+				/>
+			)}
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.skuCode}
+					onConfirm={() => deleteSkus({ variables: { id: deleting.skuId } })}
+					loading={deleteLoading}
+				/>
+			)}
+		</Card>
+	);
+}
+
+function SkusSuppliersViewDialog({
+	open,
+	onOpenChange,
+	sku,
+	suppliers,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	sku: Skus | null;
+	suppliers: Supplier[];
+}) {
+	if (!sku) return null;
+
+	const supplierDetails = sku.skuSuppliers.map((skuSupplier) => {
+		const supplier = suppliers.find((s) => s.supplierId === skuSupplier.supplierId);
+		return {
+			...skuSupplier,
+			supplierName: supplier?.supplierName || "Unknown",
+			supplierCode: supplier?.supplierCode || "Unknown",
+		};
+	});
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				<DialogHeader>
+					<DialogTitle>Suppliers for {sku.skuCode}</DialogTitle>
+					<DialogDescription>
+						View all suppliers associated with this SKU
+					</DialogDescription>
+				</DialogHeader>
+				<div className="py-4">
+					{supplierDetails.length === 0 ? (
+						<p className="text-sm text-muted-foreground text-center py-8">
+							No suppliers associated with this SKU.
+						</p>
+					) : (
+						<div className="space-y-4">
+							{supplierDetails.map((item) => (
+								<div key={item.supplierId} className="border rounded-md p-4 space-y-2">
+									<div className="flex items-center justify-between">
+										<div>
+											<div className="font-medium text-sm">
+												{item.supplierName}
+											</div>
+											<div className="text-xs text-muted-foreground">
+												Code: {item.supplierCode}
+											</div>
+										</div>
+									</div>
+									{item.originalSkuCode && (
+										<div className="pt-2 border-t">
+											<Label className="text-xs text-muted-foreground">
+												Original SKU Code
+											</Label>
+											<div className="text-sm mt-1">
+												{item.originalSkuCode}
+											</div>
+										</div>
+									)}
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Close
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function SkusFormDialog({
+	open,
+	onOpenChange,
+	suppliers,
+	stockUnits,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	suppliers: Supplier[];
+	stockUnits: StockUnit[];
+	initial?: {
+		skuCode: string;
+		skuDescription: string;
+		skuPrice: number | null;
+		skuQuantity: number;
+		skuExpiryDate: string;
+		skuUom: string;
+		skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
+		isActive?: boolean;
+	};
+	onSubmit: (v: {
+		skuCode: string;
+		skuDescription: string;
+		skuPrice: number | null;
+		skuQuantity: number;
+		skuExpiryDate: string;
+		skuUom: string;
+		skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
+		isActive?: boolean;
+	}) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
+	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
+	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
+	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "");
+	const parseDate = (dateValue: string | number | undefined): Date | undefined => {
+		if (!dateValue) return undefined;
+		
+		try {
+			// Handle numeric timestamp (milliseconds)
+			if (typeof dateValue === "number") {
+				const date = new Date(dateValue);
+				if (isNaN(date.getTime())) {
+					console.warn("Invalid date timestamp:", dateValue);
+					return undefined;
+				}
+				return date;
+			}
+			
+			// Handle string that is a numeric timestamp
+			if (typeof dateValue === "string" && /^\d+$/.test(dateValue.trim())) {
+				const date = new Date(Number(dateValue));
+				if (isNaN(date.getTime())) {
+					console.warn("Invalid date timestamp string:", dateValue);
+					return undefined;
+				}
+				return date;
+			}
+			
+			// Handle PostgreSQL timestamp with timezone format: "2027-02-09 16:00:00+00"
+			// Extract YYYY-MM-DD from the string
+			const dateMatch = dateValue.match(/(\d{4}-\d{2}-\d{2})/);
+			if (dateMatch) {
+				const datePart = dateMatch[1];
+				// Create date at midnight in local timezone for date picker
+				// This ensures the date picker shows the correct date regardless of timezone
+				const [year, month, day] = datePart.split("-").map(Number);
+				const date = new Date(year, month - 1, day);
+				
+				// Verify the date is valid
+				if (isNaN(date.getTime())) {
+					console.warn("Invalid date parsed:", dateValue);
+					return undefined;
+				}
+				return date;
+			}
+			
+			// Fallback: try parsing the string directly
+			const date = new Date(dateValue);
+			if (isNaN(date.getTime())) {
+				console.warn("Invalid date string:", dateValue);
+				return undefined;
+			}
+			return date;
+		} catch (error) {
+			console.error("Error parsing date:", dateValue, error);
+			return undefined;
+		}
+	};
+
+	const [skuExpiryDate, setSkuExpiryDate] = useState<Date | undefined>(
+		parseDate(initial?.skuExpiryDate)
+	);
+	const [skuUom, setSkuUom] = useState(initial?.skuUom ?? "");
+	const [skuSuppliers, setSkuSuppliers] = useState<Array<{ supplierId: string; originalSkuCode: string | null }>>(
+		initial?.skuSuppliers ?? []
+	);
+	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [step, setStep] = useState(1);
+	const [supplierSearch, setSupplierSearch] = useState("");
+	const [errors, setErrors] = useState<{
+		skuCode?: string;
+		skuDescription?: string;
+		skuQuantity?: string;
+		skuExpiryDate?: string;
+		skuUom?: string;
+	}>({});
+
+	useEffect(() => {
+		if (open) {
+			setSkuCode(initial?.skuCode ?? "");
+			setSkuDescription(initial?.skuDescription ?? "");
+			setSkuPrice(initial?.skuPrice?.toString() ?? "");
+			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
+			const parsedDate = parseDate(initial?.skuExpiryDate);
+			setSkuExpiryDate(parsedDate);
+			setSkuUom(initial?.skuUom ?? "");
+			setSkuSuppliers(initial?.skuSuppliers ?? []);
+			setIsActive(initial?.isActive ?? true);
+			setStep(1);
+			setSupplierSearch("");
+			setErrors({});
+		}
+	}, [open, initial]);
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) {
+			setSkuCode(initial?.skuCode ?? "");
+			setSkuDescription(initial?.skuDescription ?? "");
+			setSkuPrice(initial?.skuPrice?.toString() ?? "");
+			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
+			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
+			setSkuUom(initial?.skuUom ?? "");
+			setSkuSuppliers(initial?.skuSuppliers ?? []);
+			setIsActive(initial?.isActive ?? true);
+			setStep(1);
+			setSupplierSearch("");
+			setErrors({});
+		}
+		onOpenChange(next);
+	};
+
+	const toggleSupplier = (supplierId: string) => {
+		setSkuSuppliers((prev) => {
+			const existing = prev.find((s) => s.supplierId === supplierId);
+			if (existing) {
+				return prev.filter((s) => s.supplierId !== supplierId);
+			} else {
+				return [...prev, { supplierId, originalSkuCode: null }];
+			}
+		});
+	};
+
+	const updateOriginalSkuCode = (supplierId: string, originalSkuCode: string) => {
+		setSkuSuppliers((prev) =>
+			prev.map((s) =>
+				s.supplierId === supplierId
+					? { ...s, originalSkuCode: originalSkuCode.trim() || null }
+					: s
+			)
+		);
+	};
+
+	const getOriginalSkuCode = (supplierId: string): string => {
+		const supplier = skuSuppliers.find((s) => s.supplierId === supplierId);
+		return supplier?.originalSkuCode || "";
+	};
+
+	const filteredSuppliers = suppliers.filter((supplier) => {
+		// Exclude already added suppliers
+		if (skuSuppliers.some((s) => s.supplierId === supplier.supplierId)) {
+			return false;
+		}
+		// If no search term, show all available suppliers
+		if (!supplierSearch.trim()) return true;
+		// Filter by search term
+		const searchLower = supplierSearch.toLowerCase().trim();
+		return (
+			supplier.supplierName.toLowerCase().includes(searchLower) ||
+			supplier.supplierCode.toLowerCase().includes(searchLower)
+		);
+	});
+
+	const canProceedToStep2 = 
+		skuCode.trim() &&
+		skuDescription.trim() &&
+		skuQuantity &&
+		skuExpiryDate !== undefined &&
+		skuUom;
+
+	const validateStep1 = () => {
+		const newErrors: {
+			skuCode?: string;
+			skuDescription?: string;
+			skuQuantity?: string;
+			skuExpiryDate?: string;
+			skuUom?: string;
+		} = {};
+
+		if (!skuCode.trim()) {
+			newErrors.skuCode = "Code is required";
+		}
+		if (!skuDescription.trim()) {
+			newErrors.skuDescription = "Description is required";
+		}
+		if (!skuQuantity || skuQuantity.trim() === "") {
+			newErrors.skuQuantity = "Quantity is required";
+		}
+		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) {
+			newErrors.skuExpiryDate = "Expiry date is required";
+		}
+		if (!skuUom) {
+			newErrors.skuUom = "Unit of measure is required";
+		}
+
+		setErrors(newErrors);
+		return Object.keys(newErrors).length === 0;
+	};
+
+	const handleNext = () => {
+		const isValid = validateStep1();
+		if (isValid) {
+			setErrors({});
+			setStep(2);
+		}
+	};
+
+	const handleBack = () => {
+		setStep(1);
+	};
+
+	const handleSubmit = () => {
+		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) return;
+		const expiryDateString = skuExpiryDate.toISOString().split("T")[0];
+		let priceValue: number | null = null;
+		if (skuPrice.trim() !== "") {
+			const parsed = parseFloat(skuPrice);
+			if (!isNaN(parsed)) {
+				priceValue = parsed;
+			}
+		}
+		onSubmit({
+			skuCode: skuCode.trim(),
+			skuDescription: skuDescription.trim(),
+			skuPrice: priceValue,
+			skuQuantity: parseInt(skuQuantity, 10),
+			skuExpiryDate: expiryDateString,
+			skuUom,
+			skuSuppliers,
+			isActive,
+		});
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				{(() => {
+					if (step === 1) {
+						const hasErrors = Object.keys(errors).length > 0;
+						return (
+							<div className="grid gap-4 py-4">
+								{hasErrors && (
+									<div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+										<p className="text-sm text-destructive font-medium mb-1">
+											Please fix the following errors to continue:
+										</p>
+										<ul className="text-sm text-destructive list-disc list-inside space-y-1">
+											{errors.skuCode && <li>Code is required</li>}
+											{errors.skuDescription && <li>Description is required</li>}
+											{errors.skuQuantity && <li>Quantity is required</li>}
+											{errors.skuExpiryDate && <li>Expiry date is required</li>}
+											{errors.skuUom && <li>Unit of measure is required</li>}
+										</ul>
+									</div>
+								)}
+								<div className="grid gap-2">
+									<Label htmlFor="sku-code">Code</Label>
+									<Input
+										id="sku-code"
+										value={skuCode}
+										onChange={(e) => {
+											setSkuCode(e.target.value);
+											if (errors.skuCode) {
+												setErrors((prev) => ({ ...prev, skuCode: undefined }));
+											}
+										}}
+										placeholder="SKU name"
+										className={errors.skuCode ? "border-destructive" : ""}
+									/>
+									{errors.skuCode && (
+										<p className="text-sm text-destructive">{errors.skuCode}</p>
+									)}
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="sku-description">Description</Label>
+									<Input
+										id="sku-description"
+										value={skuDescription}
+										onChange={(e) => {
+											setSkuDescription(e.target.value);
+											if (errors.skuDescription) {
+												setErrors((prev) => ({ ...prev, skuDescription: undefined }));
+											}
+										}}
+										placeholder="SKU description"
+										className={errors.skuDescription ? "border-destructive" : ""}
+									/>
+									{errors.skuDescription && (
+										<p className="text-sm text-destructive">{errors.skuDescription}</p>
+									)}
+								</div>
+								<div className="grid grid-cols-2 gap-4">
+									<div className="grid gap-2">
+										<Label htmlFor="sku-price">Price per unit</Label>
+										<Input
+											id="sku-price"
+											type="number"
+											step="0.01"
+											value={skuPrice}
+											onChange={(e) => setSkuPrice(e.target.value)}
+											placeholder="0.00"
+										/>
+									</div>
+									<div className="grid gap-2">
+										<Label htmlFor="sku-quantity">Quantity</Label>
+										<Input
+											id="sku-quantity"
+											type="number"
+											min="0"
+											value={skuQuantity}
+											onChange={(e) => {
+												const value = e.target.value;
+												// Allow empty string or positive numbers only
+												if (value === "" || (!isNaN(Number(value)) && Number(value) >= 0)) {
+													setSkuQuantity(value);
+													if (errors.skuQuantity) {
+														setErrors((prev) => ({ ...prev, skuQuantity: undefined }));
+													}
+												}
+											}}
+											placeholder="0"
+											className={errors.skuQuantity ? "border-destructive" : ""}
+										/>
+										{errors.skuQuantity && (
+											<p className="text-sm text-destructive">{errors.skuQuantity}</p>
+										)}
+									</div>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="sku-expiry-date">Expiry Date</Label>
+									<Popover>
+										{(() => {
+											let dateButtonClassName = "w-full justify-start text-left font-normal h-10 hover:bg-accent hover:text-accent-foreground transition-colors";
+											if (!skuExpiryDate) {
+												dateButtonClassName += " text-muted-foreground";
+											} else {
+												dateButtonClassName += " text-foreground";
+											}
+											if (errors.skuExpiryDate) {
+												dateButtonClassName += " border-destructive";
+											}
+											return (
+												<PopoverTrigger asChild>
+													<Button
+														id="sku-expiry-date"
+														variant="outline"
+														className={dateButtonClassName}
+													>
+														<CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+														<span className="truncate">
+															{skuExpiryDate && !isNaN(skuExpiryDate.getTime()) ? (
+																format(skuExpiryDate, "PPP")
+															) : (
+																"Select expiry date"
+															)}
+														</span>
+													</Button>
+												</PopoverTrigger>
+											);
+										})()}
+										<PopoverContent 
+											className="w-auto p-0 rounded-lg border shadow-lg bg-background" 
+											align="start"
+											sideOffset={4}
+										>
+											<Calendar
+												mode="single"
+												selected={skuExpiryDate}
+												onSelect={(date) => {
+													if (date) {
+														setSkuExpiryDate(date);
+														if (errors.skuExpiryDate) {
+															setErrors((prev) => ({ ...prev, skuExpiryDate: undefined }));
+														}
+													}
+												}}
+												defaultMonth={skuExpiryDate || new Date()}
+												captionLayout="dropdown"
+												showOutsideDays={true}
+												fromYear={new Date().getFullYear()}
+												toYear={new Date().getFullYear() + 10}
+											/>
+										</PopoverContent>
+									</Popover>
+									{errors.skuExpiryDate && (
+										<p className="text-sm text-destructive">{errors.skuExpiryDate}</p>
+									)}
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="sku-uom">Unit of Measure</Label>
+									<Select 
+										value={skuUom} 
+										onValueChange={(value) => {
+											setSkuUom(value);
+											if (errors.skuUom) {
+												setErrors((prev) => ({ ...prev, skuUom: undefined }));
+											}
+										}}
+									>
+										<SelectTrigger className={errors.skuUom ? "border-destructive" : ""}>
+											<SelectValue placeholder="Select UOM" />
+										</SelectTrigger>
+										<SelectContent>
+											{stockUnits
+												.filter((u) => u.isActive)
+												.map((unit) => (
+													<SelectItem key={unit.stockUnitId} value={unit.stockUnitId}>
+														{unit.unitName} ({unit.unitCode})
+													</SelectItem>
+												))}
+										</SelectContent>
+									</Select>
+									{errors.skuUom && (
+										<p className="text-sm text-destructive">{errors.skuUom}</p>
+									)}
+								</div>
+							</div>
+						);
+					} else {
+						return (
+							<div className="grid gap-4 py-4">
+								<div className="grid gap-2">
+									<Label htmlFor="supplier-search">Add Supplier</Label>
+									<div className="relative">
+										<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+										<Input
+											id="supplier-search"
+											placeholder="Search by supplier name or code..."
+											value={supplierSearch}
+											onChange={(e) => setSupplierSearch(e.target.value)}
+											className="pl-9"
+										/>
+									</div>
+									{(() => {
+										if (filteredSuppliers.length > 0) {
+											return (
+												<div className="border rounded-md mt-2 h-40 overflow-y-auto">
+													{filteredSuppliers.map((supplier) => (
+														<button
+															key={supplier.supplierId}
+															type="button"
+															onClick={() => {
+																toggleSupplier(supplier.supplierId);
+																setSupplierSearch("");
+															}}
+															className="w-full text-left px-3 py-2 hover:bg-muted transition-colors border-b last:border-b-0"
+														>
+															<div className="text-sm">
+																{supplier.supplierName} ({supplier.supplierCode})
+															</div>
+														</button>
+													))}
+												</div>
+											);
+										} else if (supplierSearch.trim()) {
+											return (
+												<p className="text-sm text-muted-foreground mt-2">
+													No suppliers found matching "{supplierSearch}"
+												</p>
+											);
+										} else {
+											return null;
+										}
+									})()}
+								</div>
+								<div className="grid gap-2">
+									<Label>
+										Added Suppliers
+										{skuSuppliers.length > 0 && ` (${skuSuppliers.length})`}
+									</Label>
+									{(() => {
+										if (skuSuppliers.length === 0) {
+											return (
+												<p className="text-sm text-muted-foreground border rounded-md p-3">
+													No suppliers added yet. Search and select suppliers above.
+												</p>
+											);
+										} else {
+											return (
+												<div className="border rounded-md p-3 space-y-3 max-h-60 overflow-y-auto">
+													{skuSuppliers.map((selectedSupplier) => {
+														const supplier = suppliers.find((s) => s.supplierId === selectedSupplier.supplierId);
+														if (!supplier) return null;
+														return (
+															<div key={supplier.supplierId} className="space-y-2 py-2 border-b last:border-b-0">
+																<div className="flex items-center justify-between">
+																	<div className="text-sm font-medium">
+																		{supplier.supplierName} ({supplier.supplierCode})
+																	</div>
+																	<Button
+																		type="button"
+																		variant="ghost"
+																		size="icon"
+																		className="h-6 w-6"
+																		onClick={() => toggleSupplier(supplier.supplierId)}
+																	>
+																		<X className="h-4 w-4" />
+																	</Button>
+																</div>
+																<div>
+																	<Label htmlFor={`original-sku-${supplier.supplierId}`} className="text-xs text-muted-foreground">
+																		Original SKU Code (optional)
+																	</Label>
+																	<Input
+																		id={`original-sku-${supplier.supplierId}`}
+																		value={getOriginalSkuCode(supplier.supplierId)}
+																		onChange={(e) => updateOriginalSkuCode(supplier.supplierId, e.target.value)}
+																		placeholder="Supplier's original SKU code"
+																		className="mt-1"
+																	/>
+																</div>
+															</div>
+														);
+													})}
+												</div>
+											);
+										}
+									})()}
+								</div>
+							</div>
+						);
+					}
+				})()}
+				{initial && (
+					<div className="flex items-center justify-between border-t pt-4">
+						<Label htmlFor="sku-active">Active Status</Label>
+						<Switch
+							id="sku-active"
+							checked={isActive}
+							onCheckedChange={setIsActive}
+						/>
+					</div>
+				)}
+				<DialogFooter>
+					<Button variant="outline" onClick={() => handleOpenChange(false)}>
+						Cancel
+					</Button>
+					{(() => {
+						if (step === 1) {
+							return (
+								<Button 
+									onClick={handleNext}
+									className={!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : ""}
+								>
+									Next
+								</Button>
+							);
+						} else {
+							return (
+								<>
+									<Button variant="outline" onClick={handleBack}>
+										Back
+									</Button>
+									<Button onClick={handleSubmit} disabled={loading}>
+										{(() => {
+											if (loading) {
+												return "Saving...";
+											} else {
+												return "Save";
+											}
+										})()}
+									</Button>
+								</>
+							);
+						}
+					})()}
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function StockUnitSection() {
 	const { user } = useCurrentUser();
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
