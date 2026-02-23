@@ -77,7 +77,12 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 function skuToException(sku: Skus): Exception {
 	const qty = sku.skuQuantity ?? 0;
 	const date = sku.skuExpiryDate
-		? new Date(sku.skuExpiryDate)
+		? (() => {
+				const raw = sku.skuExpiryDate;
+				const ms = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
+				const d = new Date(ms);
+				return Number.isNaN(d.getTime()) ? new Date(sku.createdAt ?? Date.now()) : d;
+			})()
 		: new Date(sku.createdAt ?? Date.now());
 	return {
 		id: sku.skuId,
