@@ -5,6 +5,7 @@ export const GENERATE_REPORT_MUTATION = gql`
 		generateReport(input: $input) {
 			pdfBase64
 			filename
+			s3Url
 		}
 	}
 `;
@@ -16,11 +17,13 @@ export type GenerateReportInput = {
 	regionId?: string;
 	dateFrom?: string;
 	dateTo?: string;
+	saveToS3?: boolean;
 };
 
 export type GenerateReportPayload = {
 	pdfBase64: string;
 	filename: string;
+	s3Url?: string | null;
 };
 
 export type GenerateReportMutationData = {

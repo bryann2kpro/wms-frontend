@@ -33,8 +33,8 @@ import {
 } from "@/lib/graphql/reports";
 import { downloadPdfFromBase64 } from "@/lib/reports";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { getAccessToken } from "@/lib/auth/auth-storage";
 import request from "graphql-request";
+import { toast } from "sonner";
 import { env } from "@/env";
 import {
 	REGIONS_QUERY,
@@ -100,17 +100,39 @@ function ReportsComponent() {
 
 			// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
 			if (format === "PDF" && (selectedReport === "Movement" || selectedReport === "InvoiceSummary")) {
+				if (!regionId?.trim()) {
+					toast.error("Region is required for this report.");
+					return;
+				}
 				const reportType = selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
 				const input: GenerateReportMutationVariables["input"] = {
 					type: reportType,
-					...(regionId && { regionId }),
+					regionId: regionId.trim(),
 					...(dateFrom && { dateFrom }),
 					...(dateTo && { dateTo }),
+					saveToS3: true,
 				};
-				const result = await generateReportMutation({ variables: { input } });
-				const payload = result.data?.generateReport;
-				if (payload?.pdfBase64 && payload?.filename) {
+				try {
+					const result = await generateReportMutation({ variables: { input } });
+					if (result.error) {
+						const err = result.error as { graphQLErrors?: Array<{ message: string }>; message: string };
+						const message =
+							err.graphQLErrors?.[0]?.message ?? err.message ?? "Failed to generate report.";
+						toast.error(message);
+						return;
+					}
+					const payload = result.data?.generateReport;
+					if (!payload?.pdfBase64 || !payload?.filename) {
+						toast.error("Report generated but no file was returned. Please try again.");
+						return;
+					}
 					downloadPdfFromBase64(payload.pdfBase64, payload.filename);
+					toast.success(
+						"Report downloaded."
+					);
+				} catch (err) {
+					const message = err instanceof Error ? err.message : "Failed to generate report. Please try again.";
+					toast.error(message);
 				}
 				return;
 			}
@@ -289,14 +311,24 @@ function ReportsComponent() {
 							<form.Subscribe
 								selector={(state) => ({
 									selectedReport: state.values.selectedReport,
+									regionId: state.values.regionId,
+									format: state.values.format,
 									isSubmitting: state.isSubmitting,
 								})}
 							>
-								{({ selectedReport, isSubmitting }) => (
+								{({ selectedReport, regionId, format, isSubmitting }) => {
+									const needsRegion =
+										selectedReport === "Movement" || selectedReport === "InvoiceSummary";
+									const missingRequiredRegion =
+										format === "PDF" && needsRegion && !regionId?.trim();
+									return (
 									<Button
 										type="submit"
 										disabled={
-											!selectedReport || isSubmitting || generatingReport
+											!selectedReport ||
+											missingRequiredRegion ||
+											isSubmitting ||
+											generatingReport
 										}
 										className="w-full"
 									>
@@ -305,7 +337,8 @@ function ReportsComponent() {
 											? "Generating…"
 											: "Generate & Download Report"}
 									</Button>
-								)}
+									);
+								}}
 							</form.Subscribe>
 						</CardContent>
 					</Card>
