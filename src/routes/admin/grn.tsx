@@ -430,7 +430,7 @@ function GRNRouteComponent() {
 							description: i.description ?? undefined,
 							qty: i.qty,
 							uom: i.uom,
-							unitPrice: i.unitPrice,
+							// unitPrice: i.unitPrice,
 						})),
 					},
 				},

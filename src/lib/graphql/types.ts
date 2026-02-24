@@ -232,8 +232,6 @@ export interface createSkusInput {
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
 	isActive?: boolean;
-	createdBy: string;
-	updatedBy: string;
 }
 
 export interface UpdateSkusInput {
