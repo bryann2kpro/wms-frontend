@@ -9,8 +9,6 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 
-import StoreDevtools from "../lib/demo-store-devtools";
-
 import { AuthProvider } from "../lib/auth-context";
 
 import { getLocale } from "@/paraglide/runtime";
@@ -21,6 +19,7 @@ import type { ApolloClientIntegration } from "@apollo/client-integration-tanstac
 
 import type { QueryClient } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 interface MyRouterContext extends ApolloClientIntegration.RouterContext {
 	queryClient: QueryClient;
@@ -83,9 +82,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 							render: <TanStackRouterDevtoolsPanel />,
 						},
 						TanStackQueryDevtools,
-						StoreDevtools,
 					]}
 				/>
+				<Toaster />
 				<Scripts />
 			</body>
 		</html>

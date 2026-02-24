@@ -10,6 +10,14 @@ export type DOStatus =
 	| "DELIVERED_CONFIRMED"
 	| "CANCELLED";
 
+const regions = [
+	"Klang Valley",
+	"Perlis",
+	"North",
+	"South",
+	"East Coast",
+]
+
 export type ExceptionType = "SHORTAGE" | "DAMAGE";
 
 export interface DOItem {
@@ -184,7 +192,7 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 		id: `do-${i}`,
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
-		region: faker.location.state(),
+		region: regions[i % regions.length],
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -29,7 +29,11 @@ import {
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import type { DashboardData } from "@/data/dashboard.mock-data";
-import { getDashboardData } from "@/data/dashboard.mock-data";
+import {
+	DASHBOARD_QUERY,
+	mapDashboardQueryToData,
+	type DashboardQueryData,
+} from "@/lib/graphql/dashboard";
 
 export const Route = createFileRoute("/admin/dashboard")({
 	component: DashboardComponent,
@@ -38,13 +42,21 @@ export const Route = createFileRoute("/admin/dashboard")({
 function DashboardComponent() {
 	const { user } = useCurrentUser();
 
-	const { data, isLoading, isFetching } = useQuery<DashboardData>({
-		queryKey: ["dashboard"],
-		queryFn: () => getDashboardData(),
-		staleTime: 30_000,
-	});
+	const { data: queryData, loading } = useQuery<DashboardQueryData>(
+		DASHBOARD_QUERY,
+		{ fetchPolicy: "cache-and-network" }
+	);
 
-	if (isLoading || !data) {
+	const data: DashboardData | undefined =
+		queryData?.dashboard != null
+			? mapDashboardQueryToData(queryData.dashboard)
+			: undefined;
+
+	if (loading && !data) {
+		return <DashboardSkeleton />;
+	}
+
+	if (!data) {
 		return <DashboardSkeleton />;
 	}
 
@@ -270,7 +282,7 @@ function DashboardComponent() {
 						</Button>
 					</CardHeader>
 					<CardContent className="relative">
-						<TableLoadingShadow active={isFetching} />
+						<TableLoadingShadow active={loading} />
 						<Table>
 							<TableHeader>
 								<TableRow>
@@ -315,7 +327,7 @@ function DashboardComponent() {
 						</Button>
 					</CardHeader>
 					<CardContent className="relative">
-						<TableLoadingShadow active={isFetching} />
+						<TableLoadingShadow active={loading} />
 						<Table>
 							<TableHeader>
 								<TableRow>
@@ -387,7 +399,7 @@ function DashboardComponent() {
 						</Button>
 					</CardHeader>
 					<CardContent className="relative">
-						<TableLoadingShadow active={isFetching} />
+						<TableLoadingShadow active={loading} />
 						<Table>
 							<TableHeader>
 								<TableRow>
@@ -432,7 +444,7 @@ function DashboardComponent() {
 						</Button>
 					</CardHeader>
 					<CardContent className="relative">
-						<TableLoadingShadow active={isFetching} />
+						<TableLoadingShadow active={loading} />
 						<Table>
 							<TableHeader>
 								<TableRow>

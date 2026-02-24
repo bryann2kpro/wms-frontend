@@ -15,7 +15,7 @@ export const env = createEnv({
 	client: {
 		VITE_API_URL: z.url(),
 		/** GraphQL endpoint; defaults to ${VITE_API_URL}/graphql if not set */
-		VITE_GRAPHQL_ENDPOINT: z.url().optional(),
+		VITE_GRAPHQL_ENDPOINT: z.url(),
 	},
 
 	/**

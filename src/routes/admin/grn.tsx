@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import {
@@ -70,16 +70,23 @@ import {
 	type GRNDetail,
 	type GRNStatus,
 	type GRNStatusFilter,
-	getGRNs,
-	createGRN,
-	updateGRNStatus,
 } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
+import { SkuCombobox } from "@/components/grn/sku-combobox";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
-import { STOCK_UNITS_QUERY, type StockUnitsQueryData, type StockUnitsQueryVariables } from "@/lib/graphql/stock-units";
+import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
+import {
+	GRNS_QUERY,
+	CREATE_GRN_MUTATION,
+	UPDATE_GRN_STATUS_MUTATION,
+	mapGrnsQueryToResult,
+	GQL_STATUS_TO_UI,
+	UI_STATUS_TO_GQL,
+	type GrnsQueryData,
+} from "@/lib/graphql/grns";
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
@@ -92,11 +99,8 @@ const grnStatuses: GRNStatus[] = [
 ];
 
 export type CreateGRNLineItem = {
-	sku: string;
-	description: string;
+	skuId: string;
 	qty: number;
-	uom: string;
-	unitPrice: number;
 };
 
 const createGRNSchema = z.object({
@@ -126,35 +130,127 @@ function GRNRouteComponent() {
 	>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
 
-	const queryClient = useQueryClient();
-
-	const { data, isLoading } = useQuery({
-		queryKey: ["grns", { page, pageSize, searchTerm, statusFilter }],
-		queryFn: () =>
-			getGRNs({
+	const {
+		data: grnsQueryData,
+		loading: grnsLoading,
+		refetch: refetchGRNs,
+	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
+		variables: {
+			filters: {
 				page,
 				pageSize,
-				search: searchTerm,
-				status: statusFilter,
-			}),
-		staleTime: 30_000,
+				search: searchTerm || undefined,
+				status: statusFilter === "ALL" ? undefined : statusFilter,
+			},
+		},
+		fetchPolicy: "cache-and-network",
 	});
 
-	const createMutation = useMutation({
-		mutationFn: createGRN,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["grns"] });
-			setIsCreateOpen(false);
-		},
-	});
+	const emptyResult: import("@/data/grn.mock-data").GRNListResult = {
+		items: [],
+		summary: { byStatus: { Draft: 0, Submitted: 0, Approved: 0, "Sent-to-ES": 0, Failed: 0 }, total: 0 },
+		page: 1,
+		pageSize: 10,
+		total: 0,
+	};
+	const data = grnsQueryData?.grns != null ? mapGrnsQueryToResult(grnsQueryData.grns) : emptyResult;
+	const isLoading = grnsLoading;
 
-	const statusMutation = useMutation({
-		mutationFn: ({ id, status }: { id: string; status: GRNStatus }) =>
-			updateGRNStatus(id, status),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["grns"] });
+	const [createGRNApollo, { loading: createLoading }] = useApolloMutation(
+		CREATE_GRN_MUTATION,
+		{
+			onCompleted: () => {
+				refetchGRNs();
+				setIsCreateOpen(false);
+			},
+		}
+	);
+
+	const [updateGRNStatusApollo, { loading: statusUpdating }] = useApolloMutation(
+		UPDATE_GRN_STATUS_MUTATION,
+		{
+			onCompleted: () => {
+				refetchGRNs();
+			},
+		}
+	);
+
+	function mapCreateGRNToDetail(g: {
+		id: string;
+		grnNumber: string;
+		supplier: string;
+		status: string;
+		poReference: string | null;
+		supplierDO: string | null;
+		receivedDate: string;
+		createdAt: string;
+		createdBy: string;
+		notes: string | null;
+		totalItems: number;
+		receivedItems: number;
+		totalAmount: number;
+		items: Array<{ id: string; sku: string; description: string; expectedQuantity: number; receivedQuantity: number; location: string | null }>;
+	}): GRNDetail {
+		return {
+			...g,
+			status: GQL_STATUS_TO_UI[g.status] ?? "Draft",
+			poReference: g.poReference ?? undefined,
+			supplierDO: g.supplierDO ?? undefined,
+			receivedDate: new Date(g.receivedDate),
+			createdAt: new Date(g.createdAt),
+			notes: g.notes ?? undefined,
+			items: g.items.map((i) => ({ ...i, location: i.location ?? undefined })),
+		} as GRNDetail;
+	}
+
+	const createMutation = {
+		mutateAsync: async (payload: {
+			grnNumber: string;
+			poReference: string;
+			supplierDO: string;
+			receivedDate: Date;
+			notes?: string;
+			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
+		}) => {
+			const result = await createGRNApollo({
+				variables: {
+					input: {
+						grnNumber: payload.grnNumber,
+						poReference: payload.poReference,
+						supplierDO: payload.supplierDO,
+						receivedDate: payload.receivedDate.toISOString(),
+						notes: payload.notes ?? null,
+						items: payload.items?.map((i) => ({
+							sku: i.sku,
+							description: i.description ?? undefined,
+							qty: i.qty,
+							uom: i.uom,
+							unitPrice: i.unitPrice,
+						})),
+					},
+				},
+			});
+			if (!result.data?.createGRN) throw new Error("Create GRN failed");
+			return mapCreateGRNToDetail(result.data.createGRN as Parameters<typeof mapCreateGRNToDetail>[0]);
 		},
-	});
+		isPending: createLoading,
+	};
+
+	const statusMutation = {
+		mutateAsync: async ({ id, status }: { id: string; status: GRNStatus }) => {
+			await updateGRNStatusApollo({
+				variables: { id, status: UI_STATUS_TO_GQL[status] },
+			});
+			return undefined;
+		},
+		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
+			updateGRNStatusApollo({
+				variables: { id, status: UI_STATUS_TO_GQL[status] },
+			});
+		},
+		isPending: statusUpdating,
+		status: statusUpdating ? ("pending" as const) : ("idle" as const),
+	};
 
 	const form = useForm({
 		defaultValues: {
@@ -430,11 +526,8 @@ function GRNRouteComponent() {
 																		field.handleChange([
 																			...items,
 																			{
-																				sku: "",
-																				description: "",
+																				skuId: "",
 																				qty: 1,
-																				uom: "",
-																				unitPrice: 0,
 																			},
 																		]);
 																	}}
@@ -491,97 +584,102 @@ function GRNRouteComponent() {
 																				</TableRow>
 																			) : (
 																				items.map((item, index) => (
-																	<TableRow key={index}>
-																		<TableCell>
-																			<Input
-																				value={item.sku}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						sku: e.target.value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="SKU"
-																				className="font-medium"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				value={item.description}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						description: e.target.value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="Description"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				type="number"
-																				min="1"
-																				value={item.qty}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						qty: Number(e.target.value) || 1,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				className="w-20"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Select
-																				value={item.uom}
-																				onValueChange={(value) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						uom: value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																			>
-																				<SelectTrigger className="w-[120px]">
-																					<SelectValue placeholder="UOM" />
-																				</SelectTrigger>
-																				<SelectContent>
-																					{stockUnits.map((unit) => (
-																						<SelectItem
-																							key={unit.stockUnitId}
-																							value={unit.unitCode}
-																						>
-																							{unit.unitCode}
-																						</SelectItem>
-																					))}
-																				</SelectContent>
-																			</Select>
-																		</TableCell>
-																		<TableCell className="text-right">
-																			<Button
-																				type="button"
-																				variant="ghost"
-																				size="icon"
-																				onClick={() => {
-																					field.handleChange(
-																						items.filter((_, i) => i !== index),
-																					);
-																				}}
-																				className="text-destructive hover:text-destructive"
-																			>
-																				<XCircle className="h-4 w-4" />
-																			</Button>
-																		</TableCell>
-																	</TableRow>
-																))
-															)}
+																						<TableRow key={`row-${item.skuId}`}>
+																							<TableCell className="min-w-[200px]">
+																								<SkuCombobox
+																									value={{ skuId: item.skuId, qty: item.qty }}
+																									onChange={(v) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											sku: v.sku,
+																											description: v.description,
+																											uom: v.uom,
+																											unitPrice: v.unitPrice,
+																											skuId: v.skuId,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									placeholder="Search or select SKU..."
+																									createdBy={user?.id ?? ""}
+																									stockUnitCodes={stockUnits.map((u) => u.unitCode)}
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Input
+																									value={item.description}
+																									onChange={(e) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											description: e.target.value,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									placeholder="Description"
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Input
+																									type="number"
+																									min="1"
+																									value={item.qty}
+																									onChange={(e) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											qty: Number(e.target.value) || 1,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																									className="w-20"
+																								/>
+																							</TableCell>
+																							<TableCell>
+																								<Select
+																									value={item.uom}
+																									onValueChange={(value) => {
+																										const newItems = [...items];
+																										newItems[index] = {
+																											...newItems[index],
+																											uom: value,
+																										};
+																										field.handleChange(newItems);
+																									}}
+																								>
+																									<SelectTrigger className="w-[120px]">
+																										<SelectValue placeholder="UOM" />
+																									</SelectTrigger>
+																									<SelectContent>
+																										{stockUnits.map((unit) => (
+																											<SelectItem
+																												key={unit.stockUnitId}
+																												value={unit.unitCode}
+																											>
+																												{unit.unitCode}
+																											</SelectItem>
+																										))}
+																									</SelectContent>
+																								</Select>
+																							</TableCell>
+																							<TableCell className="text-right">
+																								<Button
+																									type="button"
+																									variant="ghost"
+																									size="icon"
+																									onClick={() => {
+																										field.handleChange(
+																											items.filter((_, i) => i !== index),
+																										);
+																									}}
+																									className="text-destructive hover:text-destructive"
+																								>
+																									<XCircle className="h-4 w-4" />
+																								</Button>
+																							</TableCell>
+																						</TableRow>
+																					))
+																				)}
 																		</TableBody>
 																	</Table>
 																</div>
