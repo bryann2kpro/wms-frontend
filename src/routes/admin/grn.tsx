@@ -253,11 +253,11 @@ function CreateGRNLineRow({
 						const newItems = [...items];
 						newItems[index] = {
 							...newItems[index],
-							skuCode: e.target.value,
+							description: e.target.value,
 						};
 						onItemsChange(newItems);
 					}}
-					placeholder="SKU ID"
+					placeholder="Description"
 				/>
 			</TableCell>
 			<TableCell>
