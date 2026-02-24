@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
@@ -45,6 +45,14 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
+import {
+	Combobox,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList,
+} from "@/components/ui/combobox";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -80,6 +88,8 @@ import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData, type StockUnitsQueryVariables } from "@/lib/graphql/stock-units";
+import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
+import type { Skus } from "@/lib/graphql/types";
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
@@ -102,13 +112,203 @@ export type CreateGRNLineItem = {
 const createGRNSchema = z.object({
 	grnNumber: z
 		.string(),
-		// .min(1, "GRN number is required")
-		// .regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
+	// .min(1, "GRN number is required")
+	// .regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
 	poReference: z.string().min(1, "PO Reference is required"),
 	supplierDO: z.string().min(1, "Supplier DO is required"),
 	receivedDate: z.string().min(1, "Received date is required"),
 	notes: z.string(),
 });
+
+function CreateGRNLineRow({
+	item,
+	index,
+	items,
+	onItemsChange,
+	skuCodes,
+	skuOptions,
+	stockUnits,
+}: {
+	item: CreateGRNLineItem;
+	index: number;
+	items: CreateGRNLineItem[];
+	onItemsChange: (newItems: CreateGRNLineItem[]) => void;
+	skuCodes: string[];
+	skuOptions: Skus[];
+	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
+}) {
+	const usedByOthersKey = items
+		.filter((_, i) => i !== index)
+		.map((it) => it.sku)
+		.filter(Boolean)
+		.sort()
+		.join(",");
+	const availableSkuCodes = useMemo(() => {
+		const usedByOthers = new Set(
+			usedByOthersKey ? usedByOthersKey.split(",") : [],
+		);
+		return skuCodes.filter(
+			(code) => !usedByOthers.has(code) || code === (item.sku ?? ""),
+		);
+	}, [usedByOthersKey, item.sku, skuCodes]);
+
+	const itemsWithCustom = useMemo(() => {
+		const current = item.sku?.trim() ?? "";
+		if (!current || availableSkuCodes.includes(current)) return availableSkuCodes;
+		return [...availableSkuCodes, current];
+	}, [availableSkuCodes, item.sku]);
+
+	const inputValueChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const onInputValueChange = useCallback(
+		(inputValue: string) => {
+			const trimmed = inputValue?.trim() ?? "";
+			if (trimmed === (item.sku ?? "")) return;
+			if (inputValueChangeTimeoutRef.current) {
+				clearTimeout(inputValueChangeTimeoutRef.current);
+			}
+			inputValueChangeTimeoutRef.current = setTimeout(() => {
+				inputValueChangeTimeoutRef.current = null;
+				const newItems = [...items];
+				newItems[index] = { ...newItems[index], sku: trimmed };
+				onItemsChange(newItems);
+			}, 400);
+		},
+		[item.sku, index, items, onItemsChange],
+	);
+
+	useEffect(
+		() => () => {
+			if (inputValueChangeTimeoutRef.current) {
+				clearTimeout(inputValueChangeTimeoutRef.current);
+			}
+		},
+		[],
+	);
+
+	return (
+		<TableRow key={`line-${index}-${item.sku || "new"}`}>
+			<TableCell>
+				<Combobox
+					items={itemsWithCustom}
+					value={item.sku ?? ""}
+					onValueChange={(value) => {
+						if (inputValueChangeTimeoutRef.current) {
+							clearTimeout(inputValueChangeTimeoutRef.current);
+							inputValueChangeTimeoutRef.current = null;
+						}
+						const sku = skuOptions.find((s) => s.skuCode === value);
+						const uomUnit = sku
+							? stockUnits.find(
+									(u) =>
+										u.stockUnitId === sku.skuUom ||
+										u.unitCode === sku.skuUom,
+								)
+							: undefined;
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							sku: value ?? "",
+							description: sku?.skuDescription ?? newItems[index].description ?? "",
+							uom:
+								uomUnit?.unitCode ??
+								sku?.skuUom ??
+								newItems[index].uom ??
+								"",
+						};
+						onItemsChange(newItems);
+					}}
+					onInputValueChange={onInputValueChange}
+				>
+					<ComboboxInput
+						placeholder="SKU code"
+						className="font-medium min-w-[160px]"
+					/>
+					<ComboboxContent>
+						<ComboboxList>
+							{(skuCode: string) => {
+								const s = skuOptions.find((o) => o.skuCode === skuCode);
+								return (
+									<ComboboxItem key={skuCode} value={skuCode}>
+										{s?.skuDescription ?? skuCode}
+									</ComboboxItem>
+								);
+							}}
+						</ComboboxList>
+						<ComboboxEmpty>No SKU found.</ComboboxEmpty>
+					</ComboboxContent>
+				</Combobox>
+			</TableCell>
+			<TableCell>
+				<Input
+					value={item.description}
+					onChange={(e) => {
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							description: e.target.value,
+						};
+						onItemsChange(newItems);
+					}}
+					placeholder="Description"
+				/>
+			</TableCell>
+			<TableCell>
+				<Input
+					type="number"
+					min={1}
+					value={item.qty}
+					onChange={(e) => {
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							qty: Number(e.target.value) || 1,
+						};
+						onItemsChange(newItems);
+					}}
+					className="w-20"
+				/>
+			</TableCell>
+			<TableCell>
+				<Select
+					value={item.uom}
+					onValueChange={(value) => {
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							uom: value,
+						};
+						onItemsChange(newItems);
+					}}
+				>
+					<SelectTrigger className="w-[120px]">
+						<SelectValue placeholder="UOM" />
+					</SelectTrigger>
+					<SelectContent>
+						{stockUnits.map((unit) => (
+							<SelectItem
+								key={unit.stockUnitId}
+								value={unit.unitCode}
+							>
+								{unit.unitCode}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</TableCell>
+			<TableCell className="text-right">
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
+					className="text-destructive hover:text-destructive"
+				>
+					<XCircle className="h-4 w-4" />
+				</Button>
+			</TableCell>
+		</TableRow>
+	);
+}
 
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
@@ -125,6 +325,10 @@ function GRNRouteComponent() {
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
+
+	const { data: skusData } = useApolloQuery<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, { variables: {} });
+	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
+	const skuCodes = useMemo(() => skuOptions.map((s) => s.skuCode), [skuOptions]);
 
 	const queryClient = useQueryClient();
 
@@ -171,14 +375,17 @@ function GRNRouteComponent() {
 		// },
 		onSubmit: async ({ value }) => {
 			const parsedDate = new Date(value.receivedDate);
-			await createMutation.mutateAsync({
+			const payload = {
 				grnNumber: value.grnNumber,
 				poReference: value.poReference,
 				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
 				items: value.items ?? [],
-			});
+			};
+			console.log("[GRN Submit] Form value (raw):", value);
+			console.log("[GRN Submit] Payload passed to createMutation:", payload);
+			await createMutation.mutateAsync(payload);
 			form.reset();
 		},
 	});
@@ -232,14 +439,15 @@ function GRNRouteComponent() {
 				</div>
 				<Dialog
 					open={isCreateOpen}
-					
+
 					onOpenChange={(open) => {
-						setIsCreateOpen(open);
 						if (!open) {
+							(document.activeElement as HTMLElement | null)?.blur();
 							form.reset();
 							form.setFieldValue("items", []);
 							setProofFiles([]);
 						}
+						setIsCreateOpen(open);
 					}}
 				>
 					<DialogTrigger asChild>
@@ -262,7 +470,7 @@ function GRNRouteComponent() {
 							</DialogDescription>
 						</DialogHeader>
 						<Separator />
-						<ScrollArea className="flex-1 pr-4 h-full overflow-y-auto">
+						<div className="flex-1 pr-4 h-full overflow-y-auto min-h-0">
 							<form
 								onSubmit={(e) => {
 									e.preventDefault();
@@ -471,7 +679,7 @@ function GRNRouteComponent() {
 																			{items.length === 0 ? (
 																				<TableRow>
 																					<TableCell
-																						colSpan={7}
+																						colSpan={5}
 																						className="h-40 text-center"
 																					>
 																						<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -491,97 +699,18 @@ function GRNRouteComponent() {
 																				</TableRow>
 																			) : (
 																				items.map((item, index) => (
-																	<TableRow key={index}>
-																		<TableCell>
-																			<Input
-																				value={item.sku}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						sku: e.target.value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="SKU"
-																				className="font-medium"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				value={item.description}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						description: e.target.value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				placeholder="Description"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Input
-																				type="number"
-																				min="1"
-																				value={item.qty}
-																				onChange={(e) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						qty: Number(e.target.value) || 1,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																				className="w-20"
-																			/>
-																		</TableCell>
-																		<TableCell>
-																			<Select
-																				value={item.uom}
-																				onValueChange={(value) => {
-																					const newItems = [...items];
-																					newItems[index] = {
-																						...newItems[index],
-																						uom: value,
-																					};
-																					field.handleChange(newItems);
-																				}}
-																			>
-																				<SelectTrigger className="w-[120px]">
-																					<SelectValue placeholder="UOM" />
-																				</SelectTrigger>
-																				<SelectContent>
-																					{stockUnits.map((unit) => (
-																						<SelectItem
-																							key={unit.stockUnitId}
-																							value={unit.unitCode}
-																						>
-																							{unit.unitCode}
-																						</SelectItem>
-																					))}
-																				</SelectContent>
-																			</Select>
-																		</TableCell>
-																		<TableCell className="text-right">
-																			<Button
-																				type="button"
-																				variant="ghost"
-																				size="icon"
-																				onClick={() => {
-																					field.handleChange(
-																						items.filter((_, i) => i !== index),
-																					);
-																				}}
-																				className="text-destructive hover:text-destructive"
-																			>
-																				<XCircle className="h-4 w-4" />
-																			</Button>
-																		</TableCell>
-																	</TableRow>
-																))
-															)}
+																					<CreateGRNLineRow
+																						key={`line-${index}-${item.sku || "new"}`}
+																						item={item}
+																						index={index}
+																						items={items}
+																						onItemsChange={field.handleChange}
+																						skuCodes={skuCodes}
+																						skuOptions={skuOptions}
+																						stockUnits={stockUnits}
+																					/>
+																				))
+																			)}
 																		</TableBody>
 																	</Table>
 																</div>
@@ -643,7 +772,7 @@ function GRNRouteComponent() {
 											</CardContent>
 										</Card>
 									</div>
-							</div>
+								</div>
 
 								<form.Subscribe
 									selector={(state) => [state.isSubmitting, state.canSubmit]}
@@ -701,7 +830,7 @@ function GRNRouteComponent() {
 									)}
 								</form.Subscribe>
 							</form>
-						</ScrollArea>
+						</div>
 					</DialogContent>
 				</Dialog>
 			</div>
