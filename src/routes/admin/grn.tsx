@@ -225,7 +225,7 @@ function GRNRouteComponent() {
 							description: i.description ?? undefined,
 							qty: i.qty,
 							uom: i.uom,
-							unitPrice: i.unitPrice,
+							// unitPrice: i.unitPrice,
 						})),
 					},
 				},
@@ -595,7 +595,7 @@ function GRNRouteComponent() {
 																											sku: v.sku,
 																											description: v.description,
 																											uom: v.uom,
-																											unitPrice: v.unitPrice,
+																											// unitPrice: v.unitPrice,
 																											skuId: v.skuId,
 																										};
 																										field.handleChange(newItems);
