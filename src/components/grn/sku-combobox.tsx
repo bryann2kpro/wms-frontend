@@ -35,6 +35,7 @@ import z from "zod";
 import { Field as UiField, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Skus } from "@/lib/graphql/types";
 
 
 const createSkuSchema = z.object({
@@ -129,8 +130,8 @@ export function SkuCombobox({
 		if (!search.trim()) return skus;
 		const q = search.toLowerCase();
 		return skus.filter(
-			(s) =>
-				s.skuName.toLowerCase().includes(q) ||
+			(s: Skus) =>
+				s.skuCode.toLowerCase().includes(q) ||
 				s.skuDescription?.toLowerCase().includes(q),
 		);
 	}, [skus, search]);
@@ -191,7 +192,7 @@ export function SkuCombobox({
 								</div>
 							) : (
 								<ul className="p-1">
-									{filtered.map((sku) => (
+									{filtered.map((sku: Skus) => (
 										<li key={sku.skuId}>
 											<button
 												type="button"
@@ -199,7 +200,7 @@ export function SkuCombobox({
 													"flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent",
 													value?.skuId === sku.skuId && "bg-accent",
 												)}
-												onClick={() => handleSelect(sku)}
+												onClick={() => handleSelect(sku as unknown as Sku)}
 											>
 												{value?.skuId === sku.skuId ? (
 													<Check className="h-4 w-4 shrink-0" />
@@ -207,7 +208,7 @@ export function SkuCombobox({
 													<span className="w-4" />
 												)}
 												<span className="truncate font-medium">
-													{sku.skuName}
+													{sku.skuCode}
 												</span>
 												{sku.skuDescription && (
 													<span className="truncate text-muted-foreground">

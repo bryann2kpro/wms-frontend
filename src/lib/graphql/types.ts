@@ -243,7 +243,6 @@ export interface UpdateSkusInput {
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
 	isActive?: boolean;
-	updatedBy: string;
 }
 
 export interface SkusPaginatedResponse {
