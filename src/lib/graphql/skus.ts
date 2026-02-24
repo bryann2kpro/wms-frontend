@@ -6,6 +6,37 @@ import type {
 	UpdateSkusInput,
 } from "./types";
 
+export const SKUS_QUERY = gql`
+	query Skus {
+		skus {
+			skuId
+			skuName
+			skuDescription
+			skuPrice
+			skuQuantity
+			skuUom
+			isActive
+		}
+	}
+`;
+
+export const SKUS_AND_UOM_QUERY = gql`
+	query SkusAndUom {
+		skus {
+			skuId
+			skuCode
+			skuDescription
+		}
+        stockUnits {
+            query {
+                stockUnitId
+                unitCode
+            }
+        }
+		
+	}
+`;
+
 export const SKUS_FRAGMENT = gql`
 	fragment SkuFields on Sku {
 		skuId
@@ -25,25 +56,6 @@ export const SKUS_FRAGMENT = gql`
 		createdBy
 		updatedBy
 	}
-`;
-
-export const SKUS_QUERY = gql`
-	query Skus {
-		skus {
-			query {
-				...SkuFields
-			}
-			pagination {
-				count
-				totalCount
-				currentPage
-				totalPages
-				hasNextPage
-				hasPrevPage
-			}
-		}
-	}
-	${SKUS_FRAGMENT}
 `;
 
 export const SKU_QUERY = gql`
