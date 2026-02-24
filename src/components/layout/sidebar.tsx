@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +76,7 @@ export function Sidebar() {
             <SidebarContent>
                 <ScrollArea className="flex-1 px-3 py-4">
                     <SidebarGroup className="space-y-1">
+                        <SidebarMenu>
                         {allNavigationItems.map(
                             (link) =>
                                 accessControl(link) && (
@@ -83,24 +84,22 @@ export function Sidebar() {
                                             key={`nav-${link.key}`} 
                                             title={link.title} 
                                         >
-                                            {(
-                                                <Link
-                                                    key={link.key}
-                                                    to={link.href}
-                                                    className={cn(
-                                                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                                                        isActive(link.href)
-                                                            ? "bg-primary text-primary-foreground"
-                                                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                                                    )}
-                                                >
-                                                    <link.icon className="h-5 w-5" />
-                                                    {link.title}
-                                                </Link>
-                                            )}
+                                            <Link
+                                                to={link.href}
+                                                className={cn(
+                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                                                    isActive(link.href)
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                                )}
+                                            >
+                                                <link.icon className="h-5 w-5" />
+                                                {link.title}
+                                            </Link>
                                     </SidebarMenuItem>
                                 )
                         )}
+                        </SidebarMenu>
                     </SidebarGroup>
                 </ScrollArea>
             </SidebarContent>
