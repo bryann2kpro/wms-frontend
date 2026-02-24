@@ -201,3 +201,55 @@ export interface UpdateRackInput {
 	rackLevel?: string;
 	updatedBy: string;
 }
+
+export interface SkuSupplier {
+	supplierId: string;
+	originalSkuCode: string | null;
+}
+
+export interface Skus {
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	skuPrice: number;
+	skuQuantity: number;
+	skuExpiryDate: string;
+	skuSuppliers: SkuSupplier[];
+	skuUom: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface createSkusInput {
+	skuCode: string;
+	skuDescription: string;
+	skuPrice: number;
+	skuQuantity: number;
+	skuExpiryDate: string;
+	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
+	skuUom: string;
+	isActive?: boolean;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSkusInput {
+	skuCode?: string;
+	skuDescription?: string;
+	skuPrice?: number;
+	skuQuantity?: number;
+	skuExpiryDate?: string;
+	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
+	skuUom?: string;
+	isActive?: boolean;
+	updatedBy: string;
+}
+
+export interface SkusPaginatedResponse {
+	query: Skus[];
+	pagination: Pagination;
+}
+

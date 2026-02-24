@@ -35,6 +35,7 @@ import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-que
 import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as AdminAuditLogRouteImport } from './routes/admin/audit-log'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
@@ -177,6 +178,11 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
   path: '/demo/start/server-funcs',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -317,6 +325,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -397,6 +407,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -677,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/audit-log': {
+      id: '/admin/audit-log'
+      path: '/audit-log'
+      fullPath: '/admin/audit-log'
+      preLoaderRoute: typeof AdminAuditLogRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
       path: '/demo/start/server-funcs'
@@ -770,6 +789,7 @@ const AdminSettlementRouteWithChildren = AdminSettlementRoute._addFileChildren(
 )
 
 interface AdminRouteRouteChildren {
+  AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDoDetailRoute: typeof AdminDoDetailRoute
@@ -790,6 +810,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAuditLogRoute: AdminAuditLogRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDoDetailRoute: AdminDoDetailRoute,

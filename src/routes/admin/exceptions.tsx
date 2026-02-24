@@ -1,6 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@apollo/client/react";
+import {
+	SKUS_QUERY,
+	type SkusQueryData,
+	type SkusQueryVariables,
+} from "@/lib/graphql/skus";
+import type { Skus } from "@/lib/graphql/types";
 import {
 	Card,
 	CardContent,
@@ -67,6 +74,40 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 	"DAMAGE",
 ];
 
+function skuToException(sku: Skus): Exception {
+	const qty = sku.skuQuantity ?? 0;
+	const date = sku.skuExpiryDate
+		? (() => {
+				const raw = sku.skuExpiryDate;
+				const ms = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
+				const d = new Date(ms);
+				return Number.isNaN(d.getTime()) ? new Date(sku.createdAt ?? Date.now()) : d;
+			})()
+		: new Date(sku.createdAt ?? Date.now());
+	return {
+		id: sku.skuId,
+		doNumber: "-",
+		doId: "-",
+		itemId: sku.skuId,
+		sku: sku.skuCode,
+		description: sku.skuDescription ?? "-",
+		type: "SHORTAGE",
+		quantity: qty,
+		reason: "-",
+		openingQtyDozen: qty,
+		openingQtyLoss: 0,
+		stockCountDate: date,
+		closedQtyDozen: qty,
+		closedQtyLoss: 0,
+		action: undefined,
+		isApproved: false,
+		reportedBy: "-",
+		reportedByName: "-",
+		reportedAt: date,
+		status: "pending",
+	};
+}
+
 function ExceptionsComponent() {
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
@@ -130,21 +171,43 @@ function ExceptionsComponent() {
 		[],
 	);
 
-	const { data, isLoading } = useQuery({
-		queryKey: [
-			"exceptions",
-			{ page, pageSize, searchTerm, statusFilter, typeFilter },
-		],
-		queryFn: () =>
-			getExceptions({
+	const { data: skusData, loading: isLoading } = useQuery<
+		SkusQueryData,
+		SkusQueryVariables
+	>(SKUS_QUERY, { variables: {} });
+
+	const allSkus: Skus[] = skusData?.skus?.query ?? [];
+
+	const { data, exceptions, totalPages } = useMemo(() => {
+		const filtered = searchTerm.trim()
+			? allSkus.filter(
+					(s) =>
+						s.skuCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+						(s.skuDescription ?? "")
+							.toLowerCase()
+							.includes(searchTerm.toLowerCase()),
+				)
+			: allSkus;
+		const total = filtered.length;
+		const start = (page - 1) * pageSize;
+		const items = filtered.slice(start, start + pageSize).map(skuToException);
+		const summary = {
+			byStatus: { pending: total, approved: 0, rejected: 0 },
+			byType: { SHORTAGE: total, DAMAGE: 0 },
+			total,
+		};
+		return {
+			data: {
+				items,
+				summary,
 				page,
 				pageSize,
-				search: searchTerm,
-				status: statusFilter,
-				type: typeFilter,
-			}),
-		staleTime: 30_000,
-	});
+				total,
+			},
+			exceptions: items,
+			totalPages: Math.max(1, Math.ceil(total / pageSize)),
+		};
+	}, [allSkus, page, pageSize, searchTerm]);
 
 	const approveMutation = useMutation({
 		mutationFn: (id: string) =>
@@ -166,11 +229,7 @@ function ExceptionsComponent() {
 		},
 	});
 
-	const exceptions = data?.items ?? [];
 	const summary = data?.summary;
-	const totalPages = data
-		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1;
 
 	const formatStatus = (status: string) => {
 		return status.charAt(0).toUpperCase() + status.slice(1);
