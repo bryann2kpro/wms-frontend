@@ -10,7 +10,7 @@ export const SKUS_QUERY = gql`
 	query Skus {
 		skus {
 			skuId
-			skuName
+			skuCode
 			skuDescription
 			skuPrice
 			skuQuantity
@@ -23,9 +23,11 @@ export const SKUS_QUERY = gql`
 export const SKUS_AND_UOM_QUERY = gql`
 	query SkusAndUom {
 		skus {
-			skuId
-			skuCode
-			skuDescription
+			query {
+				skuId
+				skuCode
+				skuDescription
+			}
 		}
         stockUnits {
             query {
@@ -112,3 +114,34 @@ export type UpdateSkusMutationData = { updateSku: Skus | null };
 export type DeleteSkusMutationVariables = { id: string };
 export type DeleteSkusMutationData = { deleteSku: boolean };
 
+export const CREATE_SKU_MUTATION = gql`
+	mutation CreateSku($input: CreateSkuInput!) {
+		createSku(input: $input) {
+			skuCode
+			skuDescription
+			skuQuantity
+			skuUom
+		}
+	}
+`;
+
+export type Sku = {
+	skuId: string;
+	skuName: string;
+	skuDescription: string;
+	skuCode: string;
+	skuQuantity: number;
+	skuUom: string;
+	skuExpiryDate: string;
+};
+
+// export type SkusQueryData = {
+// 	skus: Sku[];
+// };
+
+export type CreateSkuInput = {
+	skuCode: string;
+	skuDescription: string;
+	skuQuantity: number;
+	skuUom: string;
+};

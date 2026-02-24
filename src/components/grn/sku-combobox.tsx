@@ -38,17 +38,17 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 
 
 const createSkuSchema = z.object({
-	skuName: z.string().min(1),
-	skuDescription: z.string().min(1),
+	skuCode: z.string().min(1, "Code is required"),
+	skuDescription: z.string().min(1, "Description is required"),
 	skuQuantity: z.number().min(0),
-	skuUom: z.uuid().min(1),
+	skuUom: z.uuid().min(1, "UOM is required"),
 });
 
 export type SkuLineValue = {
 	sku: string;
 	description: string;
 	uom: string;
-	unitPrice: number;
+	// unitPrice: number;
 	skuId: string;
 };
 
@@ -77,7 +77,7 @@ export function SkuCombobox({
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data: { skus, stockUnits: { query: uoms } }, isLoading: loading } = useQuery({
+	const { data, isLoading: loading } = useQuery({
 		queryKey: ['skus'],
 		queryFn: () => {
 
@@ -87,6 +87,9 @@ export function SkuCombobox({
 			return request(env.VITE_GRAPHQL_ENDPOINT, SKUS_AND_UOM_QUERY, {}, headers)
 		},
 	});
+
+	const skus = data?.skus.query ?? [];
+	const uoms = data?.stockUnits?.query ?? [];
 
 	const createSku = useMutation({
 		mutationFn: (input: CreateSkuInput) => {
@@ -112,11 +115,10 @@ export function SkuCombobox({
 			skuCode: "",
 			skuDescription: "",
 			skuQuantity: 0,
-			skuUom: uoms[0].stockUnitId,
+			skuUom: uoms[0]?.stockUnitId ?? "",
 		},
 		validators: {
-			onBlur: createSkuSchema.safeParse,
-			onSubmit: createSkuSchema.safeParseAsync,
+			onSubmit: createSkuSchema,
 		},
 		onSubmit: async ({ value }) => {
 			createSku.mutate(value);
@@ -138,7 +140,7 @@ export function SkuCombobox({
 			sku: sku.skuName,
 			description: sku.skuDescription,
 			uom: sku.skuUom,
-			unitPrice: sku.skuPrice,
+			// unitPrice: sku.skuPrice,
 			skuId: sku.skuId,
 		});
 		setOpen(false);
@@ -219,33 +221,36 @@ export function SkuCombobox({
 							)}
 						</ScrollArea>
 						<div className="border-t p-1">
-							<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-								<DialogTrigger asChild>
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										className="w-full justify-start gap-2"
-									>
-										<Plus className="h-4 w-4" />
-										Create new SKU
-									</Button>
-								</DialogTrigger>
-								<DialogContent className="sm:max-w-md">
-									<DialogHeader>
-										<DialogTitle>Create new SKU</DialogTitle>
-										<DialogDescription>
-											Add a new stock keeping unit. It will be available for
-											selection in line items.
-										</DialogDescription>
-									</DialogHeader>
+							<form
+								id="create-sku-form"
+								onSubmit={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									form.handleSubmit();
+								}}
+							>
+								<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+									<DialogTrigger asChild>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="w-full justify-start gap-2"
+										>
+											<Plus className="h-4 w-4" />
+											Create new SKU
+										</Button>
+									</DialogTrigger>
+									<DialogContent className="sm:max-w-md">
+										<DialogHeader>
+											<DialogTitle>Create new SKU</DialogTitle>
+											<DialogDescription>
+												Add a new stock keeping unit. It will be available for
+												selection in line items.
+											</DialogDescription>
+										</DialogHeader>
 
-									<form 
-										id="create-sku-form"
-										onSubmit={(e) => {
-											e.preventDefault()
-										}}
-									>
+										
 										<FieldGroup>
 											<div className="grid gap-4 py-4">
 												<form.Field
@@ -256,6 +261,7 @@ export function SkuCombobox({
 															<Input
 																id={field.name}
 																name={field.name}
+																form="create-sku-form"
 																value={field.state.value}
 																onBlur={field.handleBlur}
 																onChange={(e) => field.handleChange(e.target.value)}
@@ -273,6 +279,7 @@ export function SkuCombobox({
 															<Input
 																id={field.name}
 																name={field.name}
+																form="create-sku-form"
 																value={field.state.value}
 																onBlur={field.handleBlur}
 																onChange={(e) =>
@@ -293,6 +300,7 @@ export function SkuCombobox({
 																<Input
 																	id={field.name}
 																	name={field.name}
+																	form="create-sku-form"
 																	value={field.state.value}
 																	onBlur={field.handleBlur}
 																	onChange={(e) => field.handleChange(Number(e.target.value))}
@@ -367,32 +375,27 @@ export function SkuCombobox({
 												</div>
 											</div>
 										</FieldGroup>
-									</form>
-									
-									<DialogFooter>
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => setCreateOpen(false)}
-										>
-											Cancel
-										</Button>
-										<Button
-											type="button"
-											onClick={() => {
-												toast.promise(form.handleSubmit(), {
-													loading: "Creating SKU...",
-													success: "SKU created successfully",
-													error: "Failed to create SKU",
-												});
-											}}
-											disabled={form.state.isSubmitting}
-										>
-											{form.state.isSubmitting ? "Creating..." : "Create SKU"}
-										</Button>
-									</DialogFooter>
-								</DialogContent>
-							</Dialog>
+										
+										
+										<DialogFooter>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => setCreateOpen(false)}
+											>
+												Cancel
+											</Button>
+											<Button
+												type="submit"
+												form="create-sku-form"
+												disabled={form.state.isSubmitting}
+											>
+												{form.state.isSubmitting ? "Creating..." : "Create SKU"}
+											</Button>
+										</DialogFooter>
+									</DialogContent>
+								</Dialog>
+							</form>
 						</div>
 					</div>
 				</PopoverContent>
