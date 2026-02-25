@@ -9,13 +9,16 @@ import type {
 export const SKUS_QUERY = gql`
 	query Skus {
 		skus {
+			query {
 			skuId
 			skuCode
 			skuDescription
 			skuPrice
 			skuQuantity
+			skuExpiryDate
 			skuUom
 			isActive
+			}
 		}
 	}
 `;
@@ -68,6 +71,7 @@ export const SKU_QUERY = gql`
 	}
 	${SKUS_FRAGMENT}
 `;
+
 
 export const CREATE_SKUS_MUTATION = gql`
 	mutation CreateSku($input: CreateSkuInput!) {

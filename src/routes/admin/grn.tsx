@@ -96,6 +96,7 @@ import {
 	type GrnsQueryData,
 } from "@/lib/graphql/grns";
 import { Skus } from "@/lib/graphql/types";
+import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
@@ -108,8 +109,11 @@ const grnStatuses: GRNStatus[] = [
 ];
 
 export type CreateGRNLineItem = {
-	skuId: string;
+	skuCode: string;
+	description: string;
 	qty: number;
+	uom: string;
+	unitPrice: number;
 };
 
 const createGRNSchema = z.object({
@@ -142,7 +146,7 @@ function CreateGRNLineRow({
 }) {
 	const usedByOthersKey = items
 		.filter((_, i) => i !== index)
-		.map((it) => it.sku)
+		.map((it) => it.skuCode)
 		.filter(Boolean)
 		.sort()
 		.join(",");
@@ -151,32 +155,33 @@ function CreateGRNLineRow({
 			usedByOthersKey ? usedByOthersKey.split(",") : [],
 		);
 		return skuCodes.filter(
-			(code) => !usedByOthers.has(code) || code === (item.sku ?? ""),
+			(code) => !usedByOthers.has(code) || code === (item.skuCode ?? ""),
 		);
-	}, [usedByOthersKey, item.sku, skuCodes]);
+	}, [usedByOthersKey, item.skuCode, skuCodes]);
 
 	const itemsWithCustom = useMemo(() => {
-		const current = item.sku?.trim() ?? "";
+		const current = item.skuCode?.trim() ?? "";
 		if (!current || availableSkuCodes.includes(current)) return availableSkuCodes;
 		return [...availableSkuCodes, current];
-	}, [availableSkuCodes, item.sku]);
+	}, [availableSkuCodes, item.skuCode]);
 
 	const inputValueChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const onInputValueChange = useCallback(
 		(inputValue: string) => {
 			const trimmed = inputValue?.trim() ?? "";
-			if (trimmed === (item.sku ?? "")) return;
+			if (trimmed === (item.skuCode ?? "")) return;
 			if (inputValueChangeTimeoutRef.current) {
 				clearTimeout(inputValueChangeTimeoutRef.current);
 			}
 			inputValueChangeTimeoutRef.current = setTimeout(() => {
 				inputValueChangeTimeoutRef.current = null;
 				const newItems = [...items];
-				newItems[index] = { ...newItems[index], sku: trimmed };
+				newItems[index] = { ...newItems[index], skuCode: trimmed };
 				onItemsChange(newItems);
 			}, 400);
 		},
-		[item.sku, index, items, onItemsChange],
+		[item.skuCode
+			, index, items, onItemsChange],
 	);
 
 	useEffect(
@@ -189,17 +194,17 @@ function CreateGRNLineRow({
 	);
 
 	return (
-		<TableRow key={`line-${index}-${item.sku || "new"}`}>
+		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
 			<TableCell>
 				<Combobox
 					items={itemsWithCustom}
-					value={item.sku ?? ""}
+					value={item.skuCode ?? ""}
 					onValueChange={(value) => {
 						if (inputValueChangeTimeoutRef.current) {
 							clearTimeout(inputValueChangeTimeoutRef.current);
 							inputValueChangeTimeoutRef.current = null;
 						}
-						const sku = skuOptions.find((s) => s.skuCode === value);
+						const sku = skuOptions.find((s: Skus) => s.skuCode === value);
 						const uomUnit = sku
 							? stockUnits.find(
 									(u) =>
@@ -210,7 +215,7 @@ function CreateGRNLineRow({
 						const newItems = [...items];
 						newItems[index] = {
 							...newItems[index],
-							sku: value ?? "",
+							skuCode: value ?? "",
 							description: sku?.skuDescription ?? newItems[index].description ?? "",
 							uom:
 								uomUnit?.unitCode ??
@@ -288,16 +293,7 @@ function CreateGRNLineRow({
 					</SelectTrigger>
 					<SelectContent>
 						{stockUnits.map((unit) => (
-							<SelectItemconst {
-		data: grnsQueryData,
-						loading: grnsLoading,
-						refetch: refetchGRNs,
-	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
-							variables: {
-								filters: {
-								key={unit.stockUnitId}
-								value={unit.unitCode}
-							>
+							<SelectItem key={unit.stockUnitId} value={unit.unitCode}>
 								{unit.unitCode}
 							</SelectItem>
 						))}
@@ -334,6 +330,9 @@ function GRNRouteComponent() {
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
+	const { data: skusData } = useApolloQuery<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, { variables: {} });
+	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
+	const skuCodes = useMemo(() => skuOptions.map((s) => s.skuCode), [skuOptions]);
 
 	const {
 		data: grnsQueryData,
@@ -435,8 +434,8 @@ function GRNRouteComponent() {
 					},
 				},
 			});
-			if (!result.data?.createGRN) throw new Error("Create GRN failed");
-			return mapCreateGRNToDetail(result.data.createGRN as Parameters<typeof mapCreateGRNToDetail>[0]);
+			// if (!result.data?.createGRN) throw new Error("Create GRN failed");
+			// return mapCreateGRNToDetail(result.data.createGRN as Parameters<typeof mapCreateGRNToDetail>[0]);
 		},
 		isPending: createLoading,
 	};
@@ -478,7 +477,13 @@ function GRNRouteComponent() {
 				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
-				items: value.items ?? [],
+				items: (value.items ?? []).map((i) => ({
+					sku: i.skuCode,
+					description: i.description,
+					qty: i.qty,
+					uom: i.uom,
+					unitPrice: i.unitPrice,
+				})),
 			};
 			console.log("[GRN Submit] Form value (raw):", value);
 			console.log("[GRN Submit] Payload passed to createMutation:", payload);
@@ -735,7 +740,10 @@ function GRNRouteComponent() {
 																		field.handleChange([
 																			...items,
 																			{
-																				skuId: "",
+																				skuCode: "",
+																				description: "",
+																				uom: "",
+																				unitPrice: 0,
 																				qty: 1,
 																			},
 																		]);
@@ -794,7 +802,7 @@ function GRNRouteComponent() {
 																			) : (
 																				items.map((item, index) => (
 																					<CreateGRNLineRow
-																						key={`line-${index}-${item.sku || "new"}`}
+																						key={`line-${index}-${item.skuCode || "new"}`}
 																						item={item}
 																						index={index}
 																						items={items}

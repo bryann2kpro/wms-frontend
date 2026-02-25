@@ -1677,13 +1677,19 @@ function SkusSection() {
 								} else {
 									price = Number(price).toFixed(2);
 								}
+								let expiryDate = row.skuExpiryDate ?? null;
+								if(expiryDate === null) {
+									expiryDate = 'N/A';
+								} else {
+									expiryDate = formatDateOnly(expiryDate);
+								}
 								return (
 									<TableRow key={row.skuId}>
 										<TableCell>{row.skuCode}</TableCell>
 										<TableCell>{row.skuDescription}</TableCell>
 										<TableCell>{price}</TableCell>
 										<TableCell>{Number(row.skuQuantity).toFixed(2)}</TableCell>
-										<TableCell>{formatDateOnly(row.skuExpiryDate)}</TableCell>
+										<TableCell>{expiryDate}</TableCell>
 										<TableCell>{uomName}</TableCell>
 										<TableCell>
 											<Badge variant="outline" className={badgeStyle}>
@@ -1764,8 +1770,6 @@ function SkusSection() {
 									originalSkuCode: s.originalSkuCode || null,
 								})) || [],
 								isActive: true,
-								createdBy,
-								updatedBy: createdBy,
 							},
 						},
 					});
@@ -1810,7 +1814,6 @@ function SkusSection() {
 										originalSkuCode: s.originalSkuCode || null,
 									})) || [],
 									isActive: values.isActive,
-									updatedBy: createdBy,
 								},
 							},
 						});
@@ -1950,7 +1953,7 @@ function SkusFormDialog({
 	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
 	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
 	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
-	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "");
+	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "0");
 	const parseDate = (dateValue: string | number | undefined): Date | undefined => {
 		if (!dateValue) return undefined;
 		
@@ -2029,7 +2032,7 @@ function SkusFormDialog({
 			setSkuCode(initial?.skuCode ?? "");
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
+			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
 			const parsedDate = parseDate(initial?.skuExpiryDate);
 			setSkuExpiryDate(parsedDate);
 			setSkuUom(initial?.skuUom ?? "");
@@ -2046,7 +2049,7 @@ function SkusFormDialog({
 			setSkuCode(initial?.skuCode ?? "");
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "");
+			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
 			setSkuSuppliers(initial?.skuSuppliers ?? []);
@@ -2099,11 +2102,9 @@ function SkusFormDialog({
 		);
 	});
 
-	const canProceedToStep2 = 
+	const canProceedToStep2 =
 		skuCode.trim() &&
 		skuDescription.trim() &&
-		skuQuantity &&
-		skuExpiryDate !== undefined &&
 		skuUom;
 
 	const validateStep1 = () => {
@@ -2121,12 +2122,12 @@ function SkusFormDialog({
 		if (!skuDescription.trim()) {
 			newErrors.skuDescription = "Description is required";
 		}
-		if (!skuQuantity || skuQuantity.trim() === "") {
-			newErrors.skuQuantity = "Quantity is required";
+		// Quantity: empty is allowed (treated as 0); only validate if non-empty and invalid
+		const q = String(skuQuantity ?? "").trim();
+		if (q !== "" && (isNaN(Number(q)) || Number(q) < 0)) {
+			newErrors.skuQuantity = "Quantity must be 0 or more";
 		}
-		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) {
-			newErrors.skuExpiryDate = "Expiry date is required";
-		}
+		// Expiry date is optional (allow empty)
 		if (!skuUom) {
 			newErrors.skuUom = "Unit of measure is required";
 		}
@@ -2148,8 +2149,10 @@ function SkusFormDialog({
 	};
 
 	const handleSubmit = () => {
-		if (!skuExpiryDate || isNaN(skuExpiryDate.getTime())) return;
-		const expiryDateString = skuExpiryDate.toISOString().split("T")[0];
+		const expiryDateString =
+			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
+				? skuExpiryDate.toISOString().split("T")[0]
+				: "";
 		let priceValue: number | null = null;
 		if (skuPrice.trim() !== "") {
 			const parsed = parseFloat(skuPrice);
@@ -2161,7 +2164,7 @@ function SkusFormDialog({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
 			skuPrice: priceValue,
-			skuQuantity: parseInt(skuQuantity, 10),
+			skuQuantity: Math.max(0, Number(skuQuantity) || 0),
 			skuExpiryDate: expiryDateString,
 			skuUom,
 			skuSuppliers,
@@ -2189,7 +2192,7 @@ function SkusFormDialog({
 										<ul className="text-sm text-destructive list-disc list-inside space-y-1">
 											{errors.skuCode && <li>Code is required</li>}
 											{errors.skuDescription && <li>Description is required</li>}
-											{errors.skuQuantity && <li>Quantity is required</li>}
+											{errors.skuQuantity && <li>{errors.skuQuantity}</li>}
 											{errors.skuExpiryDate && <li>Expiry date is required</li>}
 											{errors.skuUom && <li>Unit of measure is required</li>}
 										</ul>
