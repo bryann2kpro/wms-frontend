@@ -249,4 +249,3 @@ export interface SkusPaginatedResponse {
 	query: Skus[];
 	pagination: Pagination;
 }
-
