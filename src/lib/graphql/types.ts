@@ -250,3 +250,120 @@ export interface SkusPaginatedResponse {
 	pagination: Pagination;
 }
 
+export interface Grn {
+	id: string;
+	grnNo: string;
+	supplierId: string;
+	supplierDeliveryId: string | null;
+	poNo: string | null;
+	status: string;
+	receivedAt: string | null;
+	approvedBy: string | null;
+	approvedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+	items: GrnItem[];
+}
+export interface GrnItem {
+	id: string;
+	grnId: string;
+	skuId: string;
+	qty: string;
+	remarks: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+}
+export interface CreateGrnItemInput {
+	skuId?: string | null;
+	qty: string;
+	remarks?: string | null;
+	skuCode?: string | null;
+	skuDescription?: string | null;
+	skuUom?: string | null;
+}
+
+export interface CreateGrnInput {
+	grnNo: string;
+	supplierId: string;
+	supplierDeliveryId?: string | null;
+	poNo?: string | null;
+	receivedAt?: string | null;
+	createdBy?: string | null;
+	updatedBy?: string | null;
+	items?: CreateGrnItemInput[] | null;
+}
+
+export interface GrnFilterInput {
+	id?: string | null;
+	grnNo?: string | null;
+	status?: string | null;
+}
+
+export interface GrnPaginatedResponse {
+	query: Grn[];
+	pagination: Pagination;
+}
+
+export interface UpdateGrnInput {
+	grnNo?: string | null;
+	supplierId?: string | null;
+	supplierDeliveryId?: string | null;
+	poNo?: string | null;
+	status?: string | null;
+	receivedAt?: string | null;
+	approvedBy?: string | null;
+	approvedAt?: string | null;
+	updatedBy?: string | null;
+	items?: CreateGrnItemInput[] | null;
+}
+
+// ---------------------------------------------------------------------------
+// GRN list UI types (used by mapGrnsQueryToResult; no dependency on mock data)
+// ---------------------------------------------------------------------------
+
+export type GrnStatusUI =
+	| "Draft"
+	| "Submitted"
+	| "Approved"
+	| "Sent-to-ES"
+	| "Failed";
+
+export interface GrnItemForList {
+	id: string;
+	sku: string;
+	description: string;
+	expectedQuantity: number;
+	receivedQuantity: number;
+	location?: string;
+}
+
+/** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */
+export interface GrnDetailForList {
+	id: string;
+	grnNo: string;
+	supplierId: string;
+	supplierDeliveryId: string | null;
+	poNo: string | null;
+	status: GrnStatusUI;
+	receivedAt: string | null;
+	createdAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+	notes?: string;
+	items: GrnItemForList[];
+	totalItems: number;
+	receivedItems: number;
+	totalAmount: number;
+}
+
+export interface GrnListResult {
+	items: GrnDetailForList[];
+	summary: { byStatus: Record<GrnStatusUI, number>; total: number };
+	page: number;
+	pageSize: number;
+	total: number;
+}

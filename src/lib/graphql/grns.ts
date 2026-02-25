@@ -1,87 +1,156 @@
 import { gql } from "@apollo/client";
+import type {
+	Grn,
+	GrnItem,
+	GrnPaginatedResponse,
+	GrnFilterInput,
+	CreateGrnInput,
+	UpdateGrnInput,
+	Pagination,
+	GrnStatusUI,
+	GrnListResult,
+} from "./types";
 
+/** GRN list query - backend: grns { pagination, query } (no args) */
 export const GRNS_QUERY = gql`
-	query GRNs($filters: GRNListFiltersInput) {
-		grns(filters: $filters) {
-			items {
+	query GRNs {
+		grns {
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+			query {
 				id
-				grnNumber
-				supplier
+				grnNo
+				supplierId
+				supplierDeliveryId
+				poNo
 				status
-				poReference
-				supplierDO
-				receivedDate
+				receivedAt
+				approvedBy
+				approvedAt
 				createdAt
+				updatedAt
 				createdBy
-				notes
-				totalItems
-				receivedItems
-				totalAmount
+				updatedBy
 				items {
 					id
-					sku
-					description
-					expectedQuantity
-					receivedQuantity
-					location
+					grnId
+					skuId
+					qty
+					remarks
+					createdAt
+					updatedAt
+					createdBy
+					updatedBy
 				}
 			}
-			summary {
-				byStatus {
-					Draft
-					Submitted
-					Approved
-					SentToES
-					Failed
-				}
-				total
-			}
-			page
-			pageSize
-			total
 		}
 	}
 `;
 
+/** Create GRN - matches typeDefs: createGrn(input: CreateGrnInput!): Grn! */
 export const CREATE_GRN_MUTATION = gql`
-	mutation CreateGRN($input: CreateGRNInput!) {
-		createGRN(input: $input) {
+	mutation CreateGrn($input: CreateGrnInput!) {
+		createGrn(input: $input) {
 			id
-			grnNumber
-			supplier
+			grnNo
+			supplierId
+			supplierDeliveryId
+			poNo
 			status
-			poReference
-			supplierDO
-			receivedDate
+			receivedAt
+			approvedBy
+			approvedAt
 			createdAt
+			updatedAt
 			createdBy
-			notes
-			totalItems
-			receivedItems
-			totalAmount
+			updatedBy
 			items {
 				id
-				sku
-				description
-				expectedQuantity
-				receivedQuantity
-				location
+				grnId
+				skuId
+				qty
+				remarks
+				createdAt
+				updatedAt
+				createdBy
+				updatedBy
 			}
 		}
 	}
 `;
 
-export const UPDATE_GRN_STATUS_MUTATION = gql`
-	mutation UpdateGRNStatus($id: ID!, $status: GRNStatus!) {
-		updateGRNStatus(id: $id, status: $status) {
+/** Update GRN - matches typeDefs: updateGrn(id: ID!, input: UpdateGrnInput!): Grn */
+export const UPDATE_GRN_MUTATION = gql`
+	mutation UpdateGrn($id: ID!, $input: UpdateGrnInput!) {
+		updateGrn(id: $id, input: $input) {
 			id
+			grnNo
 			status
+			receivedAt
+			updatedAt
+			updatedBy
 		}
 	}
 `;
 
-/** Map GraphQL enum to UI GRNStatus */
-export const GQL_STATUS_TO_UI: Record<string, import("@/data/grn.mock-data").GRNStatus> = {
+/** Delete GRN - matches typeDefs: deleteGrn(id: ID!): Boolean! */
+export const DELETE_GRN_MUTATION = gql`
+	mutation DeleteGrn($id: ID!) {
+		deleteGrn(id: $id)
+	}
+`;
+
+// ---------------------------------------------------------------------------
+// Query / mutation types (from types.ts)
+// ---------------------------------------------------------------------------
+
+export type GrnsQueryVariables = {
+	filter?: GrnFilterInput | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+};
+
+export type GrnsQueryData = {
+	grns: GrnPaginatedResponse;
+};
+
+export type CreateGrnMutationVariables = {
+	input: CreateGrnInput;
+};
+
+export type CreateGrnMutationData = {
+	createGrn: Grn;
+};
+
+export type UpdateGrnMutationVariables = {
+	id: string;
+	input: UpdateGrnInput;
+};
+
+export type UpdateGrnMutationData = {
+	updateGrn: Grn | null;
+};
+
+export type DeleteGrnMutationVariables = {
+	id: string;
+};
+
+export type DeleteGrnMutationData = {
+	deleteGrn: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// UI status mapping (GraphQL enum <-> UI GRNStatus)
+// ---------------------------------------------------------------------------
+
+/** Map GraphQL enum to UI status */
+export const GQL_STATUS_TO_UI: Record<string, GrnStatusUI> = {
 	Draft: "Draft",
 	Submitted: "Submitted",
 	Approved: "Approved",
@@ -89,88 +158,76 @@ export const GQL_STATUS_TO_UI: Record<string, import("@/data/grn.mock-data").GRN
 	Failed: "Failed",
 };
 
-export type GrnsQueryData = {
-	grns: {
-		items: Array<{
-			id: string;
-			grnNumber: string;
-			supplier: string;
-			status: string;
-			poReference: string | null;
-			supplierDO: string | null;
-			receivedDate: string;
-			createdAt: string;
-			createdBy: string;
-			notes: string | null;
-			totalItems: number;
-			receivedItems: number;
-			totalAmount: number;
-			items: Array<{
-				id: string;
-				sku: string;
-				description: string;
-				expectedQuantity: number;
-				receivedQuantity: number;
-				location: string | null;
-			}>;
-		}>;
-		summary: {
-			byStatus: { Draft: number; Submitted: number; Approved: number; SentToES: number; Failed: number };
-			total: number;
-		};
-		page: number;
-		pageSize: number;
-		total: number;
-	};
-};
-
-export function mapGrnsQueryToResult(
-	raw: GrnsQueryData["grns"]
-): import("@/data/grn.mock-data").GRNListResult {
-	return {
-		items: raw.items.map((g) => ({
-			id: g.id,
-			grnNumber: g.grnNumber,
-			supplier: g.supplier,
-			status: GQL_STATUS_TO_UI[g.status] ?? "Draft",
-			poReference: g.poReference ?? undefined,
-			supplierDO: g.supplierDO ?? undefined,
-			receivedDate: new Date(g.receivedDate),
-			createdAt: new Date(g.createdAt),
-			createdBy: g.createdBy,
-			notes: g.notes ?? undefined,
-			totalItems: g.totalItems,
-			receivedItems: g.receivedItems,
-			totalAmount: g.totalAmount,
-			items: g.items.map((i) => ({
-				id: i.id,
-				sku: i.sku,
-				description: i.description,
-				expectedQuantity: i.expectedQuantity,
-				receivedQuantity: i.receivedQuantity,
-				location: i.location ?? undefined,
-			})),
-		})),
-		summary: {
-			byStatus: {
-				Draft: raw.summary.byStatus.Draft,
-				Submitted: raw.summary.byStatus.Submitted,
-				Approved: raw.summary.byStatus.Approved,
-				"Sent-to-ES": raw.summary.byStatus.SentToES,
-				Failed: raw.summary.byStatus.Failed,
-			},
-			total: raw.summary.total,
-		},
-		page: raw.page,
-		pageSize: raw.pageSize,
-		total: raw.total,
-	};
-}
-
-export const UI_STATUS_TO_GQL: Record<import("@/data/grn.mock-data").GRNStatus, string> = {
+export const UI_STATUS_TO_GQL: Record<GrnStatusUI, string> = {
 	Draft: "Draft",
 	Submitted: "Submitted",
 	Approved: "Approved",
 	"Sent-to-ES": "SentToES",
 	Failed: "Failed",
 };
+
+// ---------------------------------------------------------------------------
+// Mapper: GrnPaginatedResponse -> GRNListResult (for existing UI)
+// ---------------------------------------------------------------------------
+
+/** Map backend GrnPaginatedResponse to UI GrnListResult. Derives summary from query when backend does not return it. */
+export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
+	const query = raw.query ?? [];
+	const pagination = raw.pagination as Pagination;
+
+	const byStatus = {
+		Draft: 0,
+		Submitted: 0,
+		Approved: 0,
+		"Sent-to-ES": 0,
+		Failed: 0,
+	} as Record<GrnStatusUI, number>;
+
+	const items: GrnListResult["items"] = query.map((g: Grn) => {
+		const status: GrnStatusUI = (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnStatusUI;
+		byStatus[status] = (byStatus[status] ?? 0) + 1;
+
+		const lineItems = (g.items ?? []).map((i: GrnItem) => {
+			const qtyNum = Number(i.qty) || 0;
+			return {
+				id: i.id,
+				sku: i.skuId,
+				description: i.remarks ?? "",
+				expectedQuantity: qtyNum,
+				receivedQuantity: qtyNum,
+				location: undefined as string | undefined,
+			};
+		});
+		const totalItems = lineItems.reduce((s, it) => s + it.expectedQuantity, 0);
+		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
+
+		return {
+			id: g.id,
+			grnNo: g.grnNo,
+			supplierId: g.supplierId,
+			supplierDeliveryId: g.supplierDeliveryId,
+			poNo: g.poNo,
+			status,
+			receivedAt: g.receivedAt,
+			createdAt: g.createdAt,
+			createdBy: g.createdBy,
+			updatedBy: g.updatedBy,
+			notes: undefined,
+			totalItems,
+			receivedItems,
+			totalAmount: 0,
+			items: lineItems,
+		};
+	});
+
+	return {
+		items,
+		summary: {
+			byStatus,
+			total: query.length,
+		},
+		page: pagination?.currentPage ?? 1,
+		pageSize: pagination?.count ?? query.length,
+		total: pagination?.totalCount ?? query.length,
+	};
+}

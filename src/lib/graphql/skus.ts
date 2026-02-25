@@ -10,14 +10,14 @@ export const SKUS_QUERY = gql`
 	query Skus {
 		skus {
 			query {
-			skuId
-			skuCode
-			skuDescription
-			skuPrice
-			skuQuantity
-			skuExpiryDate
-			skuUom
-			isActive
+				skuId
+				skuCode
+				skuDescription
+				skuPrice
+				skuQuantity
+				skuExpiryDate
+				skuUom
+				isActive
 			}
 		}
 	}
@@ -32,13 +32,12 @@ export const SKUS_AND_UOM_QUERY = gql`
 				skuDescription
 			}
 		}
-        stockUnits {
-            query {
-                stockUnitId
-                unitCode
-            }
-        }
-		
+		stockUnits {
+			query {
+				stockUnitId
+				unitCode
+			}
+		}
 	}
 `;
 
