@@ -334,12 +334,25 @@ export function EditGrnDialog({
 					id: grn.id,
 					input: {
 						grnNo: value.grnNumber || undefined,
+						supplierId: grn.supplierId,
 						supplierDeliveryId: grn.supplierDeliveryId ?? null,
 						supplierDeliveryNo: value.supplierDeliveryNo || undefined,
 						poNo: value.poReference || undefined,
 						receivedAt: parsedDate?.toISOString() ?? undefined,
 						status: UI_STATUS_TO_GQL[status],
 						notes: value.notes || undefined,
+						items: (value.items ?? []).map((i) => {
+							const uomId = i.uom
+								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+								: undefined;
+							return {
+								skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
+								skuCode: i.skuCode,
+								skuDescription: i.description ?? undefined,
+								qty: String(i.qty),
+								skuUom: uomId ?? undefined,
+							};
+						}),
 					},
 				},
 			});
