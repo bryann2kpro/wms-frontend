@@ -322,6 +322,7 @@ export interface UpdateGrnInput {
 	approvedBy?: string | null;
 	approvedAt?: string | null;
 	updatedBy?: string | null;
+	notes?: string | null;
 	items?: CreateGrnItemInput[] | null;
 }
 

@@ -81,6 +81,7 @@ import { getPrimaryRole } from "@/lib/auth";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { SkuCombobox } from "@/components/grn/sku-combobox";
+import { EditGrnDialog } from "@/components/grn/edit-grn-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
 import {
@@ -334,6 +335,7 @@ function GRNRouteComponent() {
 	const [selectedGRN, setSelectedGRN] = useState<GrnDetailForList | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
+	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	/** Intent when submitting create form: Save Draft → Draft, Submit for Approval → Submitted */
 	const createIntentRef = useRef<"draft" | "submit">("draft");
@@ -1125,7 +1127,7 @@ function GRNRouteComponent() {
 																size="icon"
 																onClick={() => {
 																	setSelectedGRN(grn);
-																	// setIsEditOpen(true);
+																	setIsEditOpen(true);
 																}}
 															>
 																<Edit className="h-4 w-4" />
@@ -1386,6 +1388,20 @@ function GRNRouteComponent() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			{/* Edit GRN Dialog */}
+			<EditGrnDialog
+				open={isEditOpen}
+				onOpenChange={setIsEditOpen}
+				grn={selectedGRN}
+				onSuccess={() => {
+					refetchGRNs();
+					setIsEditOpen(false);
+					setSelectedGRN(null);
+				}}
+				skuOptions={skuOptions}
+				stockUnits={stockUnits}
+			/>
 		</div>
 	);
 }
