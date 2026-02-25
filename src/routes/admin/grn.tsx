@@ -353,10 +353,10 @@ function GRNRouteComponent() {
 		refetch: refetchGRNs,
 	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
 		variables: {
-			filters: {
+			filter: {
 				page,
 				pageSize,
-				search: searchTerm || undefined,
+				grnNo: searchTerm || undefined,
 				status: statusFilter === "ALL" ? undefined : statusFilter,
 			},
 		},

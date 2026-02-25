@@ -11,10 +11,10 @@ import type {
 	GrnListResult,
 } from "./types";
 
-/** GRN list query - backend: grns { pagination, query } (no args) */
+/** GRN list query - backend does search/filter; pass filter only */
 export const GRNS_QUERY = gql`
-	query GRNs {
-		grns {
+	query GRNs($filter: GrnFilterInput) {
+		grns(filter: $filter) {
 			pagination {
 				count
 				totalCount
@@ -118,8 +118,6 @@ export const DELETE_GRN_MUTATION = gql`
 
 export type GrnsQueryVariables = {
 	filter?: GrnFilterInput | null;
-	pageSize?: number | null;
-	pageNumber?: number | null;
 };
 
 export type GrnsQueryData = {

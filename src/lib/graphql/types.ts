@@ -307,6 +307,8 @@ export interface GrnFilterInput {
 	id?: string | null;
 	grnNo?: string | null;
 	status?: string | null;
+	page?: number | null;
+	pageSize?: number | null;
 }
 
 export interface GrnPaginatedResponse {
