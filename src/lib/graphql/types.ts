@@ -294,6 +294,8 @@ export interface CreateGrnInput {
 	supplierDeliveryId?: string | null;
 	poNo?: string | null;
 	receivedAt?: string | null;
+	/** Initial status: Draft or Submitted (if omitted backend may default) */
+	status?: string | null;
 	createdBy?: string | null;
 	updatedBy?: string | null;
 	items?: CreateGrnItemInput[] | null;

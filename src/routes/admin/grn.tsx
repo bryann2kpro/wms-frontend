@@ -77,6 +77,7 @@ import {
 import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { getPrimaryRole } from "@/lib/auth";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { SkuCombobox } from "@/components/grn/sku-combobox";
@@ -314,6 +315,18 @@ function CreateGRNLineRow({
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
+	// Debug: log GRN permissions so you can see why action buttons show or not
+	useEffect(() => {
+		const role = user ? getPrimaryRole(user.roles) : null;
+		console.log("[GRN permissions]", {
+			role,
+			grnView: hasPermission("grn:view"),
+			grnCreate: hasPermission("grn:create"),
+			grnEdit: hasPermission("grn:edit"),
+			grnApprove: hasPermission("grn:approve"),
+			grnSendToEs: hasPermission("grn:send_to_es"),
+		});
+	}, [user, hasPermission]);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -322,6 +335,8 @@ function GRNRouteComponent() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	/** Intent when submitting create form: Save Draft → Draft, Submit for Approval → Submitted */
+	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const { data: stockUnitsData } = useApolloQuery<
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
@@ -419,8 +434,11 @@ function GRNRouteComponent() {
 			supplierDO: string;
 			receivedDate: Date;
 			notes?: string;
+			/** Draft = save as draft, Submitted = submit for approval */
+			submitIntent?: "draft" | "submit";
 			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
 		}) => {
+			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
 			await createGRNApollo({
 				variables: {
 					input: {
@@ -428,6 +446,7 @@ function GRNRouteComponent() {
 						supplierId: payload.supplierDO,
 						poNo: payload.poReference || undefined,
 						receivedAt: payload.receivedDate.toISOString(),
+						status: UI_STATUS_TO_GQL[status],
 						items: payload.items?.map((i) => {
 							const uomId = i.uom
 								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
@@ -484,6 +503,7 @@ function GRNRouteComponent() {
 				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
+				submitIntent: createIntentRef.current,
 				items: (value.items ?? []).map((i) => ({
 					sku: i.skuCode,
 					description: i.description,
@@ -492,8 +512,6 @@ function GRNRouteComponent() {
 					unitPrice: i.unitPrice,
 				})),
 			};
-			console.log("[GRN Submit] Form value (raw):", value);
-			console.log("[GRN Submit] Payload passed to createMutation:", payload);
 			await createMutation.mutateAsync(payload);
 			form.reset();
 		},
@@ -916,7 +934,8 @@ function GRNRouteComponent() {
 															type="button"
 															variant="outline"
 															onClick={() => {
-																// Save as draft
+																// Save as draft → status Draft
+																createIntentRef.current = "draft";
 																form.handleSubmit();
 															}}
 															disabled={isSubmitting}
@@ -924,9 +943,14 @@ function GRNRouteComponent() {
 															Save Draft
 														</Button>
 														<Button
-															type="submit"
+															type="button"
 															disabled={isSubmitting || !canSubmit}
 															className="min-w-[140px]"
+															onClick={() => {
+																// Submit for approval → status Submitted
+																createIntentRef.current = "submit";
+																form.handleSubmit();
+															}}
 														>
 															{isSubmitting ? (
 																<>
@@ -1049,7 +1073,22 @@ function GRNRouteComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									grns.map((grn: GrnDetailForList) => (
+									grns.map((grn: GrnDetailForList) => {
+										const showEdit =
+											hasPermission("grn:edit") &&
+											grn.status &&
+											(grn.status === "Draft" || grn.status === "Submitted");
+										const showApprove =
+											hasPermission("grn:approve") && grn.status === "Submitted";
+										const showSend =
+											hasPermission("grn:send_to_es") && grn.status === "Approved";
+										console.log("[GRN row]", grn.grnNo, {
+											status: grn.status,
+											showEdit,
+											showApprove,
+											showSend,
+										});
+										return (
 										<TableRow key={grn.id}>
 											<TableCell className="font-medium">
 												{grn.grnNo || "-"}
@@ -1080,10 +1119,7 @@ function GRNRouteComponent() {
 													>
 														<Eye className="h-4 w-4" />
 													</Button>
-													{hasPermission("grn:edit") &&
-														grn.status &&
-														(grn.status === "Draft" ||
-															grn.status === "Submitted") && (
+													{showEdit && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -1095,8 +1131,7 @@ function GRNRouteComponent() {
 																<Edit className="h-4 w-4" />
 															</Button>
 														)}
-													{hasPermission("grn:approve") &&
-														grn.status === "Submitted" && (
+													{showApprove && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -1108,8 +1143,7 @@ function GRNRouteComponent() {
 																<CheckCircle className="h-4 w-4 text-green-600" />
 															</Button>
 														)}
-													{hasPermission("grn:send_to_es") &&
-														grn.status === "Approved" && (
+													{showSend && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -1124,7 +1158,8 @@ function GRNRouteComponent() {
 												</div>
 											</TableCell>
 										</TableRow>
-									))
+										);
+									})
 								)}
 							</TableBody>
 						</Table>
