@@ -292,6 +292,7 @@ export interface CreateGrnInput {
 	grnNo: string;
 	supplierId: string;
 	supplierDeliveryId?: string | null;
+	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
 	receivedAt?: string | null;
 	/** Initial status: Draft or Submitted (if omitted backend may default) */
@@ -316,6 +317,7 @@ export interface UpdateGrnInput {
 	grnNo?: string | null;
 	supplierId?: string | null;
 	supplierDeliveryId?: string | null;
+	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
 	status?: string | null;
 	receivedAt?: string | null;

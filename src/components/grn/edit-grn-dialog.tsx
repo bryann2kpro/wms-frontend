@@ -321,7 +321,7 @@ export function EditGrnDialog({
 			grnNumber: "",
 			poReference: "",
 			supplierDO: "",
-			supplierDeliveryId: "",
+			supplierDeliveryNo: "",
 			receivedDate: "",
 			notes: "",
 			items: [] as EditGRNLineItem[],
@@ -336,7 +336,7 @@ export function EditGrnDialog({
 					input: {
 						grnNo: value.grnNumber || undefined,
 						supplierId: value.supplierDO || undefined,
-						supplierDeliveryId: value.supplierDeliveryId || undefined,
+						supplierDeliveryNo: value.supplierDeliveryNo || undefined,
 						poNo: value.poReference || undefined,
 						receivedAt: parsedDate?.toISOString() ?? undefined,
 						status: UI_STATUS_TO_GQL[status],
@@ -380,7 +380,7 @@ export function EditGrnDialog({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
 				supplierDO: grn.supplierId ?? "",
-				supplierDeliveryId: grn.supplierDeliveryId ?? "",
+				supplierDeliveryNo: grn.supplierDeliveryId ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
 				items: initialItems,
@@ -474,7 +474,7 @@ export function EditGrnDialog({
 												</Field>
 											)}
 										</form.Field>
-										<form.Field name="supplierDeliveryId">
+										<form.Field name="supplierDeliveryNo">
 											{(field) => (
 												<Field>
 													<FieldLabel htmlFor={field.name}>Supplier DO</FieldLabel>
