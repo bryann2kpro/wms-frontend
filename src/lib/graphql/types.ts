@@ -270,6 +270,8 @@ export interface GrnItem {
 	id: string;
 	grnId: string;
 	skuId: string;
+	skuCode: string;
+	skuDescription: string;
 	qty: string;
 	remarks: string | null;
 	createdAt: string;
@@ -335,7 +337,8 @@ export type GrnStatusUI =
 export interface GrnItemForList {
 	id: string;
 	sku: string;
-	description: string;
+	skuCode: string;
+	skuDescription: string;
 	expectedQuantity: number;
 	receivedQuantity: number;
 	location?: string;

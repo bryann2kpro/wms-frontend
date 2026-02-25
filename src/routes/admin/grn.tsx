@@ -388,7 +388,7 @@ function GRNRouteComponent() {
 		createdBy: string;
 		updatedBy: string | null;
 		notes?: string | null;
-		items: Array<{ id: string; sku: string; description: string; expectedQuantity: number; receivedQuantity: number; location?: string | null }>;
+		items: Array<{ id: string; sku: string; skuCode: string; skuDescription: string; expectedQuantity: number; receivedQuantity: number; location?: string | null }>;
 		totalItems: number;
 		receivedItems: number;
 		totalAmount: number;
@@ -1265,9 +1265,9 @@ function GRNRouteComponent() {
 														{selectedGRN.items.map((item) => (
 															<TableRow key={item.id}>
 																<TableCell className="font-medium">
-																	{item.sku}
+																	{item.skuCode}
 																</TableCell>
-																<TableCell>{item.description}</TableCell>
+																<TableCell>{item.skuDescription}</TableCell>
 																<TableCell>{item.expectedQuantity}</TableCell>
 																<TableCell>{item.receivedQuantity}</TableCell>
 																<TableCell>

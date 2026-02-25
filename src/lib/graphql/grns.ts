@@ -41,6 +41,8 @@ export const GRNS_QUERY = gql`
 					id
 					grnId
 					skuId
+					skuCode
+					skuDescription
 					qty
 					remarks
 					createdAt
@@ -192,7 +194,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			return {
 				id: i.id,
 				sku: i.skuId,
-				description: i.remarks ?? "",
+				skuCode: i.skuCode,
+				skuDescription: i.skuDescription,
 				expectedQuantity: qtyNum,
 				receivedQuantity: qtyNum,
 				location: undefined as string | undefined,
