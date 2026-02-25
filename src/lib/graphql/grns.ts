@@ -28,6 +28,7 @@ export const GRNS_QUERY = gql`
 				grnNo
 				supplierId
 				supplierDeliveryId
+				supplierDeliveryNo
 				poNo
 				status
 				receivedAt
@@ -93,6 +94,9 @@ export const UPDATE_GRN_MUTATION = gql`
 		updateGrn(id: $id, input: $input) {
 			id
 			grnNo
+			poNo
+			supplierDeliveryId
+			supplierDeliveryNo
 			status
 			receivedAt
 			updatedAt
@@ -209,6 +213,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			grnNo: g.grnNo,
 			supplierId: g.supplierId,
 			supplierDeliveryId: g.supplierDeliveryId,
+			supplierDeliveryNo: g.supplierDeliveryNo ?? null,
 			poNo: g.poNo,
 			status,
 			receivedAt: g.receivedAt,

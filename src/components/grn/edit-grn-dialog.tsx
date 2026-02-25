@@ -320,7 +320,6 @@ export function EditGrnDialog({
 		defaultValues: {
 			grnNumber: "",
 			poReference: "",
-			supplierDO: "",
 			supplierDeliveryNo: "",
 			receivedDate: "",
 			notes: "",
@@ -335,24 +334,12 @@ export function EditGrnDialog({
 					id: grn.id,
 					input: {
 						grnNo: value.grnNumber || undefined,
-						supplierId: value.supplierDO || undefined,
+						supplierDeliveryId: grn.supplierDeliveryId ?? null,
 						supplierDeliveryNo: value.supplierDeliveryNo || undefined,
 						poNo: value.poReference || undefined,
 						receivedAt: parsedDate?.toISOString() ?? undefined,
 						status: UI_STATUS_TO_GQL[status],
 						notes: value.notes || undefined,
-						items: (value.items ?? []).map((i) => {
-							const uomId = i.uom
-								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
-								: undefined;
-							return {
-								skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
-								skuCode: i.skuCode,
-								skuDescription: i.description ?? undefined,
-								qty: String(i.qty),
-								skuUom: uomId ?? undefined,
-							};
-						}),
 					},
 				},
 			});
@@ -379,8 +366,7 @@ export function EditGrnDialog({
 			form.reset({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
-				supplierDO: grn.supplierId ?? "",
-				supplierDeliveryNo: grn.supplierDeliveryId ?? "",
+				supplierDeliveryNo: (grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
 				items: initialItems,
@@ -460,20 +446,6 @@ export function EditGrnDialog({
 												)}
 											</form.Field>
 										</div>
-										<form.Field name="supplierDO">
-											{(field) => (
-												<Field>
-													<FieldLabel htmlFor={field.name}>Supplier ID</FieldLabel>
-													<Input
-														id={field.name}
-														value={field.state.value}
-														placeholder="Supplier ID"
-														onBlur={field.handleBlur}
-														onChange={(e) => field.handleChange(e.target.value)}
-													/>
-												</Field>
-											)}
-										</form.Field>
 										<form.Field name="supplierDeliveryNo">
 											{(field) => (
 												<Field>

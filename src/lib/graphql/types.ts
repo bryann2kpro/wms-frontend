@@ -255,6 +255,7 @@ export interface Grn {
 	grnNo: string;
 	supplierId: string;
 	supplierDeliveryId: string | null;
+	supplierDeliveryNo: string | null;
 	poNo: string | null;
 	status: string;
 	receivedAt: string | null;
@@ -290,7 +291,7 @@ export interface CreateGrnItemInput {
 
 export interface CreateGrnInput {
 	grnNo: string;
-	supplierId: string;
+	supplierId?: string | null;
 	supplierDeliveryId?: string | null;
 	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
@@ -325,7 +326,6 @@ export interface UpdateGrnInput {
 	approvedAt?: string | null;
 	updatedBy?: string | null;
 	notes?: string | null;
-	items?: CreateGrnItemInput[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +355,7 @@ export interface GrnDetailForList {
 	grnNo: string;
 	supplierId: string;
 	supplierDeliveryId: string | null;
+	supplierDeliveryNo: string | null;
 	poNo: string | null;
 	status: GrnStatusUI;
 	receivedAt: string | null;

@@ -398,6 +398,7 @@ function GRNRouteComponent() {
 		grnNo: string;
 		supplierId: string;
 		supplierDeliveryId: string | null;
+		supplierDeliveryNo: string | null;
 		poNo: string | null;
 		status: string;
 		receivedAt: string | null;
@@ -415,6 +416,7 @@ function GRNRouteComponent() {
 			grnNo: g.grnNo,
 			supplierId: g.supplierId,
 			supplierDeliveryId: g.supplierDeliveryId,
+			supplierDeliveryNo: g.supplierDeliveryNo,
 			poNo: g.poNo,
 			status: (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnDetailForList["status"],
 			receivedAt: g.receivedAt,
@@ -445,7 +447,7 @@ function GRNRouteComponent() {
 				variables: {
 					input: {
 						grnNo: payload.grnNumber,
-						supplierId: payload.supplierDO,
+						supplierDeliveryNo: payload.supplierDO,
 						poNo: payload.poReference || undefined,
 						receivedAt: payload.receivedDate.toISOString(),
 						status: UI_STATUS_TO_GQL[status],
@@ -1096,7 +1098,7 @@ function GRNRouteComponent() {
 												{grn.grnNo || "-"}
 											</TableCell>
 											<TableCell>{grn.poNo ?? "-"}</TableCell>
-											<TableCell>{grn.supplierDeliveryId ?? "-"}</TableCell>
+											<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
 											<TableCell>
 												{formatGrnDate(grn.receivedAt) ?? "-"}
 											</TableCell>
@@ -1247,7 +1249,7 @@ function GRNRouteComponent() {
 													Supplier DO
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.supplierDeliveryId || "-"}
+													{(selectedGRN.supplierDeliveryNo ?? selectedGRN.supplierDeliveryId) || "-"}
 												</p>
 											</div>
 											<div>
