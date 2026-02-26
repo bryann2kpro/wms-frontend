@@ -66,6 +66,17 @@ import {
 } from "@/lib/graphql/grns";
 import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
 import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
+import { toast } from "sonner";
+
+function getGrnErrorMessage(err: unknown): string {
+	if (err && typeof err === "object" && "graphQLErrors" in err) {
+		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
+			?.message;
+		if (gql) return gql;
+	}
+	if (err instanceof Error) return err.message;
+	return String(err ?? "Something went wrong");
+}
 
 export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
@@ -149,6 +160,9 @@ function GRNRouteComponent() {
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
 		{
+			onError: (err) => {
+				toast.error(getGrnErrorMessage(err));
+			},
 			onCompleted: () => {
 				refetchGRNs();
 			},

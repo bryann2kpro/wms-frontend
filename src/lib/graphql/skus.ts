@@ -30,6 +30,8 @@ export const SKUS_AND_UOM_QUERY = gql`
 				skuId
 				skuCode
 				skuDescription
+				skuUom
+				isActive
 			}
 		}
 		stockUnits {

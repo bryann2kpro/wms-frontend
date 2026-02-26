@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
 import {
@@ -43,15 +43,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Combobox,
-	ComboboxContent,
-	ComboboxEmpty,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxList,
-} from "@/components/ui/combobox";
 import { Separator } from "@/components/ui/separator";
+import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
@@ -71,11 +64,21 @@ import {
 	DELETE_GRN_MUTATION,
 	UI_STATUS_TO_GQL,
 } from "@/lib/graphql/grns";
-import {
-	CREATE_SKU_MUTATION,
-	type CreateSkuInput,
-} from "@/lib/graphql/skus";
 import type { GRNStatus } from "@/data/grn.mock-data";
+import { toast } from "sonner";
+
+/** Get a user-facing message from Apollo or generic errors */
+function getErrorMessage(err: unknown): string {
+	if (err && typeof err === "object" && "graphQLErrors" in err) {
+		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
+			?.message;
+		if (gql) return gql;
+	}
+	if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
+		return (err as Error).message;
+	if (err instanceof Error) return err.message;
+	return String(err ?? "Something went wrong");
+}
 
 export type GRNLineItemForm = {
 	skuCode: string;
@@ -95,294 +98,56 @@ function toDatetimeLocal(value: string | null | undefined): string {
 	return isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
 }
 
-/** Dialog to create a new SKU; on success calls onSuccess with new SKU and optionally onRefetch. */
-function CreateSkuDialog({
-	open,
-	onOpenChange,
-	stockUnits,
-	onSuccess,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
-	onSuccess: (newSku: { skuCode: string; skuDescription: string; skuUom: string }) => void;
-}) {
-	const [createSku, { loading: creating }] = useMutation(CREATE_SKU_MUTATION, {
-		onCompleted: (data: unknown) => {
-			const created = (data as { createSku?: { skuCode: string; skuDescription: string; skuUom: string } })
-				?.createSku;
-			if (created) {
-				onSuccess({
-					skuCode: created.skuCode,
-					skuDescription: created.skuDescription ?? "",
-					skuUom: created.skuUom,
-				});
-			}
-			onOpenChange(false);
-		},
-	});
-
-	const createForm = useForm({
-		defaultValues: {
-			skuCode: "",
-			skuDescription: "",
-			skuQuantity: 0,
-			skuUom: stockUnits[0]?.stockUnitId ?? "",
-		},
-		onSubmit: async ({ value }) => {
-			const input: CreateSkuInput = {
-				skuCode: value.skuCode,
-				skuDescription: value.skuDescription,
-				skuQuantity: value.skuQuantity,
-				skuUom: value.skuUom,
-			};
-			await createSku({ variables: { input } });
-			createForm.reset();
-		},
-	});
-
-	useEffect(() => {
-		if (open) {
-			createForm.reset({
-				skuCode: "",
-				skuDescription: "",
-				skuQuantity: 0,
-				skuUom: stockUnits[0]?.stockUnitId ?? "",
-			});
-		}
-	}, [open]);
-
-	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-md">
-				<DialogHeader>
-					<DialogTitle>Create new SKU</DialogTitle>
-					<DialogDescription>
-						Add a new stock keeping unit. It will be available for selection in line items.
-					</DialogDescription>
-				</DialogHeader>
-				<form
-					onSubmit={(e) => {
-						e.preventDefault();
-						createForm.handleSubmit();
-					}}
-					className="space-y-4 py-2"
-				>
-					<FieldGroup>
-						<createForm.Field name="skuCode">
-							{(field) => (
-								<Field>
-									<FieldLabel>Code</FieldLabel>
-									<Input
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										placeholder="e.g. SKU-001"
-									/>
-								</Field>
-							)}
-						</createForm.Field>
-						<createForm.Field name="skuDescription">
-							{(field) => (
-								<Field>
-									<FieldLabel>Description</FieldLabel>
-									<Input
-										value={field.state.value}
-										onChange={(e) => field.handleChange(e.target.value)}
-										placeholder="Product description"
-									/>
-								</Field>
-							)}
-						</createForm.Field>
-						<div className="grid grid-cols-2 gap-2">
-							<createForm.Field name="skuQuantity">
-								{(field) => (
-									<Field>
-										<FieldLabel>Quantity</FieldLabel>
-										<Input
-											type="number"
-											min={0}
-											value={field.state.value}
-											onChange={(e) => field.handleChange(Number(e.target.value) || 0)}
-										/>
-									</Field>
-								)}
-							</createForm.Field>
-							<createForm.Field name="skuUom">
-								{(field) => (
-									<Field>
-										<FieldLabel>UOM</FieldLabel>
-										<Select
-											value={field.state.value}
-											onValueChange={field.handleChange}
-										>
-											<SelectTrigger>
-												<SelectValue placeholder="UOM" />
-											</SelectTrigger>
-											<SelectContent>
-												{stockUnits.map((u) => (
-													<SelectItem key={u.stockUnitId} value={u.stockUnitId}>
-														{u.unitCode}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</Field>
-								)}
-							</createForm.Field>
-						</div>
-					</FieldGroup>
-					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-							Cancel
-						</Button>
-						<Button type="submit" disabled={creating}>
-							{creating ? "Creating..." : "Create SKU"}
-						</Button>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
-	);
-}
-
 function GRNLineRow({
 	item,
 	index,
 	items,
 	onItemsChange,
-	skuCodes,
 	skuOptions,
 	stockUnits,
-	onOpenCreateSku,
 }: {
 	item: GRNLineItemForm;
 	index: number;
 	items: GRNLineItemForm[];
 	onItemsChange: (newItems: GRNLineItemForm[]) => void;
-	skuCodes: string[];
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
-	/** Called when user clicks "Create new SKU" in the combobox dropdown */
-	onOpenCreateSku?: () => void;
 }) {
-	const usedByOthersKey = items
-		.filter((_, i) => i !== index)
-		.map((it) => it.skuCode)
-		.filter(Boolean)
-		.sort()
-		.join(",");
-	const availableSkuCodes = useMemo(() => {
-		const usedByOthers = new Set(
-			usedByOthersKey ? usedByOthersKey.split(",") : []
-		);
-		return skuCodes.filter(
-			(code) => !usedByOthers.has(code) || code === (item.skuCode ?? "")
-		);
-	}, [usedByOthersKey, item.skuCode, skuCodes]);
-
-	const itemsWithCustom = useMemo(() => {
-		const current = item.skuCode?.trim() ?? "";
-		if (!current || availableSkuCodes.includes(current)) return availableSkuCodes;
-		return [...availableSkuCodes, current];
-	}, [availableSkuCodes, item.skuCode]);
-
-	const inputValueChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const onInputValueChange = useCallback(
-		(inputValue: string) => {
-			const trimmed = inputValue?.trim() ?? "";
-			if (trimmed === (item.skuCode ?? "")) return;
-			if (inputValueChangeTimeoutRef.current) {
-				clearTimeout(inputValueChangeTimeoutRef.current);
-			}
-			inputValueChangeTimeoutRef.current = setTimeout(() => {
-				inputValueChangeTimeoutRef.current = null;
-				const newItems = [...items];
-				newItems[index] = { ...newItems[index], skuCode: trimmed };
-				onItemsChange(newItems);
-			}, 400);
-		},
-		[item.skuCode, index, items, onItemsChange]
-	);
-
-	useEffect(
-		() => () => {
-			if (inputValueChangeTimeoutRef.current) {
-				clearTimeout(inputValueChangeTimeoutRef.current);
-			}
-		},
-		[]
-	);
+	const skuValue: SkuLineValue | null = useMemo(() => {
+		if (!item.skuCode?.trim()) return null;
+		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+		return {
+			sku: item.skuCode,
+			skuCode: item.skuCode,
+			description: item.description ?? "",
+			uom: item.uom ?? "",
+			skuId: sku?.skuId ?? "",
+			isActive: sku?.isActive ?? true,
+		};
+	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
 	return (
 		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
 			<TableCell>
-				<Combobox
-					items={itemsWithCustom}
-					value={item.skuCode ?? ""}
-					onValueChange={(value) => {
-						if (inputValueChangeTimeoutRef.current) {
-							clearTimeout(inputValueChangeTimeoutRef.current);
-							inputValueChangeTimeoutRef.current = null;
-						}
-						const sku = skuOptions.find((s: Skus) => s.skuCode === value);
-						const uomUnit = sku
-							? stockUnits.find(
-									(u) =>
-										u.stockUnitId === sku.skuUom ||
-										u.unitCode === sku.skuUom
-								)
-							: undefined;
+				<SkuCombobox
+					value={skuValue}
+					onChange={(v: SkuLineValue) => {
 						const newItems = [...items];
 						newItems[index] = {
 							...newItems[index],
-							skuCode: value ?? "",
-							description: sku?.skuDescription ?? newItems[index].description ?? "",
-							uom:
-								uomUnit?.unitCode ??
-								sku?.skuUom ??
-								newItems[index].uom ??
-								"",
+							skuCode: v.skuCode ?? "",
+							description: v.description ?? "",
+							uom: v.uom ?? "",
 						};
 						onItemsChange(newItems);
 					}}
-					onInputValueChange={onInputValueChange}
-				>
-					<ComboboxInput
-						placeholder="SKU code"
-						className="font-medium min-w-[160px]"
-					/>
-					<ComboboxContent>
-						<ComboboxList>
-							{(skuCode: string) => {
-								const s = skuOptions.find((o) => o.skuCode === skuCode);
-								return (
-									<ComboboxItem key={skuCode} value={skuCode}>
-										{s?.skuDescription ?? skuCode}
-									</ComboboxItem>
-								);
-							}}
-						</ComboboxList>
-						<ComboboxEmpty>No SKU found.</ComboboxEmpty>
-						{onOpenCreateSku && (
-							<div className="border-t p-1">
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="w-full justify-start gap-2"
-									onClick={(e) => {
-										e.preventDefault();
-										e.stopPropagation();
-										onOpenCreateSku();
-									}}
-								>
-									<Plus className="h-4 w-4" />
-									Create new SKU
-								</Button>
-							</div>
-						)}
-					</ComboboxContent>
-				</Combobox>
+					usedSkuCodes={items
+						.filter((_, i) => i !== index)
+						.map((it) => it.skuCode)
+						.filter(Boolean)}
+					placeholder="Search or select SKU..."
+					className="min-w-[200px]"
+				/>
 			</TableCell>
 			<TableCell>
 				<Input
@@ -425,8 +190,9 @@ function GRNLineRow({
 						};
 						onItemsChange(newItems);
 					}}
+					disabled
 				>
-					<SelectTrigger className="w-[120px]">
+					<SelectTrigger className="w-[120px]" disabled>
 						<SelectValue placeholder="UOM" />
 					</SelectTrigger>
 					<SelectContent>
@@ -495,12 +261,9 @@ export function GrnFormDialog({
 	onSuccess,
 	trigger,
 	canCreate = true,
-	onSkusRefetch,
+	onSkusRefetch: _onSkusRefetch,
 }: GrnFormDialogProps) {
-	const skuCodes = useMemo(() => skuOptions.map((s) => s.skuCode), [skuOptions]);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
-	const [createSkuOpen, setCreateSkuOpen] = useState(false);
-	const [createSkuForRowIndex, setCreateSkuForRowIndex] = useState<number | null>(null);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 
 	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
@@ -511,6 +274,9 @@ export function GrnFormDialog({
 	});
 
 	const [deleteGRN, { loading: deleteLoading }] = useMutation(DELETE_GRN_MUTATION, {
+		onError: (err) => {
+			toast.error(getErrorMessage(err));
+		},
 		onCompleted: () => {
 			onSuccess?.();
 			onOpenChange(false);
@@ -525,6 +291,16 @@ export function GrnFormDialog({
 			receivedDate: "",
 			notes: "",
 			items: [] as GRNLineItemForm[],
+		},
+		validators: {
+			onSubmit: ({ value }) => {
+				const errors: Partial<Record<string, string>> = {};
+				if (!value.grnNumber?.trim()) errors.grnNumber = "GRN Number is required";
+				if (!value.poReference?.trim()) errors.poReference = "PO Reference is required";
+				if (!value.supplierDO?.trim()) errors.supplierDO = "Supplier DO is required";
+				if (!value.receivedDate?.trim()) errors.receivedDate = "Received Date/Time is required";
+				return Object.keys(errors).length > 0 ? errors : undefined;
+			},
 		},
 		onSubmit: async ({ value }) => {
 			if (mode === "create") {
@@ -543,17 +319,22 @@ export function GrnFormDialog({
 						unitPrice: i.unitPrice,
 					})),
 				};
-				await onCreateSubmit?.(payload);
-				form.reset();
-				form.setFieldValue("items", []);
-				onOpenChange(false);
+				try {
+					await onCreateSubmit?.(payload);
+					form.reset();
+					form.setFieldValue("items", []);
+					onOpenChange(false);
+				} catch (err) {
+					toast.error(getErrorMessage(err));
+				}
 				return;
 			}
 			// Edit mode
 			if (!grn?.id) return;
 			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
-			await updateGRN({
+			try {
+				await updateGRN({
 				variables: {
 					id: grn.id,
 					input: {
@@ -580,6 +361,9 @@ export function GrnFormDialog({
 					},
 				},
 			});
+			} catch (err) {
+				toast.error(getErrorMessage(err));
+			}
 		},
 	});
 
@@ -644,29 +428,6 @@ export function GrnFormDialog({
 		deleteGRN({ variables: { id: grn.id } });
 	};
 
-	const handleCreateSkuSuccess = useCallback(
-		(newSku: { skuCode: string; skuDescription: string; skuUom: string }) => {
-			void onSkusRefetch?.();
-			if (createSkuForRowIndex !== null) {
-				const items = form.state.values.items ?? [];
-				const unitCode =
-					stockUnits.find((u) => u.stockUnitId === newSku.skuUom)?.unitCode ?? "";
-				const updated = [...items];
-				if (updated[createSkuForRowIndex]) {
-					updated[createSkuForRowIndex] = {
-						...updated[createSkuForRowIndex],
-						skuCode: newSku.skuCode,
-						description: newSku.skuDescription,
-						uom: unitCode,
-					};
-					form.setFieldValue("items", updated);
-				}
-				setCreateSkuForRowIndex(null);
-			}
-		},
-		[createSkuForRowIndex, stockUnits, onSkusRefetch, form]
-	);
-
 	const isCreate = mode === "create";
 	const title = isCreate ? "Create New GRN" : "Edit GRN";
 	const description = isCreate
@@ -708,8 +469,7 @@ export function GrnFormDialog({
 										<div className="grid gap-4 sm:grid-cols-2">
 											<form.Field name="grnNumber">
 												{(field) => {
-													const isInvalid =
-														field.state.meta.isTouched && !field.state.meta.isValid;
+													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
 															<FieldLabel htmlFor={field.name}>GRN Number</FieldLabel>
@@ -719,6 +479,7 @@ export function GrnFormDialog({
 																placeholder="GRN-2024-001"
 																onBlur={field.handleBlur}
 																onChange={(e) => field.handleChange(e.target.value)}
+																required
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
@@ -730,8 +491,7 @@ export function GrnFormDialog({
 											</form.Field>
 											<form.Field name="poReference">
 												{(field) => {
-													const isInvalid =
-														field.state.meta.isTouched && !field.state.meta.isValid;
+													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
 															<FieldLabel htmlFor={field.name}>PO Reference</FieldLabel>
@@ -741,6 +501,7 @@ export function GrnFormDialog({
 																placeholder="PO-2024-001"
 																onBlur={field.handleBlur}
 																onChange={(e) => field.handleChange(e.target.value)}
+																required
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
@@ -753,8 +514,7 @@ export function GrnFormDialog({
 										</div>
 										<form.Field name="supplierDO">
 											{(field) => {
-												const isInvalid =
-													field.state.meta.isTouched && !field.state.meta.isValid;
+												const isInvalid = field.state.meta.errors.length > 0;
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel htmlFor={field.name}>Supplier DO</FieldLabel>
@@ -763,7 +523,7 @@ export function GrnFormDialog({
 															value={field.state.value}
 															placeholder="DO-2024-001"
 															onBlur={field.handleBlur}
-															required={isCreate}
+															required
 															onChange={(e) => field.handleChange(e.target.value)}
 															aria-invalid={isInvalid}
 														/>
@@ -776,8 +536,7 @@ export function GrnFormDialog({
 										</form.Field>
 										<form.Field name="receivedDate">
 											{(field) => {
-												const isInvalid =
-													field.state.meta.isTouched && !field.state.meta.isValid;
+												const isInvalid = field.state.meta.errors.length > 0;
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel
@@ -793,6 +552,7 @@ export function GrnFormDialog({
 															value={field.state.value}
 															onBlur={field.handleBlur}
 															onChange={(e) => field.handleChange(e.target.value)}
+															required
 															aria-invalid={isInvalid}
 														/>
 														{isInvalid && (
@@ -894,13 +654,8 @@ export function GrnFormDialog({
 																		index={index}
 																		items={items}
 																		onItemsChange={field.handleChange}
-																		skuCodes={skuCodes}
 																		skuOptions={skuOptions}
 																		stockUnits={stockUnits}
-																		onOpenCreateSku={() => {
-																			setCreateSkuForRowIndex(index);
-																			setCreateSkuOpen(true);
-																		}}
 																	/>
 																))
 															)}
@@ -1054,33 +809,18 @@ export function GrnFormDialog({
 		</DialogContent>
 	);
 
-	const createSkuDialog = (
-		<CreateSkuDialog
-			open={createSkuOpen}
-			onOpenChange={setCreateSkuOpen}
-			stockUnits={stockUnits}
-			onSuccess={handleCreateSkuSuccess}
-		/>
-	);
-
 	if (isCreate && trigger) {
 		return (
-			<>
-				<Dialog open={open} onOpenChange={handleOpenChange}>
-					<DialogTrigger asChild>{trigger}</DialogTrigger>
-					{dialogContent}
-				</Dialog>
-				{createSkuDialog}
-			</>
+			<Dialog open={open} onOpenChange={handleOpenChange}>
+				<DialogTrigger asChild>{trigger}</DialogTrigger>
+				{dialogContent}
+			</Dialog>
 		);
 	}
 
 	return (
-		<>
-			<Dialog open={open} onOpenChange={handleOpenChange}>
-				{dialogContent}
-			</Dialog>
-			{createSkuDialog}
-		</>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			{dialogContent}
+		</Dialog>
 	);
 }
