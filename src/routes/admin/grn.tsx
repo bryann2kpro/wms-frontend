@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import {
@@ -50,7 +50,6 @@ import {
 import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { getPrimaryRole } from "@/lib/auth";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
@@ -60,7 +59,6 @@ import {
 	CREATE_GRN_MUTATION,
 	UPDATE_GRN_MUTATION,
 	mapGrnsQueryToResult,
-	GQL_STATUS_TO_UI,
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
 } from "@/lib/graphql/grns";
@@ -91,18 +89,6 @@ const grnStatuses: GRNStatus[] = [
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
-	// Debug: log GRN permissions so you can see why action buttons show or not
-	useEffect(() => {
-		const role = user ? getPrimaryRole(user.roles) : null;
-		console.log("[GRN permissions]", {
-			role,
-			grnView: hasPermission("grn:view"),
-			grnCreate: hasPermission("grn:create"),
-			grnEdit: hasPermission("grn:edit"),
-			grnApprove: hasPermission("grn:approve"),
-			grnSendToEs: hasPermission("grn:send_to_es"),
-		});
-	}, [user, hasPermission]);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");

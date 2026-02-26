@@ -124,6 +124,8 @@ export function SkuCombobox({
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['skus'] });
 			toast.success('SKU created successfully');
+			setCreateOpen(false);
+			form.reset();
 		},
 		onError: (err) => {
 			toast.error(getErrorMessage(err));
@@ -156,7 +158,7 @@ export function SkuCombobox({
 					(s: Skus) =>
 						!usedSkuCodes.includes(s.skuCode) || s.skuCode === value?.skuCode,
 				)
-			:	skus;
+				: skus;
 		if (!search.trim()) return available;
 		const q = search.toLowerCase();
 		return available.filter(
@@ -183,7 +185,7 @@ export function SkuCombobox({
 
 	const displayLabel = value
 		? `${value.sku}${value.description ? ` – ${value.description}` : ""}`
-		 : null;
+		: null;
 
 	return (
 		<div className={cn("flex gap-1", className)}>
@@ -284,7 +286,7 @@ export function SkuCombobox({
 											</DialogDescription>
 										</DialogHeader>
 
-										
+
 										<FieldGroup>
 											<div className="grid gap-4 py-4">
 												<form.Field
@@ -384,9 +386,9 @@ export function SkuCombobox({
 																return (
 																	<UiField className="grid gap-2">
 																		<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
-																		<Select 
-																			name={field.name} 
-																			value={field.state.value} 
+																		<Select
+																			name={field.name}
+																			value={field.state.value}
 																			onValueChange={(value) => field.handleChange(value)}
 																			disabled // Remove this if we want to allow selection of UOM
 																			defaultValue={uoms[0]?.stockUnitId}
@@ -409,8 +411,8 @@ export function SkuCombobox({
 												</div>
 											</div>
 										</FieldGroup>
-										
-										
+
+
 										<DialogFooter>
 											<Button
 												type="button"

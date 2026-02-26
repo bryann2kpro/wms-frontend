@@ -98,6 +98,15 @@ function toDatetimeLocal(value: string | null | undefined): string {
 	return isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
 }
 
+/** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
+function normalizeFieldErrors(
+	errors: unknown[],
+): Array<{ message?: string } | undefined> {
+	return errors.map((e) =>
+		typeof e === "string" ? { message: e } : (e as { message?: string } | undefined),
+	);
+}
+
 function GRNLineRow({
 	item,
 	index,
@@ -294,12 +303,12 @@ export function GrnFormDialog({
 		},
 		validators: {
 			onSubmit: ({ value }) => {
-				const errors: Partial<Record<string, string>> = {};
-				if (!value.grnNumber?.trim()) errors.grnNumber = "GRN Number is required";
-				if (!value.poReference?.trim()) errors.poReference = "PO Reference is required";
-				if (!value.supplierDO?.trim()) errors.supplierDO = "Supplier DO is required";
-				if (!value.receivedDate?.trim()) errors.receivedDate = "Received Date/Time is required";
-				return Object.keys(errors).length > 0 ? errors : undefined;
+				const fields: Partial<Record<string, string>> = {};
+				if (!value.grnNumber?.trim()) fields.grnNumber = "GRN Number is required";
+				if (!value.poReference?.trim()) fields.poReference = "PO Reference is required";
+				if (!value.supplierDO?.trim()) fields.supplierDO = "Supplier DO is required";
+				if (!value.receivedDate?.trim()) fields.receivedDate = "Received Date/Time is required";
+				return Object.keys(fields).length > 0 ? { fields } : undefined;
 			},
 		},
 		onSubmit: async ({ value }) => {
@@ -335,32 +344,32 @@ export function GrnFormDialog({
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
 				await updateGRN({
-				variables: {
-					id: grn.id,
-					input: {
-						grnNo: value.grnNumber || undefined,
-						supplierId: grn.supplierId,
-						supplierDeliveryId: grn.supplierDeliveryId ?? null,
-						supplierDeliveryNo: value.supplierDO || undefined,
-						poNo: value.poReference || undefined,
-						receivedAt: parsedDate?.toISOString() ?? undefined,
-						status: UI_STATUS_TO_GQL[status],
-						notes: value.notes || undefined,
-						items: (value.items ?? []).map((i) => {
-							const uomId = i.uom
-								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
-								: undefined;
-							return {
-								skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
-								skuCode: i.skuCode,
-								skuDescription: i.description ?? undefined,
-								qty: String(i.qty),
-								skuUom: uomId ?? undefined,
-							};
-						}),
+					variables: {
+						id: grn.id,
+						input: {
+							grnNo: value.grnNumber || undefined,
+							supplierId: grn.supplierId,
+							supplierDeliveryId: grn.supplierDeliveryId ?? null,
+							supplierDeliveryNo: value.supplierDO || undefined,
+							poNo: value.poReference || undefined,
+							receivedAt: parsedDate?.toISOString() ?? undefined,
+							status: UI_STATUS_TO_GQL[status],
+							notes: value.notes || undefined,
+							items: (value.items ?? []).map((i) => {
+								const uomId = i.uom
+									? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+									: undefined;
+								return {
+									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
+									skuCode: i.skuCode,
+									skuDescription: i.description ?? undefined,
+									qty: String(i.qty),
+									skuUom: uomId ?? undefined,
+								};
+							}),
+						},
 					},
-				},
-			});
+				});
 			} catch (err) {
 				toast.error(getErrorMessage(err));
 			}
@@ -374,8 +383,8 @@ export function GrnFormDialog({
 				const sku = skuOptions.find((s) => s.skuCode === it.skuCode);
 				const uomUnit = sku
 					? stockUnits.find(
-							(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom
-						)
+						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom
+					)
 					: undefined;
 				return {
 					skuCode: it.skuCode ?? "",
@@ -483,7 +492,7 @@ export function GrnFormDialog({
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
-																<FieldError errors={field.state.meta.errors} />
+																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
 															)}
 														</Field>
 													);
@@ -505,7 +514,7 @@ export function GrnFormDialog({
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
-																<FieldError errors={field.state.meta.errors} />
+																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
 															)}
 														</Field>
 													);
@@ -528,7 +537,7 @@ export function GrnFormDialog({
 															aria-invalid={isInvalid}
 														/>
 														{isInvalid && (
-															<FieldError errors={field.state.meta.errors} />
+															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
 														)}
 													</Field>
 												);
@@ -556,7 +565,7 @@ export function GrnFormDialog({
 															aria-invalid={isInvalid}
 														/>
 														{isInvalid && (
-															<FieldError errors={field.state.meta.errors} />
+															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
 														)}
 													</Field>
 												);
