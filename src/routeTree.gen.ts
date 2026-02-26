@@ -14,7 +14,6 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
-import { Route as DemoTableRouteImport } from './routes/demo/table'
 import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
@@ -71,11 +70,6 @@ const IndexRoute = IndexRouteImport.update({
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
   path: '/demo/tanstack-query',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoTableRoute = DemoTableRouteImport.update({
-  id: '/demo/table',
-  path: '/demo/table',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoStoreRoute = DemoStoreRouteImport.update({
@@ -265,7 +259,6 @@ export interface FileRoutesByFullPath {
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
-  '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -277,7 +270,7 @@ export interface FileRoutesByFullPath {
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -305,7 +298,6 @@ export interface FileRoutesByTo {
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
-  '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -346,7 +338,6 @@ export interface FileRoutesById {
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
-  '/demo/table': typeof DemoTableRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -388,7 +379,6 @@ export interface FileRouteTypes {
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
-    | '/demo/table'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
     | '/demo/api/names'
@@ -400,7 +390,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr/'
+    | '/demo/start/ssr'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -428,7 +418,6 @@ export interface FileRouteTypes {
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
-    | '/demo/table'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
     | '/demo/api/names'
@@ -468,7 +457,6 @@ export interface FileRouteTypes {
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
-    | '/demo/table'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
     | '/demo/api/names'
@@ -491,7 +479,6 @@ export interface RootRouteChildren {
   DemoApolloClientRoute: typeof DemoApolloClientRoute
   DemoI18nRoute: typeof DemoI18nRoute
   DemoStoreRoute: typeof DemoStoreRoute
-  DemoTableRoute: typeof DemoTableRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoApiTqTodosRoute: typeof DemoApiTqTodosRoute
@@ -540,13 +527,6 @@ declare module '@tanstack/react-router' {
       path: '/demo/tanstack-query'
       fullPath: '/demo/tanstack-query'
       preLoaderRoute: typeof DemoTanstackQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/table': {
-      id: '/demo/table'
-      path: '/demo/table'
-      fullPath: '/demo/table'
-      preLoaderRoute: typeof DemoTableRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/store': {
@@ -748,7 +728,7 @@ declare module '@tanstack/react-router' {
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
-      fullPath: '/demo/start/ssr/'
+      fullPath: '/demo/start/ssr'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -842,7 +822,6 @@ const rootRouteChildren: RootRouteChildren = {
   DemoApolloClientRoute: DemoApolloClientRoute,
   DemoI18nRoute: DemoI18nRoute,
   DemoStoreRoute: DemoStoreRoute,
-  DemoTableRoute: DemoTableRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoApiTqTodosRoute: DemoApiTqTodosRoute,
