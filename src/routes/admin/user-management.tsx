@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery as useApolloQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -48,39 +48,68 @@ import {
 } from "lucide-react";
 import type { WMSRole } from "@/lib/auth";
 import { getPrimaryRole } from "@/lib/auth";
+// GraphQL: list query, roles, create/update mutations (see src/lib/graphql/user-management.ts)
 import {
-	type UserRoleFilter,
-	type CreateUserInput,
-	type UpdateUserInput,
-	getUsers,
-	createUser,
-	updateUser,
-} from "@/data/users.mock-data";
+	USERS_QUERY,
+	ROLES_QUERY,
+	CREATE_USER_MUTATION,
+	UPDATE_USER_MUTATION,
+	type UsersQueryData,
+	type UsersQueryVariables,
+	type RoleOption,
+	type CreateUserMutationVariables,
+	type CreateUserMutationData,
+	type UpdateUserMutationVariables,
+	type UpdateUserMutationData,
+	type CreateUserInputGql,
+	type UpdateUserInputGql,
+} from "@/lib/graphql/user-management";
 
 export const Route = createFileRoute("/admin/user-management")({
 	component: UserManagementComponent,
 });
 
-const userRoles: WMSRole[] = ["supervisor", "logistic", "store_keeper"];
+/** Hide Super Admin from create/update and filter dropdowns (do not assign via UI). */
+const HIDDEN_ROLE_NAME = "super admin";
 
-const roleLabels: Record<WMSRole, string> = {
+/**
+ * Emails of users to hide from the list (e.g. super admin).
+ * Matching is case-insensitive. Add more emails here to hide additional users.
+ */
+const HIDDEN_USER_EMAILS = ["superadmin@smee.com.my"];
+
+/** Display labels for each role in badges and dropdowns. */
+const roleLabels: Partial<Record<WMSRole, string>> = {
 	supervisor: "Supervisor",
 	logistic: "Logistic",
 	store_keeper: "Store Keeper",
 };
 
-const roleColors: Record<WMSRole, string> = {
+/** Tailwind classes for role badges (background, text, border). */
+const roleColors: Partial<Record<WMSRole, string>> = {
 	supervisor: "bg-purple-500/10 text-purple-600 border-purple-500/20",
 	logistic: "bg-blue-500/10 text-blue-600 border-blue-500/20",
 	store_keeper: "bg-green-500/10 text-green-600 border-green-500/20",
 };
 
+/** Maps backend roleName (e.g. "Supervisor") to WMSRole for labels/colors. */
+function roleNameToWMSRole(roleName: string | undefined): WMSRole {
+	if (!roleName) return "store_keeper";
+	const r = roleName.toLowerCase();
+	if (r.includes("supervisor") || r.includes("admin")) return "supervisor";
+	if (r.includes("logistic") || r.includes("finance")) return "logistic";
+	return "store_keeper";
+}
+
+/**
+ * User Management page: list, create, update via GraphQL (USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION).
+ * ROLES_QUERY provides roleId for filter and create/edit dropdowns.
+ */
 function UserManagementComponent() {
-	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
-	const [roleFilter, setRoleFilter] = useState<UserRoleFilter>("ALL");
+	const [roleFilterId, setRoleFilterId] = useState<string>("ALL");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<{
@@ -88,61 +117,114 @@ function UserManagementComponent() {
 		name: string;
 		email: string;
 		currentRole: WMSRole;
+		roleId: string;
 	} | null>(null);
 
-	const { data, isLoading } = useQuery({
-		queryKey: ["users", { page, pageSize, searchTerm, roleFilter }],
-		queryFn: () =>
-			getUsers({
-				page,
-				pageSize,
-				search: searchTerm,
-				role: roleFilter,
-			}),
-		staleTime: 30_000,
-	});
+	// GraphQL: roles for filter and create/edit dropdowns (backend expects roleId)
+	const { data: rolesData } = useApolloQuery<{ roles: RoleOption[] }>(ROLES_QUERY);
+	const allRoles = rolesData?.roles ?? [];
+	// Exclude Super Admin so it cannot be assigned in create/update or filter
+	const displayRolesList = allRoles.filter(
+		(r) => r.roleName.trim().toLowerCase() !== HIDDEN_ROLE_NAME,
+	);
 
-	const createMutation = useMutation({
-		mutationFn: createUser,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["users"] });
+	// --- GraphQL: filter (search = email/displayName), sort, pagination — backend resolver uses repository
+	const variables: UsersQueryVariables = {
+		filter:
+			searchTerm.trim() || roleFilterId !== "ALL"
+				? {
+						...(searchTerm.trim() && {
+							displayName: searchTerm.trim(),
+							email: searchTerm.trim(),
+						}),
+						...(roleFilterId !== "ALL" && { roleId: roleFilterId }),
+					}
+				: undefined,
+		sort: { field: "UPDATED_AT", direction: "DESC" },
+		pagination: { page, pageSize },
+	};
+
+	const { data, loading: isLoading, refetch } = useApolloQuery<
+		UsersQueryData,
+		UsersQueryVariables
+	>(USERS_QUERY, { variables });
+
+	// GraphQL create user mutation (backend: CreateUserInput with email, displayName, password, roleId)
+	const [createUserMutation, { loading: createLoading }] = useApolloMutation<
+		CreateUserMutationData,
+		CreateUserMutationVariables
+	>(CREATE_USER_MUTATION, {
+		onCompleted: () => {
+			refetch();
 			setIsCreateDialogOpen(false);
 		},
 	});
 
-	const updateUserMutation = useMutation({
-		mutationFn: updateUser,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["users"] });
+	// GraphQL update user mutation (backend: UpdateUserInput with displayName, roleId, password, etc.)
+	const [updateUserMutation, { loading: updateLoading }] = useApolloMutation<
+		UpdateUserMutationData,
+		UpdateUserMutationVariables
+	>(UPDATE_USER_MUTATION, {
+		onCompleted: () => {
+			refetch();
 			setIsEditRoleDialogOpen(false);
 			setSelectedUser(null);
 		},
 	});
 
-	const users = data?.items ?? [];
-	const summary = data?.summary;
-	const totalPages = data
-		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1;
+	// --- GraphQL response: users list is data.users.data; pagination is data.users.pagination (PaginationInfo, no count)
+	// Exclude hidden users (e.g. super admin) from list and summary
+	const rawUsers = data?.users?.data ?? [];
+	const users = rawUsers.filter(
+		(u) => !HIDDEN_USER_EMAILS.includes(u.email.toLowerCase()),
+	);
+	const pagination = data?.users?.pagination;
+	const totalPages = pagination?.totalPages ?? 1;
+	// Summary by role from visible users; total adjusted when hidden user is on current page
+	const summary = pagination
+		? {
+				byRole: users.reduce<Record<WMSRole, number>>(
+					(acc, u) => {
+						const r = roleNameToWMSRole(u.roles[0]?.roleName);
+						acc[r] = (acc[r] ?? 0) + 1;
+						return acc;
+					},
+					{
+						store_keeper: 0,
+						logistic: 0,
+						supervisor: 0,
+						"Super Admin": 0,
+					},
+				),
+				total: pagination.totalCount - (rawUsers.length - users.length),
+			}
+		: undefined;
 
+	/** Open edit dialog with user's current role (primary = first in roles array); store roleId for GraphQL update. */
 	const handleEditRole = (user: {
 		id: string;
 		displayName: string;
 		email: string;
-		roles: string[];
+		roles: Array<{ roleId: string; roleName: string }>;
 	}) => {
+		const primaryRole = getPrimaryRole(user.roles.map((r) => r.roleName));
 		setSelectedUser({
 			id: user.id,
 			name: user.displayName,
 			email: user.email,
-			currentRole: getPrimaryRole(user.roles),
+			currentRole: primaryRole,
+			roleId: user.roles[0]?.roleId ?? "",
 		});
 		setIsEditRoleDialogOpen(true);
 	};
 
-	const handleConfirmUserUpdate = (input: UpdateUserInput) => {
+	const handleConfirmUserUpdate = (input: {
+		displayName?: string | null;
+		roleId?: string | null;
+		password?: string | null;
+	}) => {
 		if (!selectedUser) return;
-		updateUserMutation.mutate(input);
+		updateUserMutation({ variables: { id: selectedUser.id, input } });
 	};
 
 	return (
@@ -224,9 +306,9 @@ function UserManagementComponent() {
 								/>
 							</div>
 							<Select
-								value={roleFilter}
+								value={roleFilterId}
 								onValueChange={(value) => {
-									setRoleFilter(value as UserRoleFilter);
+									setRoleFilterId(value);
 									setPage(1);
 								}}
 							>
@@ -235,9 +317,9 @@ function UserManagementComponent() {
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="ALL">All Roles</SelectItem>
-									{userRoles.map((role) => (
-										<SelectItem key={role} value={role}>
-											{roleLabels[role]}
+									{displayRolesList.map((r) => (
+										<SelectItem key={r.roleId} value={r.roleId}>
+											{r.roleName}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -277,8 +359,11 @@ function UserManagementComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
+									// user from GraphQL: id, displayName, email, isActive, roles: { roleId, roleName }[]
 									users.map((user) => {
-									const primaryRole = getPrimaryRole(user.roles);
+									const primaryRole = roleNameToWMSRole(
+										user.roles[0]?.roleName,
+									);
 									return (
 										<TableRow key={user.id}>
 											<TableCell className="font-medium">
@@ -290,9 +375,11 @@ function UserManagementComponent() {
 											<TableCell>
 												<Badge
 													variant="outline"
-													className={roleColors[primaryRole]}
+													className={roleColors[primaryRole] ?? "bg-muted"}
 												>
-													{roleLabels[primaryRole]}
+													{roleLabels[primaryRole] ??
+														user.roles[0]?.roleName ??
+														primaryRole}
 												</Badge>
 											</TableCell>
 											<TableCell className="text-right">
@@ -319,18 +406,22 @@ function UserManagementComponent() {
 						</Table>
 					</div>
 
-					{data && (
+					{pagination && (
 						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
 							<div>
 								Showing{" "}
 								<span className="font-medium">
-									{(data.page - 1) * data.pageSize + 1}
+									{(pagination.currentPage - 1) * pageSize + 1}
 								</span>{" "}
 								-{" "}
 								<span className="font-medium">
-									{Math.min(data.page * data.pageSize, data.total)}
+									{Math.min(
+										pagination.currentPage * pageSize,
+										pagination.totalCount,
+									)}
 								</span>{" "}
-								of <span className="font-medium">{data.total}</span> users
+								of{" "}
+								<span className="font-medium">{pagination.totalCount}</span> users
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -364,10 +455,11 @@ function UserManagementComponent() {
 			<CreateUserDialog
 				open={isCreateDialogOpen}
 				onOpenChange={setIsCreateDialogOpen}
+				roles={displayRolesList}
 				onSubmit={(input) => {
-					createMutation.mutate(input);
+					createUserMutation({ variables: { input } });
 				}}
-				isSubmitting={createMutation.isPending}
+				isSubmitting={createLoading}
 			/>
 
 			{/* Edit User Dialog */}
@@ -380,39 +472,52 @@ function UserManagementComponent() {
 					}
 				}}
 				user={selectedUser}
-				onRoleChange={(role) => {
-					if (selectedUser) {
-						setSelectedUser({ ...selectedUser, currentRole: role });
-					}
-				}}
+				roles={displayRolesList}
 				onConfirm={handleConfirmUserUpdate}
-				isSubmitting={updateUserMutation.isPending}
+				isSubmitting={updateLoading}
 			/>
 		</div>
 	);
 }
 
+/** Generate a random temporary password (for "email" flow when backend doesn't send email yet). */
+function generateTempPassword(length = 10): string {
+	const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+	let s = "";
+	for (let i = 0; i < length; i++) s += chars[Math.floor(Math.random() * chars.length)];
+	return s;
+}
+
 interface CreateUserDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (input: CreateUserInput) => void;
+	roles: RoleOption[];
+	onSubmit: (input: CreateUserInputGql) => void;
 	isSubmitting: boolean;
 }
 
 function CreateUserDialog({
 	open,
 	onOpenChange,
+	roles,
 	onSubmit,
 	isSubmitting,
 }: CreateUserDialogProps) {
 	const [email, setEmail] = useState("");
 	const [name, setName] = useState("");
-	const [role, setRole] = useState<WMSRole>("store_keeper");
+	const [roleId, setRoleId] = useState("");
 	const [passwordOption, setPasswordOption] = useState<"email" | "manual">(
-		"email",
+		"manual",
 	);
 	const [password, setPassword] = useState("");
 	const [errors, setErrors] = useState<Record<string, string>>({});
+
+	// Default role when dialog opens and roles are loaded
+	useEffect(() => {
+		if (open && roles.length > 0 && !roleId) {
+			setRoleId(roles[0].roleId);
+		}
+	}, [open, roles, roleId]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -428,10 +533,17 @@ function CreateUserDialog({
 			newErrors.name = "Name is required";
 		}
 
-		if (passwordOption === "manual" && !password.trim()) {
-			newErrors.password = "Password is required when setting manually";
-		} else if (passwordOption === "manual" && password.length < 6) {
-			newErrors.password = "Password must be at least 6 characters";
+		if (!roleId) {
+			newErrors.role = "Role is required";
+		}
+
+		const finalPassword =
+			passwordOption === "manual" ? password : generateTempPassword();
+		if (!finalPassword || finalPassword.length < 6) {
+			newErrors.password =
+				passwordOption === "manual"
+					? "Password is required and must be at least 6 characters"
+					: "Password is required";
 		}
 
 		if (Object.keys(newErrors).length > 0) {
@@ -441,17 +553,17 @@ function CreateUserDialog({
 
 		onSubmit({
 			email: email.trim(),
-			name: name.trim(),
-			role,
-			passwordOption,
-			password: passwordOption === "manual" ? password : undefined,
+			displayName: name.trim(),
+			password: finalPassword,
+			roleId,
+			contactNo: null,
 		});
 
 		// Reset form
 		setEmail("");
 		setName("");
-		setRole("store_keeper");
-		setPasswordOption("email");
+		setRoleId(roles[0]?.roleId ?? "");
+		setPasswordOption("manual");
 		setPassword("");
 		setErrors({});
 	};
@@ -461,8 +573,8 @@ function CreateUserDialog({
 			onOpenChange(false);
 			setEmail("");
 			setName("");
-			setRole("store_keeper");
-			setPasswordOption("email");
+			setRoleId(roles[0]?.roleId ?? "");
+			setPasswordOption("manual");
 			setPassword("");
 			setErrors({});
 		}
@@ -518,20 +630,26 @@ function CreateUserDialog({
 						<div className="space-y-2">
 							<Label htmlFor="role">Role *</Label>
 							<Select
-								value={role}
-								onValueChange={(value) => setRole(value as WMSRole)}
+								value={roleId}
+								onValueChange={(value) => {
+									setRoleId(value);
+									if (errors.role) setErrors({ ...errors, role: "" });
+								}}
 							>
 								<SelectTrigger id="role">
-									<SelectValue />
+									<SelectValue placeholder="Select role" />
 								</SelectTrigger>
 								<SelectContent>
-									{userRoles.map((r) => (
-										<SelectItem key={r} value={r}>
-											{roleLabels[r]}
+									{roles.map((r) => (
+										<SelectItem key={r.roleId} value={r.roleId}>
+											{r.roleName}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
+							{errors.role && (
+								<p className="text-sm text-destructive">{errors.role}</p>
+							)}
 						</div>
 
 						<div className="space-y-4 rounded-lg border p-4">
@@ -624,9 +742,15 @@ function CreateUserDialog({
 interface EditUserDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	user: { id: string; name: string; email: string; currentRole: WMSRole } | null;
-	onRoleChange: (role: WMSRole) => void;
-	onConfirm: (input: UpdateUserInput) => void;
+	user: {
+		id: string;
+		name: string;
+		email: string;
+		currentRole: WMSRole;
+		roleId: string;
+	} | null;
+	roles: RoleOption[];
+	onConfirm: (input: UpdateUserInputGql) => void;
 	isSubmitting: boolean;
 }
 
@@ -634,15 +758,20 @@ function EditUserDialog({
 	open,
 	onOpenChange,
 	user,
-	onRoleChange,
+	roles,
 	onConfirm,
 	isSubmitting,
 }: EditUserDialogProps) {
+	const [roleId, setRoleId] = useState(user?.roleId ?? "");
 	const [passwordOption, setPasswordOption] = useState<"email" | "manual" | null>(
 		null,
 	);
 	const [password, setPassword] = useState("");
 	const [errors, setErrors] = useState<Record<string, string>>({});
+
+	useEffect(() => {
+		if (user) setRoleId(user.roleId);
+	}, [user?.id, user?.roleId]);
 
 	if (!user) return null;
 
@@ -661,12 +790,15 @@ function EditUserDialog({
 			return;
 		}
 
-		onConfirm({
-			userId: user.id,
-			role: user.currentRole,
-			passwordOption: passwordOption || undefined,
-			password: passwordOption === "manual" ? password : undefined,
-		});
+		const input: UpdateUserInputGql = {
+			displayName: user.name,
+			roleId: roleId || undefined,
+		};
+		if (passwordOption === "manual" && password) {
+			input.password = password;
+		}
+
+		onConfirm(input);
 
 		// Reset form
 		setPasswordOption(null);
@@ -697,16 +829,16 @@ function EditUserDialog({
 						<div className="space-y-2">
 							<Label htmlFor="edit-role">Role</Label>
 							<Select
-								value={user.currentRole}
-								onValueChange={(value) => onRoleChange(value as WMSRole)}
+								value={roleId}
+								onValueChange={setRoleId}
 							>
 								<SelectTrigger id="edit-role">
-									<SelectValue />
+									<SelectValue placeholder="Select role" />
 								</SelectTrigger>
 								<SelectContent>
-									{userRoles.map((r) => (
-										<SelectItem key={r} value={r}>
-											{roleLabels[r]}
+									{roles.map((r) => (
+										<SelectItem key={r.roleId} value={r.roleId}>
+											{r.roleName}
 										</SelectItem>
 									))}
 								</SelectContent>
