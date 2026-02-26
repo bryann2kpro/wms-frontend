@@ -1849,8 +1849,9 @@ function SkusSuppliersViewDialog({
 }) {
 	if (!sku) return null;
 
-	const supplierDetails = sku.skuSuppliers.map((skuSupplier) => {
-		const supplier = suppliers.find((s) => s.supplierId === skuSupplier.supplierId);
+	const safeSuppliers = suppliers ?? [];
+	const supplierDetails = (sku.skuSuppliers ?? []).map((skuSupplier) => {
+		const supplier = safeSuppliers.find((s) => s.supplierId === skuSupplier.supplierId);
 		return {
 			...skuSupplier,
 			supplierName: supplier?.supplierName || "Unknown",

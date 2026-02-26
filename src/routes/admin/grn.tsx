@@ -74,28 +74,26 @@ import {
 	Clock,
 	Info,
 } from "lucide-react";
-import {
-	type GRNDetail,
-	type GRNStatus,
-	type GRNStatusFilter,
-} from "@/data/grn.mock-data";
+import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { getPrimaryRole } from "@/lib/auth";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { SkuCombobox } from "@/components/grn/sku-combobox";
+import { EditGrnDialog } from "@/components/grn/edit-grn-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
 import {
 	GRNS_QUERY,
 	CREATE_GRN_MUTATION,
-	UPDATE_GRN_STATUS_MUTATION,
+	UPDATE_GRN_MUTATION,
 	mapGrnsQueryToResult,
 	GQL_STATUS_TO_UI,
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
 } from "@/lib/graphql/grns";
-import { Skus } from "@/lib/graphql/types";
+import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
 import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
 
 export const Route = createFileRoute("/admin/grn")({
@@ -318,14 +316,29 @@ function CreateGRNLineRow({
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
+	// Debug: log GRN permissions so you can see why action buttons show or not
+	useEffect(() => {
+		const role = user ? getPrimaryRole(user.roles) : null;
+		console.log("[GRN permissions]", {
+			role,
+			grnView: hasPermission("grn:view"),
+			grnCreate: hasPermission("grn:create"),
+			grnEdit: hasPermission("grn:edit"),
+			grnApprove: hasPermission("grn:approve"),
+			grnSendToEs: hasPermission("grn:send_to_es"),
+		});
+	}, [user, hasPermission]);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] = useState<GRNStatusFilter>("ALL");
-	const [selectedGRN, setSelectedGRN] = useState<GRNDetail | null>(null);
+	const [selectedGRN, setSelectedGRN] = useState<GrnDetailForList | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
+	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	/** Intent when submitting create form: Save Draft → Draft, Submit for Approval → Submitted */
+	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const { data: stockUnitsData } = useApolloQuery<
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
@@ -340,17 +353,17 @@ function GRNRouteComponent() {
 		refetch: refetchGRNs,
 	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
 		variables: {
-			filters: {
+			filter: {
 				page,
 				pageSize,
-				search: searchTerm || undefined,
+				grnNo: searchTerm || undefined,
 				status: statusFilter === "ALL" ? undefined : statusFilter,
 			},
 		},
 		fetchPolicy: "cache-and-network",
 	});
 
-	const emptyResult: import("@/data/grn.mock-data").GRNListResult = {
+	const emptyResult: import("@/lib/graphql/types").GrnListResult = {
 		items: [],
 		summary: { byStatus: { Draft: 0, Submitted: 0, Approved: 0, "Sent-to-ES": 0, Failed: 0 }, total: 0 },
 		page: 1,
@@ -370,8 +383,8 @@ function GRNRouteComponent() {
 		}
 	);
 
-	const [updateGRNStatusApollo, { loading: statusUpdating }] = useApolloMutation(
-		UPDATE_GRN_STATUS_MUTATION,
+	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
+		UPDATE_GRN_MUTATION,
 		{
 			onCompleted: () => {
 				refetchGRNs();
@@ -379,32 +392,43 @@ function GRNRouteComponent() {
 		}
 	);
 
+	/** Maps API-shaped create response to list detail (same field names as API). */
 	function mapCreateGRNToDetail(g: {
 		id: string;
-		grnNumber: string;
-		supplier: string;
+		grnNo: string;
+		supplierId: string;
+		supplierDeliveryId: string | null;
+		supplierDeliveryNo: string | null;
+		poNo: string | null;
 		status: string;
-		poReference: string | null;
-		supplierDO: string | null;
-		receivedDate: string;
+		receivedAt: string | null;
 		createdAt: string;
 		createdBy: string;
-		notes: string | null;
+		updatedBy: string | null;
+		notes?: string | null;
+		items: Array<{ id: string; sku: string; skuCode: string; skuDescription: string; expectedQuantity: number; receivedQuantity: number; location?: string | null }>;
 		totalItems: number;
 		receivedItems: number;
 		totalAmount: number;
-		items: Array<{ id: string; sku: string; description: string; expectedQuantity: number; receivedQuantity: number; location: string | null }>;
-	}): GRNDetail {
+	}): GrnDetailForList {
 		return {
-			...g,
-			status: GQL_STATUS_TO_UI[g.status] ?? "Draft",
-			poReference: g.poReference ?? undefined,
-			supplierDO: g.supplierDO ?? undefined,
-			receivedDate: new Date(g.receivedDate),
-			createdAt: new Date(g.createdAt),
+			id: g.id,
+			grnNo: g.grnNo,
+			supplierId: g.supplierId,
+			supplierDeliveryId: g.supplierDeliveryId,
+			supplierDeliveryNo: g.supplierDeliveryNo,
+			poNo: g.poNo,
+			status: (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnDetailForList["status"],
+			receivedAt: g.receivedAt,
+			createdAt: g.createdAt,
+			createdBy: g.createdBy,
+			updatedBy: g.updatedBy,
 			notes: g.notes ?? undefined,
 			items: g.items.map((i) => ({ ...i, location: i.location ?? undefined })),
-		} as GRNDetail;
+			totalItems: g.totalItems,
+			receivedItems: g.receivedItems,
+			totalAmount: g.totalAmount,
+		};
 	}
 
 	const createMutation = {
@@ -414,42 +438,48 @@ function GRNRouteComponent() {
 			supplierDO: string;
 			receivedDate: Date;
 			notes?: string;
+			/** Draft = save as draft, Submitted = submit for approval */
+			submitIntent?: "draft" | "submit";
 			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
 		}) => {
-			const result = await createGRNApollo({
+			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
+			await createGRNApollo({
 				variables: {
 					input: {
-						grnNumber: payload.grnNumber,
-						poReference: payload.poReference,
-						supplierDO: payload.supplierDO,
-						receivedDate: payload.receivedDate.toISOString(),
-						notes: payload.notes ?? null,
-						items: payload.items?.map((i) => ({
-							sku: i.sku,
-							description: i.description ?? undefined,
-							qty: i.qty,
-							uom: i.uom,
-							// unitPrice: i.unitPrice,
-						})),
+						grnNo: payload.grnNumber,
+						supplierDeliveryNo: payload.supplierDO,
+						poNo: payload.poReference || undefined,
+						receivedAt: payload.receivedDate.toISOString(),
+						status: UI_STATUS_TO_GQL[status],
+						items: payload.items?.map((i) => {
+							const uomId = i.uom
+								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+								: undefined;
+							return {
+								skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+								skuCode: i.sku,
+								skuDescription: i.description ?? undefined,
+								qty: String(i.qty),
+								skuUom: uomId ?? undefined,
+							};
+						}),
 					},
 				},
 			});
-			// if (!result.data?.createGRN) throw new Error("Create GRN failed");
-			// return mapCreateGRNToDetail(result.data.createGRN as Parameters<typeof mapCreateGRNToDetail>[0]);
 		},
 		isPending: createLoading,
 	};
 
 	const statusMutation = {
 		mutateAsync: async ({ id, status }: { id: string; status: GRNStatus }) => {
-			await updateGRNStatusApollo({
-				variables: { id, status: UI_STATUS_TO_GQL[status] },
+			await updateGRNApollo({
+				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
 			});
 			return undefined;
 		},
 		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
-			updateGRNStatusApollo({
-				variables: { id, status: UI_STATUS_TO_GQL[status] },
+			updateGRNApollo({
+				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
 			});
 		},
 		isPending: statusUpdating,
@@ -477,6 +507,7 @@ function GRNRouteComponent() {
 				supplierDO: value.supplierDO,
 				receivedDate: parsedDate,
 				notes: value.notes || undefined,
+				submitIntent: createIntentRef.current,
 				items: (value.items ?? []).map((i) => ({
 					sku: i.skuCode,
 					description: i.description,
@@ -485,8 +516,6 @@ function GRNRouteComponent() {
 					unitPrice: i.unitPrice,
 				})),
 			};
-			console.log("[GRN Submit] Form value (raw):", value);
-			console.log("[GRN Submit] Payload passed to createMutation:", payload);
 			await createMutation.mutateAsync(payload);
 			form.reset();
 		},
@@ -516,7 +545,15 @@ function GRNRouteComponent() {
 			.replace("_", " ")
 			.replace(/\b\w/g, (l) => l.toUpperCase());
 
-	const handleViewGRN = (grn: GRNDetail) => {
+	/** Parse API date (numeric timestamp or ISO string) and format for display. */
+	const formatGrnDate = (v: string | null | undefined): string | null => {
+		if (v == null || v === "") return null;
+		const ms = Number(v);
+		const date = !isNaN(ms) && String(ms) === String(v).trim() ? new Date(ms) : new Date(v);
+		return isNaN(date.getTime()) ? null : date.toLocaleString();
+	};
+
+	const handleViewGRN = (grn: GrnDetailForList) => {
 		setSelectedGRN(grn);
 		setIsViewOpen(true);
 	};
@@ -901,7 +938,8 @@ function GRNRouteComponent() {
 															type="button"
 															variant="outline"
 															onClick={() => {
-																// Save as draft
+																// Save as draft → status Draft
+																createIntentRef.current = "draft";
 																form.handleSubmit();
 															}}
 															disabled={isSubmitting}
@@ -909,9 +947,14 @@ function GRNRouteComponent() {
 															Save Draft
 														</Button>
 														<Button
-															type="submit"
+															type="button"
 															disabled={isSubmitting || !canSubmit}
 															className="min-w-[140px]"
+															onClick={() => {
+																// Submit for approval → status Submitted
+																createIntentRef.current = "submit";
+																form.handleSubmit();
+															}}
 														>
 															{isSubmitting ? (
 																<>
@@ -1034,21 +1077,36 @@ function GRNRouteComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									grns.map((grn) => (
+									grns.map((grn: GrnDetailForList) => {
+										const showEdit =
+											hasPermission("grn:edit") &&
+											grn.status &&
+											(grn.status === "Draft" || grn.status === "Submitted");
+										const showApprove =
+											hasPermission("grn:approve") && grn.status === "Submitted";
+										const showSend =
+											hasPermission("grn:send_to_es") && grn.status === "Approved";
+										console.log("[GRN row]", grn.grnNo, {
+											status: grn.status,
+											showEdit,
+											showApprove,
+											showSend,
+										});
+										return (
 										<TableRow key={grn.id}>
 											<TableCell className="font-medium">
-												{grn.grnNumber}
+												{grn.grnNo || "-"}
 											</TableCell>
-											<TableCell>{grn.poReference || "-"}</TableCell>
-											<TableCell>{grn.supplierDO || "-"}</TableCell>
+											<TableCell>{grn.poNo ?? "-"}</TableCell>
+											<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
 											<TableCell>
-												{grn.receivedDate?.toLocaleDateString() || "-"}
+												{formatGrnDate(grn.receivedAt) ?? "-"}
 											</TableCell>
 											<TableCell>
 												{grn.status ? (
 													<Badge
 														variant="outline"
-														className={getStatusColor(grn.status)}
+														className={getStatusColor(grn.status as GRNStatus)}
 													>
 														{formatStatus(grn.status)}
 													</Badge>
@@ -1065,23 +1123,19 @@ function GRNRouteComponent() {
 													>
 														<Eye className="h-4 w-4" />
 													</Button>
-													{hasPermission("grn:edit") &&
-														grn.status &&
-														(grn.status === "Draft" ||
-															grn.status === "Submitted") && (
+													{showEdit && (
 															<Button
 																variant="ghost"
 																size="icon"
 																onClick={() => {
 																	setSelectedGRN(grn);
-																	// setIsEditOpen(true);
+																	setIsEditOpen(true);
 																}}
 															>
 																<Edit className="h-4 w-4" />
 															</Button>
 														)}
-													{hasPermission("grn:approve") &&
-														grn.status === "Submitted" && (
+													{showApprove && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -1093,8 +1147,7 @@ function GRNRouteComponent() {
 																<CheckCircle className="h-4 w-4 text-green-600" />
 															</Button>
 														)}
-													{hasPermission("grn:send_to_es") &&
-														grn.status === "Approved" && (
+													{showSend && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -1109,7 +1162,8 @@ function GRNRouteComponent() {
 												</div>
 											</TableCell>
 										</TableRow>
-									))
+										);
+									})
 								)}
 							</TableBody>
 						</Table>
@@ -1179,7 +1233,7 @@ function GRNRouteComponent() {
 													GRN Number
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.grnNumber}
+													{selectedGRN.grnNo}
 												</p>
 											</div>
 											<div>
@@ -1187,7 +1241,7 @@ function GRNRouteComponent() {
 													PO Reference
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.poReference || "-"}
+													{selectedGRN.poNo || "-"}
 												</p>
 											</div>
 											<div>
@@ -1195,7 +1249,7 @@ function GRNRouteComponent() {
 													Supplier DO
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.supplierDO || "-"}
+													{(selectedGRN.supplierDeliveryNo ?? selectedGRN.supplierDeliveryId) || "-"}
 												</p>
 											</div>
 											<div>
@@ -1203,7 +1257,7 @@ function GRNRouteComponent() {
 													Received Date
 												</Label>
 												<p className="text-sm font-medium">
-													{selectedGRN.receivedDate?.toLocaleString() || "-"}
+													{formatGrnDate(selectedGRN.receivedAt) ?? "-"}
 												</p>
 											</div>
 											<div>
@@ -1250,9 +1304,9 @@ function GRNRouteComponent() {
 														{selectedGRN.items.map((item) => (
 															<TableRow key={item.id}>
 																<TableCell className="font-medium">
-																	{item.sku}
+																	{item.skuCode}
 																</TableCell>
-																<TableCell>{item.description}</TableCell>
+																<TableCell>{item.skuDescription}</TableCell>
 																<TableCell>{item.expectedQuantity}</TableCell>
 																<TableCell>{item.receivedQuantity}</TableCell>
 																<TableCell>
@@ -1291,7 +1345,7 @@ function GRNRouteComponent() {
 										<div>
 											<p className="text-muted-foreground">Created At</p>
 											<p className="font-medium">
-												{selectedGRN.createdAt?.toLocaleString() || "-"}
+												{formatGrnDate(selectedGRN.createdAt) ?? "-"}
 											</p>
 										</div>
 									</CardContent>
@@ -1336,6 +1390,20 @@ function GRNRouteComponent() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			{/* Edit GRN Dialog */}
+			<EditGrnDialog
+				open={isEditOpen}
+				onOpenChange={setIsEditOpen}
+				grn={selectedGRN}
+				onSuccess={() => {
+					refetchGRNs();
+					setIsEditOpen(false);
+					setSelectedGRN(null);
+				}}
+				skuOptions={skuOptions}
+				stockUnits={stockUnits}
+			/>
 		</div>
 	);
 }
