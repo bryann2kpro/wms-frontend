@@ -1,8 +1,6 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation as useApolloMutation } from "@apollo/client/react";
-import { useForm } from "@tanstack/react-form";
-import { z } from "zod";
 import {
 	Card,
 	CardContent,
@@ -28,10 +26,8 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	Select,
 	SelectContent,
@@ -39,49 +35,24 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Field,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@/components/ui/field";
-import {
-	Combobox,
-	ComboboxContent,
-	ComboboxEmpty,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxList,
-} from "@/components/ui/combobox";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
 	Plus,
 	Search,
 	Eye,
 	CheckCircle,
-	XCircle,
 	ChevronLeft,
 	ChevronRight,
 	Edit,
 	Send,
-	Package,
-	Calendar,
-	FileText,
-	Upload,
-	User,
-	Clock,
-	Info,
 } from "lucide-react";
 import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
-import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
-import { SkuCombobox } from "@/components/grn/sku-combobox";
-import { EditGrnDialog } from "@/components/grn/edit-grn-dialog";
+import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
 import {
@@ -106,213 +77,6 @@ const grnStatuses: GRNStatus[] = [
 	"Failed",
 ];
 
-export type CreateGRNLineItem = {
-	skuCode: string;
-	description: string;
-	qty: number;
-	uom: string;
-	unitPrice: number;
-};
-
-const createGRNSchema = z.object({
-	grnNumber: z
-		.string(),
-	// .min(1, "GRN number is required")
-	// .regex(/^GRN-20\d{2}-[A-Z0-9]+$/, "Use format like GRN-2024-001"),
-	poReference: z.string().min(1, "PO Reference is required"),
-	supplierDO: z.string().min(1, "Supplier DO is required"),
-	receivedDate: z.string().min(1, "Received date is required"),
-	notes: z.string(),
-});
-
-function CreateGRNLineRow({
-	item,
-	index,
-	items,
-	onItemsChange,
-	skuCodes,
-	skuOptions,
-	stockUnits,
-}: {
-	item: CreateGRNLineItem;
-	index: number;
-	items: CreateGRNLineItem[];
-	onItemsChange: (newItems: CreateGRNLineItem[]) => void;
-	skuCodes: string[];
-	skuOptions: Skus[];
-	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
-}) {
-	const usedByOthersKey = items
-		.filter((_, i) => i !== index)
-		.map((it) => it.skuCode)
-		.filter(Boolean)
-		.sort()
-		.join(",");
-	const availableSkuCodes = useMemo(() => {
-		const usedByOthers = new Set(
-			usedByOthersKey ? usedByOthersKey.split(",") : [],
-		);
-		return skuCodes.filter(
-			(code) => !usedByOthers.has(code) || code === (item.skuCode ?? ""),
-		);
-	}, [usedByOthersKey, item.skuCode, skuCodes]);
-
-	const itemsWithCustom = useMemo(() => {
-		const current = item.skuCode?.trim() ?? "";
-		if (!current || availableSkuCodes.includes(current)) return availableSkuCodes;
-		return [...availableSkuCodes, current];
-	}, [availableSkuCodes, item.skuCode]);
-
-	const inputValueChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const onInputValueChange = useCallback(
-		(inputValue: string) => {
-			const trimmed = inputValue?.trim() ?? "";
-			if (trimmed === (item.skuCode ?? "")) return;
-			if (inputValueChangeTimeoutRef.current) {
-				clearTimeout(inputValueChangeTimeoutRef.current);
-			}
-			inputValueChangeTimeoutRef.current = setTimeout(() => {
-				inputValueChangeTimeoutRef.current = null;
-				const newItems = [...items];
-				newItems[index] = { ...newItems[index], skuCode: trimmed };
-				onItemsChange(newItems);
-			}, 400);
-		},
-		[item.skuCode
-			, index, items, onItemsChange],
-	);
-
-	useEffect(
-		() => () => {
-			if (inputValueChangeTimeoutRef.current) {
-				clearTimeout(inputValueChangeTimeoutRef.current);
-			}
-		},
-		[],
-	);
-
-	return (
-		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
-			<TableCell>
-				<Combobox
-					items={itemsWithCustom}
-					value={item.skuCode ?? ""}
-					onValueChange={(value) => {
-						if (inputValueChangeTimeoutRef.current) {
-							clearTimeout(inputValueChangeTimeoutRef.current);
-							inputValueChangeTimeoutRef.current = null;
-						}
-						const sku = skuOptions.find((s: Skus) => s.skuCode === value);
-						const uomUnit = sku
-							? stockUnits.find(
-									(u) =>
-										u.stockUnitId === sku.skuUom ||
-										u.unitCode === sku.skuUom,
-								)
-							: undefined;
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							skuCode: value ?? "",
-							description: sku?.skuDescription ?? newItems[index].description ?? "",
-							uom:
-								uomUnit?.unitCode ??
-								sku?.skuUom ??
-								newItems[index].uom ??
-								"",
-						};
-						onItemsChange(newItems);
-					}}
-					onInputValueChange={onInputValueChange}
-				>
-					<ComboboxInput
-						placeholder="SKU code"
-						className="font-medium min-w-[160px]"
-					/>
-					<ComboboxContent>
-						<ComboboxList>
-							{(skuCode: string) => {
-								const s = skuOptions.find((o) => o.skuCode === skuCode);
-								return (
-									<ComboboxItem key={skuCode} value={skuCode}>
-										{s?.skuDescription ?? skuCode}
-									</ComboboxItem>
-								);
-							}}
-						</ComboboxList>
-						<ComboboxEmpty>No SKU found.</ComboboxEmpty>
-					</ComboboxContent>
-				</Combobox>
-			</TableCell>
-			<TableCell>
-				<Input
-					value={item.description}
-					onChange={(e) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							description: e.target.value,
-						};
-						onItemsChange(newItems);
-					}}
-					placeholder="Description"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="number"
-					min={1}
-					value={item.qty}
-					onChange={(e) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							qty: Number(e.target.value) || 1,
-						};
-						onItemsChange(newItems);
-					}}
-					className="w-20"
-				/>
-			</TableCell>
-			<TableCell>
-				<Select
-					value={item.uom}
-					onValueChange={(value) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							uom: value,
-						};
-						onItemsChange(newItems);
-					}}
-				>
-					<SelectTrigger className="w-[120px]">
-						<SelectValue placeholder="UOM" />
-					</SelectTrigger>
-					<SelectContent>
-						{stockUnits.map((unit) => (
-							<SelectItem key={unit.stockUnitId} value={unit.unitCode}>
-								{unit.unitCode}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</TableCell>
-			<TableCell className="text-right">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
-					className="text-destructive hover:text-destructive"
-				>
-					<XCircle className="h-4 w-4" />
-				</Button>
-			</TableCell>
-		</TableRow>
-	);
-}
-
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
@@ -336,16 +100,15 @@ function GRNRouteComponent() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
-	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
-	/** Intent when submitting create form: Save Draft → Draft, Submit for Approval → Submitted */
-	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const { data: stockUnitsData } = useApolloQuery<
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
-	const { data: skusData } = useApolloQuery<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, { variables: {} });
+	const { data: skusData, refetch: refetchSkus } = useApolloQuery<SkusQueryData, SkusQueryVariables>(
+		SKUS_QUERY,
+		{ variables: {} }
+	);
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
-	const skuCodes = useMemo(() => skuOptions.map((s) => s.skuCode), [skuOptions]);
 
 	const {
 		data: grnsQueryData,
@@ -391,45 +154,6 @@ function GRNRouteComponent() {
 			},
 		}
 	);
-
-	/** Maps API-shaped create response to list detail (same field names as API). */
-	function mapCreateGRNToDetail(g: {
-		id: string;
-		grnNo: string;
-		supplierId: string;
-		supplierDeliveryId: string | null;
-		supplierDeliveryNo: string | null;
-		poNo: string | null;
-		status: string;
-		receivedAt: string | null;
-		createdAt: string;
-		createdBy: string;
-		updatedBy: string | null;
-		notes?: string | null;
-		items: Array<{ id: string; sku: string; skuCode: string; skuDescription: string; expectedQuantity: number; receivedQuantity: number; location?: string | null }>;
-		totalItems: number;
-		receivedItems: number;
-		totalAmount: number;
-	}): GrnDetailForList {
-		return {
-			id: g.id,
-			grnNo: g.grnNo,
-			supplierId: g.supplierId,
-			supplierDeliveryId: g.supplierDeliveryId,
-			supplierDeliveryNo: g.supplierDeliveryNo,
-			poNo: g.poNo,
-			status: (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnDetailForList["status"],
-			receivedAt: g.receivedAt,
-			createdAt: g.createdAt,
-			createdBy: g.createdBy,
-			updatedBy: g.updatedBy,
-			notes: g.notes ?? undefined,
-			items: g.items.map((i) => ({ ...i, location: i.location ?? undefined })),
-			totalItems: g.totalItems,
-			receivedItems: g.receivedItems,
-			totalAmount: g.totalAmount,
-		};
-	}
 
 	const createMutation = {
 		mutateAsync: async (payload: {
@@ -483,43 +207,8 @@ function GRNRouteComponent() {
 			});
 		},
 		isPending: statusUpdating,
-		status: statusUpdating ? ("pending" as const) : ("idle" as const),
+		status: 		statusUpdating ? ("pending" as const) : ("idle" as const),
 	};
-
-	const form = useForm({
-		defaultValues: {
-			grnNumber: "",
-			poReference: "",
-			supplierDO: "",
-			receivedDate: "",
-			notes: "",
-			items: [] as CreateGRNLineItem[],
-		},
-		// validators: {
-		// 	onBlur: createGRNSchema,
-		// 	onSubmit: createGRNSchema,
-		// },
-		onSubmit: async ({ value }) => {
-			const parsedDate = new Date(value.receivedDate);
-			const payload = {
-				grnNumber: value.grnNumber,
-				poReference: value.poReference,
-				supplierDO: value.supplierDO,
-				receivedDate: parsedDate,
-				notes: value.notes || undefined,
-				submitIntent: createIntentRef.current,
-				items: (value.items ?? []).map((i) => ({
-					sku: i.skuCode,
-					description: i.description,
-					qty: i.qty,
-					uom: i.uom,
-					unitPrice: i.unitPrice,
-				})),
-			};
-			await createMutation.mutateAsync(payload);
-			form.reset();
-		},
-	});
 
 	const grns = data?.items ?? [];
 	const summary = data?.summary;
@@ -576,408 +265,41 @@ function GRNRouteComponent() {
 						Manage incoming inventory and track receipts
 					</p>
 				</div>
-				<Dialog
-					open={isCreateOpen}
-
-					onOpenChange={(open) => {
-						if (!open) {
-							(document.activeElement as HTMLElement | null)?.blur();
-							form.reset();
-							form.setFieldValue("items", []);
-							setProofFiles([]);
+				{hasPermission("grn:create") && (
+					<GrnFormDialog
+						mode="create"
+						open={isCreateOpen}
+						onOpenChange={setIsCreateOpen}
+						skuOptions={skuOptions}
+						stockUnits={stockUnits}
+						canCreate={hasPermission("grn:create")}
+						trigger={
+							<Button>
+								<Plus className="mr-2 h-4 w-4" />
+								Create GRN
+							</Button>
 						}
-						setIsCreateOpen(open);
-					}}
-				>
-					<DialogTrigger asChild>
-						<Button>
-							<Plus className="mr-2 h-4 w-4" />
-							Create GRN
-						</Button>
-					</DialogTrigger>
-					<DialogContent
-						className="max-h-[90vh] overflow-y-auto"
-						style={{ maxWidth: "min(95vw, 1400px)" }}
-					>
-						<DialogHeader className="pb-4">
-							<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
-								<Package className="h-5 w-5 text-primary" />
-								Create New GRN
-							</DialogTitle>
-							<DialogDescription className="text-base">
-								Enter the details for the new goods receipt note
-							</DialogDescription>
-						</DialogHeader>
-						<Separator />
-						<div className="flex-1 pr-4 h-full overflow-y-auto min-h-0">
-							<form
-								onSubmit={(e) => {
-									e.preventDefault();
-									form.handleSubmit();
-								}}
-								className="space-y-6 py-4"
-							>
-								<div className="lg:grid-cols-3">
-									<div className="lg:col-span-2 space-y-6">
-										{/* Basic Information Section */}
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="text-base font-semibold flex items-center gap-2">
-													<FileText className="h-4 w-4 text-muted-foreground" />
-													Basic Information
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<FieldGroup>
-													<div className="grid gap-4 sm:grid-cols-2">
-														<form.Field
-															name="grnNumber"
-															children={(field) => {
-																const isInvalid =
-																	field.state.meta.isTouched &&
-																	!field.state.meta.isValid;
-																return (
-																	<Field data-invalid={isInvalid}>
-																		<FieldLabel htmlFor={field.name}>
-																			GRN Number
-																		</FieldLabel>
-																		<Input
-																			id={field.name}
-																			value={field.state.value}
-																			placeholder="GRN-2024-001"
-																			onBlur={field.handleBlur}
-																			onChange={(e) =>
-																				field.handleChange(e.target.value)
-																			}
-																			aria-invalid={isInvalid}
-																		/>
-																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
-																		)}
-																	</Field>
-																);
-															}}
-														/>
-														<form.Field
-															name="poReference"
-															children={(field) => {
-																const isInvalid =
-																	field.state.meta.isTouched &&
-																	!field.state.meta.isValid;
-																return (
-																	<Field data-invalid={isInvalid}>
-																		<FieldLabel htmlFor={field.name}>
-																			PO Reference
-																		</FieldLabel>
-																		<Input
-																			id={field.name}
-																			value={field.state.value}
-																			placeholder="PO-2024-001"
-																			onBlur={field.handleBlur}
-																			onChange={(e) =>
-																				field.handleChange(e.target.value)
-																			}
-																			aria-invalid={isInvalid}
-																		/>
-																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
-																		)}
-																	</Field>
-																);
-															}}
-														/>
-													</div>
-
-													<form.Field
-														name="supplierDO"
-														children={(field) => {
-															const isInvalid =
-																field.state.meta.isTouched &&
-																!field.state.meta.isValid;
-															return (
-																<Field data-invalid={isInvalid}>
-																	<FieldLabel htmlFor={field.name}>
-																		Supplier DO
-																	</FieldLabel>
-																	<Input
-																		id={field.name}
-																		value={field.state.value}
-																		placeholder="DO-2024-001"
-																		onBlur={field.handleBlur}
-																		required
-																		onChange={(e) =>
-																			field.handleChange(e.target.value)
-																		}
-																		aria-invalid={isInvalid}
-																	/>
-																	{isInvalid && (
-																		<FieldError errors={field.state.meta.errors} />
-																	)}
-																</Field>
-															);
-														}}
-													/>
-
-													<form.Field
-														name="receivedDate"
-														children={(field) => {
-															const isInvalid =
-																field.state.meta.isTouched &&
-																!field.state.meta.isValid;
-															return (
-																<Field data-invalid={isInvalid}>
-																	<FieldLabel htmlFor={field.name} className="flex items-center gap-2">
-																		<Calendar className="h-4 w-4 text-muted-foreground" />
-																		Received Date/Time
-																	</FieldLabel>
-																	<Input
-																		id={field.name}
-																		type="datetime-local"
-																		value={field.state.value}
-																		onBlur={field.handleBlur}
-																		onChange={(e) =>
-																			field.handleChange(e.target.value)
-																		}
-																		aria-invalid={isInvalid}
-																	/>
-																	{isInvalid && (
-																		<FieldError errors={field.state.meta.errors} />
-																	)}
-																</Field>
-															);
-														}}
-													/>
-												</FieldGroup>
-											</CardContent>
-										</Card>
-
-										{/* Line Items Section - Form-based */}
-										<Card>
-											<CardHeader className="pb-3">
-												<div className="flex items-center justify-between gap-4">
-													<div>
-														<CardTitle className="text-base font-semibold flex items-center gap-2">
-															<Package className="h-4 w-4 text-muted-foreground" />
-															Line Items
-														</CardTitle>
-														<CardDescription className="text-xs mt-1">
-															Add line items and fill in the details below
-														</CardDescription>
-													</div>
-													<form.Field name="items">
-														{(field) => {
-															const items =
-																(field.state.value as CreateGRNLineItem[]) ?? [];
-															return (
-																<Button
-																	type="button"
-																	variant="default"
-																	size="sm"
-																	onClick={() => {
-																		field.handleChange([
-																			...items,
-																			{
-																				skuCode: "",
-																				description: "",
-																				uom: "",
-																				unitPrice: 0,
-																				qty: 1,
-																			},
-																		]);
-																	}}
-																>
-																	<Plus className="mr-2 h-4 w-4" />
-																	Add Line Item
-																</Button>
-															);
-														}}
-													</form.Field>
-												</div>
-											</CardHeader>
-											<CardContent>
-												<form.Field name="items">
-													{(field) => {
-														const items =
-															(field.state.value as CreateGRNLineItem[]) ?? [];
-														return (
-															<>
-																<div className="rounded-lg border">
-																	<Table>
-																		<TableHeader>
-																			<TableRow>
-																				<TableHead>SKU</TableHead>
-																				<TableHead>Description</TableHead>
-																				<TableHead>Qty</TableHead>
-																				<TableHead>UOM</TableHead>
-																				<TableHead className="text-right w-[80px]">
-																					Actions
-																				</TableHead>
-																			</TableRow>
-																		</TableHeader>
-																		<TableBody>
-																			{items.length === 0 ? (
-																				<TableRow>
-																					<TableCell
-																						colSpan={5}
-																						className="h-40 text-center"
-																					>
-																						<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
-																							<div className="rounded-full bg-muted p-3">
-																								<Package className="h-10 w-10 opacity-60" />
-																							</div>
-																							<div>
-																								<p className="text-sm font-medium">
-																									No line items yet
-																								</p>
-																								<p className="text-xs mt-1">
-																									Click &quot;Add Line Item&quot; above to add your first item, then fill in the table
-																								</p>
-																							</div>
-																						</div>
-																					</TableCell>
-																				</TableRow>
-																			) : (
-																				items.map((item, index) => (
-																					<CreateGRNLineRow
-																						key={`line-${index}-${item.skuCode || "new"}`}
-																						item={item}
-																						index={index}
-																						items={items}
-																						onItemsChange={field.handleChange}
-																						skuCodes={skuCodes}
-																						skuOptions={skuOptions}
-																						stockUnits={stockUnits}
-																					/>
-																				))
-																			)}
-																		</TableBody>
-																	</Table>
-																</div>
-															</>
-														);
-													}}
-												</form.Field>
-											</CardContent>
-										</Card>
-
-										{/* Proof Upload Section */}
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="text-base font-semibold flex items-center gap-2">
-													<Upload className="h-4 w-4 text-muted-foreground" />
-													Proof Upload
-												</CardTitle>
-												<CardDescription className="text-xs">
-													Upload supporting documents (max 5 files)
-												</CardDescription>
-											</CardHeader>
-											<CardContent>
-												<FileUpload
-													files={proofFiles}
-													onFilesChange={setProofFiles}
-													maxFiles={5}
-													accept="image/*,application/pdf"
-												/>
-											</CardContent>
-										</Card>
-
-										{/* Notes Section */}
-										<Card>
-											<CardHeader className="pb-3">
-												<CardTitle className="text-base font-semibold flex items-center gap-2">
-													<FileText className="h-4 w-4 text-muted-foreground" />
-													Additional Notes
-												</CardTitle>
-											</CardHeader>
-											<CardContent>
-												<form.Field
-													name="notes"
-													children={(field) => (
-														<Field>
-															<FieldLabel htmlFor={field.name} className="sr-only">
-																Notes
-															</FieldLabel>
-															<Textarea
-																id={field.name}
-																value={field.state.value}
-																placeholder="Enter any additional notes or comments..."
-																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
-																className="min-h-[100px] resize-none"
-															/>
-														</Field>
-													)}
-												/>
-											</CardContent>
-										</Card>
-									</div>
-								</div>
-
-								<form.Subscribe
-									selector={(state) => [state.isSubmitting, state.canSubmit]}
-								>
-									{([isSubmitting, canSubmit]) => (
-										<>
-											<Separator className="mt-6" />
-											<DialogFooter className="pt-4">
-												<Button
-													type="button"
-													variant="outline"
-													onClick={() => {
-														setIsCreateOpen(false);
-														form.setFieldValue("items", []);
-														setProofFiles([]);
-													}}
-													disabled={isSubmitting}
-												>
-													Cancel
-												</Button>
-												{hasPermission("grn:create") && (
-													<>
-														<Button
-															type="button"
-															variant="outline"
-															onClick={() => {
-																// Save as draft → status Draft
-																createIntentRef.current = "draft";
-																form.handleSubmit();
-															}}
-															disabled={isSubmitting}
-														>
-															Save Draft
-														</Button>
-														<Button
-															type="button"
-															disabled={isSubmitting || !canSubmit}
-															className="min-w-[140px]"
-															onClick={() => {
-																// Submit for approval → status Submitted
-																createIntentRef.current = "submit";
-																form.handleSubmit();
-															}}
-														>
-															{isSubmitting ? (
-																<>
-																	<Clock className="mr-2 h-4 w-4 animate-spin" />
-																	Submitting...
-																</>
-															) : (
-																<>
-																	<Send className="mr-2 h-4 w-4" />
-																	Submit for Approval
-																</>
-															)}
-														</Button>
-													</>
-												)}
-											</DialogFooter>
-										</>
-									)}
-								</form.Subscribe>
-							</form>
-						</div>
-					</DialogContent>
-				</Dialog>
+						onCreateSubmit={async (payload) => {
+							await createMutation.mutateAsync({
+								grnNumber: payload.grnNumber,
+								poReference: payload.poReference,
+								supplierDO: payload.supplierDO,
+								receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
+								notes: payload.notes || undefined,
+								submitIntent: payload.submitIntent,
+								items: payload.items.map((i) => ({
+									sku: i.skuCode,
+									description: i.description,
+									qty: i.qty,
+									uom: i.uom,
+									unitPrice: i.unitPrice,
+								})),
+							});
+						}}
+						onSuccess={() => refetchGRNs()}
+						onSkusRefetch={() => void refetchSkus()}
+					/>
+				)}
 			</div>
 
 			{summary && summary.byStatus && (
@@ -1086,12 +408,6 @@ function GRNRouteComponent() {
 											hasPermission("grn:approve") && grn.status === "Submitted";
 										const showSend =
 											hasPermission("grn:send_to_es") && grn.status === "Approved";
-										console.log("[GRN row]", grn.grnNo, {
-											status: grn.status,
-											showEdit,
-											showApprove,
-											showSend,
-										});
 										return (
 										<TableRow key={grn.id}>
 											<TableCell className="font-medium">
@@ -1391,18 +707,20 @@ function GRNRouteComponent() {
 				</DialogContent>
 			</Dialog>
 
-			{/* Edit GRN Dialog */}
-			<EditGrnDialog
+			{/* Edit GRN – same form dialog as Create */}
+			<GrnFormDialog
+				mode="edit"
 				open={isEditOpen}
 				onOpenChange={setIsEditOpen}
 				grn={selectedGRN}
+				skuOptions={skuOptions}
+				stockUnits={stockUnits}
 				onSuccess={() => {
 					refetchGRNs();
 					setIsEditOpen(false);
 					setSelectedGRN(null);
 				}}
-				skuOptions={skuOptions}
-				stockUnits={stockUnits}
+				onSkusRefetch={() => void refetchSkus()}
 			/>
 		</div>
 	);
