@@ -375,12 +375,23 @@ export async function getTransfers(
 	};
 }
 
+export interface CreateTransferLineItemInput {
+	skuId: string;
+	skuCode?: string;
+	description?: string;
+	quantity: number;
+}
+
 export interface CreateTransferInput {
 	transferOrderNumber: string;
-	fromLocation: string;
-	toLocation: string;
+	/** Outlet id from GQL (destination). */
+	outletId: string;
+	/** Outlet display name for list/detail (e.g. from GQL). */
+	outletName: string;
 	expectedDeliveryDate: Date;
 	notes?: string;
+	/** Line items: stock (SKU) and amount. */
+	items: CreateTransferLineItemInput[];
 }
 
 export async function createTransfer(
@@ -389,27 +400,39 @@ export async function createTransfer(
 	await delay(300);
 
 	const now = new Date();
+	const baseId = transferDetails.length + 1;
+	const items: TransferItem[] = (input.items ?? []).map((line, idx) => ({
+		id: `${baseId}-${idx + 1}`,
+		sku: line.skuCode ?? line.skuId,
+		description: line.description ?? "—",
+		quantity: line.quantity,
+		pickedQuantity: 0,
+		packedQuantity: 0,
+	}));
+
+	if (items.length === 0) {
+		items.push({
+			id: `${baseId}-1`,
+			sku: "—",
+			description: "—",
+			quantity: 0,
+			pickedQuantity: 0,
+			packedQuantity: 0,
+		});
+	}
+
 	const newTransfer: TransferDetail = {
-		id: (transferDetails.length + 1).toString(),
+		id: baseId.toString(),
 		transferOrderNumber: input.transferOrderNumber,
-		fromLocation: input.fromLocation,
-		toLocation: input.toLocation,
+		fromLocation: "Main Warehouse",
+		toLocation: input.outletName,
 		status: "preparing",
 		createdDate: now,
 		expectedDeliveryDate: input.expectedDeliveryDate,
 		createdBy: "Current User",
 		notes: input.notes,
-		items: [
-			{
-				id: `${transferDetails.length + 1}-1`,
-				sku: "SKU-NEW-001",
-				description: "Newly created item",
-				quantity: 1,
-				pickedQuantity: 0,
-				packedQuantity: 0,
-			},
-		],
-		totalItems: 1,
+		items,
+		totalItems: items.length,
 		netsuiteStatus: undefined,
 	};
 
