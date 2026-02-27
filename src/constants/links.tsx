@@ -44,7 +44,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	{
 		key: "sidebar-transfers",
 		title: "Outbound (PO / DO)",
-		href: "/admin/transfers",
+		href: "/admin/outbound",
 		icon: ArrowRightLeft,
 		allowedPermission: ["*"],
 		variant: "default",
