@@ -47,10 +47,12 @@ const createSkuSchema = z.object({
 
 export type SkuLineValue = {
 	sku: string;
+	skuCode: string;
 	description: string;
 	uom: string;
 	// unitPrice: number;
 	skuId: string;
+	isActive: boolean;
 };
 
 type SkuComboboxProps = {
@@ -60,6 +62,8 @@ type SkuComboboxProps = {
 	className?: string;
 	createdBy?: string;
 	stockUnitCodes?: string[];
+	/** SKU codes already used in other rows (e.g. other line items). Those SKUs are hidden from the list so the same SKU cannot be added twice. */
+	usedSkuCodes?: string[];
 };
 
 type StockUnit = {
@@ -72,6 +76,7 @@ export function SkuCombobox({
 	onChange,
 	placeholder = "Search or select SKU...",
 	className,
+	usedSkuCodes,
 }: SkuComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -92,22 +97,38 @@ export function SkuCombobox({
 	const skus = data?.skus.query ?? [];
 	const uoms = data?.stockUnits?.query ?? [];
 
-	const createSku = useMutation({
-		mutationFn: (input: CreateSkuInput) => {
+	function getErrorMessage(err: unknown): string {
+		if (err && typeof err === "object" && "response" in err) {
+			const res = (err as { response?: { errors?: Array<{ message?: string }> } }).response;
+			const msg = res?.errors?.[0]?.message;
+			if (msg) return msg;
+		}
+		if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
+			return (err as Error).message;
+		if (err instanceof Error) return err.message;
+		return String(err ?? "Failed to create SKU");
+	}
 
+	const createSku = useMutation({
+		mutationFn: (input: CreateSkuInput & { isActive: boolean }) => {
 			const headers = new Headers();
 			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
 
 			return request(
-				env.VITE_GRAPHQL_ENDPOINT, 
-				CREATE_SKU_MUTATION, 
+				env.VITE_GRAPHQL_ENDPOINT,
+				CREATE_SKU_MUTATION,
 				{ input },
 				headers
-			)
+			);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['skus'] });
 			toast.success('SKU created successfully');
+			setCreateOpen(false);
+			form.reset();
+		},
+		onError: (err) => {
+			toast.error(getErrorMessage(err));
 		},
 	});
 
@@ -122,27 +143,41 @@ export function SkuCombobox({
 			onSubmit: createSkuSchema,
 		},
 		onSubmit: async ({ value }) => {
-			createSku.mutate(value);
+			createSku.mutate({
+				...value,
+				isActive: true,
+			});
 		},
 	})
 
 	const filtered = useMemo(() => {
-		if (!search.trim()) return skus;
+		// Exclude SKUs already used in other rows, but always include the current selection so it still displays
+		const available =
+			usedSkuCodes?.length ?
+				skus.filter(
+					(s: Skus) =>
+						!usedSkuCodes.includes(s.skuCode) || s.skuCode === value?.skuCode,
+				)
+				: skus;
+		if (!search.trim()) return available;
 		const q = search.toLowerCase();
-		return skus.filter(
+		return available.filter(
 			(s: Skus) =>
 				s.skuCode.toLowerCase().includes(q) ||
 				s.skuDescription?.toLowerCase().includes(q),
 		);
-	}, [skus, search]);
+	}, [skus, search, usedSkuCodes, value?.skuCode]);
 
 	function handleSelect(sku: Sku) {
+		const s = sku as unknown as Skus;
+		const uomUnit = uoms?.find((u: StockUnit) => u.stockUnitId === s.skuUom);
 		onChange({
-			sku: sku.skuName,
-			description: sku.skuDescription,
-			uom: sku.skuUom,
-			// unitPrice: sku.skuPrice,
+			sku: s.skuCode ?? s.skuDescription ?? sku.skuId,
+			skuCode: s.skuCode ?? "",
+			description: s.skuDescription ?? "",
+			uom: uomUnit?.unitCode ?? s.skuUom ?? "",
 			skuId: sku.skuId,
+			isActive: s.isActive ?? true,
 		});
 		setOpen(false);
 		setSearch("");
@@ -150,7 +185,7 @@ export function SkuCombobox({
 
 	const displayLabel = value
 		? `${value.sku}${value.description ? ` – ${value.description}` : ""}`
-		 : null;
+		: null;
 
 	return (
 		<div className={cn("flex gap-1", className)}>
@@ -251,7 +286,7 @@ export function SkuCombobox({
 											</DialogDescription>
 										</DialogHeader>
 
-										
+
 										<FieldGroup>
 											<div className="grid gap-4 py-4">
 												<form.Field
@@ -351,9 +386,9 @@ export function SkuCombobox({
 																return (
 																	<UiField className="grid gap-2">
 																		<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
-																		<Select 
-																			name={field.name} 
-																			value={field.state.value} 
+																		<Select
+																			name={field.name}
+																			value={field.state.value}
 																			onValueChange={(value) => field.handleChange(value)}
 																			disabled // Remove this if we want to allow selection of UOM
 																			defaultValue={uoms[0]?.stockUnitId}
@@ -376,8 +411,8 @@ export function SkuCombobox({
 												</div>
 											</div>
 										</FieldGroup>
-										
-										
+
+
 										<DialogFooter>
 											<Button
 												type="button"
