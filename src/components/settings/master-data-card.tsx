@@ -146,10 +146,12 @@ import {
 	WAREHOUSES_QUERY,
 	CREATE_WAREHOUSE_MUTATION,
 	UPDATE_WAREHOUSE_MUTATION,
+	DELETE_WAREHOUSE_MUTATION,
 	type WarehousesQueryData,
 	type WarehousesQueryVariables,
 	type CreateWarehouseMutationData,
 	type UpdateWarehouseMutationData,
+	type DeleteWarehouseMutationData,
 } from "@/lib/graphql/warehouses";
 import {
 	Plus,
@@ -526,6 +528,7 @@ function WarehouseSection() {
 	const [search, setSearch] = useState("");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [editing, setEditing] = useState<Warehouse | null>(null);
+	const [deleting, setDeleting] = useState<Warehouse | null>(null);
 
 	const { data, loading, refetch } = useQuery<
 		WarehousesQueryData,
@@ -553,6 +556,14 @@ function WarehouseSection() {
 			onCompleted: () => {
 				refetch();
 				setEditing(null);
+			},
+		});
+
+	const [deleteWarehouse, { loading: deleteLoading }] =
+		useMutation<DeleteWarehouseMutationData>(DELETE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
 			},
 		});
 
@@ -654,6 +665,15 @@ function WarehouseSection() {
 											>
 												<Edit className="h-4 w-4" />
 											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive"
+												onClick={() => setDeleting(row)}
+												aria-label={`Delete warehouse ${row.warehouseName}`}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
 										</TableCell>
 									</TableRow>
 								))
@@ -732,6 +752,18 @@ function WarehouseSection() {
 							},
 						})
 					}
+				/>
+			)}
+
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.warehouseName}
+					onConfirm={() =>
+						deleteWarehouse({ variables: { id: deleting.warehouseId } })
+					}
+					loading={deleteLoading}
 				/>
 			)}
 		</Card>

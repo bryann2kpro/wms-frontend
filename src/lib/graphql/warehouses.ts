@@ -77,6 +77,12 @@ export const UPDATE_WAREHOUSE_MUTATION = gql`
 	${WAREHOUSE_FRAGMENT}
 `;
 
+export const DELETE_WAREHOUSE_MUTATION = gql`
+	mutation DeleteWarehouse($id: ID!) {
+		deleteWarehouse(id: $id)
+	}
+`;
+
 export type WarehousesQueryVariables = {
 	filter?: {
 		warehouseId?: string;
@@ -104,4 +110,8 @@ export type UpdateWarehouseMutationVariables = {
 	input: UpdateWarehouseInput;
 };
 export type UpdateWarehouseMutationData = { updateWarehouse: Warehouse | null };
+
+export type DeleteWarehouseMutationVariables = { id: string };
+export type DeleteWarehouseMutationData = { deleteWarehouse: boolean };
+
 
