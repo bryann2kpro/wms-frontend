@@ -12,6 +12,11 @@ export interface Pagination {
 	hasPrevPage: boolean;
 }
 
+export interface AuditUser {
+	id: string;
+	displayName: string;
+}
+
 export interface Supplier {
 	supplierId: string;
 	supplierName: string;
@@ -66,6 +71,36 @@ export interface UpdateRegionInput {
 	regionName?: string;
 	regionCode?: string;
 	updatedBy: string;
+}
+
+export interface Warehouse {
+	warehouseId: string;
+	warehouseName: string;
+	warehouseCode: string | null;
+	warehouseAddress: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+	createdByUser: AuditUser | null;
+	updatedByUser: AuditUser | null;
+}
+
+export interface WarehousePaginatedResponse {
+	query: Warehouse[];
+	pagination: Pagination;
+}
+
+export interface CreateWarehouseInput {
+	warehouseName: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+}
+
+export interface UpdateWarehouseInput {
+	warehouseName?: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
 }
 
 export interface DeliverySchedule {
