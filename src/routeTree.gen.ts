@@ -18,12 +18,12 @@ import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
-import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
-import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
+import { Route as AdminSettlementRouteImport } from ./routes/admin/outbound.tsxnt'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -92,11 +92,6 @@ const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
   path: '/user-management',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminTransfersRoute = AdminTransfersRouteImport.update({
-  id: '/transfers',
-  path: '/transfers',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminSettlementRoute = AdminSettlementRouteImport.update({
   id: '/settlement',
   path: '/settlement',
@@ -120,6 +115,11 @@ const AdminRbacRoute = AdminRbacRouteImport.update({
 const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   id: '/proof-of-delivery',
   path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminOutboundRoute = AdminOutboundRouteImport.update({
+  id: '/outbound',
+  path: '/outbound',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -249,12 +249,12 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -288,12 +288,12 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -328,12 +328,12 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -369,12 +369,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -408,12 +408,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -447,12 +447,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -557,13 +557,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUserManagementRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/transfers': {
-      id: '/admin/transfers'
-      path: '/transfers'
-      fullPath: '/admin/transfers'
-      preLoaderRoute: typeof AdminTransfersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/settlement': {
       id: '/admin/settlement'
       path: '/settlement'
@@ -597,6 +590,13 @@ declare module '@tanstack/react-router' {
       path: '/proof-of-delivery'
       fullPath: '/admin/proof-of-delivery'
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/outbound': {
+      id: '/admin/outbound'
+      path: '/outbound'
+      fullPath: '/admin/outbound'
+      preLoaderRoute: typeof AdminOutboundRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -780,12 +780,12 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminOutboundRoute: typeof AdminOutboundRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
-  AdminTransfersRoute: typeof AdminTransfersRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
 }
 
@@ -801,12 +801,12 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminOutboundRoute: AdminOutboundRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
-  AdminTransfersRoute: AdminTransfersRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
 }
 

@@ -76,7 +76,7 @@ import {
 	getBackendDayOfWeek,
 } from "@/lib/utils";
 
-export const Route = createFileRoute("/admin/transfers")({
+export const Route = createFileRoute("/admin/outbound")({
 	component: TransfersRouteComponent,
 });
 
@@ -128,7 +128,7 @@ function isDeliveryDay(date: Date): boolean {
 	return (
 		dayOfWeek === BACKEND_DAY_OF_WEEK.TUESDAY ||
 		dayOfWeek === BACKEND_DAY_OF_WEEK.THURSDAY
-	);
+	)
 }
 
 // Helper function to check if a date is in the current week (compare by week Monday at midnight)
@@ -139,7 +139,7 @@ function isInCurrentWeek(date: Date): boolean {
 	return (
 		startOfCurrentWeek.getTime() === startOfDateWeek.getTime() &&
 		isDeliveryDay(date)
-	);
+	)
 }
 
 // Helper function to check if a date is in a past week
@@ -150,7 +150,7 @@ function isInPastWeeks(date: Date): boolean {
 	return (
 		startOfDateWeek.getTime() < startOfCurrentWeek.getTime() &&
 		isDeliveryDay(date)
-	);
+	)
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -200,7 +200,7 @@ function TransfersRouteComponent() {
 				status: statusFilter,
 			}),
 		staleTime: 30_000,
-	});
+	})
 
 	const createMutation = useMutation({
 		mutationFn: createTransfer,
@@ -208,7 +208,7 @@ function TransfersRouteComponent() {
 			queryClient.invalidateQueries({ queryKey: ["transfers"] });
 			setIsCreateOpen(false);
 		},
-	});
+	})
 
 	const statusMutation = useMutation({
 		mutationFn: ({ id, status }: { id: string; status: TransferStatus }) =>
@@ -216,7 +216,7 @@ function TransfersRouteComponent() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["transfers"] });
 		},
-	});
+	})
 
 	const form = useForm({
 		defaultValues: {
@@ -238,10 +238,10 @@ function TransfersRouteComponent() {
 				toLocation: value.toLocation,
 				expectedDeliveryDate: parsedDate,
 				notes: value.notes || undefined,
-			});
+			})
 			form.reset();
 		},
-	});
+	})
 
 	// Filter transfers based on active tab
 	const allTransfers = data?.items ?? [];
@@ -252,7 +252,7 @@ function TransfersRouteComponent() {
 		} else {
 			return isInPastWeeks(deliveryDate);
 		}
-	});
+	})
 
 	// Apply search and status filters to the filtered transfers
 	const transfers = filteredTransfers.filter((transfer) => {
@@ -265,7 +265,7 @@ function TransfersRouteComponent() {
 		const matchesStatus =
 			statusFilter === "ALL" || transfer.status === statusFilter;
 		return matchesSearch && matchesStatus;
-	});
+	})
 
 	// Group transfers by delivery date
 	const transfersByDate = transfers.reduce<Record<string, TransferDetail[]>>(
@@ -276,11 +276,11 @@ function TransfersRouteComponent() {
 			return acc;
 		},
 		{},
-	);
+	)
 
 	const dateKeys = Object.keys(transfersByDate).sort((a, b) =>
 		activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),
-	);
+	)
 
 	// Paginate by date groups (each page shows a few delivery dates)
 	const dateGroupsPerPage = 5;
@@ -289,7 +289,7 @@ function TransfersRouteComponent() {
 	const paginatedDateKeys = dateKeys.slice(
 		startDateIndex,
 		startDateIndex + dateGroupsPerPage,
-	);
+	)
 	const totalPages = Math.max(1, Math.ceil(totalDateGroups / dateGroupsPerPage));
 	const filteredTotal = transfers.length;
 
@@ -311,7 +311,7 @@ function TransfersRouteComponent() {
 			} as Record<TransferStatus, number>,
 			total: 0,
 		},
-	);
+	)
 
 	const getStatusColor = (status: TransferStatus) => {
 		const colors: Record<TransferStatus, string> = {
@@ -321,9 +321,9 @@ function TransfersRouteComponent() {
 			cancel: "bg-red-500/10 text-red-600 border-red-500/20",
 			return: "bg-orange-500/10 text-orange-600 border-orange-500/20",
 			other: "bg-gray-500/10 text-gray-600 border-gray-500/20",
-		};
+		}
 		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
-	};
+	}
 
 	const getNetSuiteStatusColor = (status?: string) => {
 		if (!status) return "bg-gray-500/10 text-gray-600 border-gray-500/20";
@@ -331,9 +331,9 @@ function TransfersRouteComponent() {
 			synced: "bg-green-500/10 text-green-600 border-green-500/20",
 			pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 			error: "bg-red-500/10 text-red-600 border-red-500/20",
-		};
+		}
 		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
-	};
+	}
 
 	const formatStatus = (status: string) => {
 		if (status === "to-ship") return "To Ship";
@@ -343,7 +343,7 @@ function TransfersRouteComponent() {
 		if (status === "return") return "Return";
 		if (status === "other") return "Other";
 		return status;
-	};
+	}
 
 	const getTransferStatusColor = (status: TransferStatus) => {
 		const colors: Record<TransferStatus, string> = {
@@ -359,14 +359,14 @@ function TransfersRouteComponent() {
 				"!text-orange-600 data-[highlighted]:!bg-orange-500/10 data-[highlighted]:!text-orange-700 focus:!bg-orange-500/10 focus:!text-orange-700",
 			other:
 				"!text-gray-600 data-[highlighted]:!bg-gray-500/10 data-[highlighted]:!text-gray-700 focus:!bg-gray-500/10 focus:!text-gray-700",
-		};
+		}
 		return colors[status] || "text-gray-600";
-	};
+	}
 
 	const handleViewTransfer = (transfer: TransferDetail) => {
 		setSelectedTransfer(transfer);
 		setIsViewOpen(true);
-	};
+	}
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
@@ -394,7 +394,7 @@ function TransfersRouteComponent() {
 						onOpenChange={(open) => {
 							setIsCreateOpen(open);
 							if (!open) {
-								form.reset();
+								form.reset()
 							}
 						}}
 					>
@@ -413,8 +413,8 @@ function TransfersRouteComponent() {
 							</DialogHeader>
 							<form
 								onSubmit={(e) => {
-									e.preventDefault();
-									form.handleSubmit();
+									e.preventDefault()
+									form.handleSubmit()
 								}}
 								className="space-y-4"
 							>
@@ -441,7 +441,7 @@ function TransfersRouteComponent() {
 														<FieldError errors={field.state.meta.errors} />
 													)}
 												</Field>
-											);
+											)
 										}}
 									/>
 
@@ -451,7 +451,7 @@ function TransfersRouteComponent() {
 											children={(field) => {
 												const isInvalid =
 													field.state.meta.isTouched &&
-													!field.state.meta.isValid;
+													!field.state.meta.isValid
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel htmlFor={field.name}>
@@ -460,8 +460,8 @@ function TransfersRouteComponent() {
 														<Select
 															value={field.state.value}
 															onValueChange={(value) => {
-																field.handleChange(value);
-																field.handleBlur();
+																field.handleChange(value)
+																field.handleBlur()
 															}}
 														>
 															<SelectTrigger id={field.name}>
@@ -479,7 +479,7 @@ function TransfersRouteComponent() {
 															<FieldError errors={field.state.meta.errors} />
 														)}
 													</Field>
-												);
+												)
 											}}
 										/>
 										<form.Field
@@ -487,7 +487,7 @@ function TransfersRouteComponent() {
 											children={(field) => {
 												const isInvalid =
 													field.state.meta.isTouched &&
-													!field.state.meta.isValid;
+													!field.state.meta.isValid
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel htmlFor={field.name}>
@@ -496,8 +496,8 @@ function TransfersRouteComponent() {
 														<Select
 															value={field.state.value}
 															onValueChange={(value) => {
-																field.handleChange(value);
-																field.handleBlur();
+																field.handleChange(value)
+																field.handleBlur()
 															}}
 														>
 															<SelectTrigger id={field.name}>
@@ -515,7 +515,7 @@ function TransfersRouteComponent() {
 															<FieldError errors={field.state.meta.errors} />
 														)}
 													</Field>
-												);
+												)
 											}}
 										/>
 									</div>
@@ -542,7 +542,7 @@ function TransfersRouteComponent() {
 														<FieldError errors={field.state.meta.errors} />
 													)}
 												</Field>
-											);
+											)
 										}}
 									/>
 
@@ -572,7 +572,7 @@ function TransfersRouteComponent() {
 												type="button"
 												variant="outline"
 												onClick={() => {
-													setIsCreateOpen(false);
+													setIsCreateOpen(false)
 												}}
 												disabled={isSubmitting}
 											>
@@ -629,8 +629,8 @@ function TransfersRouteComponent() {
 										placeholder="Search transfers..."
 										value={searchTerm}
 										onChange={(e) => {
-											setSearchTerm(e.target.value);
-											setPage(1);
+											setSearchTerm(e.target.value)
+											setPage(1)
 										}}
 										className="pl-9 sm:w-64"
 									/>
@@ -639,7 +639,7 @@ function TransfersRouteComponent() {
 									value={statusFilter}
 									onValueChange={(value) => {
 										setStatusFilter(value as TransferStatusFilter);
-										setPage(1);
+										setPage(1)
 									}}
 								>
 									<SelectTrigger className="sm:w-48">
@@ -666,7 +666,7 @@ function TransfersRouteComponent() {
 								variant={activeTab === "current-week" ? "default" : "ghost"}
 								onClick={() => {
 									setActiveTab("current-week");
-									setPage(1);
+									setPage(1)
 								}}
 								className="rounded-b-none"
 							>
@@ -676,8 +676,8 @@ function TransfersRouteComponent() {
 							<Button
 								variant={activeTab === "past-weeks" ? "default" : "ghost"}
 								onClick={() => {
-									setActiveTab("past-weeks");
-									setPage(1);
+									setActiveTab("past-weeks")
+									setPage(1)
 								}}
 								className="rounded-b-none"
 							>
@@ -738,7 +738,7 @@ function TransfersRouteComponent() {
 											...dateTransfers.map((transfer) => {
 												const doCreated =
 													transfer.status === "to-ship" ||
-													transfer.status === "in-transit";
+													transfer.status === "in-transit"
 												return (
 													<TableRow key={transfer.id}>
 														<TableCell className="font-medium">
@@ -802,8 +802,8 @@ function TransfersRouteComponent() {
 																			variant="ghost"
 																			size="icon"
 																			onClick={() => {
-																				setSelectedTransfer(transfer);
-																				setIsAcceptDialogOpen(true);
+																				setSelectedTransfer(transfer)
+																				setIsAcceptDialogOpen(true)
 																			}}
 																		>
 																			<CheckCircle className="h-4 w-4 text-green-600" />
@@ -815,8 +815,8 @@ function TransfersRouteComponent() {
 																			variant="ghost"
 																			size="icon"
 																			onClick={() => {
-																				setSelectedTransfer(transfer);
-																				setIsRejectDialogOpen(true);
+																				setSelectedTransfer(transfer)
+																				setIsRejectDialogOpen(true)
 																			}}
 																		>
 																			<XCircle className="h-4 w-4 text-red-600" />
@@ -825,9 +825,9 @@ function TransfersRouteComponent() {
 															</div>
 														</TableCell>
 													</TableRow>
-												);
+												)
 											}),
-										];
+										]
 									})
 								)}
 							</TableBody>
@@ -1056,7 +1056,7 @@ function TransfersRouteComponent() {
 																)}
 															</TableCell>
 														</TableRow>
-													);
+													)
 												})}
 											</TableBody>
 										</Table>
@@ -1092,8 +1092,8 @@ function TransfersRouteComponent() {
 										selectedTransfer.status === "preparing" && (
 											<Button
 												onClick={() => {
-													setIsViewOpen(false);
-													setIsAcceptDialogOpen(true);
+													setIsViewOpen(false)
+													setIsAcceptDialogOpen(true)
 												}}
 											>
 												<CheckCircle className="mr-2 h-4 w-4" />
@@ -1105,8 +1105,8 @@ function TransfersRouteComponent() {
 											<Button
 												variant="destructive"
 												onClick={() => {
-													setIsViewOpen(false);
-													setIsRejectDialogOpen(true);
+													setIsViewOpen(false)
+													setIsRejectDialogOpen(true)
 												}}
 											>
 												<XCircle className="mr-2 h-4 w-4" />
@@ -1165,7 +1165,7 @@ function TransfersRouteComponent() {
 									statusMutation.mutate({
 										id: selectedTransfer.id,
 										status: "to-ship",
-									});
+									})
 									setIsAcceptDialogOpen(false);
 								}
 							}}
@@ -1205,7 +1205,7 @@ function TransfersRouteComponent() {
 							variant="outline"
 							onClick={() => {
 								setIsRejectDialogOpen(false);
-								setRejectReason("");
+								setRejectReason("")
 							}}
 						>
 							Cancel
@@ -1217,9 +1217,9 @@ function TransfersRouteComponent() {
 									statusMutation.mutate({
 										id: selectedTransfer.id,
 										status: "cancel",
-									});
+									})
 									setIsRejectDialogOpen(false);
-									setRejectReason("");
+									setRejectReason("")
 								}
 							}}
 							disabled={statusMutation.isPending || !rejectReason}
@@ -1230,5 +1230,5 @@ function TransfersRouteComponent() {
 				</DialogContent>
 			</Dialog>
 		</div>
-	);
+	)
 }
