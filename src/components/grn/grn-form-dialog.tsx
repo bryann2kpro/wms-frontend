@@ -66,18 +66,22 @@ import {
 } from "@/lib/graphql/grns";
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { toast } from "sonner";
+import { toUserFriendlyMessage } from "@/lib/utils";
 
 /** Get a user-facing message from Apollo or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
-			?.message;
-		if (gql) return gql;
+		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
+			.graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const gql = first?.message;
+		if (gql) return toUserFriendlyMessage(gql, "Something went wrong. Please try again.");
 	}
 	if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
-		return (err as Error).message;
-	if (err instanceof Error) return err.message;
-	return String(err ?? "Something went wrong");
+		return toUserFriendlyMessage((err as Error).message, "Something went wrong. Please try again.");
+	if (err instanceof Error)
+		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+	return "Something went wrong. Please try again.";
 }
 
 export type GRNLineItemForm = {

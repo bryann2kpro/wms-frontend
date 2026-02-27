@@ -65,15 +65,19 @@ import {
 import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
 import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
 import { toast } from "sonner";
+import { toUserFriendlyMessage } from "@/lib/utils";
 
 function getGrnErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
-			?.message;
-		if (gql) return gql;
+		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
+			.graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const gql = first?.message;
+		if (gql) return toUserFriendlyMessage(gql, "Failed to update GRN. Please try again.");
 	}
-	if (err instanceof Error) return err.message;
-	return String(err ?? "Something went wrong");
+	if (err instanceof Error)
+		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+	return "Something went wrong. Please try again.";
 }
 
 export const Route = createFileRoute("/admin/grn")({

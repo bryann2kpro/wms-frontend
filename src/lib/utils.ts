@@ -65,18 +65,28 @@ export function getErrorMessage(err: Error | null): string {
   if (!err) return "An unexpected error occurred";
 
   // Check for Axios error response
-  const axiosError = err as { response?: { data?: { message?: string }; status?: number } };
-  if (axiosError.response?.data?.message) {
-    return axiosError.response.data.message;
+  const axiosError = err as {
+    response?: { data?: { message?: string; code?: string }; status?: number };
+  };
+  const status = axiosError.response?.status;
+  const data = axiosError.response?.data;
+  const code = data?.code;
+  const message = data?.message;
+
+  if (status === 500 || code === "INTERNAL_SERVER_ERROR") {
+    return "Internal Server Error";
   }
-  if (axiosError.response?.status === 401) {
+  if (typeof message === "string" && message.includes("INTERNAL_SERVER_ERROR")) {
+    return "Internal Server Error";
+  }
+  if (data?.message) {
+    return toUserFriendlyMessage(data.message, "An unexpected error occurred");
+  }
+  if (status === 401) {
     return "Session expired. Please log in again.";
   }
-  if (axiosError.response?.status === 403) {
+  if (status === 403) {
     return "You don't have permission to perform this action.";
-  }
-  if (axiosError.response?.status === 500) {
-    return "Server error. Please try again later.";
   }
 
   // Network error
@@ -84,7 +94,35 @@ export function getErrorMessage(err: Error | null): string {
     return "Unable to connect to server. Please check your connection.";
   }
 
-  return err.message || "An unexpected error occurred";
+  if (err.message === "INTERNAL_SERVER_ERROR") {
+    return "Internal Server Error";
+  }
+
+  return toUserFriendlyMessage(err.message || "An unexpected error occurred", "An unexpected error occurred");
+}
+
+/**
+ * Replace raw technical/log messages with a user-friendly fallback.
+ * Backend sometimes returns audit params, JSON dumps, or stack traces as the "message".
+ */
+export function toUserFriendlyMessage(raw: string, fallback: string): string {
+  if (!raw || typeof raw !== "string") return fallback;
+  const s = raw.trim();
+  if (s === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+  if (s.length > 400) return fallback;
+  const technicalMarkers = [
+    "audit_log_id",
+    "params:",
+    "user_agent",
+    "old_data",
+    "new_data",
+    "graphQLErrors",
+    '"query":[',
+    "pagination",
+    "Mozilla/5.0",
+  ];
+  const looksTechnical = technicalMarkers.some((m) => s.includes(m));
+  return looksTechnical ? fallback : s;
 }
 
 // Role badge colors
