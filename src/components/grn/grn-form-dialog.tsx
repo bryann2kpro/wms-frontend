@@ -135,6 +135,17 @@ function GRNLineRow({
 		};
 	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
+	/** UOM options for this line item only: derived from the SKU selected at this index */
+	const lineItemUomOptions = useMemo(() => {
+		if (!item.skuCode?.trim()) return [];
+		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+		if (!sku?.skuUom) return [];
+		const unit = stockUnits.find(
+			(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
+		);
+		return unit ? [unit] : [];
+	}, [item.skuCode, skuOptions, stockUnits]);
+
 	return (
 		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
 			<TableCell>
@@ -205,7 +216,7 @@ function GRNLineRow({
 						<SelectValue placeholder="UOM" />
 					</SelectTrigger>
 					<SelectContent>
-						{stockUnits.map((unit) => (
+						{lineItemUomOptions.map((unit) => (
 							<SelectItem key={unit.stockUnitId} value={unit.unitCode}>
 								{unit.unitCode}
 							</SelectItem>
