@@ -211,7 +211,7 @@ function GRNRouteComponent() {
 			});
 		},
 		isPending: statusUpdating,
-		status: 		statusUpdating ? ("pending" as const) : ("idle" as const),
+		status: statusUpdating ? ("pending" as const) : ("idle" as const),
 	};
 
 	const grns = data?.items ?? [];
@@ -413,37 +413,37 @@ function GRNRouteComponent() {
 										const showSend =
 											hasPermission("grn:send_to_es") && grn.status === "Approved";
 										return (
-										<TableRow key={grn.id}>
-											<TableCell className="font-medium">
-												{grn.grnNo || "-"}
-											</TableCell>
-											<TableCell>{grn.poNo ?? "-"}</TableCell>
-											<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
-											<TableCell>
-												{formatGrnDate(grn.receivedAt) ?? "-"}
-											</TableCell>
-											<TableCell>
-												{grn.status ? (
-													<Badge
-														variant="outline"
-														className={getStatusColor(grn.status as GRNStatus)}
-													>
-														{formatStatus(grn.status)}
-													</Badge>
-												) : (
-													<span className="text-muted-foreground">-</span>
-												)}
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="flex justify-end gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() => handleViewGRN(grn)}
-													>
-														<Eye className="h-4 w-4" />
-													</Button>
-													{showEdit && (
+											<TableRow key={grn.id}>
+												<TableCell className="font-medium">
+													{grn.grnNo || "-"}
+												</TableCell>
+												<TableCell>{grn.poNo ?? "-"}</TableCell>
+												<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
+												<TableCell>
+													{formatGrnDate(grn.receivedAt) ?? "-"}
+												</TableCell>
+												<TableCell>
+													{grn.status ? (
+														<Badge
+															variant="outline"
+															className={getStatusColor(grn.status as GRNStatus)}
+														>
+															{formatStatus(grn.status)}
+														</Badge>
+													) : (
+														<span className="text-muted-foreground">-</span>
+													)}
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex justify-end gap-1">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() => handleViewGRN(grn)}
+														>
+															<Eye className="h-4 w-4" />
+														</Button>
+														{showEdit && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -455,7 +455,7 @@ function GRNRouteComponent() {
 																<Edit className="h-4 w-4" />
 															</Button>
 														)}
-													{showApprove && (
+														{showApprove && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -467,7 +467,7 @@ function GRNRouteComponent() {
 																<CheckCircle className="h-4 w-4 text-green-600" />
 															</Button>
 														)}
-													{showSend && (
+														{showSend && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -479,9 +479,9 @@ function GRNRouteComponent() {
 																<Send className="h-4 w-4 text-purple-600" />
 															</Button>
 														)}
-												</div>
-											</TableCell>
-										</TableRow>
+													</div>
+												</TableCell>
+											</TableRow>
 										);
 									})
 								)}

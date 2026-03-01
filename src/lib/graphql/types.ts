@@ -250,6 +250,12 @@ export interface SkusPaginatedResponse {
 	pagination: Pagination;
 }
 
+/** User info for GRN audit fields (createdByUser / updatedByUser). */
+export interface GrnAuditUser {
+	id: string;
+	displayName: string;
+}
+
 export interface Grn {
 	id: string;
 	grnNo: string;
@@ -263,8 +269,8 @@ export interface Grn {
 	approvedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
-	createdBy: string;
-	updatedBy: string | null;
+	createdByUser: GrnAuditUser | null;
+	updatedByUser: GrnAuditUser | null;
 	items: GrnItem[];
 }
 export interface GrnItem {

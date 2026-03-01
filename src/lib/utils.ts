@@ -15,9 +15,35 @@ export function formatDate(dateString: string): string {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     }).format(date);
   } catch {
     return dateString;
+  }
+}
+
+/** Format date and time in 12-hour format (e.g. 2/26/2026, 3:19:21 PM). */
+export function formatDateTime12h(value: string | number | Date | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  try {
+    const date =
+      typeof value === "number"
+        ? new Date(value)
+        : value instanceof Date
+          ? value
+          : new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(date);
+  } catch {
+    return null;
   }
 }
 

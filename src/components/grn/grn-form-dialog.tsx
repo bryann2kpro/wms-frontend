@@ -323,7 +323,15 @@ export function GrnFormDialog({
 				if (!value.poReference?.trim()) fields.poReference = "PO Reference is required";
 				if (!value.supplierDO?.trim()) fields.supplierDO = "Supplier DO is required";
 				if (!value.receivedDate?.trim()) fields.receivedDate = "Received Date/Time is required";
-				return Object.keys(fields).length > 0 ? { fields } : undefined;
+				const items = value.items ?? [];
+				if (items.length === 0) {
+					fields.items = "At least one line item is required";
+				}
+				if (Object.keys(fields).length > 0) {
+					toast.error("Please enter all mandatory fields.");
+					return { fields };
+				}
+				return undefined;
 			},
 		},
 		onSubmit: async ({ value }) => {
@@ -636,6 +644,7 @@ export function GrnFormDialog({
 										{(field) => {
 											const items = (field.state.value ?? []) as GRNLineItemForm[];
 											return (
+												<>
 												<div className="rounded-lg border">
 													<Table>
 														<TableHeader>
@@ -686,6 +695,12 @@ export function GrnFormDialog({
 														</TableBody>
 													</Table>
 												</div>
+												{field.state.meta.errors.length > 0 && (
+													<p className="text-sm text-destructive mt-2">
+														{field.state.meta.errors.map((e) => (typeof e === "string" ? e : (e as unknown as { message?: string }).message)).filter(Boolean).join(" ")}
+													</p>
+												)}
+											</>
 											);
 										}}
 									</form.Field>

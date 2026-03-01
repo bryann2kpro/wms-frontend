@@ -36,8 +36,14 @@ export const GRNS_QUERY = gql`
 				approvedAt
 				createdAt
 				updatedAt
-				createdBy
-				updatedBy
+				createdByUser {
+					id
+					displayName
+				}
+				updatedByUser {
+					id
+					displayName
+				}
 				items {
 					id
 					grnId
@@ -71,8 +77,14 @@ export const CREATE_GRN_MUTATION = gql`
 			approvedAt
 			createdAt
 			updatedAt
-			createdBy
-			updatedBy
+			createdByUser {
+				id
+				displayName
+			}
+			updatedByUser {
+				id
+				displayName
+			}
 			items {
 				id
 				grnId
@@ -100,7 +112,10 @@ export const UPDATE_GRN_MUTATION = gql`
 			status
 			receivedAt
 			updatedAt
-			updatedBy
+			updatedByUser {
+				id
+				displayName
+			}
 		}
 	}
 `;
@@ -216,8 +231,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			status,
 			receivedAt: g.receivedAt,
 			createdAt: g.createdAt,
-			createdBy: g.createdBy,
-			updatedBy: g.updatedBy,
+			createdBy: g.createdByUser?.displayName ?? "",
+			updatedBy: g.updatedByUser?.displayName ?? null,
 			notes: undefined,
 			totalItems,
 			receivedItems,
