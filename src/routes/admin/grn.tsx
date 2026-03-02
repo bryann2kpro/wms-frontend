@@ -201,6 +201,7 @@ function GRNRouteComponent() {
 						poNo: payload.poReference || undefined,
 						receivedAt: payload.receivedDate.toISOString(),
 						status: UI_STATUS_TO_GQL[status],
+						notes: payload.notes || undefined,
 						warehouseId,
 						items: payload.items?.map((i) => {
 							const uomId = i.uom

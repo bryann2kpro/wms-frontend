@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import {
 	Dialog,
@@ -14,13 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Plus } from "lucide-react";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
 	CREATE_WAREHOUSE_MUTATION,
 	type CreateWarehouseMutationData,
@@ -47,7 +46,7 @@ export type WarehouseComboboxProps = {
 	value: string;
 	onChange: (warehouseId: string) => void;
 	warehouses: WarehouseOption[];
-	/** Call to refetch warehouse list; awaited before setting new value so the new warehouse appears in the select */
+	/** Call to refetch warehouse list; awaited before setting new value so the new warehouse appears in the list */
 	onWarehouseCreated?: () => void | Promise<void>;
 	placeholder?: string;
 	disabled?: boolean;
@@ -139,11 +138,13 @@ export function WarehouseCombobox({
 	onChange,
 	warehouses,
 	onWarehouseCreated,
-	placeholder = "Select warehouse",
+	placeholder = "Search or select warehouse...",
 	disabled = false,
 	id,
 	className,
 }: WarehouseComboboxProps) {
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
 
 	const [createWarehouse, { loading: createLoading }] = useMutation<CreateWarehouseMutationData>(
@@ -153,14 +154,37 @@ export function WarehouseCombobox({
 			onCompleted: async (data) => {
 				const newId = data?.createWarehouse?.warehouseId;
 				if (!newId) return;
-				// Refetch first so the new warehouse appears in the list, then set selection
 				await onWarehouseCreated?.();
 				onChange(newId);
 				setCreateOpen(false);
+				setOpen(false);
 				toast.success("Warehouse created.");
 			},
 		}
 	);
+
+	const filtered = useMemo(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return warehouses;
+		return warehouses.filter(
+			(w) =>
+				w.warehouseName.toLowerCase().includes(q) ||
+				(w.warehouseCode && w.warehouseCode.toLowerCase().includes(q))
+		);
+	}, [warehouses, search]);
+
+	const selectedWarehouse = useMemo(
+		() => warehouses.find((w) => w.warehouseId === value),
+		[warehouses, value]
+	);
+	const displayLabel = selectedWarehouse
+		? `${selectedWarehouse.warehouseName}${selectedWarehouse.warehouseCode ? ` (${selectedWarehouse.warehouseCode})` : ""}`
+		: null;
+
+	const handleSelect = (warehouseId: string) => {
+		onChange(warehouseId);
+		setOpen(false);
+	};
 
 	const handleCreateSubmit = (values: {
 		warehouseName: string;
@@ -179,43 +203,99 @@ export function WarehouseCombobox({
 	};
 
 	return (
-		<div className={className}>
-			<div className="flex gap-2">
-				<Select
-					value={value || undefined}
-					onValueChange={(v) => onChange(v)}
-					disabled={disabled}
+		<div className={cn("flex gap-1", className)}>
+			<Popover open={open} onOpenChange={setOpen}>
+				<PopoverTrigger asChild>
+					<Button
+						variant="outline"
+						role="combobox"
+						aria-expanded={open}
+						disabled={disabled}
+						className="h-8 w-full justify-between gap-1 font-normal text-sm"
+						id={id}
+					>
+						<span className="truncate text-left">
+							{displayLabel ?? placeholder}
+						</span>
+						<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent
+					className="min-w-[280px] w-[var(--radix-popover-trigger-width)] max-w-[360px] p-0 shadow-md"
+					align="start"
 				>
-					<SelectTrigger id={id} className="flex-1">
-						<SelectValue placeholder={placeholder} />
-					</SelectTrigger>
-					<SelectContent>
-						{warehouses.map((w) => (
-							<SelectItem key={w.warehouseId} value={w.warehouseId}>
-								{w.warehouseName}
-								{w.warehouseCode ? ` (${w.warehouseCode})` : ""}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={() => setCreateOpen(true)}
-					className="shrink-0"
-					disabled={disabled}
-				>
-					<Plus className="h-4 w-4 mr-1" />
-					New
-				</Button>
-			</div>
-			<CreateWarehouseDialog
-				open={createOpen}
-				onOpenChange={setCreateOpen}
-				onSubmit={handleCreateSubmit}
-				loading={createLoading}
-			/>
+					<div className="flex flex-col rounded-md">
+						<div className="border-b bg-muted/30 px-2 py-1.5">
+							<Input
+								placeholder="Search warehouse..."
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="h-7 border-0 bg-background text-sm focus-visible:ring-2"
+								autoFocus
+							/>
+						</div>
+						<div className="h-[240px] overflow-y-auto overscroll-contain">
+							{filtered.length === 0 ? (
+								<div className="py-6 text-center text-xs text-muted-foreground">
+									{search.trim()
+										? "No warehouses match your search."
+										: "No warehouses in the system."}
+								</div>
+							) : (
+								<ul className="py-1 px-1">
+									{filtered.map((w) => (
+										<li key={w.warehouseId}>
+											<button
+												type="button"
+												title={`${w.warehouseName}${w.warehouseCode ? ` (${w.warehouseCode})` : ""}`}
+												className={cn(
+													"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
+													value === w.warehouseId && "bg-accent"
+												)}
+												onClick={() => handleSelect(w.warehouseId)}
+											>
+												{value === w.warehouseId ? (
+													<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+												) : (
+													<span className="mt-0.5 w-3.5 shrink-0" />
+												)}
+												<div className="min-w-0 flex-1 overflow-hidden">
+													<div className="text-sm font-semibold text-foreground">
+														{w.warehouseName}
+													</div>
+													{w.warehouseCode && (
+														<div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+															{w.warehouseCode}
+														</div>
+													)}
+												</div>
+											</button>
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+						<div className="border-t bg-muted/20 px-2 py-1">
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="h-7 w-full justify-start gap-1.5 rounded px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+								onClick={() => setCreateOpen(true)}
+							>
+								<Plus className="h-3.5 w-3.5 shrink-0" />
+								Create new warehouse
+							</Button>
+							<CreateWarehouseDialog
+								open={createOpen}
+								onOpenChange={setCreateOpen}
+								onSubmit={handleCreateSubmit}
+								loading={createLoading}
+							/>
+						</div>
+					</div>
+				</PopoverContent>
+			</Popover>
 		</div>
 	);
 }
