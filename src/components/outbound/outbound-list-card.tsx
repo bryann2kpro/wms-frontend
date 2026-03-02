@@ -34,7 +34,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import type { TransferDetail, TransferStatusFilter } from "@/data/transfers.mock-data";
+import type { TransferDetail, TransferStatusFilter } from "@/data/transfers.types";
 import {
   transferStatuses,
   getStatusColor,
@@ -188,6 +188,8 @@ export function OutboundListCard({
                   <TableCell
                     colSpan={8}
                     className="h-24 text-center text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
                   >
                     Loading delivery orders...
                   </TableCell>

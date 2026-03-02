@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import type { TransferDetail } from "@/data/transfers.mock-data";
+import type { TransferDetail } from "@/data/transfers.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
   getStatusColor,

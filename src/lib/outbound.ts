@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { TransferStatus } from "@/data/transfers.mock-data";
+import type { TransferStatus } from "@/data/transfers.types";
 
 export type DeliveryTab = "current-week" | "past-weeks";
 
@@ -36,7 +36,6 @@ export const createTransferSchema = z.object({
 		.regex(/^PO-20\d{2}-[A-Z0-9]+$/, "Use format like PO-2024-001"),
 	outletId: z.string().min(1, "Outlet is required"),
 	outletName: z.string().default(""),
-	expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
 	notes: z.string(),
 	items: z
 		.array(createTransferLineItemSchema)
