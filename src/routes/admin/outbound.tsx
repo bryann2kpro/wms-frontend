@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ComponentProps } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,7 @@ import {
 	getTransfers,
 	createTransfer,
 	updateTransferStatus,
-} from "@/data/transfers.mock-data";
+} from "@/data/transfers";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
@@ -97,7 +97,6 @@ function TransfersRouteComponent() {
 			transferOrderNumber: "",
 			outletId: "",
 			outletName: "",
-			expectedDeliveryDate: "",
 			notes: "",
 			items: [{ skuId: "", quantity: 1 }] as { skuId: string; skuCode?: string; description?: string; quantity: number }[],
 		},
@@ -106,12 +105,11 @@ function TransfersRouteComponent() {
 			onSubmit: createTransferSchema as any,
 		},
 		onSubmit: async ({ value }) => {
-			const parsedDate = new Date(value.expectedDeliveryDate);
 			await createMutation.mutateAsync({
 				transferOrderNumber: value.transferOrderNumber,
 				outletId: value.outletId,
 				outletName: value.outletName ?? "",
-				expectedDeliveryDate: parsedDate,
+				expectedDeliveryDate: new Date(),
 				notes: value.notes || undefined,
 				items: value.items.map((line) => ({
 					skuId: line.skuId,
@@ -187,15 +185,33 @@ function TransfersRouteComponent() {
 		},
 	);
 
+	const pageTitle = "Outbound delivery orders";
+	useEffect(() => {
+		document.title = `${pageTitle} | SME Ederan`;
+		return () => {
+			document.title = "SME Ederan";
+		};
+	}, []);
+
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<main
+			className="container mx-auto p-6 space-y-6"
+			aria-labelledby="page-title"
+			aria-describedby="page-description"
+		>
+			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Pucrchase Orders from ES
+					<h1
+						id="page-title"
+						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+						tabIndex={-1}
+					>
+						Outbound Delivery Orders
 					</h1>
-					<p className="text-muted-foreground">
-						Manage purchase orders from ES and create delivery orders
+					<p id="page-description" className="text-muted-foreground mt-1">
+						Manage delivery orders from ES. Create new orders or refresh from
+						NetSuite. Delivery date is set automatically when you create an
+						order.
 					</p>
 				</div>
 				<div className="flex gap-2">
@@ -205,8 +221,9 @@ function TransfersRouteComponent() {
 							onClick={() => {
 								queryClient.invalidateQueries({ queryKey: ["transfers"] });
 							}}
+							aria-label="Refresh delivery orders from NetSuite"
 						>
-							<RefreshCw className="mr-2 h-4 w-4" />
+							<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
 							Refresh from NetSuite
 						</Button>
 					)}
@@ -217,7 +234,7 @@ function TransfersRouteComponent() {
 						createMutation={createMutation}
 					/>
 				</div>
-			</div>
+			</header>
 
 			{summary && (
 				<div className="grid gap-4 md:grid-cols-5">
@@ -320,6 +337,6 @@ function TransfersRouteComponent() {
 				}}
 				isPending={statusMutation.isPending}
 			/>
-		</div>
+		</main>
 	);
 }

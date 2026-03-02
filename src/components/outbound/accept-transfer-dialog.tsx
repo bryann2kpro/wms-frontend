@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { TransferDetail } from "@/data/transfers.mock-data";
+import type { TransferDetail } from "@/data/transfers.types";
 
 interface AcceptTransferDialogProps {
   open: boolean;

@@ -78,10 +78,13 @@ export function CreateTransferDialog({
 			{trigger != null ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
 			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Create New Delivery Order</DialogTitle>
-					<DialogDescription>
-						Enter the details for the new Delivery order. Select outlet from
-						GQL and add line items (stock and amount).
+					<DialogTitle id="create-do-dialog-title">
+						Create New Delivery Order
+					</DialogTitle>
+					<DialogDescription id="create-do-dialog-description">
+						Enter the delivery order number, select an outlet, and add line items
+						(stock and quantity). Delivery date is set automatically by the
+						system.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -90,7 +93,27 @@ export function CreateTransferDialog({
 						form.handleSubmit();
 					}}
 					className="space-y-4"
+					aria-labelledby="create-do-dialog-title"
+					aria-describedby="create-do-dialog-description"
 				>
+					<form.Subscribe selector={(state: any) => state.isSubmitting}>
+						{(isSubmitting: boolean) => (
+							<>
+								{isSubmitting && (
+									<div
+										role="status"
+										aria-live="polite"
+										aria-busy="true"
+										className="sr-only"
+									>
+										Creating delivery order...
+									</div>
+								)}
+								<fieldset
+									disabled={isSubmitting}
+									className="space-y-4 border-0 p-0 m-0 min-w-0 disabled:opacity-70 disabled:pointer-events-none"
+									aria-busy={isSubmitting}
+								>
 					<FieldGroup>
 						<form.Field
 							name="transferOrderNumber"
@@ -169,32 +192,6 @@ export function CreateTransferDialog({
 							}}
 						/>
 
-						<form.Field
-							name="expectedDeliveryDate"
-							children={(field: any) => {
-								const isInvalid =
-									field.state.meta.isTouched && !field.state.meta.isValid;
-								return (
-									<Field data-invalid={isInvalid}>
-										<FieldLabel htmlFor={field.name}>
-											Expected Delivery Date
-										</FieldLabel>
-										<Input
-											id={field.name}
-											type="date"
-											value={field.state.value}
-											onBlur={field.handleBlur}
-											onChange={(e) => field.handleChange(e.target.value)}
-											aria-invalid={isInvalid}
-										/>
-										{isInvalid && (
-											<FieldError errors={field.state.meta.errors} />
-										)}
-									</Field>
-								);
-							}}
-						/>
-
 						<form.Subscribe
 							selector={(state: any) => state.values.items ?? []}
 						>
@@ -260,6 +257,10 @@ export function CreateTransferDialog({
 							)}
 						/>
 					</FieldGroup>
+								</fieldset>
+							</>
+						)}
+					</form.Subscribe>
 
 					<form.Subscribe
 						selector={(state: any) => [state.isSubmitting, state.canSubmit]}
@@ -275,7 +276,7 @@ export function CreateTransferDialog({
 									Cancel
 								</Button>
 								<Button type="submit" disabled={isSubmitting || !canSubmit}>
-									{isSubmitting ? "Creating..." : "Create Delivery Order"}
+									{isSubmitting ? "Creating delivery order..." : "Create Delivery Order"}
 								</Button>
 							</DialogFooter>
 						)}
@@ -352,6 +353,7 @@ function LineItemRow({
 						type="button"
 						variant="ghost"
 						size="icon"
+						aria-label="Remove line"
 						onClick={() => {
 							form.setFieldValue(
 								"items",
@@ -359,7 +361,7 @@ function LineItemRow({
 							);
 						}}
 					>
-						<Trash2 className="h-4 w-4 text-destructive" />
+						<Trash2 className="h-4 w-4 text-destructive" aria-hidden />
 					</Button>
 				) : null}
 			</TableCell>
