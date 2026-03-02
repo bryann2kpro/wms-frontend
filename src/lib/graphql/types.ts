@@ -202,6 +202,34 @@ export interface UpdateRackInput {
 	updatedBy: string;
 }
 
+export interface Warehouse {
+	warehouseId: string;
+	warehouseName: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface WarehousePaginatedResponse {
+	query: Warehouse[];
+	pagination: Pagination;
+}
+
+export interface CreateWarehouseInput {
+	warehouseName: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+}
+
+export interface UpdateWarehouseInput {
+	warehouseName?: string | null;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+}
+
 export interface SkuSupplier {
 	supplierId: string;
 	originalSkuCode: string | null;

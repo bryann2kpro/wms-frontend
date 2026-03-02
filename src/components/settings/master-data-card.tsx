@@ -147,9 +147,11 @@ import {
 	X,
 	Eye,
 	Calendar as CalendarIcon,
+	Warehouse 
 } from "lucide-react";
 import { formatDateOnly, statusColors } from "@/lib/utils";
 import { format } from "date-fns";
+import { WarehouseSection } from "./components/warehouse";
 
 const DAYS_OF_WEEK = [
 	{ value: 0, label: "Sunday" },
@@ -165,7 +167,7 @@ const PAGE_SIZE = 10;
 
 export function MasterDataCard() {
 	const [subTab, setSubTab] = useState<
-		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit" | "rack" | "skus"
+		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit" | "rack" | "skus" | "warehouse"
 	>("supplier");
 
 	return (
@@ -234,6 +236,15 @@ export function MasterDataCard() {
 					<Package className="mr-2 h-4 w-4" />
 					SKUS
 				</Button>
+				<Button
+					variant={subTab === "warehouse" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("warehouse")}
+					className="rounded-b-none"
+				>
+					<Warehouse className="mr-2 h-4 w-4" />
+					Warehouses
+				</Button>
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}
@@ -242,6 +253,7 @@ export function MasterDataCard() {
 			{subTab === "stock-unit" && <StockUnitSection />}
 			{subTab === "rack" && <RackSection />}
 			{subTab === "skus" && <SkusSection />}
+			{subTab === "warehouse" && <WarehouseSection />}
 		</div>
 	);
 }
