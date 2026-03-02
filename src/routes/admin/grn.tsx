@@ -174,7 +174,14 @@ function GRNRouteComponent() {
 			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
-			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
+			items?: Array<{
+				sku: string;
+				description?: string;
+				carton: number;
+				loss: number;
+				uom?: string;
+				unitPrice?: number;
+			}>;
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
 			const warehouseIdForItems = payload.warehouseId?.trim() || undefined;
@@ -194,7 +201,8 @@ function GRNRouteComponent() {
 								skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 								skuCode: i.sku,
 								skuDescription: i.description ?? undefined,
-								qty: String(i.qty),
+								qty: String(i.carton),
+								lossQty: String(i.loss),
 								skuUom: uomId ?? undefined,
 								warehouseId: warehouseIdForItems,
 							};
@@ -318,7 +326,8 @@ function GRNRouteComponent() {
 								items: payload.items.map((i) => ({
 									sku: i.skuCode,
 									description: i.description,
-									qty: i.qty,
+									carton: i.carton,
+									loss: i.loss,
 									uom: i.uom,
 									unitPrice: i.unitPrice,
 								})),
@@ -639,8 +648,9 @@ function GRNRouteComponent() {
 														<TableRow>
 															<TableHead>SKU</TableHead>
 															<TableHead>Description</TableHead>
-															<TableHead>Expected</TableHead>
-															<TableHead>Received</TableHead>
+															<TableHead>Carton</TableHead>
+															<TableHead>Loss</TableHead>
+															<TableHead>Total</TableHead>
 															<TableHead>Location</TableHead>
 														</TableRow>
 													</TableHeader>
@@ -652,6 +662,7 @@ function GRNRouteComponent() {
 																</TableCell>
 																<TableCell>{item.skuDescription}</TableCell>
 																<TableCell>{item.expectedQuantity}</TableCell>
+																<TableCell>{item.lossQuantity}</TableCell>
 																<TableCell>{item.receivedQuantity}</TableCell>
 																<TableCell>
 																	{item.location || "Not assigned"}

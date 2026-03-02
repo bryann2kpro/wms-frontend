@@ -241,6 +241,7 @@ export interface Skus {
 	skuDescription: string;
 	skuPrice: number;
 	skuQuantity: number;
+	lossQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
@@ -267,6 +268,7 @@ export interface UpdateSkusInput {
 	skuDescription?: string;
 	skuPrice?: number;
 	skuQuantity?: number;
+	lossQuantity?: number;
 	skuExpiryDate?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
@@ -295,6 +297,8 @@ export interface Grn {
 	receivedAt: string | null;
 	approvedBy: string | null;
 	approvedAt: string | null;
+	notes: string | null;
+	proofUrl: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdByUser: GrnAuditUser | null;
@@ -307,7 +311,10 @@ export interface GrnItem {
 	skuId: string;
 	skuCode: string | null;
 	skuDescription: string | null;
+	/** Quantity in cartons */
 	qty: string;
+	/** Quantity lost */
+	lossQty?: string | null;
 	remarks: string | null;
 	warehouseId: string | null;
 	warehouseName: string | null;
@@ -319,7 +326,10 @@ export interface GrnItem {
 }
 export interface CreateGrnItemInput {
 	skuId?: string | null;
+	/** Quantity in cartons */
 	qty: string;
+	/** Quantity lost */
+	lossQty?: string | null;
 	remarks?: string | null;
 	warehouseId?: string | null;
 	skuCode?: string | null;
@@ -334,6 +344,8 @@ export interface CreateGrnInput {
 	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
 	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
 	/** Initial status: Draft or Submitted (if omitted backend may default) */
 	status?: string | null;
 	createdBy?: string | null;
@@ -367,6 +379,7 @@ export interface UpdateGrnInput {
 	approvedAt?: string | null;
 	updatedBy?: string | null;
 	notes?: string | null;
+	proofUrl?: string | null;
 	items?: CreateGrnItemInput[] | null;
 }
 
@@ -386,7 +399,10 @@ export interface GrnItemForList {
 	sku: string;
 	skuCode: string;
 	skuDescription: string;
+	/** Quantity in cartons */
 	expectedQuantity: number;
+	/** Quantity lost */
+	lossQuantity: number;
 	receivedQuantity: number;
 	location?: string;
 }
@@ -406,6 +422,7 @@ export interface GrnDetailForList {
 	createdBy: string;
 	updatedBy: string | null;
 	notes?: string;
+	proofUrl?: string | null;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;

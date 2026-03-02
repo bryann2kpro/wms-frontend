@@ -15,6 +15,7 @@ export const SKUS_QUERY = gql`
 				skuDescription
 				skuPrice
 				skuQuantity
+				lossQuantity
 				skuExpiryDate
 				skuUom
 				isActive
@@ -50,6 +51,7 @@ export const SKUS_FRAGMENT = gql`
 		skuDescription
 		skuPrice
 		skuQuantity
+		lossQuantity
 		skuExpiryDate
 		skuSuppliers {
 			supplierId

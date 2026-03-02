@@ -34,6 +34,8 @@ export const GRNS_QUERY = gql`
 				receivedAt
 				approvedBy
 				approvedAt
+				notes
+				proofUrl
 				createdAt
 				updatedAt
 				createdByUser {
@@ -51,6 +53,7 @@ export const GRNS_QUERY = gql`
 					skuCode
 					skuDescription
 					qty
+					lossQty
 					remarks
 					warehouseId
 					warehouseName
@@ -78,6 +81,8 @@ export const CREATE_GRN_MUTATION = gql`
 			receivedAt
 			approvedBy
 			approvedAt
+			notes
+			proofUrl
 			createdAt
 			updatedAt
 			createdByUser {
@@ -93,6 +98,7 @@ export const CREATE_GRN_MUTATION = gql`
 				grnId
 				skuId
 				qty
+				lossQty
 				remarks
 				createdAt
 				updatedAt
@@ -114,6 +120,8 @@ export const UPDATE_GRN_MUTATION = gql`
 			supplierDeliveryNo
 			status
 			receivedAt
+			notes
+			proofUrl
 			updatedAt
 			updatedByUser {
 				id
@@ -210,18 +218,23 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 		byStatus[status] = (byStatus[status] ?? 0) + 1;
 
 		const lineItems = (g.items ?? []).map((i: GrnItem) => {
-			const qtyNum = Number(i.qty) || 0;
+			const cartonNum = Number(i.qty) || 0;
+			const lossNum = Number(i.lossQty) || 0;
 			return {
 				id: i.id,
 				sku: i.skuId,
 				skuCode: i.skuCode ?? "",
 				skuDescription: i.skuDescription ?? "",
-				expectedQuantity: qtyNum,
-				receivedQuantity: qtyNum,
+				expectedQuantity: cartonNum,
+				lossQuantity: lossNum,
+				receivedQuantity: cartonNum + lossNum,
 				location: i.warehouseName ?? undefined,
 			};
 		});
-		const totalItems = lineItems.reduce((s, it) => s + it.expectedQuantity, 0);
+		const totalItems = lineItems.reduce(
+			(s, it) => s + it.expectedQuantity + it.lossQuantity,
+			0,
+		);
 		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
 
 		const firstItem = (g.items ?? [])[0] as GrnItem | undefined;
@@ -238,7 +251,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			createdAt: g.createdAt,
 			createdBy: g.createdByUser?.displayName ?? "",
 			updatedBy: g.updatedByUser?.displayName ?? null,
-			notes: undefined,
+			notes: g.notes ?? undefined,
+			proofUrl: g.proofUrl ?? null,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,

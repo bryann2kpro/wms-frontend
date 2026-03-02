@@ -88,7 +88,10 @@ function getErrorMessage(err: unknown): string {
 export type GRNLineItemForm = {
 	skuCode: string;
 	description: string;
-	qty: number;
+	/** Quantity in cartons */
+	carton: number;
+	/** Quantity lost */
+	loss: number;
 	uom: string;
 	unitPrice: number;
 };
@@ -191,17 +194,37 @@ function GRNLineRow({
 			<TableCell>
 				<Input
 					type="number"
-					min={1}
-					value={item.qty}
+					min={0}
+					value={item.carton}
 					onChange={(e) => {
 						const newItems = [...items];
+						const v = Number(e.target.value);
 						newItems[index] = {
 							...newItems[index],
-							qty: Number(e.target.value) || 1,
+							carton: Number.isFinite(v) && v >= 0 ? v : 0,
 						};
 						onItemsChange(newItems);
 					}}
 					className="w-20"
+					placeholder="0"
+				/>
+			</TableCell>
+			<TableCell>
+				<Input
+					type="number"
+					min={0}
+					value={item.loss}
+					onChange={(e) => {
+						const newItems = [...items];
+						const v = Number(e.target.value);
+						newItems[index] = {
+							...newItems[index],
+							loss: Number.isFinite(v) && v >= 0 ? v : 0,
+						};
+						onItemsChange(newItems);
+					}}
+					className="w-20"
+					placeholder="0"
 				/>
 			</TableCell>
 			<TableCell>
@@ -332,9 +355,17 @@ export function GrnFormDialog({
 				const items = value.items ?? [];
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
+				} else {
+					const invalidItem = items.find(
+						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
+					);
+					if (invalidItem) {
+						fields.items =
+							"Each line item must have total quantity (Carton + Loss) greater than zero.";
+					}
 				}
 				if (Object.keys(fields).length > 0) {
-					toast.error("Please enter all mandatory fields.");
+					toast.error("Please enter all mandatory fields and ensure line item quantities are valid.");
 					return { fields };
 				}
 				return undefined;
@@ -353,7 +384,8 @@ export function GrnFormDialog({
 					items: (value.items ?? []).map((i) => ({
 						skuCode: i.skuCode,
 						description: i.description,
-						qty: i.qty,
+						carton: i.carton,
+						loss: i.loss,
 						uom: i.uom,
 						unitPrice: i.unitPrice,
 					})),
@@ -394,7 +426,8 @@ export function GrnFormDialog({
 									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
 									skuCode: i.skuCode,
 									skuDescription: i.description ?? undefined,
-									qty: String(i.qty),
+									qty: String(i.carton),
+									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
 									warehouseId: warehouseIdForItems,
 								};
@@ -421,7 +454,8 @@ export function GrnFormDialog({
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
-					qty: it.expectedQuantity ?? 0,
+					carton: it.expectedQuantity ?? 0,
+					loss: it.lossQuantity ?? 0,
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
 				};
@@ -666,7 +700,8 @@ export function GrnFormDialog({
 																	description: "",
 																	uom: "",
 																	unitPrice: 0,
-																	qty: 1,
+																	carton: 1,
+																	loss: 0,
 																},
 															]);
 														}}
@@ -691,7 +726,8 @@ export function GrnFormDialog({
 															<TableRow>
 																<TableHead>SKU</TableHead>
 																<TableHead>Description</TableHead>
-																<TableHead>Qty</TableHead>
+																<TableHead>Carton</TableHead>
+																<TableHead>Loss</TableHead>
 																<TableHead>UOM</TableHead>
 																<TableHead className="text-right w-[80px]">
 																	Actions
@@ -702,7 +738,7 @@ export function GrnFormDialog({
 															{items.length === 0 ? (
 																<TableRow>
 																	<TableCell
-																		colSpan={5}
+																		colSpan={6}
 																		className="h-40 text-center"
 																	>
 																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
