@@ -52,6 +52,9 @@ export const GRNS_QUERY = gql`
 					skuDescription
 					qty
 					remarks
+					warehouseId
+					warehouseName
+					warehouseAddress
 					createdAt
 					updatedAt
 					createdBy
@@ -211,16 +214,17 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			return {
 				id: i.id,
 				sku: i.skuId,
-				skuCode: i.skuCode,
-				skuDescription: i.skuDescription,
+				skuCode: i.skuCode ?? "",
+				skuDescription: i.skuDescription ?? "",
 				expectedQuantity: qtyNum,
 				receivedQuantity: qtyNum,
-				location: undefined as string | undefined,
+				location: i.warehouseName ?? undefined,
 			};
 		});
 		const totalItems = lineItems.reduce((s, it) => s + it.expectedQuantity, 0);
 		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
 
+		const firstItem = (g.items ?? [])[0] as GrnItem | undefined;
 		return {
 			id: g.id,
 			grnNo: g.grnNo,
@@ -228,6 +232,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			supplierDeliveryId: g.supplierDeliveryId,
 			supplierDeliveryNo: g.supplierDeliveryNo ?? null,
 			poNo: g.poNo,
+			warehouseId: firstItem?.warehouseId ?? null,
 			status,
 			receivedAt: g.receivedAt,
 			createdAt: g.createdAt,

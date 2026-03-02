@@ -56,6 +56,7 @@ import {
 	Send,
 	Trash2,
 	Clock,
+	Warehouse,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -250,6 +251,7 @@ export type GrnCreateSubmitPayload = {
 	supplierDO: string;
 	receivedDate: string;
 	notes: string;
+	warehouseId: string;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -262,6 +264,8 @@ export type GrnFormDialogProps = {
 	grn?: GrnDetailForList | null;
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
+	/** Warehouses for warehouse dropdown (create & edit) */
+	warehouses: Array<{ warehouseId: string; warehouseCode?: string | null; warehouseName: string }>;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -281,6 +285,7 @@ export function GrnFormDialog({
 	grn = null,
 	skuOptions,
 	stockUnits,
+	warehouses,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -314,6 +319,7 @@ export function GrnFormDialog({
 			supplierDO: "",
 			receivedDate: "",
 			notes: "",
+			warehouseId: "",
 			items: [] as GRNLineItemForm[],
 		},
 		validators: {
@@ -342,6 +348,7 @@ export function GrnFormDialog({
 					supplierDO: value.supplierDO,
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
+					warehouseId: value.warehouseId ?? "",
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
 						skuCode: i.skuCode,
@@ -366,6 +373,7 @@ export function GrnFormDialog({
 			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
+				const warehouseIdForItems = value.warehouseId?.trim() || undefined;
 				await updateGRN({
 					variables: {
 						id: grn.id,
@@ -388,6 +396,7 @@ export function GrnFormDialog({
 									skuDescription: i.description ?? undefined,
 									qty: String(i.qty),
 									skuUom: uomId ?? undefined,
+									warehouseId: warehouseIdForItems,
 								};
 							}),
 						},
@@ -423,6 +432,7 @@ export function GrnFormDialog({
 				supplierDO: (grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
+				warehouseId: grn.warehouseId ?? "",
 				items: initialItems,
 			});
 		} else if (mode === "create") {
@@ -593,6 +603,36 @@ export function GrnFormDialog({
 													</Field>
 												);
 											}}
+										</form.Field>
+										<form.Field name="warehouseId">
+											{(field) => (
+												<Field>
+													<FieldLabel
+														htmlFor={field.name}
+														className="flex items-center gap-2"
+													>
+														<Warehouse className="h-4 w-4 text-muted-foreground" />
+														Warehouse
+													</FieldLabel>
+													<Select
+														value={field.state.value || "none"}
+														onValueChange={(v) => field.handleChange(v === "none" ? "" : v)}
+													>
+														<SelectTrigger id={field.name}>
+															<SelectValue placeholder="Select warehouse (optional)" />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="none">— None —</SelectItem>
+															{warehouses.map((w: { warehouseId: string; warehouseCode?: string | null; warehouseName: string }) => (
+																<SelectItem key={w.warehouseId} value={w.warehouseId}>
+																	{w.warehouseName}
+																	{w.warehouseCode ? ` (${w.warehouseCode})` : ""}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</Field>
+											)}
 										</form.Field>
 									</FieldGroup>
 								</CardContent>

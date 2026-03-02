@@ -54,6 +54,7 @@ import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
+import { WAREHOUSES_QUERY, type WarehousesQueryData } from "@/lib/graphql/warehouses";
 import {
 	GRNS_QUERY,
 	CREATE_GRN_MUTATION,
@@ -110,6 +111,10 @@ function GRNRouteComponent() {
 		{ variables: {} }
 	);
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
+	const { data: warehousesData } = useApolloQuery<WarehousesQueryData>(WAREHOUSES_QUERY, {
+		variables: { pageSize: 500, pageNumber: 1 },
+	});
+	const warehouses = warehousesData?.warehouses?.query ?? [];
 
 	const {
 		data: grnsQueryData,
@@ -166,11 +171,13 @@ function GRNRouteComponent() {
 			supplierDO: string;
 			receivedDate: Date;
 			notes?: string;
+			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
 			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
+			const warehouseIdForItems = payload.warehouseId?.trim() || undefined;
 			await createGRNApollo({
 				variables: {
 					input: {
@@ -189,6 +196,7 @@ function GRNRouteComponent() {
 								skuDescription: i.description ?? undefined,
 								qty: String(i.qty),
 								skuUom: uomId ?? undefined,
+								warehouseId: warehouseIdForItems,
 							};
 						}),
 					},
@@ -200,14 +208,28 @@ function GRNRouteComponent() {
 
 	const statusMutation = {
 		mutateAsync: async ({ id, status }: { id: string; status: GRNStatus }) => {
+			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+				status: UI_STATUS_TO_GQL[status],
+			};
+			if (status === "Approved" && user?.id) {
+				input.approvedBy = user.id;
+				input.approvedAt = new Date().toISOString();
+			}
 			await updateGRNApollo({
-				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
+				variables: { id, input },
 			});
 			return undefined;
 		},
 		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
+			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+				status: UI_STATUS_TO_GQL[status],
+			};
+			if (status === "Approved" && user?.id) {
+				input.approvedBy = user.id;
+				input.approvedAt = new Date().toISOString();
+			}
 			updateGRNApollo({
-				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
+				variables: { id, input },
 			});
 		},
 		isPending: statusUpdating,
@@ -283,6 +305,7 @@ function GRNRouteComponent() {
 								Create GRN
 							</Button>
 						}
+						warehouses={warehouses}
 						onCreateSubmit={async (payload) => {
 							await createMutation.mutateAsync({
 								grnNumber: payload.grnNumber,
@@ -290,6 +313,7 @@ function GRNRouteComponent() {
 								supplierDO: payload.supplierDO,
 								receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
 								notes: payload.notes || undefined,
+								warehouseId: payload.warehouseId || undefined,
 								submitIntent: payload.submitIntent,
 								items: payload.items.map((i) => ({
 									sku: i.skuCode,
@@ -719,6 +743,7 @@ function GRNRouteComponent() {
 				grn={selectedGRN}
 				skuOptions={skuOptions}
 				stockUnits={stockUnits}
+				warehouses={warehouses}
 				onSuccess={() => {
 					refetchGRNs();
 					setIsEditOpen(false);

@@ -305,10 +305,13 @@ export interface GrnItem {
 	id: string;
 	grnId: string;
 	skuId: string;
-	skuCode: string;
-	skuDescription: string;
+	skuCode: string | null;
+	skuDescription: string | null;
 	qty: string;
 	remarks: string | null;
+	warehouseId: string | null;
+	warehouseName: string | null;
+	warehouseAddress: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -318,6 +321,7 @@ export interface CreateGrnItemInput {
 	skuId?: string | null;
 	qty: string;
 	remarks?: string | null;
+	warehouseId?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -343,6 +347,7 @@ export interface GrnFilterInput {
 	status?: string | null;
 	page?: number | null;
 	pageSize?: number | null;
+	pageNumber?: number | null;
 }
 
 export interface GrnPaginatedResponse {
@@ -394,6 +399,7 @@ export interface GrnDetailForList {
 	supplierDeliveryId: string | null;
 	supplierDeliveryNo: string | null;
 	poNo: string | null;
+	warehouseId: string | null;
 	status: GrnStatusUI;
 	receivedAt: string | null;
 	createdAt: string;
