@@ -286,6 +286,23 @@ export interface GrnAuditUser {
 	displayName: string;
 }
 
+/** Warehouse at GRN root level */
+export interface GrnWarehouse {
+	warehouseId: string;
+	warehouseName: string;
+	warehouseCode: string | null;
+	warehouseAddress: string | null;
+	updatedBy: string | null;
+}
+
+/** Rack on a GRN line item */
+export interface GrnRack {
+	rackId: string;
+	rackLevel: number | string;
+	rackRow: string;
+	rackColumn: string;
+}
+
 export interface Grn {
 	id: string;
 	grnNo: string;
@@ -304,7 +321,9 @@ export interface Grn {
 	createdByUser: GrnAuditUser | null;
 	updatedByUser: GrnAuditUser | null;
 	items: GrnItem[];
+	warehouse: GrnWarehouse | null;
 }
+
 export interface GrnItem {
 	id: string;
 	grnId: string;
@@ -316,22 +335,23 @@ export interface GrnItem {
 	/** Quantity lost */
 	lossQty?: string | null;
 	remarks: string | null;
-	warehouseId: string | null;
-	warehouseName: string | null;
-	warehouseAddress: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
 	updatedBy: string | null;
+	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
+	rack: GrnRack | null;
+	/** Legacy: some backends still return warehouse on item */
+	warehouseId?: string | null;
+	warehouseName?: string | null;
+	warehouseAddress?: string | null;
 }
 export interface CreateGrnItemInput {
 	skuId?: string | null;
-	/** Quantity in cartons */
 	qty: string;
-	/** Quantity lost */
 	lossQty?: string | null;
 	remarks?: string | null;
-	warehouseId?: string | null;
+	rackId?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -346,7 +366,7 @@ export interface CreateGrnInput {
 	receivedAt?: string | null;
 	notes?: string | null;
 	proofUrl?: string | null;
-	/** Initial status: Draft or Submitted (if omitted backend may default) */
+	warehouseId?: string | null;
 	status?: string | null;
 	createdBy?: string | null;
 	updatedBy?: string | null;
@@ -373,13 +393,14 @@ export interface UpdateGrnInput {
 	supplierDeliveryId?: string | null;
 	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
-	status?: string | null;
 	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
+	warehouseId?: string | null;
+	status?: string | null;
 	approvedBy?: string | null;
 	approvedAt?: string | null;
 	updatedBy?: string | null;
-	notes?: string | null;
-	proofUrl?: string | null;
 	items?: CreateGrnItemInput[] | null;
 }
 
@@ -404,7 +425,9 @@ export interface GrnItemForList {
 	/** Quantity lost */
 	lossQuantity: number;
 	receivedQuantity: number;
+	/** Display: warehouse name or rack (e.g. "A-01-2") */
 	location?: string;
+	rack?: { rackId: string; rackLevel: number | string; rackRow: string; rackColumn: string } | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */
@@ -416,6 +439,7 @@ export interface GrnDetailForList {
 	supplierDeliveryNo: string | null;
 	poNo: string | null;
 	warehouseId: string | null;
+	warehouse?: GrnWarehouse | null;
 	status: GrnStatusUI;
 	receivedAt: string | null;
 	createdAt: string;

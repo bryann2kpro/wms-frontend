@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
+import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
@@ -65,9 +66,15 @@ import {
 	DELETE_GRN_MUTATION,
 	UI_STATUS_TO_GQL,
 } from "@/lib/graphql/grns";
+import {
+	CREATE_RACK_MUTATION,
+	type CreateRackMutationData,
+} from "@/lib/graphql/racks";
 import type { GRNStatus } from "@/data/grn.mock-data";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 /** Get a user-facing message from Apollo or generic errors */
 function getErrorMessage(err: unknown): string {
@@ -94,6 +101,8 @@ export type GRNLineItemForm = {
 	loss: number;
 	uom: string;
 	unitPrice: number;
+	/** Rack ID (optional) */
+	rackId: string;
 };
 
 function toDatetimeLocal(value: string | null | undefined): string {
@@ -115,6 +124,87 @@ function normalizeFieldErrors(
 	);
 }
 
+function CreateRackDialog({
+	open,
+	onOpenChange,
+	onSubmit,
+	loading,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSubmit: (v: { rackRow: string; rackColumn: string; rackLevel: string }) => void;
+	loading: boolean;
+}) {
+	const [rackRow, setRackRow] = useState("");
+	const [rackColumn, setRackColumn] = useState("");
+	const [rackLevel, setRackLevel] = useState("");
+	useEffect(() => {
+		if (open) {
+			setRackRow("");
+			setRackColumn("");
+			setRackLevel("");
+		}
+	}, [open]);
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Create rack</DialogTitle>
+					<DialogDescription>Add a new rack location (row, column, level).</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-4 py-4">
+					<div className="grid gap-2">
+						<Label htmlFor="rack-row">Row</Label>
+						<Input
+							id="rack-row"
+							value={rackRow}
+							onChange={(e) => setRackRow(e.target.value)}
+							placeholder="e.g. A, B, 1"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="rack-column">Column</Label>
+						<Input
+							id="rack-column"
+							value={rackColumn}
+							onChange={(e) => setRackColumn(e.target.value)}
+							placeholder="e.g. 01, 02"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="rack-level">Level</Label>
+						<Input
+							id="rack-level"
+							value={rackLevel}
+							onChange={(e) => setRackLevel(e.target.value)}
+							placeholder="e.g. 01, 02"
+						/>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						disabled={
+							!rackRow.trim() || !rackColumn.trim() || !rackLevel.trim() || loading
+						}
+						onClick={() =>
+							onSubmit({
+								rackRow: rackRow.trim(),
+								rackColumn: rackColumn.trim(),
+								rackLevel: rackLevel.trim(),
+							})
+						}
+					>
+						{loading ? "Creating..." : "Create"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function GRNLineRow({
 	item,
 	index,
@@ -122,6 +212,8 @@ function GRNLineRow({
 	onItemsChange,
 	skuOptions,
 	stockUnits,
+	racks,
+	onOpenCreateRack,
 }: {
 	item: GRNLineItemForm;
 	index: number;
@@ -129,6 +221,8 @@ function GRNLineRow({
 	onItemsChange: (newItems: GRNLineItemForm[]) => void;
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
+	racks: Array<{ rackId: string; rackRow: string; rackColumn: string; rackLevel: string }>;
+	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
@@ -252,6 +346,38 @@ function GRNLineRow({
 					</SelectContent>
 				</Select>
 			</TableCell>
+			<TableCell>
+				<Select
+					value={item.rackId || undefined}
+					onValueChange={(value) => {
+						if (value === "__create_rack__") {
+							onOpenCreateRack?.(index);
+							return;
+						}
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							rackId: value,
+						};
+						onItemsChange(newItems);
+					}}
+				>
+					<SelectTrigger className="h-8 min-w-[200px] font-normal text-sm">
+						<SelectValue placeholder="Row-Column-Level" />
+					</SelectTrigger>
+					<SelectContent>
+						{racks.map((r) => (
+							<SelectItem key={r.rackId} value={r.rackId}>
+								{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+							</SelectItem>
+						))}
+						<SelectItem value="__create_rack__" className="text-muted-foreground">
+							<Plus className="inline h-3.5 w-3.5 mr-1" />
+							Create new rack
+						</SelectItem>
+					</SelectContent>
+				</Select>
+			</TableCell>
 			<TableCell className="text-right">
 				<Button
 					type="button"
@@ -289,6 +415,8 @@ export type GrnFormDialogProps = {
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	/** Warehouses for warehouse dropdown (create & edit) */
 	warehouses: Array<{ warehouseId: string; warehouseCode?: string | null; warehouseName: string }>;
+	/** Racks for rack dropdown per line item (create & edit) */
+	racks: Array<{ rackId: string; rackRow: string; rackColumn: string; rackLevel: string }>;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -299,6 +427,10 @@ export type GrnFormDialogProps = {
 	canCreate?: boolean;
 	/** Called after a new SKU is created so parent can refetch SKU list */
 	onSkusRefetch?: () => void | Promise<void>;
+	/** Called after a new warehouse is created so parent can refetch warehouse list */
+	onWarehouseCreated?: () => void | Promise<void>;
+	/** Called after a new rack is created so parent can refetch rack list */
+	onRackCreated?: () => void | Promise<void>;
 };
 
 export function GrnFormDialog({
@@ -309,14 +441,20 @@ export function GrnFormDialog({
 	skuOptions,
 	stockUnits,
 	warehouses,
+	racks,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
 	canCreate = true,
 	onSkusRefetch: _onSkusRefetch,
+	onWarehouseCreated,
+	onRackCreated,
 }: GrnFormDialogProps) {
+	const { user } = useCurrentUser();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
+	const [createRackOpen, setCreateRackOpen] = useState(false);
+	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<number | null>(null);
 
 	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
 		onCompleted: () => {
@@ -334,6 +472,25 @@ export function GrnFormDialog({
 			onOpenChange(false);
 		},
 	});
+
+	const createdBy = user?.id ?? "";
+	const updateItemsWithRackRef = useRef<((lineIndex: number, rackId: string) => void) | null>(null);
+	const [createRack, { loading: createRackLoading }] = useMutation<CreateRackMutationData>(
+		CREATE_RACK_MUTATION,
+		{
+			onError: (err) => toast.error(getErrorMessage(err)),
+			onCompleted: (data) => {
+				const rack = data?.createRack;
+				if (rack && createRackForLineIndex != null) {
+					updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
+					onRackCreated?.();
+					setCreateRackOpen(false);
+					setCreateRackForLineIndex(null);
+					toast.success("Rack created.");
+				}
+			},
+		},
+	);
 
 	const form = useForm({
 		defaultValues: {
@@ -388,6 +545,7 @@ export function GrnFormDialog({
 						loss: i.loss,
 						uom: i.uom,
 						unitPrice: i.unitPrice,
+						rackId: i.rackId ?? "",
 					})),
 				};
 				try {
@@ -405,7 +563,6 @@ export function GrnFormDialog({
 			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
-				const warehouseIdForItems = value.warehouseId?.trim() || undefined;
 				await updateGRN({
 					variables: {
 						id: grn.id,
@@ -418,10 +575,12 @@ export function GrnFormDialog({
 							receivedAt: parsedDate?.toISOString() ?? undefined,
 							status: UI_STATUS_TO_GQL[status],
 							notes: value.notes || undefined,
+							warehouseId: value.warehouseId?.trim() || undefined,
 							items: (value.items ?? []).map((i) => {
 								const uomId = i.uom
 									? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
 									: undefined;
+								const rackId = (i.rackId ?? "").trim() || undefined;
 								return {
 									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
 									skuCode: i.skuCode,
@@ -429,7 +588,7 @@ export function GrnFormDialog({
 									qty: String(i.carton),
 									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
-									warehouseId: warehouseIdForItems,
+									...(rackId && { rackId }),
 								};
 							}),
 						},
@@ -451,6 +610,7 @@ export function GrnFormDialog({
 						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom
 					)
 					: undefined;
+				const rack = it.rack;
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -458,6 +618,7 @@ export function GrnFormDialog({
 					loss: it.lossQuantity ?? 0,
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
+					rackId: rack?.rackId ?? "",
 				};
 			});
 			form.reset({
@@ -648,23 +809,14 @@ export function GrnFormDialog({
 														<Warehouse className="h-4 w-4 text-muted-foreground" />
 														Warehouse
 													</FieldLabel>
-													<Select
-														value={field.state.value || "none"}
-														onValueChange={(v) => field.handleChange(v === "none" ? "" : v)}
-													>
-														<SelectTrigger id={field.name}>
-															<SelectValue placeholder="Select warehouse (optional)" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="none">— None —</SelectItem>
-															{warehouses.map((w: { warehouseId: string; warehouseCode?: string | null; warehouseName: string }) => (
-																<SelectItem key={w.warehouseId} value={w.warehouseId}>
-																	{w.warehouseName}
-																	{w.warehouseCode ? ` (${w.warehouseCode})` : ""}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+													<WarehouseCombobox
+														id={field.name}
+														value={field.state.value ?? ""}
+														onChange={(v: string) => field.handleChange(v)}
+														warehouses={warehouses}
+														onWarehouseCreated={onWarehouseCreated}
+														placeholder="Select warehouse (optional)"
+													/>
 												</Field>
 											)}
 										</form.Field>
@@ -702,6 +854,7 @@ export function GrnFormDialog({
 																	unitPrice: 0,
 																	carton: 1,
 																	loss: 0,
+																	rackId: "",
 																},
 															]);
 														}}
@@ -718,6 +871,13 @@ export function GrnFormDialog({
 									<form.Field name="items">
 										{(field) => {
 											const items = (field.state.value ?? []) as GRNLineItemForm[];
+											updateItemsWithRackRef.current = (lineIndex, rackId) => {
+												const current = (field.state.value ?? []) as GRNLineItemForm[];
+												if (current[lineIndex] == null) return;
+												const next = [...current];
+												next[lineIndex] = { ...next[lineIndex], rackId };
+												field.handleChange(next);
+											};
 											return (
 												<>
 												<div className="rounded-lg border">
@@ -729,6 +889,7 @@ export function GrnFormDialog({
 																<TableHead>Carton</TableHead>
 																<TableHead>Loss</TableHead>
 																<TableHead>UOM</TableHead>
+																<TableHead>Rack</TableHead>
 																<TableHead className="text-right w-[80px]">
 																	Actions
 																</TableHead>
@@ -738,7 +899,7 @@ export function GrnFormDialog({
 															{items.length === 0 ? (
 																<TableRow>
 																	<TableCell
-																		colSpan={6}
+																		colSpan={7}
 																		className="h-40 text-center"
 																	>
 																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -765,6 +926,11 @@ export function GrnFormDialog({
 																		onItemsChange={field.handleChange}
 																		skuOptions={skuOptions}
 																		stockUnits={stockUnits}
+																		racks={racks}
+																		onOpenCreateRack={(lineIndex) => {
+																			setCreateRackForLineIndex(lineIndex);
+																			setCreateRackOpen(true);
+																		}}
 																	/>
 																))
 															)}
@@ -776,6 +942,27 @@ export function GrnFormDialog({
 														{field.state.meta.errors.map((e) => (typeof e === "string" ? e : (e as unknown as { message?: string }).message)).filter(Boolean).join(" ")}
 													</p>
 												)}
+												<CreateRackDialog
+													open={createRackOpen}
+													onOpenChange={(open) => {
+														setCreateRackOpen(open);
+														if (!open) setCreateRackForLineIndex(null);
+													}}
+													onSubmit={(values) =>
+														createRack({
+															variables: {
+																input: {
+																	rackRow: values.rackRow,
+																	rackColumn: values.rackColumn,
+																	rackLevel: values.rackLevel,
+																	createdBy,
+																	updatedBy: createdBy,
+																},
+															},
+														})
+													}
+													loading={createRackLoading}
+												/>
 											</>
 											);
 										}}

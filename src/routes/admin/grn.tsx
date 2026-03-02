@@ -55,6 +55,7 @@ import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
 import { WAREHOUSES_QUERY, type WarehousesQueryData } from "@/lib/graphql/warehouses";
+import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	GRNS_QUERY,
 	CREATE_GRN_MUTATION,
@@ -111,10 +112,16 @@ function GRNRouteComponent() {
 		{ variables: {} }
 	);
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
-	const { data: warehousesData } = useApolloQuery<WarehousesQueryData>(WAREHOUSES_QUERY, {
+	const { data: warehousesData, refetch: refetchWarehouses } = useApolloQuery<WarehousesQueryData>(
+		WAREHOUSES_QUERY,
+		{ variables: { pageSize: 500, pageNumber: 1 } },
+	);
+	const warehouses = warehousesData?.warehouses?.query ?? [];
+
+	const { data: racksData, refetch: refetchRacks } = useApolloQuery<RacksQueryData>(RACKS_QUERY, {
 		variables: { pageSize: 500, pageNumber: 1 },
 	});
-	const warehouses = warehousesData?.warehouses?.query ?? [];
+	const racks = racksData?.racks?.query ?? [];
 
 	const {
 		data: grnsQueryData,
@@ -181,10 +188,11 @@ function GRNRouteComponent() {
 				loss: number;
 				uom?: string;
 				unitPrice?: number;
+				rackId?: string;
 			}>;
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
-			const warehouseIdForItems = payload.warehouseId?.trim() || undefined;
+			const warehouseId = payload.warehouseId?.trim() || undefined;
 			await createGRNApollo({
 				variables: {
 					input: {
@@ -193,10 +201,12 @@ function GRNRouteComponent() {
 						poNo: payload.poReference || undefined,
 						receivedAt: payload.receivedDate.toISOString(),
 						status: UI_STATUS_TO_GQL[status],
+						warehouseId,
 						items: payload.items?.map((i) => {
 							const uomId = i.uom
 								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
 								: undefined;
+							const rackId = (i.rackId ?? "").trim() || undefined;
 							return {
 								skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 								skuCode: i.sku,
@@ -204,7 +214,7 @@ function GRNRouteComponent() {
 								qty: String(i.carton),
 								lossQty: String(i.loss),
 								skuUom: uomId ?? undefined,
-								warehouseId: warehouseIdForItems,
+								...(rackId && { rackId }),
 							};
 						}),
 					},
@@ -314,6 +324,7 @@ function GRNRouteComponent() {
 							</Button>
 						}
 						warehouses={warehouses}
+						racks={racks}
 						onCreateSubmit={async (payload) => {
 							await createMutation.mutateAsync({
 								grnNumber: payload.grnNumber,
@@ -330,11 +341,14 @@ function GRNRouteComponent() {
 									loss: i.loss,
 									uom: i.uom,
 									unitPrice: i.unitPrice,
+									rackId: i.rackId ?? "",
 								})),
 							});
 						}}
 						onSuccess={() => refetchGRNs()}
 						onSkusRefetch={() => void refetchSkus()}
+						onWarehouseCreated={async () => { await refetchWarehouses(); }}
+						onRackCreated={() => void refetchRacks()}
 					/>
 				)}
 			</div>
@@ -755,12 +769,15 @@ function GRNRouteComponent() {
 				skuOptions={skuOptions}
 				stockUnits={stockUnits}
 				warehouses={warehouses}
+				racks={racks}
 				onSuccess={() => {
 					refetchGRNs();
 					setIsEditOpen(false);
 					setSelectedGRN(null);
 				}}
 				onSkusRefetch={() => void refetchSkus()}
+				onWarehouseCreated={async () => { await refetchWarehouses(); }}
+				onRackCreated={() => void refetchRacks()}
 			/>
 		</div>
 	);
