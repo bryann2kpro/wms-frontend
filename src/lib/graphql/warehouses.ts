@@ -16,6 +16,14 @@ export const WAREHOUSE_FRAGMENT = gql`
 		updatedAt
 		createdBy
 		updatedBy
+		createdByUser {
+			id
+			displayName
+		}
+		updatedByUser {
+			id
+			displayName
+		}
 	}
 `;
 
@@ -37,6 +45,15 @@ export const WAREHOUSES_QUERY = gql`
 				hasNextPage
 				hasPrevPage
 			}
+		}
+	}
+	${WAREHOUSE_FRAGMENT}
+`;
+
+export const WAREHOUSE_QUERY = gql`
+	query Warehouse($id: ID!) {
+		warehouse(id: $id) {
+			...WarehouseFields
 		}
 	}
 	${WAREHOUSE_FRAGMENT}
@@ -82,6 +99,9 @@ export type WarehousesQueryData = {
 	warehouses: WarehousePaginatedResponse;
 };
 
+export type WarehouseQueryVariables = { id: string };
+export type WarehouseQueryData = { warehouse: Warehouse | null };
+
 export type CreateWarehouseMutationVariables = { input: CreateWarehouseInput };
 export type CreateWarehouseMutationData = { createWarehouse: Warehouse };
 
@@ -93,3 +113,5 @@ export type UpdateWarehouseMutationData = { updateWarehouse: Warehouse | null };
 
 export type DeleteWarehouseMutationVariables = { id: string };
 export type DeleteWarehouseMutationData = { deleteWarehouse: boolean };
+
+

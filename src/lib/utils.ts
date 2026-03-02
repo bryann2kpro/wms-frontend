@@ -200,3 +200,72 @@ export function getBackendDayOfWeek(date: Date): number {
   const js = date.getDay(); // JS: 0 = Sun, 1 = Mon, ..., 6 = Sat
   return js === 0 ? BACKEND_DAY_OF_WEEK.SUNDAY : js;
 }
+
+/** Start of the current week (Monday) at midnight for comparison. */
+export function getStartOfWeek(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Backend day-of-week: Monday = 1, ..., Sunday = 7. Delivery days are Tuesday (2) and Thursday (4). */
+export function isDeliveryDay(date: Date): boolean {
+  const dayOfWeek = getBackendDayOfWeek(date);
+  return (
+    dayOfWeek === BACKEND_DAY_OF_WEEK.TUESDAY ||
+    dayOfWeek === BACKEND_DAY_OF_WEEK.THURSDAY
+  );
+}
+
+/** Whether the date falls in the current week (Monday–Sunday) and is a delivery day. */
+export function isInCurrentWeek(date: Date): boolean {
+  const now = new Date();
+  const startOfCurrentWeek = getStartOfWeek(now);
+  const startOfDateWeek = getStartOfWeek(date);
+  return (
+    startOfCurrentWeek.getTime() === startOfDateWeek.getTime() &&
+    isDeliveryDay(date)
+  );
+}
+
+/** Whether the date is in a past week and is a delivery day. */
+export function isInPastWeeks(date: Date): boolean {
+  const now = new Date();
+  const startOfCurrentWeek = getStartOfWeek(now);
+  const startOfDateWeek = getStartOfWeek(date);
+  return (
+    startOfDateWeek.getTime() < startOfCurrentWeek.getTime() &&
+    isDeliveryDay(date)
+  );
+}
+
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/** Format a delivery date as "DayName (dd/mm/yyyy)" for table headers. */
+export function formatDeliveryDateHeader(date: Date): string {
+  const dayName = DAY_NAMES[date.getDay()];
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dayName} (${dd}/${mm}/${yyyy})`;
+}
+
+/** Date key in local date (YYYY-MM-DD). Use local, not UTC, so day-of-week stays correct. */
+export function getDateKey(date: Date): string {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}

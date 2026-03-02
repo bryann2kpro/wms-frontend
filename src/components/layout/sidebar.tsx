@@ -1,7 +1,7 @@
-import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar as SidebarUi, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Sidebar as SidebarUi, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
 import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
 
@@ -55,54 +55,66 @@ export function Sidebar() {
 	// Filter navigation based on permissions
 	const accessControl = (link: NavLinkSchemaType) => {
 		if (!user?.readPermission) return false;
-		
-		return link.allowedPermission.some(permission => 
-			permission === '*' || user.readPermission.includes(permission) || user.createPermission?.includes(permission)
+
+		return link.allowedPermission.some(
+			(permission) =>
+				permission === "*" ||
+				user.readPermission.includes(permission) ||
+				user.createPermission?.includes(permission),
 		);
 	};
 
+	const visibleItems = allNavigationItems.filter(accessControl);
+	const mainItems = visibleItems.filter((link) => link.group !== "work-queues");
+	const workQueueItems = visibleItems.filter(
+		(link) => link.group === "work-queues",
+	);
+
+	const renderNavLinks = (links: NavLinkSchemaType[]) =>
+		links.map((link) => (
+			<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
+				<Link
+					to={link.href}
+					className={cn(
+						"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+						isActive(link.href)
+							? "bg-primary text-primary-foreground"
+							: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+					)}
+				>
+					<link.icon className="h-5 w-5" />
+					{link.title}
+				</Link>
+			</SidebarMenuItem>
+		));
+
 	return (
 		<SidebarUi className="space-y-4 rounded-lg" collapsible="icon">
-            <SidebarHeader>
-                <div className="relative z-20 flex items-center justify-center text-base font-medium">
-                    {/* {!state || state === "expanded" ? ( */}
-                        <div className="flex flex-col">
-                            {/* <h2 className="text-xl font-bold">SME Ederan WMS</h2> */}
-                            <img src={`https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg`} alt="SME Logo" width={100} height={100} />
-                        </div>
-                    {/* ) : null} */}
-                </div>
-            </SidebarHeader>
-            <SidebarContent>
-                <ScrollArea className="flex-1 px-3 py-4">
-                    <SidebarGroup className="space-y-1">
-                        <SidebarMenu>
-                        {allNavigationItems.map(
-                            (link) =>
-                                accessControl(link) && (
-                                    <SidebarMenuItem 
-                                            key={`nav-${link.key}`} 
-                                            title={link.title} 
-                                        >
-                                            <Link
-                                                to={link.href}
-                                                className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                                                    isActive(link.href)
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                                                )}
-                                            >
-                                                <link.icon className="h-5 w-5" />
-                                                {link.title}
-                                            </Link>
-                                    </SidebarMenuItem>
-                                )
-                        )}
-                        </SidebarMenu>
-                    </SidebarGroup>
-                </ScrollArea>
-            </SidebarContent>
-        </SidebarUi>
+			<SidebarHeader>
+				<div className="relative z-20 flex items-center justify-center text-base font-medium">
+					<div className="flex flex-col">
+						<img
+							src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
+							alt="SME Logo"
+							width={100}
+							height={100}
+						/>
+					</div>
+				</div>
+			</SidebarHeader>
+			<SidebarContent>
+				<ScrollArea className="flex-1 px-3 py-4">
+					<SidebarGroup className="space-y-1">
+						<SidebarMenu>{renderNavLinks(mainItems)}</SidebarMenu>
+					</SidebarGroup>
+					{workQueueItems.length > 0 && (
+						<SidebarGroup className="space-y-1">
+							<SidebarGroupLabel>Work Queues</SidebarGroupLabel>
+							<SidebarMenu>{renderNavLinks(workQueueItems)}</SidebarMenu>
+						</SidebarGroup>
+					)}
+				</ScrollArea>
+			</SidebarContent>
+		</SidebarUi>
 	);
 }
