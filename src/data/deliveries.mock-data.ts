@@ -9,6 +9,8 @@ export interface DeliveryItem {
 	description: string;
 	quantity: number;
 	deliveredQuantity: number;
+	/** Quantity lost */
+	lossQty: number;
 }
 
 export interface ProofOfDelivery {
@@ -64,6 +66,7 @@ let deliveryDetails: DeliveryDetail[] = baseDeliveries.map(
 						: delivery.status === "DISPATCHED" || delivery.status === "PACKED"
 							? 8
 							: 0,
+				lossQty: 0,
 			},
 			{
 				id: `${delivery.id}-2`,
@@ -76,6 +79,7 @@ let deliveryDetails: DeliveryDetail[] = baseDeliveries.map(
 						: delivery.status === "DISPATCHED" || delivery.status === "PACKED"
 							? 3
 							: 0,
+				lossQty: 0,
 			},
 		];
 
@@ -192,6 +196,7 @@ export async function createDelivery(
 				description: "Newly scheduled item",
 				quantity: 1,
 				deliveredQuantity: 0,
+				lossQty: 0,
 			},
 		],
 		proofOfDelivery: undefined,
@@ -222,4 +227,24 @@ export async function updateDeliveryStatus(
 
 	deliveryDetails[index] = updated;
 	return updated;
+}
+
+/** Update line item loss quantities for a delivery */
+export async function updateDeliveryItemsLoss(
+	deliveryId: string,
+	updates: Array<{ itemId: string; lossQty: number }>,
+): Promise<DeliveryDetail | undefined> {
+	await delay(200);
+
+	const index = deliveryDetails.findIndex((d) => d.id === deliveryId);
+	if (index === -1) return undefined;
+
+	const current = deliveryDetails[index];
+	const items = current.items.map((item) => {
+		const u = updates.find((x) => x.itemId === item.id);
+		return u != null ? { ...item, lossQty: u.lossQty } : item;
+	});
+
+	deliveryDetails[index] = { ...current, items };
+	return deliveryDetails[index];
 }

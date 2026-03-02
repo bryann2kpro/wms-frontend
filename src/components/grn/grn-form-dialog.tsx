@@ -56,6 +56,7 @@ import {
 	Send,
 	Trash2,
 	Clock,
+	Warehouse,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -66,24 +67,31 @@ import {
 } from "@/lib/graphql/grns";
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { toast } from "sonner";
+import { toUserFriendlyMessage } from "@/lib/utils";
 
 /** Get a user-facing message from Apollo or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
-			?.message;
-		if (gql) return gql;
+		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
+			.graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const gql = first?.message;
+		if (gql) return toUserFriendlyMessage(gql, "Something went wrong. Please try again.");
 	}
 	if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
-		return (err as Error).message;
-	if (err instanceof Error) return err.message;
-	return String(err ?? "Something went wrong");
+		return toUserFriendlyMessage((err as Error).message, "Something went wrong. Please try again.");
+	if (err instanceof Error)
+		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+	return "Something went wrong. Please try again.";
 }
 
 export type GRNLineItemForm = {
 	skuCode: string;
 	description: string;
-	qty: number;
+	/** Quantity in cartons */
+	carton: number;
+	/** Quantity lost */
+	loss: number;
 	uom: string;
 	unitPrice: number;
 };
@@ -186,17 +194,37 @@ function GRNLineRow({
 			<TableCell>
 				<Input
 					type="number"
-					min={1}
-					value={item.qty}
+					min={0}
+					value={item.carton}
 					onChange={(e) => {
 						const newItems = [...items];
+						const v = Number(e.target.value);
 						newItems[index] = {
 							...newItems[index],
-							qty: Number(e.target.value) || 1,
+							carton: Number.isFinite(v) && v >= 0 ? v : 0,
 						};
 						onItemsChange(newItems);
 					}}
 					className="w-20"
+					placeholder="0"
+				/>
+			</TableCell>
+			<TableCell>
+				<Input
+					type="number"
+					min={0}
+					value={item.loss}
+					onChange={(e) => {
+						const newItems = [...items];
+						const v = Number(e.target.value);
+						newItems[index] = {
+							...newItems[index],
+							loss: Number.isFinite(v) && v >= 0 ? v : 0,
+						};
+						onItemsChange(newItems);
+					}}
+					className="w-20"
+					placeholder="0"
 				/>
 			</TableCell>
 			<TableCell>
@@ -246,6 +274,7 @@ export type GrnCreateSubmitPayload = {
 	supplierDO: string;
 	receivedDate: string;
 	notes: string;
+	warehouseId: string;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -258,6 +287,8 @@ export type GrnFormDialogProps = {
 	grn?: GrnDetailForList | null;
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
+	/** Warehouses for warehouse dropdown (create & edit) */
+	warehouses: Array<{ warehouseId: string; warehouseCode?: string | null; warehouseName: string }>;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -277,6 +308,7 @@ export function GrnFormDialog({
 	grn = null,
 	skuOptions,
 	stockUnits,
+	warehouses,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -310,6 +342,7 @@ export function GrnFormDialog({
 			supplierDO: "",
 			receivedDate: "",
 			notes: "",
+			warehouseId: "",
 			items: [] as GRNLineItemForm[],
 		},
 		validators: {
@@ -319,7 +352,23 @@ export function GrnFormDialog({
 				if (!value.poReference?.trim()) fields.poReference = "PO Reference is required";
 				if (!value.supplierDO?.trim()) fields.supplierDO = "Supplier DO is required";
 				if (!value.receivedDate?.trim()) fields.receivedDate = "Received Date/Time is required";
-				return Object.keys(fields).length > 0 ? { fields } : undefined;
+				const items = value.items ?? [];
+				if (items.length === 0) {
+					fields.items = "At least one line item is required";
+				} else {
+					const invalidItem = items.find(
+						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
+					);
+					if (invalidItem) {
+						fields.items =
+							"Each line item must have total quantity (Carton + Loss) greater than zero.";
+					}
+				}
+				if (Object.keys(fields).length > 0) {
+					toast.error("Please enter all mandatory fields and ensure line item quantities are valid.");
+					return { fields };
+				}
+				return undefined;
 			},
 		},
 		onSubmit: async ({ value }) => {
@@ -330,11 +379,13 @@ export function GrnFormDialog({
 					supplierDO: value.supplierDO,
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
+					warehouseId: value.warehouseId ?? "",
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
 						skuCode: i.skuCode,
 						description: i.description,
-						qty: i.qty,
+						carton: i.carton,
+						loss: i.loss,
 						uom: i.uom,
 						unitPrice: i.unitPrice,
 					})),
@@ -354,6 +405,7 @@ export function GrnFormDialog({
 			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
+				const warehouseIdForItems = value.warehouseId?.trim() || undefined;
 				await updateGRN({
 					variables: {
 						id: grn.id,
@@ -374,8 +426,10 @@ export function GrnFormDialog({
 									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
 									skuCode: i.skuCode,
 									skuDescription: i.description ?? undefined,
-									qty: String(i.qty),
+									qty: String(i.carton),
+									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
+									warehouseId: warehouseIdForItems,
 								};
 							}),
 						},
@@ -400,7 +454,8 @@ export function GrnFormDialog({
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
-					qty: it.expectedQuantity ?? 0,
+					carton: it.expectedQuantity ?? 0,
+					loss: it.lossQuantity ?? 0,
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
 				};
@@ -411,6 +466,7 @@ export function GrnFormDialog({
 				supplierDO: (grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
+				warehouseId: grn.warehouseId ?? "",
 				items: initialItems,
 			});
 		} else if (mode === "create") {
@@ -582,6 +638,36 @@ export function GrnFormDialog({
 												);
 											}}
 										</form.Field>
+										<form.Field name="warehouseId">
+											{(field) => (
+												<Field>
+													<FieldLabel
+														htmlFor={field.name}
+														className="flex items-center gap-2"
+													>
+														<Warehouse className="h-4 w-4 text-muted-foreground" />
+														Warehouse
+													</FieldLabel>
+													<Select
+														value={field.state.value || "none"}
+														onValueChange={(v) => field.handleChange(v === "none" ? "" : v)}
+													>
+														<SelectTrigger id={field.name}>
+															<SelectValue placeholder="Select warehouse (optional)" />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="none">— None —</SelectItem>
+															{warehouses.map((w: { warehouseId: string; warehouseCode?: string | null; warehouseName: string }) => (
+																<SelectItem key={w.warehouseId} value={w.warehouseId}>
+																	{w.warehouseName}
+																	{w.warehouseCode ? ` (${w.warehouseCode})` : ""}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</Field>
+											)}
+										</form.Field>
 									</FieldGroup>
 								</CardContent>
 							</Card>
@@ -614,7 +700,8 @@ export function GrnFormDialog({
 																	description: "",
 																	uom: "",
 																	unitPrice: 0,
-																	qty: 1,
+																	carton: 1,
+																	loss: 0,
 																},
 															]);
 														}}
@@ -632,13 +719,15 @@ export function GrnFormDialog({
 										{(field) => {
 											const items = (field.state.value ?? []) as GRNLineItemForm[];
 											return (
+												<>
 												<div className="rounded-lg border">
 													<Table>
 														<TableHeader>
 															<TableRow>
 																<TableHead>SKU</TableHead>
 																<TableHead>Description</TableHead>
-																<TableHead>Qty</TableHead>
+																<TableHead>Carton</TableHead>
+																<TableHead>Loss</TableHead>
 																<TableHead>UOM</TableHead>
 																<TableHead className="text-right w-[80px]">
 																	Actions
@@ -649,7 +738,7 @@ export function GrnFormDialog({
 															{items.length === 0 ? (
 																<TableRow>
 																	<TableCell
-																		colSpan={5}
+																		colSpan={6}
 																		className="h-40 text-center"
 																	>
 																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -682,6 +771,12 @@ export function GrnFormDialog({
 														</TableBody>
 													</Table>
 												</div>
+												{field.state.meta.errors.length > 0 && (
+													<p className="text-sm text-destructive mt-2">
+														{field.state.meta.errors.map((e) => (typeof e === "string" ? e : (e as unknown as { message?: string }).message)).filter(Boolean).join(" ")}
+													</p>
+												)}
+											</>
 											);
 										}}
 									</form.Field>

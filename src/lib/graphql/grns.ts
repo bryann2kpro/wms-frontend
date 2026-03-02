@@ -34,10 +34,18 @@ export const GRNS_QUERY = gql`
 				receivedAt
 				approvedBy
 				approvedAt
+				notes
+				proofUrl
 				createdAt
 				updatedAt
-				createdBy
-				updatedBy
+				createdByUser {
+					id
+					displayName
+				}
+				updatedByUser {
+					id
+					displayName
+				}
 				items {
 					id
 					grnId
@@ -45,7 +53,11 @@ export const GRNS_QUERY = gql`
 					skuCode
 					skuDescription
 					qty
+					lossQty
 					remarks
+					warehouseId
+					warehouseName
+					warehouseAddress
 					createdAt
 					updatedAt
 					createdBy
@@ -69,15 +81,24 @@ export const CREATE_GRN_MUTATION = gql`
 			receivedAt
 			approvedBy
 			approvedAt
+			notes
+			proofUrl
 			createdAt
 			updatedAt
-			createdBy
-			updatedBy
+			createdByUser {
+				id
+				displayName
+			}
+			updatedByUser {
+				id
+				displayName
+			}
 			items {
 				id
 				grnId
 				skuId
 				qty
+				lossQty
 				remarks
 				createdAt
 				updatedAt
@@ -99,8 +120,13 @@ export const UPDATE_GRN_MUTATION = gql`
 			supplierDeliveryNo
 			status
 			receivedAt
+			notes
+			proofUrl
 			updatedAt
-			updatedBy
+			updatedByUser {
+				id
+				displayName
+			}
 		}
 	}
 `;
@@ -192,20 +218,26 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 		byStatus[status] = (byStatus[status] ?? 0) + 1;
 
 		const lineItems = (g.items ?? []).map((i: GrnItem) => {
-			const qtyNum = Number(i.qty) || 0;
+			const cartonNum = Number(i.qty) || 0;
+			const lossNum = Number(i.lossQty) || 0;
 			return {
 				id: i.id,
 				sku: i.skuId,
-				skuCode: i.skuCode,
-				skuDescription: i.skuDescription,
-				expectedQuantity: qtyNum,
-				receivedQuantity: qtyNum,
-				location: undefined as string | undefined,
+				skuCode: i.skuCode ?? "",
+				skuDescription: i.skuDescription ?? "",
+				expectedQuantity: cartonNum,
+				lossQuantity: lossNum,
+				receivedQuantity: cartonNum + lossNum,
+				location: i.warehouseName ?? undefined,
 			};
 		});
-		const totalItems = lineItems.reduce((s, it) => s + it.expectedQuantity, 0);
+		const totalItems = lineItems.reduce(
+			(s, it) => s + it.expectedQuantity + it.lossQuantity,
+			0,
+		);
 		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
 
+		const firstItem = (g.items ?? [])[0] as GrnItem | undefined;
 		return {
 			id: g.id,
 			grnNo: g.grnNo,
@@ -213,12 +245,14 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			supplierDeliveryId: g.supplierDeliveryId,
 			supplierDeliveryNo: g.supplierDeliveryNo ?? null,
 			poNo: g.poNo,
+			warehouseId: firstItem?.warehouseId ?? null,
 			status,
 			receivedAt: g.receivedAt,
 			createdAt: g.createdAt,
-			createdBy: g.createdBy,
-			updatedBy: g.updatedBy,
-			notes: undefined,
+			createdBy: g.createdByUser?.displayName ?? "",
+			updatedBy: g.updatedByUser?.displayName ?? null,
+			notes: g.notes ?? undefined,
+			proofUrl: g.proofUrl ?? null,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,
