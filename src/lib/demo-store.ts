@@ -1,13 +1,10 @@
-import { Derived, Store } from "@tanstack/store";
+import { createStore, createAtom } from "@tanstack/store";
 
-export const store = new Store({
+export const store = createStore({
 	firstName: "Jane",
 	lastName: "Smith",
 });
 
-export const fullName = new Derived({
-	fn: () => `${store.state.firstName} ${store.state.lastName}`,
-	deps: [store],
-});
-
-fullName.mount();
+export const fullName = createAtom(() =>
+	`${store.get().firstName} ${store.get().lastName}`
+);

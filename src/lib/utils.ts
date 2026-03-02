@@ -15,9 +15,35 @@ export function formatDate(dateString: string): string {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     }).format(date);
   } catch {
     return dateString;
+  }
+}
+
+/** Format date and time in 12-hour format (e.g. 2/26/2026, 3:19:21 PM). */
+export function formatDateTime12h(value: string | number | Date | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  try {
+    const date =
+      typeof value === "number"
+        ? new Date(value)
+        : value instanceof Date
+          ? value
+          : new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    }).format(date);
+  } catch {
+    return null;
   }
 }
 
@@ -65,18 +91,28 @@ export function getErrorMessage(err: Error | null): string {
   if (!err) return "An unexpected error occurred";
 
   // Check for Axios error response
-  const axiosError = err as { response?: { data?: { message?: string }; status?: number } };
-  if (axiosError.response?.data?.message) {
-    return axiosError.response.data.message;
+  const axiosError = err as {
+    response?: { data?: { message?: string; code?: string }; status?: number };
+  };
+  const status = axiosError.response?.status;
+  const data = axiosError.response?.data;
+  const code = data?.code;
+  const message = data?.message;
+
+  if (status === 500 || code === "INTERNAL_SERVER_ERROR") {
+    return "Internal Server Error";
   }
-  if (axiosError.response?.status === 401) {
+  if (typeof message === "string" && message.includes("INTERNAL_SERVER_ERROR")) {
+    return "Internal Server Error";
+  }
+  if (data?.message) {
+    return toUserFriendlyMessage(data.message, "An unexpected error occurred");
+  }
+  if (status === 401) {
     return "Session expired. Please log in again.";
   }
-  if (axiosError.response?.status === 403) {
+  if (status === 403) {
     return "You don't have permission to perform this action.";
-  }
-  if (axiosError.response?.status === 500) {
-    return "Server error. Please try again later.";
   }
 
   // Network error
@@ -84,7 +120,35 @@ export function getErrorMessage(err: Error | null): string {
     return "Unable to connect to server. Please check your connection.";
   }
 
-  return err.message || "An unexpected error occurred";
+  if (err.message === "INTERNAL_SERVER_ERROR") {
+    return "Internal Server Error";
+  }
+
+  return toUserFriendlyMessage(err.message || "An unexpected error occurred", "An unexpected error occurred");
+}
+
+/**
+ * Replace raw technical/log messages with a user-friendly fallback.
+ * Backend sometimes returns audit params, JSON dumps, or stack traces as the "message".
+ */
+export function toUserFriendlyMessage(raw: string, fallback: string): string {
+  if (!raw || typeof raw !== "string") return fallback;
+  const s = raw.trim();
+  if (s === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+  if (s.length > 400) return fallback;
+  const technicalMarkers = [
+    "audit_log_id",
+    "params:",
+    "user_agent",
+    "old_data",
+    "new_data",
+    "graphQLErrors",
+    '"query":[',
+    "pagination",
+    "Mozilla/5.0",
+  ];
+  const looksTechnical = technicalMarkers.some((m) => s.includes(m));
+  return looksTechnical ? fallback : s;
 }
 
 // Role badge colors
@@ -135,4 +199,73 @@ export const BACKEND_DAY_OF_WEEK = {
 export function getBackendDayOfWeek(date: Date): number {
   const js = date.getDay(); // JS: 0 = Sun, 1 = Mon, ..., 6 = Sat
   return js === 0 ? BACKEND_DAY_OF_WEEK.SUNDAY : js;
+}
+
+/** Start of the current week (Monday) at midnight for comparison. */
+export function getStartOfWeek(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Backend day-of-week: Monday = 1, ..., Sunday = 7. Delivery days are Tuesday (2) and Thursday (4). */
+export function isDeliveryDay(date: Date): boolean {
+  const dayOfWeek = getBackendDayOfWeek(date);
+  return (
+    dayOfWeek === BACKEND_DAY_OF_WEEK.TUESDAY ||
+    dayOfWeek === BACKEND_DAY_OF_WEEK.THURSDAY
+  );
+}
+
+/** Whether the date falls in the current week (Monday–Sunday) and is a delivery day. */
+export function isInCurrentWeek(date: Date): boolean {
+  const now = new Date();
+  const startOfCurrentWeek = getStartOfWeek(now);
+  const startOfDateWeek = getStartOfWeek(date);
+  return (
+    startOfCurrentWeek.getTime() === startOfDateWeek.getTime() &&
+    isDeliveryDay(date)
+  );
+}
+
+/** Whether the date is in a past week and is a delivery day. */
+export function isInPastWeeks(date: Date): boolean {
+  const now = new Date();
+  const startOfCurrentWeek = getStartOfWeek(now);
+  const startOfDateWeek = getStartOfWeek(date);
+  return (
+    startOfDateWeek.getTime() < startOfCurrentWeek.getTime() &&
+    isDeliveryDay(date)
+  );
+}
+
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/** Format a delivery date as "DayName (dd/mm/yyyy)" for table headers. */
+export function formatDeliveryDateHeader(date: Date): string {
+  const dayName = DAY_NAMES[date.getDay()];
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dayName} (${dd}/${mm}/${yyyy})`;
+}
+
+/** Date key in local date (YYYY-MM-DD). Use local, not UTC, so day-of-week stays correct. */
+export function getDateKey(date: Date): string {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }

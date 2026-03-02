@@ -54,6 +54,7 @@ import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
+import { WAREHOUSES_QUERY, type WarehousesQueryData } from "@/lib/graphql/warehouses";
 import {
 	GRNS_QUERY,
 	CREATE_GRN_MUTATION,
@@ -65,15 +66,19 @@ import {
 import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
 import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
 import { toast } from "sonner";
+import { toUserFriendlyMessage } from "@/lib/utils";
 
 function getGrnErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const gql = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0]
-			?.message;
-		if (gql) return gql;
+		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
+			.graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const gql = first?.message;
+		if (gql) return toUserFriendlyMessage(gql, "Failed to update GRN. Please try again.");
 	}
-	if (err instanceof Error) return err.message;
-	return String(err ?? "Something went wrong");
+	if (err instanceof Error)
+		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+	return "Something went wrong. Please try again.";
 }
 
 export const Route = createFileRoute("/admin/grn")({
@@ -106,6 +111,10 @@ function GRNRouteComponent() {
 		{ variables: {} }
 	);
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
+	const { data: warehousesData } = useApolloQuery<WarehousesQueryData>(WAREHOUSES_QUERY, {
+		variables: { pageSize: 500, pageNumber: 1 },
+	});
+	const warehouses = warehousesData?.warehouses?.query ?? [];
 
 	const {
 		data: grnsQueryData,
@@ -162,11 +171,20 @@ function GRNRouteComponent() {
 			supplierDO: string;
 			receivedDate: Date;
 			notes?: string;
+			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
-			items?: Array<{ sku: string; description?: string; qty: number; uom?: string; unitPrice?: number }>;
+			items?: Array<{
+				sku: string;
+				description?: string;
+				carton: number;
+				loss: number;
+				uom?: string;
+				unitPrice?: number;
+			}>;
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
+			const warehouseIdForItems = payload.warehouseId?.trim() || undefined;
 			await createGRNApollo({
 				variables: {
 					input: {
@@ -183,8 +201,10 @@ function GRNRouteComponent() {
 								skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 								skuCode: i.sku,
 								skuDescription: i.description ?? undefined,
-								qty: String(i.qty),
+								qty: String(i.carton),
+								lossQty: String(i.loss),
 								skuUom: uomId ?? undefined,
+								warehouseId: warehouseIdForItems,
 							};
 						}),
 					},
@@ -196,18 +216,32 @@ function GRNRouteComponent() {
 
 	const statusMutation = {
 		mutateAsync: async ({ id, status }: { id: string; status: GRNStatus }) => {
+			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+				status: UI_STATUS_TO_GQL[status],
+			};
+			if (status === "Approved" && user?.id) {
+				input.approvedBy = user.id;
+				input.approvedAt = new Date().toISOString();
+			}
 			await updateGRNApollo({
-				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
+				variables: { id, input },
 			});
 			return undefined;
 		},
 		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
+			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+				status: UI_STATUS_TO_GQL[status],
+			};
+			if (status === "Approved" && user?.id) {
+				input.approvedBy = user.id;
+				input.approvedAt = new Date().toISOString();
+			}
 			updateGRNApollo({
-				variables: { id, input: { status: UI_STATUS_TO_GQL[status] } },
+				variables: { id, input },
 			});
 		},
 		isPending: statusUpdating,
-		status: 		statusUpdating ? ("pending" as const) : ("idle" as const),
+		status: statusUpdating ? ("pending" as const) : ("idle" as const),
 	};
 
 	const grns = data?.items ?? [];
@@ -279,6 +313,7 @@ function GRNRouteComponent() {
 								Create GRN
 							</Button>
 						}
+						warehouses={warehouses}
 						onCreateSubmit={async (payload) => {
 							await createMutation.mutateAsync({
 								grnNumber: payload.grnNumber,
@@ -286,11 +321,13 @@ function GRNRouteComponent() {
 								supplierDO: payload.supplierDO,
 								receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
 								notes: payload.notes || undefined,
+								warehouseId: payload.warehouseId || undefined,
 								submitIntent: payload.submitIntent,
 								items: payload.items.map((i) => ({
 									sku: i.skuCode,
 									description: i.description,
-									qty: i.qty,
+									carton: i.carton,
+									loss: i.loss,
 									uom: i.uom,
 									unitPrice: i.unitPrice,
 								})),
@@ -409,37 +446,37 @@ function GRNRouteComponent() {
 										const showSend =
 											hasPermission("grn:send_to_es") && grn.status === "Approved";
 										return (
-										<TableRow key={grn.id}>
-											<TableCell className="font-medium">
-												{grn.grnNo || "-"}
-											</TableCell>
-											<TableCell>{grn.poNo ?? "-"}</TableCell>
-											<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
-											<TableCell>
-												{formatGrnDate(grn.receivedAt) ?? "-"}
-											</TableCell>
-											<TableCell>
-												{grn.status ? (
-													<Badge
-														variant="outline"
-														className={getStatusColor(grn.status as GRNStatus)}
-													>
-														{formatStatus(grn.status)}
-													</Badge>
-												) : (
-													<span className="text-muted-foreground">-</span>
-												)}
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="flex justify-end gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() => handleViewGRN(grn)}
-													>
-														<Eye className="h-4 w-4" />
-													</Button>
-													{showEdit && (
+											<TableRow key={grn.id}>
+												<TableCell className="font-medium">
+													{grn.grnNo || "-"}
+												</TableCell>
+												<TableCell>{grn.poNo ?? "-"}</TableCell>
+												<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
+												<TableCell>
+													{formatGrnDate(grn.receivedAt) ?? "-"}
+												</TableCell>
+												<TableCell>
+													{grn.status ? (
+														<Badge
+															variant="outline"
+															className={getStatusColor(grn.status as GRNStatus)}
+														>
+															{formatStatus(grn.status)}
+														</Badge>
+													) : (
+														<span className="text-muted-foreground">-</span>
+													)}
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex justify-end gap-1">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() => handleViewGRN(grn)}
+														>
+															<Eye className="h-4 w-4" />
+														</Button>
+														{showEdit && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -451,7 +488,7 @@ function GRNRouteComponent() {
 																<Edit className="h-4 w-4" />
 															</Button>
 														)}
-													{showApprove && (
+														{showApprove && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -463,7 +500,7 @@ function GRNRouteComponent() {
 																<CheckCircle className="h-4 w-4 text-green-600" />
 															</Button>
 														)}
-													{showSend && (
+														{showSend && (
 															<Button
 																variant="ghost"
 																size="icon"
@@ -475,9 +512,9 @@ function GRNRouteComponent() {
 																<Send className="h-4 w-4 text-purple-600" />
 															</Button>
 														)}
-												</div>
-											</TableCell>
-										</TableRow>
+													</div>
+												</TableCell>
+											</TableRow>
 										);
 									})
 								)}
@@ -611,8 +648,9 @@ function GRNRouteComponent() {
 														<TableRow>
 															<TableHead>SKU</TableHead>
 															<TableHead>Description</TableHead>
-															<TableHead>Expected</TableHead>
-															<TableHead>Received</TableHead>
+															<TableHead>Carton</TableHead>
+															<TableHead>Loss</TableHead>
+															<TableHead>Total</TableHead>
 															<TableHead>Location</TableHead>
 														</TableRow>
 													</TableHeader>
@@ -624,6 +662,7 @@ function GRNRouteComponent() {
 																</TableCell>
 																<TableCell>{item.skuDescription}</TableCell>
 																<TableCell>{item.expectedQuantity}</TableCell>
+																<TableCell>{item.lossQuantity}</TableCell>
 																<TableCell>{item.receivedQuantity}</TableCell>
 																<TableCell>
 																	{item.location || "Not assigned"}
@@ -715,6 +754,7 @@ function GRNRouteComponent() {
 				grn={selectedGRN}
 				skuOptions={skuOptions}
 				stockUnits={stockUnits}
+				warehouses={warehouses}
 				onSuccess={() => {
 					refetchGRNs();
 					setIsEditOpen(false);

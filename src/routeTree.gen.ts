@@ -18,18 +18,19 @@ import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
-import { Route as AdminTransfersRouteImport } from './routes/admin/transfers'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
 import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
 import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
+import { Route as AdminEsDoRouteImport } from './routes/admin/es-do'
 import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-queue'
 import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
@@ -92,11 +93,6 @@ const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
   path: '/user-management',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminTransfersRoute = AdminTransfersRouteImport.update({
-  id: '/transfers',
-  path: '/transfers',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminSettlementRoute = AdminSettlementRouteImport.update({
   id: '/settlement',
   path: '/settlement',
@@ -120,6 +116,11 @@ const AdminRbacRoute = AdminRbacRouteImport.update({
 const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   id: '/proof-of-delivery',
   path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminOutboundRoute = AdminOutboundRouteImport.update({
+  id: '/outbound',
+  path: '/outbound',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -150,6 +151,11 @@ const AdminExceptionsRoute = AdminExceptionsRouteImport.update({
 const AdminExceptionDetailRoute = AdminExceptionDetailRouteImport.update({
   id: '/exception-detail',
   path: '/exception-detail',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminEsDoRoute = AdminEsDoRouteImport.update({
+  id: '/es-do',
+  path: '/es-do',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDoWorkQueueRoute = AdminDoWorkQueueRouteImport.update({
@@ -243,18 +249,19 @@ export interface FileRoutesByFullPath {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -270,7 +277,7 @@ export interface FileRoutesByFullPath {
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -282,18 +289,19 @@ export interface FileRoutesByTo {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -322,18 +330,19 @@ export interface FileRoutesById {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
-  '/admin/transfers': typeof AdminTransfersRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -363,18 +372,19 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -390,7 +400,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr/'
+    | '/demo/start/ssr'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -402,18 +412,19 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -441,18 +452,19 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
-    | '/admin/transfers'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -557,13 +569,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUserManagementRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/transfers': {
-      id: '/admin/transfers'
-      path: '/transfers'
-      fullPath: '/admin/transfers'
-      preLoaderRoute: typeof AdminTransfersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/settlement': {
       id: '/admin/settlement'
       path: '/settlement'
@@ -597,6 +602,13 @@ declare module '@tanstack/react-router' {
       path: '/proof-of-delivery'
       fullPath: '/admin/proof-of-delivery'
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/outbound': {
+      id: '/admin/outbound'
+      path: '/outbound'
+      fullPath: '/admin/outbound'
+      preLoaderRoute: typeof AdminOutboundRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -639,6 +651,13 @@ declare module '@tanstack/react-router' {
       path: '/exception-detail'
       fullPath: '/admin/exception-detail'
       preLoaderRoute: typeof AdminExceptionDetailRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/es-do': {
+      id: '/admin/es-do'
+      path: '/es-do'
+      fullPath: '/admin/es-do'
+      preLoaderRoute: typeof AdminEsDoRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/do-work-queue': {
@@ -728,7 +747,7 @@ declare module '@tanstack/react-router' {
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
-      fullPath: '/demo/start/ssr/'
+      fullPath: '/demo/start/ssr'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -774,18 +793,19 @@ interface AdminRouteRouteChildren {
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDoDetailRoute: typeof AdminDoDetailRoute
   AdminDoWorkQueueRoute: typeof AdminDoWorkQueueRoute
+  AdminEsDoRoute: typeof AdminEsDoRoute
   AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
   AdminExceptionsRoute: typeof AdminExceptionsRoute
   AdminGrnRoute: typeof AdminGrnRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminOutboundRoute: typeof AdminOutboundRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
-  AdminTransfersRoute: typeof AdminTransfersRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
 }
 
@@ -795,18 +815,19 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDoDetailRoute: AdminDoDetailRoute,
   AdminDoWorkQueueRoute: AdminDoWorkQueueRoute,
+  AdminEsDoRoute: AdminEsDoRoute,
   AdminExceptionDetailRoute: AdminExceptionDetailRoute,
   AdminExceptionsRoute: AdminExceptionsRoute,
   AdminGrnRoute: AdminGrnRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminOutboundRoute: AdminOutboundRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
-  AdminTransfersRoute: AdminTransfersRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
 }
 

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
 	Card,
@@ -42,6 +44,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
 	SUPPLIERS_QUERY,
@@ -132,7 +140,19 @@ import type {
 	StockUnit,
 	Rack,
 	Skus,
+	Warehouse,
 } from "@/lib/graphql/types";
+import {
+	WAREHOUSES_QUERY,
+	CREATE_WAREHOUSE_MUTATION,
+	UPDATE_WAREHOUSE_MUTATION,
+	DELETE_WAREHOUSE_MUTATION,
+	type WarehousesQueryData,
+	type WarehousesQueryVariables,
+	type CreateWarehouseMutationData,
+	type UpdateWarehouseMutationData,
+	type DeleteWarehouseMutationData,
+} from "@/lib/graphql/warehouses";
 import {
 	Plus,
 	Edit,
@@ -144,9 +164,11 @@ import {
 	Store,
 	Package,
 	LayoutGrid,
+	Building,
 	X,
 	Eye,
 	Calendar as CalendarIcon,
+	Warehouse as WarehouseIcon,
 } from "lucide-react";
 import { formatDateOnly, statusColors } from "@/lib/utils";
 import { format } from "date-fns";
@@ -165,7 +187,14 @@ const PAGE_SIZE = 10;
 
 export function MasterDataCard() {
 	const [subTab, setSubTab] = useState<
-		"supplier" | "region" | "delivery-schedule" | "outlet" | "stock-unit" | "rack" | "skus"
+		| "supplier"
+		| "region"
+		| "delivery-schedule"
+		| "outlet"
+		| "stock-unit"
+		| "rack"
+		| "skus"
+		| "warehouse"
 	>("supplier");
 
 	return (
@@ -179,6 +208,15 @@ export function MasterDataCard() {
 				>
 					<Truck className="mr-2 h-4 w-4" />
 					Suppliers
+				</Button>
+				<Button
+					variant={subTab === "warehouse" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("warehouse")}
+					className="rounded-b-none"
+				>
+					<Building className="mr-2 h-4 w-4" />
+					Warehouses
 				</Button>
 				<Button
 					variant={subTab === "region" ? "default" : "ghost"}
@@ -237,6 +275,7 @@ export function MasterDataCard() {
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}
+			{subTab === "warehouse" && <WarehouseSection />}
 			{subTab === "delivery-schedule" && <DeliveryScheduleSection />}
 			{subTab === "outlet" && <OutletSection />}
 			{subTab === "stock-unit" && <StockUnitSection />}
@@ -470,6 +509,260 @@ function SupplierSection() {
 					itemName={deleting.supplierName}
 					onConfirm={() =>
 						deleteSupplier({ variables: { id: deleting.supplierId } })
+					}
+					loading={deleteLoading}
+				/>
+			)}
+		</Card>
+	);
+}
+
+const warehouseFormSchema = z.object({
+	warehouseName: z.string().min(1, "Warehouse name is required"),
+	warehouseCode: z.string(),
+	warehouseAddress: z.string(),
+});
+
+function WarehouseSection() {
+	const { user } = useCurrentUser();
+	const [page, setPage] = useState(1);
+	const [search, setSearch] = useState("");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [editing, setEditing] = useState<Warehouse | null>(null);
+	const [deleting, setDeleting] = useState<Warehouse | null>(null);
+
+	const { data, loading, refetch } = useQuery<
+		WarehousesQueryData,
+		WarehousesQueryVariables
+	>(WAREHOUSES_QUERY, {
+		variables: {
+			pageSize: PAGE_SIZE,
+			pageNumber: page,
+			...(search.trim()
+				? { filter: { warehouseName: search.trim() } }
+				: {}),
+		},
+	});
+
+	const [createWarehouse, { loading: createLoading }] =
+		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setIsCreateOpen(false);
+			},
+		});
+
+	const [updateWarehouse, { loading: updateLoading }] =
+		useMutation<UpdateWarehouseMutationData>(UPDATE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setEditing(null);
+			},
+		});
+
+	const [deleteWarehouse, { loading: deleteLoading }] =
+		useMutation<DeleteWarehouseMutationData>(DELETE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
+			},
+		});
+
+	const list = data?.warehouses?.query ?? [];
+	const pagination = data?.warehouses?.pagination;
+	const totalPages = pagination?.totalPages ?? 1;
+	const currentPage = pagination?.currentPage ?? 1;
+	const canEdit = !!user?.id;
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle>Warehouses</CardTitle>
+						<CardDescription>
+							Manage warehouse locations and addresses
+						</CardDescription>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Search by name..."
+								value={search}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
+								className="pl-9 w-48"
+							/>
+						</div>
+						<Button
+							onClick={() => setIsCreateOpen(true)}
+							disabled={!canEdit}
+							title={!canEdit ? "Sign in to create" : undefined}
+						>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Warehouse
+						</Button>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="relative">
+				<GlobalLoadingShadow />
+				<div className="overflow-x-auto rounded-lg border">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Code</TableHead>
+								<TableHead>Name</TableHead>
+								<TableHead>Address</TableHead>
+								<TableHead>Created By</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{loading ? (
+								<TableRow>
+									<TableCell
+										colSpan={5}
+										className="h-24 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
+								</TableRow>
+							) : list.length === 0 ? (
+								<TableRow>
+									<TableCell
+										colSpan={5}
+										className="h-24 text-center text-muted-foreground"
+									>
+										No warehouses found.
+									</TableCell>
+								</TableRow>
+							) : (
+								list.map((row) => (
+									<TableRow key={row.warehouseId}>
+										<TableCell className="font-mono text-sm">
+											{row.warehouseCode || "-"}
+										</TableCell>
+										<TableCell className="font-medium">
+											{row.warehouseName}
+										</TableCell>
+										<TableCell className="max-w-xs truncate">
+											{row.warehouseAddress || "-"}
+										</TableCell>
+										<TableCell>
+											{row.createdByUser
+												? row.createdByUser.displayName
+												: row.createdBy}
+										</TableCell>
+										<TableCell className="text-right">
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+												aria-label={`Edit warehouse ${row.warehouseName}`}
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive"
+												onClick={() => setDeleting(row)}
+												aria-label={`Delete warehouse ${row.warehouseName}`}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</TableCell>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				{pagination && totalPages > 1 && (
+					<div className="mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground">
+							Page {currentPage} of {totalPages} ({pagination.totalCount} total)
+						</p>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasNextPage}
+								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+							>
+								Next
+							</Button>
+						</div>
+					</div>
+				)}
+			</CardContent>
+
+			<WarehouseFormDialog
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+				title="Add Warehouse"
+				description="Create a new warehouse."
+				loading={createLoading}
+				onSubmit={(values) =>
+					createWarehouse({
+						variables: {
+							input: {
+								warehouseName: values.warehouseName,
+								warehouseCode: values.warehouseCode || undefined,
+								warehouseAddress: values.warehouseAddress || undefined,
+							},
+						},
+					})
+				}
+			/>
+
+			{editing && (
+				<WarehouseFormDialog
+					key={editing.warehouseId}
+					open={!!editing}
+					onOpenChange={(open) => !open && setEditing(null)}
+					title="Edit Warehouse"
+					description="Update warehouse details."
+					loading={updateLoading}
+					initial={{
+						warehouseName: editing.warehouseName,
+						warehouseCode: editing.warehouseCode ?? "",
+						warehouseAddress: editing.warehouseAddress ?? "",
+					}}
+					onSubmit={(values) =>
+						updateWarehouse({
+							variables: {
+								id: editing.warehouseId,
+								input: {
+									warehouseName: values.warehouseName,
+									warehouseCode: values.warehouseCode || undefined,
+									warehouseAddress: values.warehouseAddress || undefined,
+								},
+							},
+						})
+					}
+				/>
+			)}
+
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.warehouseName}
+					onConfirm={() =>
+						deleteWarehouse({ variables: { id: deleting.warehouseId } })
 					}
 					loading={deleteLoading}
 				/>
@@ -1630,6 +1923,7 @@ function SkusSection() {
 							<TableHead>Description</TableHead>
 							<TableHead>Price (RM)</TableHead>
 							<TableHead>Quantity</TableHead>
+							<TableHead>Loss</TableHead>
 							<TableHead>Expiry Date</TableHead>
 							<TableHead>UOM</TableHead>
 							<TableHead>Status</TableHead>
@@ -1641,7 +1935,7 @@ function SkusSection() {
 							if (loading) {
 								return (
 									<TableRow>
-										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
 											Loading...
 										</TableCell>
 									</TableRow>
@@ -1650,7 +1944,7 @@ function SkusSection() {
 							if (list.length === 0) {
 								return (
 									<TableRow>
-										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
 											No data found.
 										</TableCell>
 									</TableRow>
@@ -1689,6 +1983,7 @@ function SkusSection() {
 										<TableCell>{row.skuDescription}</TableCell>
 										<TableCell>{price}</TableCell>
 										<TableCell>{Number(row.skuQuantity).toFixed(2)}</TableCell>
+										<TableCell>{Number(row.lossQuantity ?? 0).toFixed(2)}</TableCell>
 										<TableCell>{expiryDate}</TableCell>
 										<TableCell>{uomName}</TableCell>
 										<TableCell>
@@ -1789,6 +2084,7 @@ function SkusSection() {
 						skuDescription: editing.skuDescription,
 						skuPrice: editing.skuPrice,
 						skuQuantity: editing.skuQuantity,
+						lossQuantity: editing.lossQuantity ?? 0,
 						skuExpiryDate: editing.skuExpiryDate, // Pass full date string
 						skuUom: editing.skuUom,
 						skuSuppliers: editing.skuSuppliers,
@@ -1807,6 +2103,7 @@ function SkusSection() {
 									skuDescription: values.skuDescription,
 									skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
 									skuQuantity: Number(values.skuQuantity),
+									lossQuantity: Number(values.lossQuantity ?? 0),
 									skuExpiryDate: expiryDate,
 									skuUom: values.skuUom,
 									skuSuppliers: values.skuSuppliers?.map((s) => ({
@@ -1932,6 +2229,7 @@ function SkusFormDialog({
 		skuDescription: string;
 		skuPrice: number | null;
 		skuQuantity: number;
+		lossQuantity?: number;
 		skuExpiryDate: string;
 		skuUom: string;
 		skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
@@ -1942,6 +2240,7 @@ function SkusFormDialog({
 		skuDescription: string;
 		skuPrice: number | null;
 		skuQuantity: number;
+		lossQuantity?: number;
 		skuExpiryDate: string;
 		skuUom: string;
 		skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
@@ -1955,6 +2254,7 @@ function SkusFormDialog({
 	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
 	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
 	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "0");
+	const [lossQuantity, setLossQuantity] = useState(initial?.lossQuantity?.toString() ?? "0");
 	const parseDate = (dateValue: string | number | undefined): Date | undefined => {
 		if (!dateValue) return undefined;
 		
@@ -2024,6 +2324,7 @@ function SkusFormDialog({
 		skuCode?: string;
 		skuDescription?: string;
 		skuQuantity?: string;
+		lossQuantity?: string;
 		skuExpiryDate?: string;
 		skuUom?: string;
 	}>({});
@@ -2034,6 +2335,7 @@ function SkusFormDialog({
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
+			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			const parsedDate = parseDate(initial?.skuExpiryDate);
 			setSkuExpiryDate(parsedDate);
 			setSkuUom(initial?.skuUom ?? "");
@@ -2051,6 +2353,7 @@ function SkusFormDialog({
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
+			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
 			setSkuSuppliers(initial?.skuSuppliers ?? []);
@@ -2113,6 +2416,7 @@ function SkusFormDialog({
 			skuCode?: string;
 			skuDescription?: string;
 			skuQuantity?: string;
+			lossQuantity?: string;
 			skuExpiryDate?: string;
 			skuUom?: string;
 		} = {};
@@ -2127,6 +2431,10 @@ function SkusFormDialog({
 		const q = String(skuQuantity ?? "").trim();
 		if (q !== "" && (isNaN(Number(q)) || Number(q) < 0)) {
 			newErrors.skuQuantity = "Quantity must be 0 or more";
+		}
+		const lossQ = String(lossQuantity ?? "").trim();
+		if (lossQ !== "" && (isNaN(Number(lossQ)) || Number(lossQ) < 0)) {
+			newErrors.lossQuantity = "Loss quantity must be 0 or more";
 		}
 		// Expiry date is optional (allow empty)
 		if (!skuUom) {
@@ -2166,6 +2474,7 @@ function SkusFormDialog({
 			skuDescription: skuDescription.trim(),
 			skuPrice: priceValue,
 			skuQuantity: Math.max(0, Number(skuQuantity) || 0),
+			lossQuantity: Math.max(0, Number(lossQuantity) || 0),
 			skuExpiryDate: expiryDateString,
 			skuUom,
 			skuSuppliers,
@@ -2194,6 +2503,7 @@ function SkusFormDialog({
 											{errors.skuCode && <li>Code is required</li>}
 											{errors.skuDescription && <li>Description is required</li>}
 											{errors.skuQuantity && <li>{errors.skuQuantity}</li>}
+											{errors.lossQuantity && <li>{errors.lossQuantity}</li>}
 											{errors.skuExpiryDate && <li>Expiry date is required</li>}
 											{errors.skuUom && <li>Unit of measure is required</li>}
 										</ul>
@@ -2271,6 +2581,29 @@ function SkusFormDialog({
 											<p className="text-sm text-destructive">{errors.skuQuantity}</p>
 										)}
 									</div>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="sku-loss-quantity">Loss quantity</Label>
+									<Input
+										id="sku-loss-quantity"
+										type="number"
+										min="0"
+										value={lossQuantity}
+										onChange={(e) => {
+											const value = e.target.value;
+											if (value === "" || (!isNaN(Number(value)) && Number(value) >= 0)) {
+												setLossQuantity(value);
+												if (errors.lossQuantity) {
+													setErrors((prev) => ({ ...prev, lossQuantity: undefined }));
+												}
+											}
+										}}
+										placeholder="0"
+										className={errors.lossQuantity ? "border-destructive" : ""}
+									/>
+									{errors.lossQuantity && (
+										<p className="text-sm text-destructive">{errors.lossQuantity}</p>
+									)}
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="sku-expiry-date">Expiry Date</Label>
@@ -3246,6 +3579,179 @@ function SupplierFormDialog({
 						{loading ? "Saving..." : "Save"}
 					</Button>
 				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function WarehouseFormDialog({
+	open,
+	onOpenChange,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	initial?: {
+		warehouseName: string;
+		warehouseCode: string;
+		warehouseAddress: string;
+	};
+	onSubmit: (v: {
+		warehouseName: string;
+		warehouseCode: string;
+		warehouseAddress: string;
+	}) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const form = useForm({
+		defaultValues: {
+			warehouseName: initial?.warehouseName ?? "",
+			warehouseCode: initial?.warehouseCode ?? "",
+			warehouseAddress: initial?.warehouseAddress ?? "",
+		},
+		validators: {
+			// Cast to align zod schema with tanstack form's StandardSchema typing
+			onBlur: warehouseFormSchema as any,
+			onSubmit: warehouseFormSchema as any,
+		},
+		onSubmit: async ({ value }) => {
+			onSubmit({
+				warehouseName: value.warehouseName.trim(),
+				warehouseCode: value.warehouseCode.trim(),
+				warehouseAddress: value.warehouseAddress.trim(),
+			});
+		},
+	});
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) {
+			form.reset();
+		}
+		onOpenChange(next);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						form.handleSubmit();
+					}}
+					className="space-y-4"
+				>
+					<FieldGroup>
+						<form.Field
+							name="warehouseName"
+							children={(field) => {
+								const isInvalid =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>Warehouse Name</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											placeholder="Main Warehouse"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid && (
+											<FieldError errors={field.state.meta.errors} />
+										)}
+									</Field>
+								);
+							}}
+						/>
+						<form.Field
+							name="warehouseCode"
+							children={(field) => {
+								const isInvalid =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>
+											Warehouse Code (optional)
+										</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											placeholder="WH-001"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid && (
+											<FieldError errors={field.state.meta.errors} />
+										)}
+									</Field>
+								);
+							}}
+						/>
+						<form.Field
+							name="warehouseAddress"
+							children={(field) => {
+								const isInvalid =
+									field.state.meta.isTouched && !field.state.meta.isValid;
+								return (
+									<Field data-invalid={isInvalid}>
+										<FieldLabel htmlFor={field.name}>
+											Warehouse Address (optional)
+										</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											placeholder="123 Warehouse St, Industrial Park"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											aria-invalid={isInvalid}
+										/>
+										{isInvalid && (
+											<FieldError errors={field.state.meta.errors} />
+										)}
+									</Field>
+								);
+							}}
+						/>
+					</FieldGroup>
+
+					<DialogFooter className="gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => handleOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<form.Subscribe
+							selector={(state) => [state.isSubmitting, state.canSubmit]}
+						>
+							{([isSubmitting, canSubmit]) => (
+								<Button
+									type="submit"
+									disabled={loading || isSubmitting || !canSubmit}
+								>
+									{loading || isSubmitting ? "Saving..." : "Save"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);
