@@ -168,9 +168,11 @@ import {
 	X,
 	Eye,
 	Calendar as CalendarIcon,
+	Warehouse 
 } from "lucide-react";
 import { formatDateOnly, statusColors } from "@/lib/utils";
 import { format } from "date-fns";
+import { WarehouseSection } from "./components/warehouse";
 
 const DAYS_OF_WEEK = [
 	{ value: 0, label: "Sunday" },
@@ -271,6 +273,15 @@ export function MasterDataCard() {
 					<Package className="mr-2 h-4 w-4" />
 					SKUS
 				</Button>
+				<Button
+					variant={subTab === "warehouse" ? "default" : "ghost"}
+					size="sm"
+					onClick={() => setSubTab("warehouse")}
+					className="rounded-b-none"
+				>
+					<Warehouse className="mr-2 h-4 w-4" />
+					Warehouses
+				</Button>
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}
@@ -280,6 +291,7 @@ export function MasterDataCard() {
 			{subTab === "stock-unit" && <StockUnitSection />}
 			{subTab === "rack" && <RackSection />}
 			{subTab === "skus" && <SkusSection />}
+			{subTab === "warehouse" && <WarehouseSection />}
 		</div>
 	);
 }
@@ -1922,6 +1934,7 @@ function SkusSection() {
 							<TableHead>Description</TableHead>
 							<TableHead>Price (RM)</TableHead>
 							<TableHead>Quantity</TableHead>
+							<TableHead>Loss</TableHead>
 							<TableHead>Expiry Date</TableHead>
 							<TableHead>UOM</TableHead>
 							<TableHead>Status</TableHead>
@@ -1933,7 +1946,7 @@ function SkusSection() {
 							if (loading) {
 								return (
 									<TableRow>
-										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
 											Loading...
 										</TableCell>
 									</TableRow>
@@ -1942,7 +1955,7 @@ function SkusSection() {
 							if (list.length === 0) {
 								return (
 									<TableRow>
-										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
 											No data found.
 										</TableCell>
 									</TableRow>
@@ -1981,6 +1994,7 @@ function SkusSection() {
 										<TableCell>{row.skuDescription}</TableCell>
 										<TableCell>{price}</TableCell>
 										<TableCell>{Number(row.skuQuantity).toFixed(2)}</TableCell>
+										<TableCell>{Number(row.lossQuantity ?? 0).toFixed(2)}</TableCell>
 										<TableCell>{expiryDate}</TableCell>
 										<TableCell>{uomName}</TableCell>
 										<TableCell>
@@ -2081,6 +2095,7 @@ function SkusSection() {
 						skuDescription: editing.skuDescription,
 						skuPrice: editing.skuPrice,
 						skuQuantity: editing.skuQuantity,
+						lossQuantity: editing.lossQuantity ?? 0,
 						skuExpiryDate: editing.skuExpiryDate, // Pass full date string
 						skuUom: editing.skuUom,
 						skuSuppliers: editing.skuSuppliers,
@@ -2099,6 +2114,7 @@ function SkusSection() {
 									skuDescription: values.skuDescription,
 									skuPrice: values.skuPrice === 0 || values.skuPrice === null ? null : Number(values.skuPrice),
 									skuQuantity: Number(values.skuQuantity),
+									lossQuantity: Number(values.lossQuantity ?? 0),
 									skuExpiryDate: expiryDate,
 									skuUom: values.skuUom,
 									skuSuppliers: values.skuSuppliers?.map((s) => ({
@@ -2224,6 +2240,7 @@ function SkusFormDialog({
 		skuDescription: string;
 		skuPrice: number | null;
 		skuQuantity: number;
+		lossQuantity?: number;
 		skuExpiryDate: string;
 		skuUom: string;
 		skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
@@ -2234,6 +2251,7 @@ function SkusFormDialog({
 		skuDescription: string;
 		skuPrice: number | null;
 		skuQuantity: number;
+		lossQuantity?: number;
 		skuExpiryDate: string;
 		skuUom: string;
 		skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
@@ -2247,6 +2265,7 @@ function SkusFormDialog({
 	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
 	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
 	const [skuQuantity, setSkuQuantity] = useState(initial?.skuQuantity?.toString() ?? "0");
+	const [lossQuantity, setLossQuantity] = useState(initial?.lossQuantity?.toString() ?? "0");
 	const parseDate = (dateValue: string | number | undefined): Date | undefined => {
 		if (!dateValue) return undefined;
 		
@@ -2316,6 +2335,7 @@ function SkusFormDialog({
 		skuCode?: string;
 		skuDescription?: string;
 		skuQuantity?: string;
+		lossQuantity?: string;
 		skuExpiryDate?: string;
 		skuUom?: string;
 	}>({});
@@ -2326,6 +2346,7 @@ function SkusFormDialog({
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
+			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			const parsedDate = parseDate(initial?.skuExpiryDate);
 			setSkuExpiryDate(parsedDate);
 			setSkuUom(initial?.skuUom ?? "");
@@ -2343,6 +2364,7 @@ function SkusFormDialog({
 			setSkuDescription(initial?.skuDescription ?? "");
 			setSkuPrice(initial?.skuPrice?.toString() ?? "");
 			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
+			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
 			setSkuSuppliers(initial?.skuSuppliers ?? []);
@@ -2405,6 +2427,7 @@ function SkusFormDialog({
 			skuCode?: string;
 			skuDescription?: string;
 			skuQuantity?: string;
+			lossQuantity?: string;
 			skuExpiryDate?: string;
 			skuUom?: string;
 		} = {};
@@ -2419,6 +2442,10 @@ function SkusFormDialog({
 		const q = String(skuQuantity ?? "").trim();
 		if (q !== "" && (isNaN(Number(q)) || Number(q) < 0)) {
 			newErrors.skuQuantity = "Quantity must be 0 or more";
+		}
+		const lossQ = String(lossQuantity ?? "").trim();
+		if (lossQ !== "" && (isNaN(Number(lossQ)) || Number(lossQ) < 0)) {
+			newErrors.lossQuantity = "Loss quantity must be 0 or more";
 		}
 		// Expiry date is optional (allow empty)
 		if (!skuUom) {
@@ -2458,6 +2485,7 @@ function SkusFormDialog({
 			skuDescription: skuDescription.trim(),
 			skuPrice: priceValue,
 			skuQuantity: Math.max(0, Number(skuQuantity) || 0),
+			lossQuantity: Math.max(0, Number(lossQuantity) || 0),
 			skuExpiryDate: expiryDateString,
 			skuUom,
 			skuSuppliers,
@@ -2486,6 +2514,7 @@ function SkusFormDialog({
 											{errors.skuCode && <li>Code is required</li>}
 											{errors.skuDescription && <li>Description is required</li>}
 											{errors.skuQuantity && <li>{errors.skuQuantity}</li>}
+											{errors.lossQuantity && <li>{errors.lossQuantity}</li>}
 											{errors.skuExpiryDate && <li>Expiry date is required</li>}
 											{errors.skuUom && <li>Unit of measure is required</li>}
 										</ul>
@@ -2563,6 +2592,29 @@ function SkusFormDialog({
 											<p className="text-sm text-destructive">{errors.skuQuantity}</p>
 										)}
 									</div>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor="sku-loss-quantity">Loss quantity</Label>
+									<Input
+										id="sku-loss-quantity"
+										type="number"
+										min="0"
+										value={lossQuantity}
+										onChange={(e) => {
+											const value = e.target.value;
+											if (value === "" || (!isNaN(Number(value)) && Number(value) >= 0)) {
+												setLossQuantity(value);
+												if (errors.lossQuantity) {
+													setErrors((prev) => ({ ...prev, lossQuantity: undefined }));
+												}
+											}
+										}}
+										placeholder="0"
+										className={errors.lossQuantity ? "border-destructive" : ""}
+									/>
+									{errors.lossQuantity && (
+										<p className="text-sm text-destructive">{errors.lossQuantity}</p>
+									)}
 								</div>
 								<div className="grid gap-2">
 									<Label htmlFor="sku-expiry-date">Expiry Date</Label>

@@ -237,6 +237,34 @@ export interface UpdateRackInput {
 	updatedBy: string;
 }
 
+export interface Warehouse {
+	warehouseId: string;
+	warehouseName: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface WarehousePaginatedResponse {
+	query: Warehouse[];
+	pagination: Pagination;
+}
+
+export interface CreateWarehouseInput {
+	warehouseName: string;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+}
+
+export interface UpdateWarehouseInput {
+	warehouseName?: string | null;
+	warehouseCode?: string | null;
+	warehouseAddress?: string | null;
+}
+
 export interface SkuSupplier {
 	supplierId: string;
 	originalSkuCode: string | null;
@@ -248,6 +276,7 @@ export interface Skus {
 	skuDescription: string;
 	skuPrice: number;
 	skuQuantity: number;
+	lossQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
@@ -274,6 +303,7 @@ export interface UpdateSkusInput {
 	skuDescription?: string;
 	skuPrice?: number;
 	skuQuantity?: number;
+	lossQuantity?: number;
 	skuExpiryDate?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
@@ -283,6 +313,12 @@ export interface UpdateSkusInput {
 export interface SkusPaginatedResponse {
 	query: Skus[];
 	pagination: Pagination;
+}
+
+/** User info for GRN audit fields (createdByUser / updatedByUser). */
+export interface GrnAuditUser {
+	id: string;
+	displayName: string;
 }
 
 export interface Grn {
@@ -296,20 +332,28 @@ export interface Grn {
 	receivedAt: string | null;
 	approvedBy: string | null;
 	approvedAt: string | null;
+	notes: string | null;
+	proofUrl: string | null;
 	createdAt: string;
 	updatedAt: string;
-	createdBy: string;
-	updatedBy: string | null;
+	createdByUser: GrnAuditUser | null;
+	updatedByUser: GrnAuditUser | null;
 	items: GrnItem[];
 }
 export interface GrnItem {
 	id: string;
 	grnId: string;
 	skuId: string;
-	skuCode: string;
-	skuDescription: string;
+	skuCode: string | null;
+	skuDescription: string | null;
+	/** Quantity in cartons */
 	qty: string;
+	/** Quantity lost */
+	lossQty?: string | null;
 	remarks: string | null;
+	warehouseId: string | null;
+	warehouseName: string | null;
+	warehouseAddress: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -317,8 +361,12 @@ export interface GrnItem {
 }
 export interface CreateGrnItemInput {
 	skuId?: string | null;
+	/** Quantity in cartons */
 	qty: string;
+	/** Quantity lost */
+	lossQty?: string | null;
 	remarks?: string | null;
+	warehouseId?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -331,6 +379,8 @@ export interface CreateGrnInput {
 	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
 	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
 	/** Initial status: Draft or Submitted (if omitted backend may default) */
 	status?: string | null;
 	createdBy?: string | null;
@@ -344,6 +394,7 @@ export interface GrnFilterInput {
 	status?: string | null;
 	page?: number | null;
 	pageSize?: number | null;
+	pageNumber?: number | null;
 }
 
 export interface GrnPaginatedResponse {
@@ -363,6 +414,7 @@ export interface UpdateGrnInput {
 	approvedAt?: string | null;
 	updatedBy?: string | null;
 	notes?: string | null;
+	proofUrl?: string | null;
 	items?: CreateGrnItemInput[] | null;
 }
 
@@ -382,7 +434,10 @@ export interface GrnItemForList {
 	sku: string;
 	skuCode: string;
 	skuDescription: string;
+	/** Quantity in cartons */
 	expectedQuantity: number;
+	/** Quantity lost */
+	lossQuantity: number;
 	receivedQuantity: number;
 	location?: string;
 }
@@ -395,12 +450,14 @@ export interface GrnDetailForList {
 	supplierDeliveryId: string | null;
 	supplierDeliveryNo: string | null;
 	poNo: string | null;
+	warehouseId: string | null;
 	status: GrnStatusUI;
 	receivedAt: string | null;
 	createdAt: string;
 	createdBy: string;
 	updatedBy: string | null;
 	notes?: string;
+	proofUrl?: string | null;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;

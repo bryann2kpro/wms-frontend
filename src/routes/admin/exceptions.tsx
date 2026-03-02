@@ -52,7 +52,6 @@ import {
 	type ExceptionStatusFilter,
 	type ExceptionType,
 	type StockCountAction,
-	getExceptions,
 	approveException,
 	rejectException,
 } from "@/data/exceptions.mock-data";
@@ -75,7 +74,8 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 ];
 
 function skuToException(sku: Skus): Exception {
-	const qty = sku.skuQuantity ?? 0;
+	const carton = sku.skuQuantity ?? 0;
+	const loss = sku.lossQuantity ?? 0;
 	const date = sku.skuExpiryDate
 		? (() => {
 				const raw = sku.skuExpiryDate;
@@ -92,13 +92,13 @@ function skuToException(sku: Skus): Exception {
 		sku: sku.skuCode,
 		description: sku.skuDescription ?? "-",
 		type: "SHORTAGE",
-		quantity: qty,
+		quantity: carton + loss,
 		reason: "-",
-		openingQtyDozen: qty,
-		openingQtyLoss: 0,
+		openingQtyDozen: carton,
+		openingQtyLoss: loss,
 		stockCountDate: date,
-		closedQtyDozen: qty,
-		closedQtyLoss: 0,
+		closedQtyDozen: carton,
+		closedQtyLoss: loss,
 		action: undefined,
 		isApproved: false,
 		reportedBy: "-",
