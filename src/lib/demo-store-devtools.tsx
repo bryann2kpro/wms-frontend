@@ -25,7 +25,7 @@ store.subscribe(() => {
 	sdec.emit("state", {
 		firstName: store.state.firstName,
 		lastName: store.state.lastName,
-		fullName: fullName.state,
+		fullName: fullName.get(),
 	});
 });
 
@@ -33,7 +33,7 @@ function DevtoolPanel() {
 	const [state, setState] = useState<EventMap["store-devtools:state"]>(() => ({
 		firstName: store.state.firstName,
 		lastName: store.state.lastName,
-		fullName: fullName.state,
+		fullName: fullName.get(),
 	}));
 
 	useEffect(() => {
