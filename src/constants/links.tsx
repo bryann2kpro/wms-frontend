@@ -9,6 +9,8 @@ const ChildNavLinkSchema= z.object({
     variant: z.enum(["default", "ghost"]),
     href: z.string(),
     allowedPermission: z.array(z.string()),
+    /** Optional group key for sidebar grouping (e.g. "work-queues"). */
+    group: z.string().optional(),
 });
 
 type NavLinkSchemaType = z.infer<typeof ChildNavLinkSchema> & {
@@ -51,11 +53,21 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	},
 	{
 		key: "sidebar-do-work-queue",
-		title: "Warehouse Execution",
+		title: "Supplier DO Work Queue",
 		href: "/admin/do-work-queue",
 		icon: Warehouse,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "work-queues",
+	},
+	{
+		key: "sidebar-es-do",
+		title: "ES DO Work Queue",
+		href: "/admin/es-do",
+		icon: ClipboardCheck,
+		allowedPermission: ["*"],
+		variant: "default",
+		group: "work-queues",
 	},
 	{
 		key: "sidebar-proof-of-delivery",

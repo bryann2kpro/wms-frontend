@@ -30,6 +30,7 @@ import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
 import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
 import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
+import { Route as AdminEsDoRouteImport } from './routes/admin/es-do'
 import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-queue'
 import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
@@ -152,6 +153,11 @@ const AdminExceptionDetailRoute = AdminExceptionDetailRouteImport.update({
   path: '/exception-detail',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminEsDoRoute = AdminEsDoRouteImport.update({
+  id: '/es-do',
+  path: '/es-do',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDoWorkQueueRoute = AdminDoWorkQueueRouteImport.update({
   id: '/do-work-queue',
   path: '/do-work-queue',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
   '/admin/do-work-queue': typeof AdminDoWorkQueueRoute
+  '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/grn': typeof AdminGrnRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
@@ -441,6 +452,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/do-detail'
     | '/admin/do-work-queue'
+    | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
     | '/admin/grn'
@@ -641,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminExceptionDetailRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/es-do': {
+      id: '/admin/es-do'
+      path: '/es-do'
+      fullPath: '/admin/es-do'
+      preLoaderRoute: typeof AdminEsDoRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/do-work-queue': {
       id: '/admin/do-work-queue'
       path: '/do-work-queue'
@@ -774,6 +793,7 @@ interface AdminRouteRouteChildren {
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDoDetailRoute: typeof AdminDoDetailRoute
   AdminDoWorkQueueRoute: typeof AdminDoWorkQueueRoute
+  AdminEsDoRoute: typeof AdminEsDoRoute
   AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
   AdminExceptionsRoute: typeof AdminExceptionsRoute
   AdminGrnRoute: typeof AdminGrnRoute
@@ -795,6 +815,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDoDetailRoute: AdminDoDetailRoute,
   AdminDoWorkQueueRoute: AdminDoWorkQueueRoute,
+  AdminEsDoRoute: AdminEsDoRoute,
   AdminExceptionDetailRoute: AdminExceptionDetailRoute,
   AdminExceptionsRoute: AdminExceptionsRoute,
   AdminGrnRoute: AdminGrnRoute,

@@ -22,12 +22,12 @@ import {
 	getDOs,
 } from "@/data/do.mock-data";
 
-const PAGE_TITLE = "Supplier DO Work Queue";
+const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
-	"Stock movement and inventory management for supplier delivery orders.";
+	"Delivery order work queue for Empire Sushi — stock movement and inventory.";
 
-export const Route = createFileRoute("/admin/do-work-queue")({
-	component: DOWorkQueueComponent,
+export const Route = createFileRoute("/admin/es-do")({
+	component: EmpireSushiDOComponent,
 });
 
 // Extended item type for flattened view
@@ -36,7 +36,7 @@ interface FlattenedItem extends DOItem {
 	doId: string;
 }
 
-function DOWorkQueueComponent() {
+function EmpireSushiDOComponent() {
 	const { user } = useCurrentUser();
 	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
@@ -52,7 +52,7 @@ function DOWorkQueueComponent() {
 			: undefined;
 
 	const { data, isLoading } = useQuery({
-		queryKey: ["dos", { searchTerm, statusFilter, assignedTo }],
+		queryKey: ["dos-empire-sushi", { searchTerm, statusFilter, assignedTo }],
 		queryFn: () =>
 			getDOs({
 				page: 1,
@@ -62,14 +62,14 @@ function DOWorkQueueComponent() {
 				assignedTo,
 			}),
 		staleTime: 30_000,
-	});
+	})
 
 	// Document title and accessibility: page title for browser tab and screen readers
 	useEffect(() => {
 		document.title = `${PAGE_TITLE} | SME Ederan`;
 		return () => {
 			document.title = "SME Ederan";
-		};
+		}
 	}, []);
 
 	// Flatten all items from all DOs
@@ -81,7 +81,7 @@ function DOWorkQueueComponent() {
 				doNumber: do_.doNumber,
 				doId: do_.id,
 			})),
-		);
+		)
 	}, [data?.items]);
 
 	// Paginate the flattened items
@@ -90,7 +90,7 @@ function DOWorkQueueComponent() {
 	const paginatedItems = allItems.slice(
 		(page - 1) * pageSize,
 		page * pageSize,
-	);
+	)
 
 	const tableColSpan = 11;
 
@@ -138,7 +138,7 @@ function DOWorkQueueComponent() {
 						value={searchTerm}
 						onChange={(e) => {
 							setSearchTerm(e.target.value);
-							setPage(1);
+							setPage(1)
 						}}
 						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					/>
@@ -164,7 +164,7 @@ function DOWorkQueueComponent() {
 			>
 				<GlobalLoadingShadow />
 				<div className="overflow-x-auto rounded-lg border">
-					<Table aria-label="Supplier DO work queue items with SKU, GRN, quantities and storage">
+					<Table aria-label="Empire Sushi DO work queue items with SKU, GRN, quantities and storage">
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-16">Item</TableHead>
@@ -295,5 +295,5 @@ function DOWorkQueueComponent() {
 				)}
 			</section>
 		</main>
-	);
+	)
 }
