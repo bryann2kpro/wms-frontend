@@ -1550,6 +1550,7 @@ function SkusSection() {
 		SkusQueryVariables
 	>(SKUS_QUERY, {
 		variables: {},
+		fetchPolicy: "cache-and-network",
 	});
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	
@@ -1577,6 +1578,8 @@ function SkusSection() {
 
 	const [createSkus, { loading: createLoading }] =
 		useMutation<CreateSkusMutationData>(CREATE_SKUS_MUTATION, {
+			refetchQueries: [{ query: SKUS_QUERY }],
+			awaitRefetchQueries: true,
 			onCompleted: () => {
 				refetch();
 				setIsCreateOpen(false);
@@ -1585,6 +1588,8 @@ function SkusSection() {
 
 	const [updateSkus, { loading: updateLoading }] =
 		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
+			refetchQueries: [{ query: SKUS_QUERY }],
+			awaitRefetchQueries: true,
 			onCompleted: () => {
 				refetch();
 				setEditing(null);
@@ -1593,6 +1598,8 @@ function SkusSection() {
 
 	const [deleteSkus, { loading: deleteLoading }] =
 		useMutation<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, {
+			refetchQueries: [{ query: SKUS_QUERY }],
+			awaitRefetchQueries: true,
 			onCompleted: () => {
 				refetch();
 				setDeleting(null);
