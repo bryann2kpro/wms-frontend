@@ -815,7 +815,7 @@ export function GrnFormDialog({
 														onChange={(v: string) => field.handleChange(v)}
 														warehouses={warehouses}
 														onWarehouseCreated={onWarehouseCreated}
-														placeholder="Select warehouse (optional)"
+														placeholder="Select warehouse"
 													/>
 												</Field>
 											)}
