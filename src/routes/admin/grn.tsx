@@ -59,6 +59,7 @@ import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	GRNS_QUERY,
 	CREATE_GRN_MUTATION,
+	CREATE_INBOUND_MUTATION,
 	UPDATE_GRN_MUTATION,
 	mapGrnsQueryToResult,
 	UI_STATUS_TO_GQL,
@@ -149,15 +150,28 @@ function GRNRouteComponent() {
 	const data = grnsQueryData?.grns != null ? mapGrnsQueryToResult(grnsQueryData.grns) : emptyResult;
 	const isLoading = grnsLoading;
 
-	const [createGRNApollo, { loading: createLoading }] = useApolloMutation(
+	const [createGRNApollo, { loading: createGrnLoading }] = useApolloMutation(
 		CREATE_GRN_MUTATION,
 		{
+			onError: (err) => toast.error(getGrnErrorMessage(err)),
 			onCompleted: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
 			},
 		}
 	);
+	const [createInboundApollo, { loading: createInboundLoading }] = useApolloMutation(
+		CREATE_INBOUND_MUTATION,
+		{
+			onError: (err) => toast.error(getGrnErrorMessage(err)),
+			onCompleted: () => {
+				refetchGRNs();
+				setIsCreateOpen(false);
+			},
+		}
+	);
+	const useCreateInbound = true; // set false to use createGrn (no userId)
+	const createLoading = useCreateInbound ? createInboundLoading : createGrnLoading;
 
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
@@ -193,34 +207,45 @@ function GRNRouteComponent() {
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
 			const warehouseId = payload.warehouseId?.trim() || undefined;
-			await createGRNApollo({
-				variables: {
-					input: {
-						grnNo: payload.grnNumber,
-						supplierDeliveryNo: payload.supplierDO,
-						poNo: payload.poReference || undefined,
-						receivedAt: payload.receivedDate.toISOString(),
-						status: UI_STATUS_TO_GQL[status],
-						notes: payload.notes || undefined,
-						warehouseId,
-						items: payload.items?.map((i) => {
-							const uomId = i.uom
-								? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
-								: undefined;
-							const rackId = (i.rackId ?? "").trim() || undefined;
-							return {
-								skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
-								skuCode: i.sku,
-								skuDescription: i.description ?? undefined,
-								qty: String(i.carton),
-								lossQty: String(i.loss),
-								skuUom: uomId ?? undefined,
-								...(rackId && { rackId }),
-							};
-						}),
-					},
-				},
+			const items = payload.items?.map((i) => {
+				const uomId = i.uom
+					? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+					: undefined;
+				const rackId = (i.rackId ?? "").trim() || undefined;
+				return {
+					skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+					skuCode: i.sku,
+					skuDescription: i.description ?? undefined,
+					qty: String(i.carton),
+					lossQty: String(i.loss ?? 0),
+					skuUom: uomId ?? undefined,
+					...(rackId && { rackId }),
+				};
 			});
+			const baseInput = {
+				grnNo: payload.grnNumber,
+				supplierDeliveryNo: payload.supplierDO || undefined,
+				poNo: payload.poReference?.trim() || undefined,
+				receivedAt: payload.receivedDate.toISOString(),
+				status: UI_STATUS_TO_GQL[status],
+				notes: payload.notes?.trim() || undefined,
+				warehouseId,
+				items,
+			};
+			if (useCreateInbound) {
+				const userId = user?.id ?? "";
+				if (!userId) {
+					toast.error("You must be signed in to create a GRN.");
+					return;
+				}
+				await createInboundApollo({
+					variables: { input: { userId, ...baseInput } },
+				});
+			} else {
+				await createGRNApollo({
+					variables: { input: baseInput },
+				});
+			}
 		},
 		isPending: createLoading,
 	};

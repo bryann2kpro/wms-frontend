@@ -101,7 +101,7 @@ export type GRNLineItemForm = {
 	loss: number;
 	uom: string;
 	unitPrice: number;
-	/** Rack ID (optional) */
+	/** Rack ID (required for every line item) */
 	rackId: string;
 };
 
@@ -363,7 +363,7 @@ function GRNLineRow({
 					}}
 				>
 					<SelectTrigger className="h-8 min-w-[200px] font-normal text-sm">
-						<SelectValue placeholder="Row-Column-Level" />
+						<SelectValue placeholder="Select rack (required)" />
 					</SelectTrigger>
 					<SelectContent>
 						{racks.map((r) => (
@@ -513,12 +513,17 @@ export function GrnFormDialog({
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
 				} else {
-					const invalidItem = items.find(
+					const invalidQty = items.find(
 						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
 					);
-					if (invalidItem) {
+					if (invalidQty) {
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
+					} else {
+						const missingRack = items.find((i) => !(i.rackId ?? "").trim());
+						if (missingRack) {
+							fields.items = "Each line item must have a rack selected.";
+						}
 					}
 				}
 				if (Object.keys(fields).length > 0) {
@@ -650,6 +655,12 @@ export function GrnFormDialog({
 
 	const handleSubmitForApproval = () => {
 		if (!grn?.id || grn.status !== "Draft") return;
+		const items = form.state.values.items ?? [];
+		const missingRack = items.find((i: { rackId?: string }) => !(i.rackId ?? "").trim());
+		if (missingRack) {
+			toast.error("Each line item must have a rack selected before submitting for approval.");
+			return;
+		}
 		updateGRN({
 			variables: {
 				id: grn.id,
@@ -889,7 +900,7 @@ export function GrnFormDialog({
 																<TableHead>Carton</TableHead>
 																<TableHead>Loss</TableHead>
 																<TableHead>UOM</TableHead>
-																<TableHead>Rack</TableHead>
+																<TableHead>Rack *</TableHead>
 																<TableHead className="text-right w-[80px]">
 																	Actions
 																</TableHead>

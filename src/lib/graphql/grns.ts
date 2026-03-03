@@ -119,6 +119,13 @@ export const CREATE_GRN_MUTATION = gql`
 	}
 `;
 
+/** Create inbound → InboundServices.createInbound; returns Boolean! (no subfields) */
+export const CREATE_INBOUND_MUTATION = gql`
+	mutation CreateInbound($input: CreateInboundInput!) {
+		createInbound(input: $input)
+	}
+`;
+
 /** Update GRN - matches typeDefs: updateGrn(id: ID!, input: UpdateGrnInput!): Grn */
 export const UPDATE_GRN_MUTATION = gql`
 	mutation UpdateGrn($id: ID!, $input: UpdateGrnInput!) {
