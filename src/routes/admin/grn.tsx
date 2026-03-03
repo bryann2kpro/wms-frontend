@@ -630,6 +630,18 @@ function GRNRouteComponent() {
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
+													Warehouse
+												</Label>
+												<p className="text-sm font-medium">
+													{selectedGRN.warehouse?.warehouseName
+														? [selectedGRN.warehouse.warehouseName, selectedGRN.warehouse.warehouseCode]
+																.filter(Boolean)
+																.join(" · ") || selectedGRN.warehouse.warehouseName
+														: "-"}
+												</p>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">
 													Status
 												</Label>
 												{selectedGRN.status ? (
