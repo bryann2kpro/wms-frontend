@@ -471,3 +471,87 @@ export interface GrnListResult {
 	pageSize: number;
 	total: number;
 }
+
+// ---------------------------------------------------------------------------
+// Delivery Orders (Outbound)
+// ---------------------------------------------------------------------------
+
+export interface DeliveryOrder {
+	id: string;
+	doNo: string;
+	poNo: string;
+	status: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+}
+
+export interface DeliveryOrderPaginatedResponse {
+	query: DeliveryOrder[];
+	pagination: Pagination;
+}
+
+export interface DeliveryOrderFilterInput {
+	id?: string | null;
+	doNo?: string | null;
+	toId?: string | null;
+	status?: string | null;
+	createdBy?: string | null;
+	createdAtFrom?: string | null;
+	createdAtTo?: string | null;
+	page?: number | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+}
+
+export interface CreateDeliveryOrderItemInputGql {
+	skuId?: string | null;
+	skuCode?: string | null;
+	qtyRequired: number | string;
+}
+
+export interface CreateDeliveryOrderInputGql {
+	purchaseOrderNo: string;
+	deliveryOrderNo: string;
+	outletId: string;
+	orderCreatedAt?: string | null;
+	items: CreateDeliveryOrderItemInputGql[];
+}
+
+// ---------------------------------------------------------------------------
+// Purchase Orders (Transfer Orders / TOs from NetSuite)
+// ---------------------------------------------------------------------------
+
+export interface PurchaseOrder {
+	id: string;
+	purchaseOrderNo: string;
+	outletId: string;
+	status: string;
+	scheduledDeliveryDate?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy?: string | null;
+	updatedBy?: string | null;
+}
+
+export interface PurchaseOrderPaginatedResponse {
+	query: PurchaseOrder[];
+	pagination: Pagination;
+}
+
+export interface PurchaseOrderFilterInput {
+	id?: string | string[] | null;
+	purchaseOrderNo?: string | null;
+	outletId?: string | string[] | null;
+	status?: string | string[] | null;
+	requestedDeliveryDateFrom?: string | null;
+	requestedDeliveryDateTo?: string | null;
+	scheduledDeliveryDateFrom?: string | null;
+	scheduledDeliveryDateTo?: string | null;
+	createdAtFrom?: string | null;
+	createdAtTo?: string | null;
+	page?: number | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+}
