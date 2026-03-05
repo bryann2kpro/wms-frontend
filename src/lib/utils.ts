@@ -76,7 +76,7 @@ export function formatDateOnly(dateValue: string | number | Date): string {
       return String(dateValue);
     }
     
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("en-MY", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -229,6 +229,27 @@ export function isInCurrentWeek(date: Date): boolean {
     startOfCurrentWeek.getTime() === startOfDateWeek.getTime() &&
     isDeliveryDay(date)
   );
+}
+
+/** Whether the date falls within the next 7 days (today + 6 days). */
+export function isInNext7Days(date: Date): boolean {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 7);
+  
+  return targetDate >= today && targetDate < endDate;
+}
+
+/** Whether the date is before today (past deliveries). */
+export function isInPastDays(date: Date): boolean {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  return targetDate < today;
 }
 
 /** Whether the date is in a past week and is a delivery day. */
