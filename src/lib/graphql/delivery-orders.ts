@@ -7,10 +7,10 @@ import type {
 	Pagination,
 } from "./types";
 import type {
-	TransferDetail,
-	TransferListResult,
-	TransferStatus,
-} from "@/data/transfers.types";
+	PurchaseOrderDetail,
+	PurchaseOrderListResult,
+	PurchaseOrderStatus,
+} from "@/data/purchase-orders.types";
 
 // ---------------------------------------------------------------------------
 // Fragments
@@ -113,10 +113,10 @@ export type CompleteDeliveryOrderMutationData = {
 };
 
 // ---------------------------------------------------------------------------
-// Mapping helpers – GraphQL DeliveryOrder -> existing TransferDetail UI shape
+// Mapping helpers – GraphQL DeliveryOrder -> PurchaseOrderDetail UI shape
 // ---------------------------------------------------------------------------
 
-const GQL_DO_STATUS_TO_TRANSFER: Record<string, TransferStatus> = {
+const GQL_DO_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	CREATED: "preparing",
 	PICKING: "preparing",
 	PACKED: "preparing",
@@ -127,24 +127,22 @@ const GQL_DO_STATUS_TO_TRANSFER: Record<string, TransferStatus> = {
 	CANCELLED: "cancel",
 };
 
-/** Map backend DeliveryOrderPaginatedResponse to existing TransferListResult UI shape. */
-export function mapDeliveryOrdersToTransfers(
+/** Map backend DeliveryOrderPaginatedResponse to PurchaseOrderListResult UI shape. */
+export function mapDeliveryOrdersToPurchaseOrderList(
 	raw: DeliveryOrderPaginatedResponse,
-): TransferListResult {
+): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
-	const items: TransferDetail[] = (raw.query ?? []).map((d: DeliveryOrder) => {
-		const status: TransferStatus =
-			GQL_DO_STATUS_TO_TRANSFER[d.status] ?? "other";
+	const items: PurchaseOrderDetail[] = (raw.query ?? []).map((d: DeliveryOrder) => {
+		const status: PurchaseOrderStatus =
+			GQL_DO_STATUS_TO_PO_STATUS[d.status] ?? "other";
 
 		const createdAt = new Date(d.createdAt);
-		// Backend does not yet expose scheduled delivery date on DeliveryOrder,
-		// so we approximate using createdAt for grouping.
 		const expectedDeliveryDate = new Date(d.createdAt);
 
 		return {
 			id: d.id,
-			transferOrderNumber: d.poNo ?? d.doNo,
+			purchaseOrderNumber: d.poNo ?? d.doNo,
 			fromLocation: "Main Warehouse",
 			toLocation: "Unknown outlet",
 			status,
@@ -160,7 +158,7 @@ export function mapDeliveryOrdersToTransfers(
 		};
 	});
 
-	const byStatus: Record<TransferStatus, number> = {
+	const byStatus: Record<PurchaseOrderStatus, number> = {
 		preparing: 0,
 		"in-transit": 0,
 		"to-ship": 0,
@@ -169,8 +167,8 @@ export function mapDeliveryOrdersToTransfers(
 		other: 0,
 	};
 
-	for (const t of items) {
-		byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+	for (const po of items) {
+		byStatus[po.status] = (byStatus[po.status] ?? 0) + 1;
 	}
 
 	return {
@@ -184,4 +182,3 @@ export function mapDeliveryOrdersToTransfers(
 		total: pagination?.totalCount ?? items.length,
 	};
 }
-

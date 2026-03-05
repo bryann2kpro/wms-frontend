@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ComponentProps } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import {
 	Card,
@@ -12,50 +12,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import {
-	type TransferDetail,
-	type TransferStatus,
-	type TransferStatusFilter,
-	getTransfers,
-	createTransfer,
-	updateTransferStatus,
-} from "@/data/transfers";
+	type PurchaseOrderDetail,
+	type PurchaseOrderStatus,
+	createPurchaseOrder,
+	updatePurchaseOrderStatus,
+} from "@/data/purchase-orders";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
-	isInCurrentWeek,
-	isInPastWeeks,
-	getDateKey,
-} from "@/lib/utils";
-import {
-	transferStatuses,
-	createTransferSchema,
+	purchaseOrderStatuses,
+	createPurchaseOrderSchema,
 	formatStatus,
-	DATE_GROUPS_PER_PAGE,
-	type DeliveryTab,
 } from "@/lib/outbound";
 import {
-	CreateTransferDialog,
-	CreateTransferDialogTrigger,
-	ViewTransferDialog,
-	AcceptTransferDialog,
-	RejectTransferDialog,
+	CreatePurchaseOrderDialog,
+	CreatePurchaseOrderDialogTrigger,
+	ViewPurchaseOrderDialog,
+	AcceptPurchaseOrderDialog,
+	RejectPurchaseOrderDialog,
 	OutboundListCard,
+	useOutboundSummary,
 } from "@/components/outbound";
 
 export const Route = createFileRoute("/admin/outbound")({
-	component: TransfersRouteComponent,
+	component: OutboundRouteComponent,
 });
 
-function TransfersRouteComponent() {
+function OutboundRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
-	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
-	const [page, setPage] = useState(1);
-	const pageSize = 10;
-	const [searchTerm, setSearchTerm] = useState("");
-	const [statusFilter, setStatusFilter] = useState<TransferStatusFilter>("ALL");
-	const [selectedTransfer, setSelectedTransfer] =
-		useState<TransferDetail | null>(null);
+	const [selectedPurchaseOrder, setSelectedPurchaseOrder] =
+		useState<PurchaseOrderDetail | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
@@ -63,50 +50,39 @@ function TransfersRouteComponent() {
 	const [rejectReason, setRejectReason] = useState("");
 
 	const queryClient = useQueryClient();
-
-	const { data, isLoading } = useQuery({
-		queryKey: ["transfers", { page, pageSize, searchTerm, statusFilter }],
-		queryFn: () =>
-			getTransfers({
-				page,
-				pageSize,
-				search: searchTerm,
-				status: statusFilter,
-			}),
-		staleTime: 30_000,
-	});
+	const summary = useOutboundSummary();
 
 	const createMutation = useMutation({
-		mutationFn: createTransfer,
+		mutationFn: createPurchaseOrder,
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["transfers"] });
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 			setIsCreateOpen(false);
 		},
 	});
 
 	const statusMutation = useMutation({
-		mutationFn: ({ id, status }: { id: string; status: TransferStatus }) =>
-			updateTransferStatus(id, status),
+		mutationFn: ({ id, status }: { id: string; status: PurchaseOrderStatus }) =>
+			updatePurchaseOrderStatus(id, status),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["transfers"] });
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 		},
 	});
 
 	const form = useForm({
 		defaultValues: {
-			transferOrderNumber: "",
+			purchaseOrderNumber: "",
 			outletId: "",
 			outletName: "",
 			notes: "",
 			items: [{ skuId: "", quantity: 1 }] as { skuId: string; skuCode?: string; description?: string; quantity: number }[],
 		},
 		validators: {
-			onBlur: createTransferSchema as any,
-			onSubmit: createTransferSchema as any,
+			onBlur: createPurchaseOrderSchema as any,
+			onSubmit: createPurchaseOrderSchema as any,
 		},
 		onSubmit: async ({ value }) => {
 			await createMutation.mutateAsync({
-				transferOrderNumber: value.transferOrderNumber,
+				purchaseOrderNumber: value.purchaseOrderNumber,
 				outletId: value.outletId,
 				outletName: value.outletName ?? "",
 				expectedDeliveryDate: new Date(),
@@ -122,70 +98,7 @@ function TransfersRouteComponent() {
 		},
 	});
 
-	const allTransfers = data?.items ?? [];
-	const filteredTransfers = allTransfers.filter((transfer) => {
-		const deliveryDate = new Date(transfer.expectedDeliveryDate);
-		if (activeTab === "current-week") {
-			return isInCurrentWeek(deliveryDate);
-		}
-		return isInPastWeeks(deliveryDate);
-	});
-
-	const transfers = filteredTransfers.filter((transfer) => {
-		const matchesSearch =
-			!searchTerm ||
-			transfer.transferOrderNumber
-				.toLowerCase()
-				.includes(searchTerm.toLowerCase()) ||
-			transfer.toLocation.toLowerCase().includes(searchTerm.toLowerCase());
-		const matchesStatus =
-			statusFilter === "ALL" || transfer.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
-
-	const transfersByDate = transfers.reduce<Record<string, TransferDetail[]>>(
-		(acc, transfer) => {
-			const key = getDateKey(new Date(transfer.expectedDeliveryDate));
-			if (!acc[key]) acc[key] = [];
-			acc[key].push(transfer);
-			return acc;
-		},
-		{},
-	);
-
-	const dateKeys = Object.keys(transfersByDate).sort((a, b) =>
-		activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),
-	);
-
-	const totalDateGroups = dateKeys.length;
-	const startDateIndex = (page - 1) * DATE_GROUPS_PER_PAGE;
-	const paginatedDateKeys = dateKeys.slice(
-		startDateIndex,
-		startDateIndex + DATE_GROUPS_PER_PAGE,
-	);
-	const totalPages = Math.max(1, Math.ceil(totalDateGroups / DATE_GROUPS_PER_PAGE));
-	const filteredTotal = transfers.length;
-
-	const summary = filteredTransfers.reduce(
-		(acc, transfer) => {
-			acc.byStatus[transfer.status] = (acc.byStatus[transfer.status] ?? 0) + 1;
-			acc.total += 1;
-			return acc;
-		},
-		{
-			byStatus: {
-				preparing: 0,
-				"in-transit": 0,
-				"to-ship": 0,
-				cancel: 0,
-				return: 0,
-				other: 0,
-			} as Record<TransferStatus, number>,
-			total: 0,
-		},
-	);
-
-	const pageTitle = "Outbound delivery orders";
+	const pageTitle = "Outbound Purchase Orders";
 	useEffect(() => {
 		document.title = `${pageTitle} | SME Ederan`;
 		return () => {
@@ -206,10 +119,10 @@ function TransfersRouteComponent() {
 						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
 						tabIndex={-1}
 					>
-						Outbound Delivery Orders
+						Outbound Purchase Orders
 					</h1>
 					<p id="page-description" className="text-muted-foreground mt-1">
-						Manage delivery orders from ES. Create new orders or refresh from
+						Manage purchase orders from ES. Create new orders or refresh from
 						NetSuite. Delivery date is set automatically when you create an
 						order.
 					</p>
@@ -219,18 +132,18 @@ function TransfersRouteComponent() {
 						<Button
 							variant="outline"
 							onClick={() => {
-								queryClient.invalidateQueries({ queryKey: ["transfers"] });
+								queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 							}}
-							aria-label="Refresh delivery orders from NetSuite"
+							aria-label="Refresh purchase orders from NetSuite"
 						>
 							<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
 							Refresh from NetSuite
 						</Button>
 					)}
-					<CreateTransferDialogTrigger
+					<CreatePurchaseOrderDialogTrigger
 						open={isCreateOpen}
 						onOpenChange={setIsCreateOpen}
-						form={form as ComponentProps<typeof CreateTransferDialog>["form"]}
+						form={form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]}
 						createMutation={createMutation}
 					/>
 				</div>
@@ -238,7 +151,7 @@ function TransfersRouteComponent() {
 
 			{summary && (
 				<div className="grid gap-4 md:grid-cols-5">
-					{transferStatuses.map((status) => (
+					{purchaseOrderStatuses.map((status) => (
 						<Card key={status}>
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium">
@@ -256,42 +169,26 @@ function TransfersRouteComponent() {
 			)}
 
 			<OutboundListCard
-				searchTerm={searchTerm}
-				onSearchTermChange={setSearchTerm}
-				statusFilter={statusFilter}
-				onStatusFilterChange={setStatusFilter}
-				activeTab={activeTab}
-				onActiveTabChange={setActiveTab}
-				isLoading={isLoading}
-				dateKeys={dateKeys}
-				transfersByDate={transfersByDate}
-				paginatedDateKeys={paginatedDateKeys}
-				page={page}
-				totalPages={totalPages}
-				filteredTotal={filteredTotal}
-				totalDateGroups={totalDateGroups}
-				startDateIndex={startDateIndex}
-				onPageChange={setPage}
-				onViewTransfer={(transfer) => {
-					setSelectedTransfer(transfer);
+				onViewPurchaseOrder={(purchaseOrder) => {
+					setSelectedPurchaseOrder(purchaseOrder);
 					setIsViewOpen(true);
 				}}
-				onAcceptClick={(transfer) => {
-					setSelectedTransfer(transfer);
+				onAcceptClick={(purchaseOrder) => {
+					setSelectedPurchaseOrder(purchaseOrder);
 					setIsAcceptDialogOpen(true);
 				}}
-				onRejectClick={(transfer) => {
-					setSelectedTransfer(transfer);
+				onRejectClick={(purchaseOrder) => {
+					setSelectedPurchaseOrder(purchaseOrder);
 					setIsRejectDialogOpen(true);
 				}}
 				hasAcceptPermission={hasPermission("to:accept")}
 				hasRejectPermission={hasPermission("to:reject")}
 			/>
 
-			<ViewTransferDialog
+			<ViewPurchaseOrderDialog
 				open={isViewOpen}
 				onOpenChange={setIsViewOpen}
-				transfer={selectedTransfer}
+				purchaseOrder={selectedPurchaseOrder}
 				onAcceptClick={() => {
 					setIsViewOpen(false);
 					setIsAcceptDialogOpen(true);
@@ -304,34 +201,34 @@ function TransfersRouteComponent() {
 				hasRejectPermission={hasPermission("to:reject")}
 			/>
 
-			<AcceptTransferDialog
+			<AcceptPurchaseOrderDialog
 				open={isAcceptDialogOpen}
 				onOpenChange={setIsAcceptDialogOpen}
-				transfer={selectedTransfer}
+				purchaseOrder={selectedPurchaseOrder}
 				onAccept={() => {
-								if (selectedTransfer) {
-									statusMutation.mutate({
-										id: selectedTransfer.id,
-										status: "to-ship",
+					if (selectedPurchaseOrder) {
+						statusMutation.mutate({
+							id: selectedPurchaseOrder.id,
+							status: "to-ship",
 						});
-									setIsAcceptDialogOpen(false);
-								}
-							}}
+						setIsAcceptDialogOpen(false);
+					}
+				}}
 				isPending={statusMutation.isPending}
 			/>
 
-			<RejectTransferDialog
+			<RejectPurchaseOrderDialog
 				open={isRejectDialogOpen}
 				onOpenChange={setIsRejectDialogOpen}
 				rejectReason={rejectReason}
 				onRejectReasonChange={setRejectReason}
 				onReject={() => {
-								if (selectedTransfer && rejectReason) {
-									statusMutation.mutate({
-										id: selectedTransfer.id,
-										status: "cancel",
+					if (selectedPurchaseOrder && rejectReason) {
+						statusMutation.mutate({
+							id: selectedPurchaseOrder.id,
+							status: "cancel",
 						});
-									setIsRejectDialogOpen(false);
+						setIsRejectDialogOpen(false);
 						setRejectReason("");
 					}
 				}}

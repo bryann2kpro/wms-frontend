@@ -523,10 +523,26 @@ export interface CreateDeliveryOrderInputGql {
 // Purchase Orders (Transfer Orders / TOs from NetSuite)
 // ---------------------------------------------------------------------------
 
+export interface PurchaseOrderOutlet {
+	outletId: string;
+	outletName: string;
+	outletCode: string;
+	regionId: string | null;
+	regionName: string | null;
+	regionCode: string | null;
+	region?: PurchaseOrderRegion | null;
+}
+
+export interface PurchaseOrderRegion {
+	regionId: string;
+	regionName: string;
+	regionCode: string;
+}
+
 export interface PurchaseOrder {
 	id: string;
 	purchaseOrderNo: string;
-	outletId: string;
+	outlet?: PurchaseOrderOutlet | null;
 	status: string;
 	scheduledDeliveryDate?: string | null;
 	createdAt: string;

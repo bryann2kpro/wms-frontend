@@ -1,5 +1,5 @@
-export { CreateTransferDialog, CreateTransferDialogTrigger } from "./create-transfer-dialog";
-export { ViewTransferDialog } from "./view-transfer-dialog";
-export { AcceptTransferDialog } from "./accept-transfer-dialog";
-export { RejectTransferDialog } from "./reject-transfer-dialog";
-export { OutboundListCard } from "./outbound-list-card";
+export { CreatePurchaseOrderDialog, CreatePurchaseOrderDialogTrigger } from "./create-purchase-order-dialog";
+export { ViewPurchaseOrderDialog } from "./view-purchase-order-dialog";
+export { AcceptPurchaseOrderDialog } from "./accept-purchase-order-dialog";
+export { RejectPurchaseOrderDialog } from "./reject-purchase-order-dialog";
+export { OutboundListCard, useOutboundSummary } from "./outbound-list-card";

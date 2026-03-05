@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 
-interface RejectTransferDialogProps {
+interface RejectPurchaseOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rejectReason: string;
@@ -19,21 +19,21 @@ interface RejectTransferDialogProps {
   isPending: boolean;
 }
 
-export function RejectTransferDialog({
+export function RejectPurchaseOrderDialog({
   open,
   onOpenChange,
   rejectReason,
   onRejectReasonChange,
   onReject,
   isPending,
-}: RejectTransferDialogProps) {
+}: RejectPurchaseOrderDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reject Delivery Order</DialogTitle>
+          <DialogTitle>Reject Purchase Order</DialogTitle>
           <DialogDescription>
-            Please provide a reason for rejecting this Delivery order.
+            Please provide a reason for rejecting this purchase order.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -63,7 +63,7 @@ export function RejectTransferDialog({
             onClick={onReject}
             disabled={isPending || !rejectReason}
           >
-            {isPending ? "Rejecting..." : "Reject TO"}
+            {isPending ? "Rejecting..." : "Reject PO"}
           </Button>
         </DialogFooter>
       </DialogContent>

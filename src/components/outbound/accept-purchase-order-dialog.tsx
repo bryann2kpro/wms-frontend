@@ -7,51 +7,51 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { TransferDetail } from "@/data/transfers.types";
+import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 
-interface AcceptTransferDialogProps {
+interface AcceptPurchaseOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  transfer: TransferDetail | null;
+  purchaseOrder: PurchaseOrderDetail | null;
   onAccept: () => void;
   isPending: boolean;
 }
 
-export function AcceptTransferDialog({
+export function AcceptPurchaseOrderDialog({
   open,
   onOpenChange,
-  transfer,
+  purchaseOrder,
   onAccept,
   isPending,
-}: AcceptTransferDialogProps) {
+}: AcceptPurchaseOrderDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Accept Delivery Order</DialogTitle>
+          <DialogTitle>Accept Purchase Order</DialogTitle>
           <DialogDescription>
-            Accepting this TO will create a Delivery Order and reserve stock.
+            Accepting this PO will create a Delivery Order and reserve stock.
             Must fulfill full quantity to accept (no partial, no backorder, no
             split delivery).
           </DialogDescription>
         </DialogHeader>
-        {transfer && (
+        {purchaseOrder && (
           <div className="space-y-4">
             <div className="rounded-lg border p-3 bg-muted/50">
               <p className="text-sm font-medium mb-2">
-                TO: {transfer.transferOrderNumber}
+                PO: {purchaseOrder.purchaseOrderNumber}
               </p>
               <p className="text-xs text-muted-foreground">
-                Outlet: {transfer.toLocation}
+                Outlet: {purchaseOrder.toLocation}
               </p>
-              {transfer.regionName && (
+              {purchaseOrder.regionName && (
                 <p className="text-xs text-muted-foreground">
-                  Region: {transfer.regionName}
-                  {transfer.regionCode ? ` (${transfer.regionCode})` : ""}
+                  Region: {purchaseOrder.regionName}
+                  {purchaseOrder.regionCode ? ` (${purchaseOrder.regionCode})` : ""}
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                Items: {transfer.items.length}
+                Items: {purchaseOrder.items.length}
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
-/** Transfer / delivery order types (no mock data). */
+/** Purchase Order / Delivery Order types. */
 
-export type TransferStatus =
+export type PurchaseOrderStatus =
 	| "preparing"
 	| "in-transit"
 	| "to-ship"
@@ -10,7 +10,7 @@ export type TransferStatus =
 
 export type NetSuiteStatus = "synced" | "pending" | "error" | undefined;
 
-export interface TransferItem {
+export interface PurchaseOrderItem {
 	id: string;
 	sku: string;
 	description: string;
@@ -19,57 +19,57 @@ export interface TransferItem {
 	packedQuantity: number;
 }
 
-export interface TransferDetail {
+export interface PurchaseOrderDetail {
 	id: string;
-	transferOrderNumber: string;
+	purchaseOrderNumber: string;
 	fromLocation: string;
 	toLocation: string;
-	status: TransferStatus;
+	status: PurchaseOrderStatus;
 	createdDate: Date;
 	expectedDeliveryDate: Date;
 	createdBy: string;
 	notes?: string;
-	items: TransferItem[];
+	items: PurchaseOrderItem[];
 	totalItems: number;
 	netsuiteStatus?: NetSuiteStatus;
 	regionName?: string | null;
 	regionCode?: string | null;
 }
 
-export type TransferStatusFilter = TransferStatus | "ALL";
+export type PurchaseOrderStatusFilter = PurchaseOrderStatus | "ALL";
 
-export interface TransferListFilters {
+export interface PurchaseOrderListFilters {
 	page: number;
 	pageSize: number;
 	search?: string;
-	status?: TransferStatusFilter;
+	status?: PurchaseOrderStatusFilter;
 }
 
-export interface TransferSummary {
-	byStatus: Record<TransferStatus, number>;
+export interface PurchaseOrderSummary {
+	byStatus: Record<PurchaseOrderStatus, number>;
 	total: number;
 }
 
-export interface TransferListResult {
-	items: TransferDetail[];
-	summary: TransferSummary;
+export interface PurchaseOrderListResult {
+	items: PurchaseOrderDetail[];
+	summary: PurchaseOrderSummary;
 	page: number;
 	pageSize: number;
 	total: number;
 }
 
-export interface CreateTransferLineItemInput {
+export interface CreatePurchaseOrderLineItemInput {
 	skuId: string;
 	skuCode?: string;
 	description?: string;
 	quantity: number;
 }
 
-export interface CreateTransferInput {
-	transferOrderNumber: string;
+export interface CreatePurchaseOrderInput {
+	purchaseOrderNumber: string;
 	outletId: string;
 	outletName: string;
 	expectedDeliveryDate: Date;
 	notes?: string;
-	items: CreateTransferLineItemInput[];
+	items: CreatePurchaseOrderLineItemInput[];
 }

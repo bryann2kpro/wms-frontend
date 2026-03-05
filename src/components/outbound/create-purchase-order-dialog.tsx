@@ -41,9 +41,9 @@ import {
 	type OutletsQueryVariables,
 } from "@/lib/graphql/outlets";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import type { CreateTransferLineItem } from "@/lib/outbound";
+import type { CreatePurchaseOrderLineItem } from "@/lib/outbound";
 
-interface CreateTransferDialogProps {
+interface CreatePurchaseOrderDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	form: any;
@@ -51,12 +51,12 @@ interface CreateTransferDialogProps {
 	trigger?: React.ReactNode;
 }
 
-export function CreateTransferDialog({
+export function CreatePurchaseOrderDialog({
 	open,
 	onOpenChange,
 	form,
 	trigger,
-}: CreateTransferDialogProps) {
+}: CreatePurchaseOrderDialogProps) {
 	const { data: outletsData } = useQuery<
 		OutletsQueryData,
 		OutletsQueryVariables
@@ -78,11 +78,11 @@ export function CreateTransferDialog({
 			{trigger != null ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
 			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle id="create-do-dialog-title">
-						Create New Delivery Order
+					<DialogTitle id="create-po-dialog-title">
+						Create New Purchase Order
 					</DialogTitle>
-					<DialogDescription id="create-do-dialog-description">
-						Enter the delivery order number, select an outlet, and add line items
+					<DialogDescription id="create-po-dialog-description">
+						Enter the purchase order number, select an outlet, and add line items
 						(stock and quantity). Delivery date is set automatically by the
 						system.
 					</DialogDescription>
@@ -93,8 +93,8 @@ export function CreateTransferDialog({
 						form.handleSubmit();
 					}}
 					className="space-y-4"
-					aria-labelledby="create-do-dialog-title"
-					aria-describedby="create-do-dialog-description"
+					aria-labelledby="create-po-dialog-title"
+					aria-describedby="create-po-dialog-description"
 				>
 					<form.Subscribe selector={(state: any) => state.isSubmitting}>
 						{(isSubmitting: boolean) => (
@@ -106,7 +106,7 @@ export function CreateTransferDialog({
 										aria-busy="true"
 										className="sr-only"
 									>
-										Creating delivery order...
+										Creating purchase order...
 									</div>
 								)}
 								<fieldset
@@ -116,14 +116,14 @@ export function CreateTransferDialog({
 								>
 					<FieldGroup>
 						<form.Field
-							name="transferOrderNumber"
+							name="purchaseOrderNumber"
 							children={(field: any) => {
 								const isInvalid =
 									field.state.meta.isTouched && !field.state.meta.isValid;
 								return (
 									<Field data-invalid={isInvalid}>
 										<FieldLabel htmlFor={field.name}>
-											Delivery Order Number
+											Purchase Order Number
 										</FieldLabel>
 										<Input
 											id={field.name}
@@ -195,7 +195,7 @@ export function CreateTransferDialog({
 						<form.Subscribe
 							selector={(state: any) => state.values.items ?? []}
 						>
-							{(items: CreateTransferLineItem[]) => (
+							{(items: CreatePurchaseOrderLineItem[]) => (
 								<Field>
 									<div className="flex items-center justify-between gap-2">
 										<FieldLabel>Line items (Stock &amp; Amount)</FieldLabel>
@@ -276,7 +276,7 @@ export function CreateTransferDialog({
 									Cancel
 								</Button>
 								<Button type="submit" disabled={isSubmitting || !canSubmit}>
-									{isSubmitting ? "Creating delivery order..." : "Create Delivery Order"}
+									{isSubmitting ? "Creating purchase order..." : "Create Purchase Order"}
 								</Button>
 							</DialogFooter>
 						)}
@@ -295,8 +295,8 @@ function LineItemRow({
 	canRemove,
 }: {
 	index: number;
-	item: CreateTransferLineItem & { skuCode?: string; description?: string };
-	items: (CreateTransferLineItem & { skuCode?: string; description?: string })[];
+	item: CreatePurchaseOrderLineItem & { skuCode?: string; description?: string };
+	items: (CreatePurchaseOrderLineItem & { skuCode?: string; description?: string })[];
 	form: any;
 	canRemove: boolean;
 }) {
@@ -369,14 +369,14 @@ function LineItemRow({
 	);
 }
 
-export function CreateTransferDialogTrigger({
+export function CreatePurchaseOrderDialogTrigger({
 	open,
 	onOpenChange,
 	form,
 	createMutation,
-}: Omit<CreateTransferDialogProps, "trigger">) {
+}: Omit<CreatePurchaseOrderDialogProps, "trigger">) {
 	return (
-		<CreateTransferDialog
+		<CreatePurchaseOrderDialog
 			open={open}
 			onOpenChange={onOpenChange}
 			form={form}
@@ -384,7 +384,7 @@ export function CreateTransferDialogTrigger({
 			trigger={
 				<Button>
 					<Plus className="mr-2 h-4 w-4" />
-					Create Delivery Order
+					Create Purchase Order
 				</Button>
 			}
 		/>

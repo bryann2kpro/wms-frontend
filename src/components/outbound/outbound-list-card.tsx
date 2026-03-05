@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -33,293 +34,115 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
-import type {
-  TransferDetail,
-  TransferStatusFilter,
-} from "@/data/transfers.types";
+import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
-  transferStatuses,
+  purchaseOrderStatuses,
   getStatusColor,
   getNetSuiteStatusColor,
   formatStatus,
-  getTransferStatusColor,
-  DATE_GROUPS_PER_PAGE,
+  getPurchaseOrderStatusColor,
 } from "@/lib/outbound";
-import { formatDeliveryDateHeader, getDateKey } from "@/lib/utils";
 import type { DeliveryTab } from "@/lib/outbound";
-import { useQuery as useApolloQuery } from "@apollo/client/react";
+import { formatDateOnly, formatDeliveryDateHeader } from "@/lib/utils";
 import {
-  DELIVERY_ORDERS_QUERY,
-  type DeliveryOrdersQueryData,
-  type DeliveryOrdersQueryVariables,
-  mapDeliveryOrdersToTransfers,
-} from "@/lib/graphql/delivery-orders";
-import {
-  PURCHASE_ORDERS_QUERY,
-  type PurchaseOrdersQueryData,
-  type PurchaseOrdersQueryVariables,
-  mapPurchaseOrdersToTransfers,
-} from "@/lib/graphql/purchase-orders";
-import {
-  OUTLETS_QUERY,
-  type OutletsQueryData,
-  type OutletsQueryVariables,
-} from "@/lib/graphql/outlets";
-import {
-  REGIONS_QUERY,
-  type RegionsQueryData,
-  type RegionsQueryVariables,
-} from "@/lib/graphql/regions";
-import {
-  DELIVERY_SCHEDULES_QUERY,
-  type DeliverySchedulesQueryData,
-  type DeliverySchedulesQueryVariables,
-} from "@/lib/graphql/delivery-schedules";
+  usePurchaseOrders,
+  type PurchaseOrderStatusFilter,
+} from "@/lib/hooks/use-purchase-orders";
 
 interface OutboundListCardProps {
-  searchTerm: string;
-  onSearchTermChange: (value: string) => void;
-  statusFilter: TransferStatusFilter;
-  onStatusFilterChange: (value: TransferStatusFilter) => void;
-  activeTab: DeliveryTab;
-  onActiveTabChange: (tab: DeliveryTab) => void;
-  isLoading: boolean;
-  dateKeys: string[];
-  transfersByDate: Record<string, TransferDetail[]>;
-  paginatedDateKeys: string[];
-  page: number;
-  totalPages: number;
-  filteredTotal: number;
-  totalDateGroups: number;
-  startDateIndex: number;
-  onPageChange: (page: number) => void;
-  onViewTransfer: (transfer: TransferDetail) => void;
-  onAcceptClick: (transfer: TransferDetail) => void;
-  onRejectClick: (transfer: TransferDetail) => void;
+  onViewPurchaseOrder: (purchaseOrder: PurchaseOrderDetail) => void;
+  onAcceptClick: (purchaseOrder: PurchaseOrderDetail) => void;
+  onRejectClick: (purchaseOrder: PurchaseOrderDetail) => void;
   hasAcceptPermission: boolean;
   hasRejectPermission: boolean;
 }
 
 export function OutboundListCard({
-  searchTerm,
-  onSearchTermChange,
-  statusFilter,
-  onStatusFilterChange,
-  activeTab,
-  onActiveTabChange,
-  isLoading,
-  dateKeys,
-  transfersByDate,
-  paginatedDateKeys,
-  page,
-  totalPages,
-  filteredTotal,
-  totalDateGroups,
-  startDateIndex,
-  onPageChange,
-  onViewTransfer,
+  onViewPurchaseOrder,
   onAcceptClick,
   onRejectClick,
   hasAcceptPermission,
   hasRejectPermission,
 }: OutboundListCardProps) {
-  const {
-    data: purchaseOrdersData,
-    loading: purchaseOrdersLoading,
-  } = useApolloQuery<PurchaseOrdersQueryData, PurchaseOrdersQueryVariables>(
-    PURCHASE_ORDERS_QUERY,
-    {
-      variables: {
-        filter: undefined,
-        pageSize: 50,
-        pageNumber: 1,
-      },
-      fetchPolicy: "cache-and-network",
-    },
-  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatusFilter>("ALL");
+  const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
+  const [page, setPage] = useState(1);
 
   const {
-    data: deliveryOrdersData,
-    loading: deliveryOrdersLoading,
-  } = useApolloQuery<DeliveryOrdersQueryData, DeliveryOrdersQueryVariables>(
-    DELIVERY_ORDERS_QUERY,
-    {
-      variables: {
-        filter: undefined,
-        pageSize: 50,
-        pageNumber: 1,
-      },
-      fetchPolicy: "cache-and-network",
-    },
-  );
-
-  const { data: outletsData } = useApolloQuery<
-    OutletsQueryData,
-    OutletsQueryVariables
-  >(OUTLETS_QUERY, {
-    variables: { filter: {}, pageSize: 500, pageNumber: 1 },
-    fetchPolicy: "cache-and-network",
+    data,
+    isLoading,
+    isFetching,
+    error,
+  } = usePurchaseOrders({
+    searchTerm,
+    statusFilter,
+    activeTab,
+    page,
   });
 
-  const { data: regionsData } = useApolloQuery<
-    RegionsQueryData,
-    RegionsQueryVariables
-  >(REGIONS_QUERY, {
-    variables: { filter: {}, pageSize: 500, pageNumber: 1 },
-    fetchPolicy: "cache-and-network",
-  });
+  const purchaseOrdersByDate = data?.purchaseOrdersByDate ?? {};
+  const paginatedDateKeys = data?.paginatedDateKeys ?? [];
+  const totalDateGroups = data?.totalDateGroups ?? 0;
+  const startDateIndex = data?.startDateIndex ?? 0;
+  const totalPages = data?.totalPages ?? 1;
+  const filteredTotal = data?.filteredTotal ?? 0;
 
-  const { data: schedulesData } = useApolloQuery<
-    DeliverySchedulesQueryData,
-    DeliverySchedulesQueryVariables
-  >(DELIVERY_SCHEDULES_QUERY, {
-    variables: { filter: {}, pageSize: 500, pageNumber: 1 },
-    fetchPolicy: "cache-and-network",
-  });
-
-  const mapped =
-    deliveryOrdersData?.deliveryOrders != null
-      ? mapDeliveryOrdersToTransfers(deliveryOrdersData.deliveryOrders)
-      : null;
-
-  const graphqlTransfers: TransferDetail[] = mapped?.items ?? [];
-  const purchaseTransfers: TransferDetail[] =
-    purchaseOrdersData?.purchaseOrders != null
-      ? mapPurchaseOrdersToTransfers(purchaseOrdersData.purchaseOrders).items
-      : [];
-
-  // Index PO and DO by PO number so we can enrich the main list rows
-  const poByNumber = new Map<string, TransferDetail>();
-  for (const po of purchaseTransfers) {
-    poByNumber.set(po.transferOrderNumber, po);
-  }
-  const doByNumber = new Map<string, TransferDetail>();
-  for (const order of graphqlTransfers) {
-    doByNumber.set(order.transferOrderNumber, order);
-  }
-
-  // Map purchase order number -> outletId, and outletId -> outlet (for outletName)
-  const outletIdByPoNo = new Map<string, string | undefined>();
-  for (const po of purchaseOrdersData?.purchaseOrders.query ?? []) {
-    outletIdByPoNo.set(po.purchaseOrderNo, po.outletId);
-  }
-
-  const outlets = outletsData?.outlets?.query ?? [];
-  const outletById = new Map<string, (typeof outlets)[number]>();
-  for (const o of outlets) {
-    outletById.set(o.outletId, o);
-  }
-
-  // Map regionId -> region and regionId -> delivery schedules
-  const regions = regionsData?.regions?.query ?? [];
-  const regionById = new Map<string, (typeof regions)[number]>();
-  for (const r of regions) {
-    regionById.set(r.regionId, r);
-  }
-
-  const schedules = schedulesData?.deliverySchedules?.query ?? [];
-  const schedulesByRegionId = new Map<
-    string,
-    (typeof schedules)[number][]
-  >();
-  for (const s of schedules) {
-    const list = schedulesByRegionId.get(s.regionId) ?? [];
-    list.push(s);
-    schedulesByRegionId.set(s.regionId, list);
-  }
-
-  // If there are no transfer groups from the legacy source but we do have PO/DO data,
-  // build fallback groups from GraphQL data so the table still shows rows.
-  const useFallbackGroups =
-    dateKeys.length === 0 &&
-    (purchaseTransfers.length > 0 || graphqlTransfers.length > 0);
-
-  let effectiveTransfersByDate: Record<string, TransferDetail[]> =
-    transfersByDate;
-  let effectiveDateKeys = dateKeys;
-  let effectivePaginatedDateKeys = paginatedDateKeys;
-  let effectiveTotalDateGroups = totalDateGroups;
-  let effectiveFilteredTotal = filteredTotal;
-  let effectiveStartDateIndex = startDateIndex;
-  let effectiveTotalPages = totalPages;
-
-  if (useFallbackGroups) {
-    const base: TransferDetail[] =
-      purchaseTransfers.length > 0 ? purchaseTransfers : graphqlTransfers;
-
-    const grouped: Record<string, TransferDetail[]> = {};
-    for (const t of base) {
-      const key = getDateKey(new Date(t.expectedDeliveryDate));
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(t);
-    }
-
-    const keys = Object.keys(grouped).sort((a, b) =>
-      activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),
-    );
-
-    const totalGroups = keys.length;
-    const startIndex = (page - 1) * DATE_GROUPS_PER_PAGE;
-    const pageKeys = keys.slice(
-      startIndex,
-      startIndex + DATE_GROUPS_PER_PAGE,
-    );
-    const totalPagesFallback = Math.max(
-      1,
-      Math.ceil(totalGroups / DATE_GROUPS_PER_PAGE),
-    );
-
-    effectiveTransfersByDate = grouped;
-    effectiveDateKeys = keys;
-    effectivePaginatedDateKeys = pageKeys;
-    effectiveTotalDateGroups = totalGroups;
-    effectiveFilteredTotal = base.length;
-    effectiveStartDateIndex = startIndex;
-    effectiveTotalPages = totalPagesFallback;
-  }
+  const loading = isLoading || isFetching;
 
   return (
-    <Card>
+    <Card role="region" aria-labelledby="purchase-order-title">
       <CardHeader>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Delivery Order List</CardTitle>
-              <CardDescription>
-                View and manage all delivery orders
+              <CardTitle id="purchase-order-title" className="text-xl font-semibold">
+                Purchase Order List
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                View and manage all purchase orders
               </CardDescription>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search 
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" 
+                  aria-hidden="true"
+                />
                 <Input
-                  placeholder="Search transfers..."
+                  id="search-purchase-orders"
+                  placeholder="Search purchase orders..."
                   value={searchTerm}
                   onChange={(e) => {
-                    onSearchTermChange(e.target.value);
-                    onPageChange(1);
+                    setSearchTerm(e.target.value);
+                    setPage(1);
                   }}
-                  className="pl-9 sm:w-64"
+                  className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label="Search purchase orders by PO number, outlet, or region"
                 />
               </div>
               <Select
                 value={statusFilter}
                 onValueChange={(value) => {
-                  onStatusFilterChange(value as TransferStatusFilter);
-                  onPageChange(1);
+                  setStatusFilter(value as PurchaseOrderStatusFilter);
+                  setPage(1);
                 }}
               >
-                <SelectTrigger className="sm:w-48">
+                <SelectTrigger 
+                  className="sm:w-48 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label="Filter by status"
+                >
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Status</SelectItem>
-                  {transferStatuses.map((status) => (
+                  {purchaseOrderStatuses.map((status) => (
                     <SelectItem
                       key={status}
                       value={status}
-                      className={getTransferStatusColor(status)}
+                      className={getPurchaseOrderStatusColor(status)}
                     >
                       {formatStatus(status)}
                     </SelectItem>
@@ -328,50 +151,56 @@ export function OutboundListCard({
               </Select>
             </div>
           </div>
-          <div className="flex gap-2 border-b">
+          <div className="flex gap-2 border-b" role="tablist" aria-label="Delivery period tabs">
             <Button
               variant={activeTab === "current-week" ? "default" : "ghost"}
               onClick={() => {
-                onActiveTabChange("current-week");
-                onPageChange(1);
+                setActiveTab("current-week");
+                setPage(1);
               }}
-              className="rounded-b-none"
+              className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              role="tab"
+              aria-selected={activeTab === "current-week"}
+              aria-controls="purchase-order-table"
             >
-              <Calendar className="mr-2 h-4 w-4" />
+              <Calendar className="mr-2 h-4 w-4" aria-hidden="true" />
               Next Delivery
             </Button>
             <Button
               variant={activeTab === "past-weeks" ? "default" : "ghost"}
               onClick={() => {
-                onActiveTabChange("past-weeks");
-                onPageChange(1);
+                setActiveTab("past-weeks");
+                setPage(1);
               }}
-              className="rounded-b-none"
+              className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              role="tab"
+              aria-selected={activeTab === "past-weeks"}
+              aria-controls="purchase-order-table"
             >
-              <Clock className="mr-2 h-4 w-4" />
+              <Clock className="mr-2 h-4 w-4" aria-hidden="true" />
               Past Deliveries
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative">
+      <CardContent className="relative" role="tabpanel" id="purchase-order-table" aria-labelledby="purchase-order-title">
         <GlobalLoadingShadow />
         <div className="overflow-x-auto rounded-lg border">
-          <Table>
+          <Table aria-label="Purchase orders list">
             <TableHeader>
               <TableRow>
-                <TableHead>PO Number</TableHead>
-                <TableHead>Outlet</TableHead>
-                <TableHead>Region</TableHead>
-                <TableHead>Schedule Delivery Date</TableHead>
-                <TableHead>DO Created?</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>NetSuite (API)</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead scope="col">PO Number</TableHead>
+                <TableHead scope="col">Outlet</TableHead>
+                <TableHead scope="col">Region</TableHead>
+                <TableHead scope="col">Schedule Delivery Date</TableHead>
+                <TableHead scope="col">DO Created?</TableHead>
+                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col">NetSuite (API)</TableHead>
+                <TableHead scope="col" className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading || purchaseOrdersLoading || deliveryOrdersLoading ? (
+              {loading ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -379,21 +208,40 @@ export function OutboundListCard({
                     role="status"
                     aria-live="polite"
                   >
-                    Loading delivery orders...
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <span>Loading purchase orders...</span>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : effectiveDateKeys.length === 0 ? (
+              ) : error ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="h-24 text-center text-destructive"
+                    role="alert"
+                    aria-live="assertive"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <span>Failed to load purchase orders</span>
+                      <span className="text-sm text-muted-foreground">
+                        {error instanceof Error ? error.message : "Please try again"}
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : paginatedDateKeys.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    No delivery orders found.
+                    No purchase orders found.
                   </TableCell>
                 </TableRow>
               ) : (
-                effectivePaginatedDateKeys.flatMap((dateKey) => {
-                  const dateTransfers = effectiveTransfersByDate[dateKey] ?? [];
+                paginatedDateKeys.flatMap((dateKey) => {
+                  const datePurchaseOrders = purchaseOrdersByDate[dateKey] ?? [];
                   const deliveryDate = new Date(dateKey + "T12:00:00");
                   const headerLabel = formatDeliveryDateHeader(deliveryDate);
                   return [
@@ -408,68 +256,25 @@ export function OutboundListCard({
                         {headerLabel}
                       </TableCell>
                     </TableRow>,
-                    ...dateTransfers.map((transfer) => {
-                      const linkedDo = doByNumber.get(
-                        transfer.transferOrderNumber,
-                      );
-                      const outletIdForTransfer = outletIdByPoNo.get(
-                        transfer.transferOrderNumber,
-                      );
-                      const outletForTransfer =
-                        outletIdForTransfer != null
-                          ? outletById.get(outletIdForTransfer)
-                          : undefined;
-
-                      const regionIdForTransfer =
-                        outletForTransfer?.regionId ?? null;
-                      const regionForTransfer =
-                        regionIdForTransfer != null
-                          ? regionById.get(regionIdForTransfer)
-                          : undefined;
-
-                      const schedulesForRegion =
-                        regionIdForTransfer != null
-                          ? schedulesByRegionId.get(regionIdForTransfer) ?? []
-                          : [];
-
-                      const scheduleLabel =
-                        schedulesForRegion.length > 0
-                          ? schedulesForRegion
-                              .map((s) => s.dayName)
-                              .join(", ")
-                          : null;
-
+                    ...datePurchaseOrders.map((purchaseOrder) => {
                       const doCreated =
-                        !!linkedDo ||
-                        transfer.status === "to-ship" ||
-                        transfer.status === "in-transit";
+                        purchaseOrder.status === "to-ship" ||
+                        purchaseOrder.status === "in-transit";
+
                       return (
-                        <TableRow key={transfer.id}>
+                        <TableRow key={purchaseOrder.id}>
                           <TableCell className="font-medium">
-                            {transfer.transferOrderNumber}
+                            {purchaseOrder.purchaseOrderNumber}
                           </TableCell>
                           <TableCell>
-                            {outletForTransfer?.outletName ??
-                              transfer.toLocation}
+                            {purchaseOrder.toLocation}
                           </TableCell>
                           <TableCell>
-                            {regionForTransfer?.regionName ||
-                            outletForTransfer?.regionName ||
-                            transfer.regionName ? (
+                            {purchaseOrder.regionName ? (
                               <div className="flex flex-col">
                                 <span>
-                                  {regionForTransfer?.regionName ??
-                                    outletForTransfer?.regionName ??
-                                    transfer.regionName}
-                                  {(() => {
-                                    const code =
-                                      regionForTransfer?.regionCode ??
-                                      outletForTransfer?.regionCode ??
-                                      transfer.regionCode;
-                                    return code
-                                      ? ` (${code})`
-                                      : "";
-                                  })()}
+                                  {purchaseOrder.regionName}
+                                  {purchaseOrder.regionCode ? ` (${purchaseOrder.regionCode})` : ""}
                                 </span>
                               </div>
                             ) : (
@@ -477,7 +282,7 @@ export function OutboundListCard({
                             )}
                           </TableCell>
                           <TableCell>
-                            {new Date(transfer.expectedDeliveryDate).toLocaleDateString()}
+                            {formatDateOnly(purchaseOrder.expectedDeliveryDate)}
                           </TableCell>
                           <TableCell>
                             {doCreated ? (
@@ -499,48 +304,54 @@ export function OutboundListCard({
                           <TableCell>
                             <Badge
                               variant="outline"
-                              className={getStatusColor(transfer.status)}
+                              className={getStatusColor(purchaseOrder.status)}
                             >
-                              {formatStatus(transfer.status)}
+                              {formatStatus(purchaseOrder.status)}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
                               className={getNetSuiteStatusColor(
-                                transfer.netsuiteStatus,
+                                purchaseOrder.netsuiteStatus,
                               )}
                             >
-                              {transfer.netsuiteStatus || "N/A"}
+                              {purchaseOrder.netsuiteStatus || "N/A"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
+                            <div className="flex justify-end gap-1" role="group" aria-label={`Actions for ${purchaseOrder.purchaseOrderNumber}`}>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => onViewTransfer(transfer)}
+                                onClick={() => onViewPurchaseOrder(purchaseOrder)}
+                                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                aria-label={`View details for ${purchaseOrder.purchaseOrderNumber}`}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-4 w-4" aria-hidden="true" />
                               </Button>
                               {hasAcceptPermission &&
-                                transfer.status === "preparing" && (
+                                purchaseOrder.status === "preparing" && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => onAcceptClick(transfer)}
+                                    onClick={() => onAcceptClick(purchaseOrder)}
+                                    className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
                                   >
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <CheckCircle className="h-4 w-4 text-green-600" aria-hidden="true" />
                                   </Button>
                                 )}
                               {hasRejectPermission &&
-                                transfer.status === "preparing" && (
+                                purchaseOrder.status === "preparing" && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => onRejectClick(transfer)}
+                                    onClick={() => onRejectClick(purchaseOrder)}
+                                    className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    aria-label={`Reject ${purchaseOrder.purchaseOrderNumber}`}
                                   >
-                                    <XCircle className="h-4 w-4 text-red-600" />
+                                    <XCircle className="h-4 w-4 text-red-600" aria-hidden="true" />
                                   </Button>
                                 )}
                             </div>
@@ -556,25 +367,28 @@ export function OutboundListCard({
         </div>
 
         {(totalDateGroups > 0 || filteredTotal > 0) && (
-          <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-            <div>
-              {effectiveTotalDateGroups > 0 ? (
+          <nav 
+            className="mt-4 flex items-center justify-between text-xs text-muted-foreground"
+            aria-label="Pagination"
+          >
+            <div aria-live="polite" aria-atomic="true">
+              {totalDateGroups > 0 ? (
                 <>
                   Showing delivery dates{" "}
                   <span className="font-medium">
-                    {effectiveStartDateIndex + 1}
+                    {startDateIndex + 1}
                   </span>{" "}
                   -{" "}
                   <span className="font-medium">
-                    {effectiveStartDateIndex + effectivePaginatedDateKeys.length}
+                    {startDateIndex + paginatedDateKeys.length}
                   </span>{" "}
                   of{" "}
                   <span className="font-medium">
-                    {effectiveTotalDateGroups}
+                    {totalDateGroups}
                   </span>{" "}
                   (
                   <span className="font-medium">
-                    {effectiveFilteredTotal}
+                    {filteredTotal}
                   </span>{" "}
                   orders)
                 </>
@@ -585,30 +399,39 @@ export function OutboundListCard({
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" role="group" aria-label="Page navigation">
               <Button
                 variant="outline"
                 size="icon"
                 disabled={page === 1}
-                onClick={() => onPageChange(Math.max(1, page - 1))}
+                onClick={() => setPage(Math.max(1, page - 1))}
+                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label="Go to previous page"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </Button>
-              <span>
-                Page {page} of {effectiveTotalPages}
+              <span aria-current="page">
+                Page {page} of {totalPages}
               </span>
               <Button
                 variant="outline"
                 size="icon"
-                disabled={page === effectiveTotalPages}
-                onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label="Go to next page"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
-          </div>
+          </nav>
         )}
       </CardContent>
     </Card>
   );
+}
+
+export function useOutboundSummary() {
+  const { data } = usePurchaseOrders({ page: 1 });
+  return data?.summary;
 }

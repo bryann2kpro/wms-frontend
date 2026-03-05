@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	PurchaseOrder,
 	PurchaseOrderPaginatedResponse,
@@ -6,13 +6,13 @@ import type {
 	Pagination,
 } from "./types";
 import type {
-	TransferDetail,
-	TransferListResult,
-	TransferStatus,
-} from "@/data/transfers.types";
+	PurchaseOrderDetail,
+	PurchaseOrderListResult,
+	PurchaseOrderStatus,
+} from "@/data/purchase-orders.types";
 
 // ---------------------------------------------------------------------------
-// Fragment
+// Fragment (basic fields without nested outlet)
 // ---------------------------------------------------------------------------
 
 export const PURCHASE_ORDER_FRAGMENT = gql`
@@ -30,7 +30,34 @@ export const PURCHASE_ORDER_FRAGMENT = gql`
 `;
 
 // ---------------------------------------------------------------------------
-// Query
+// Fragment with nested outlet and region (for list views)
+// ---------------------------------------------------------------------------
+
+export const PURCHASE_ORDER_WITH_OUTLET_FRAGMENT = gql`
+	fragment PurchaseOrderWithOutletFields on PurchaseOrder {
+		id
+		purchaseOrderNo
+		outlet {
+			outletId
+			outletName
+			outletCode
+			region {
+				regionId
+				regionName
+				regionCode
+			}
+		}
+		status
+		scheduledDeliveryDate
+		createdAt
+		updatedAt
+		createdBy
+		updatedBy
+	}
+`;
+
+// ---------------------------------------------------------------------------
+// Query (basic - without nested outlet)
 // ---------------------------------------------------------------------------
 
 export const PURCHASE_ORDERS_QUERY = gql`
@@ -60,6 +87,37 @@ export const PURCHASE_ORDERS_QUERY = gql`
 	${PURCHASE_ORDER_FRAGMENT}
 `;
 
+// ---------------------------------------------------------------------------
+// Query with nested outlet and region (for list views - avoids N+1 via DataLoader)
+// ---------------------------------------------------------------------------
+
+export const PURCHASE_ORDERS_WITH_OUTLET_QUERY = gql`
+	query PurchaseOrdersWithOutlet(
+		$filter: PurchaseOrderFilterInput
+		$pageSize: Int
+		$pageNumber: Int
+	) {
+		purchaseOrders(
+			filter: $filter
+			pageSize: $pageSize
+			pageNumber: $pageNumber
+		) {
+			query {
+				...PurchaseOrderWithOutletFields
+			}
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+		}
+	}
+	${PURCHASE_ORDER_WITH_OUTLET_FRAGMENT}
+`;
+
 export type PurchaseOrdersQueryVariables = {
 	filter?: PurchaseOrderFilterInput | null;
 	pageSize?: number | null;
@@ -71,10 +129,10 @@ export type PurchaseOrdersQueryData = {
 };
 
 // ---------------------------------------------------------------------------
-// Mapping helper – PurchaseOrder -> TransferDetail (for shared UI components)
+// Mapping helper – GraphQL PurchaseOrder -> PurchaseOrderDetail (for UI)
 // ---------------------------------------------------------------------------
 
-const GQL_PO_STATUS_TO_TRANSFER: Record<string, TransferStatus> = {
+const GQL_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	NEW: "preparing",
 	ACCEPTED: "preparing",
 	REJECTED: "cancel",
@@ -82,41 +140,44 @@ const GQL_PO_STATUS_TO_TRANSFER: Record<string, TransferStatus> = {
 	CANCELLED: "cancel",
 };
 
-export function mapPurchaseOrdersToTransfers(
+export function mapGqlToPurchaseOrderDetail(po: PurchaseOrder): PurchaseOrderDetail {
+	const status: PurchaseOrderStatus =
+		GQL_STATUS_TO_PO_STATUS[po.status] ?? "other";
+
+	const createdDate = new Date(po.createdAt);
+	const expectedDeliveryDate = po.scheduledDeliveryDate
+		? new Date(po.scheduledDeliveryDate)
+		: createdDate;
+
+	const outlet = po.outlet;
+	const region = outlet?.region;
+
+	return {
+		id: po.id,
+		purchaseOrderNumber: po.purchaseOrderNo,
+		fromLocation: "NetSuite",
+		toLocation: outlet?.outletName ?? "Unknown outlet",
+		status,
+		createdDate,
+		expectedDeliveryDate,
+		createdBy: po.createdBy ?? "System",
+		notes: undefined,
+		items: [],
+		totalItems: 0,
+		netsuiteStatus: undefined,
+		regionName: region?.regionName ?? outlet?.regionName ?? null,
+		regionCode: region?.regionCode ?? outlet?.regionCode ?? null,
+	};
+}
+
+export function mapGqlToPurchaseOrderList(
 	raw: PurchaseOrderPaginatedResponse,
-): TransferListResult {
+): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
-	const items: TransferDetail[] = (raw.query ?? []).map(
-		(po: PurchaseOrder): TransferDetail => {
-			const status: TransferStatus =
-				GQL_PO_STATUS_TO_TRANSFER[po.status] ?? "other";
+	const items: PurchaseOrderDetail[] = (raw.query ?? []).map(mapGqlToPurchaseOrderDetail);
 
-			const createdDate = new Date(po.createdAt);
-			const expectedDeliveryDate = po.scheduledDeliveryDate
-				? new Date(po.scheduledDeliveryDate)
-				: createdDate;
-
-			return {
-				id: po.id,
-				transferOrderNumber: po.purchaseOrderNo,
-				fromLocation: "NetSuite",
-				toLocation: "Unknown outlet",
-				status,
-				createdDate,
-				expectedDeliveryDate,
-				createdBy: po.createdBy ?? "System",
-				notes: undefined,
-				items: [],
-				totalItems: 0,
-				netsuiteStatus: undefined,
-				regionName: null,
-				regionCode: null,
-			};
-		},
-	);
-
-	const byStatus: Record<TransferStatus, number> = {
+	const byStatus: Record<PurchaseOrderStatus, number> = {
 		preparing: 0,
 		"in-transit": 0,
 		"to-ship": 0,
@@ -125,8 +186,8 @@ export function mapPurchaseOrdersToTransfers(
 		other: 0,
 	};
 
-	for (const t of items) {
-		byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+	for (const po of items) {
+		byStatus[po.status] = (byStatus[po.status] ?? 0) + 1;
 	}
 
 	return {
@@ -140,4 +201,3 @@ export function mapPurchaseOrdersToTransfers(
 		total: pagination?.totalCount ?? items.length,
 	};
 }
-
