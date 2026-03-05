@@ -12,13 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	Field,
 	FieldError,
 	FieldGroup,
@@ -41,6 +34,7 @@ import {
 	type OutletsQueryVariables,
 } from "@/lib/graphql/outlets";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
+import { OutletCombobox } from "@/components/outbound/outlet-combobox";
 import type { CreatePurchaseOrderLineItem } from "@/lib/outbound";
 
 interface CreatePurchaseOrderDialogProps {
@@ -57,7 +51,7 @@ export function CreatePurchaseOrderDialog({
 	form,
 	trigger,
 }: CreatePurchaseOrderDialogProps) {
-	const { data: outletsData } = useQuery<
+	const { data: outletsData, refetch: refetchOutlets } = useQuery<
 		OutletsQueryData,
 		OutletsQueryVariables
 	>(OUTLETS_QUERY, {
@@ -149,9 +143,16 @@ export function CreatePurchaseOrderDialog({
 								return (
 									<Field data-invalid={isInvalid}>
 										<FieldLabel htmlFor={field.name}>Outlet</FieldLabel>
-										<Select
+										<OutletCombobox
+											id={field.name}
 											value={field.state.value}
-											onValueChange={(value) => {
+											outlets={outlets}
+											onOutletCreated={async () => {
+												await refetchOutlets();
+											}}
+											placeholder="Search or select outlet..."
+											aria-invalid={isInvalid}
+											onChange={(value) => {
 												const outlet = outlets.find(
 													(o: { outletId: string }) => o.outletId === value,
 												);
@@ -164,26 +165,7 @@ export function CreatePurchaseOrderDialog({
 												}
 												field.handleBlur();
 											}}
-										>
-											<SelectTrigger id={field.name}>
-												<SelectValue placeholder="Select outlet" />
-											</SelectTrigger>
-											<SelectContent>
-												{outlets.map(
-													(
-														o: {
-															outletId: string;
-															outletName: string;
-															outletCode: string;
-														},
-													) => (
-														<SelectItem key={o.outletId} value={o.outletId}>
-															{o.outletName} ({o.outletCode})
-														</SelectItem>
-													),
-												)}
-											</SelectContent>
-										</Select>
+										/>
 										{isInvalid && (
 											<FieldError errors={field.state.meta.errors} />
 										)}

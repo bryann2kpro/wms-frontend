@@ -139,6 +139,8 @@ export function toUserFriendlyMessage(raw: string, fallback: string): string {
   const technicalMarkers = [
     "audit_log_id",
     "params:",
+    "Failed query",
+    "insert into",
     "user_agent",
     "old_data",
     "new_data",
