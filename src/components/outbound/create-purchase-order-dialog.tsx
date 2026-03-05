@@ -70,12 +70,12 @@ export function CreatePurchaseOrderDialog({
 			}}
 		>
 			{trigger != null ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle id="create-po-dialog-title">
+			<DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+				<DialogHeader className="space-y-1.5 px-6 pt-6 pb-4 border-b bg-muted/30">
+					<DialogTitle id="create-po-dialog-title" className="text-lg font-semibold">
 						Create New Purchase Order
 					</DialogTitle>
-					<DialogDescription id="create-po-dialog-description">
+					<DialogDescription id="create-po-dialog-description" className="text-sm text-muted-foreground">
 						Enter the purchase order number, select an outlet, and add line items
 						(stock and quantity). Delivery date is set automatically by the
 						system.
@@ -86,7 +86,7 @@ export function CreatePurchaseOrderDialog({
 						e.preventDefault();
 						form.handleSubmit();
 					}}
-					className="space-y-4"
+					className="flex flex-col min-h-0"
 					aria-labelledby="create-po-dialog-title"
 					aria-describedby="create-po-dialog-description"
 				>
@@ -105,82 +105,89 @@ export function CreatePurchaseOrderDialog({
 								)}
 								<fieldset
 									disabled={isSubmitting}
-									className="space-y-4 border-0 p-0 m-0 min-w-0 disabled:opacity-70 disabled:pointer-events-none"
+									className="flex flex-col gap-0 border-0 p-0 m-0 min-w-0 disabled:opacity-70 disabled:pointer-events-none flex-1 overflow-hidden"
 									aria-busy={isSubmitting}
 								>
-					<FieldGroup>
-						<form.Field
-							name="purchaseOrderNumber"
-							children={(field: any) => {
-								const isInvalid =
-									field.state.meta.isTouched && !field.state.meta.isValid;
-								return (
-									<Field data-invalid={isInvalid}>
-										<FieldLabel htmlFor={field.name}>
-											Purchase Order Number
-										</FieldLabel>
-										<Input
-											id={field.name}
-											value={field.state.value}
-											placeholder="PO-2024-001"
-											onBlur={field.handleBlur}
-											onChange={(e) => field.handleChange(e.target.value)}
-											aria-invalid={isInvalid}
-										/>
-										{isInvalid && (
-											<FieldError errors={field.state.meta.errors} />
-										)}
-									</Field>
-								);
-							}}
-						/>
+					<FieldGroup className="flex flex-col gap-0 flex-1 min-h-0 overflow-hidden">
+						{/* Order details: two columns */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-4">
+							<form.Field
+								name="purchaseOrderNumber"
+								children={(field: any) => {
+									const isInvalid =
+										field.state.meta.isTouched && !field.state.meta.isValid;
+									return (
+										<Field data-invalid={isInvalid} className="space-y-2">
+											<FieldLabel htmlFor={field.name}>
+												Purchase Order Number
+											</FieldLabel>
+											<Input
+												id={field.name}
+												value={field.state.value}
+												placeholder="PO-2024-001"
+												onBlur={field.handleBlur}
+												onChange={(e) => field.handleChange(e.target.value)}
+												aria-invalid={isInvalid}
+												className="h-9"
+											/>
+											{isInvalid && (
+												<FieldError errors={field.state.meta.errors} />
+											)}
+										</Field>
+									);
+								}}
+							/>
 
-						<form.Field
-							name="outletId"
-							children={(field: any) => {
-								const isInvalid =
-									field.state.meta.isTouched && !field.state.meta.isValid;
-								return (
-									<Field data-invalid={isInvalid}>
-										<FieldLabel htmlFor={field.name}>Outlet</FieldLabel>
-										<OutletCombobox
-											id={field.name}
-											value={field.state.value}
-											outlets={outlets}
-											onOutletCreated={async () => {
-												await refetchOutlets();
-											}}
-											placeholder="Search or select outlet..."
-											aria-invalid={isInvalid}
-											onChange={(value) => {
-												const outlet = outlets.find(
-													(o: { outletId: string }) => o.outletId === value,
-												);
-												field.handleChange(value);
-												if (outlet) {
-													form.setFieldValue(
-														"outletName",
-														(outlet as { outletName: string }).outletName ?? value,
+							<form.Field
+								name="outletId"
+								children={(field: any) => {
+									const isInvalid =
+										field.state.meta.isTouched && !field.state.meta.isValid;
+									return (
+										<Field data-invalid={isInvalid} className="space-y-2">
+											<FieldLabel htmlFor={field.name}>Outlet</FieldLabel>
+											<OutletCombobox
+												id={field.name}
+												value={field.state.value}
+												outlets={outlets}
+												onOutletCreated={async () => {
+													await refetchOutlets();
+												}}
+												placeholder="Search or select outlet..."
+												aria-invalid={isInvalid}
+												onChange={(value) => {
+													const outlet = outlets.find(
+														(o: { outletId: string }) => o.outletId === value,
 													);
-												}
-												field.handleBlur();
-											}}
-										/>
-										{isInvalid && (
-											<FieldError errors={field.state.meta.errors} />
-										)}
-									</Field>
-								);
-							}}
-						/>
+													field.handleChange(value);
+													if (outlet) {
+														form.setFieldValue(
+															"outletName",
+															(outlet as { outletName: string }).outletName ?? value,
+														);
+													}
+													field.handleBlur();
+												}}
+											/>
+											{isInvalid && (
+												<FieldError errors={field.state.meta.errors} />
+											)}
+										</Field>
+									);
+								}}
+							/>
+						</div>
 
+						{/* Line items section */}
 						<form.Subscribe
 							selector={(state: any) => state.values.items ?? []}
 						>
 							{(items: CreatePurchaseOrderLineItem[]) => (
-								<Field>
-									<div className="flex items-center justify-between gap-2">
-										<FieldLabel>Line items (Stock &amp; Amount)</FieldLabel>
+								<Field className="flex flex-col flex-1 min-h-0 px-6 pb-4">
+									<div className="flex items-center justify-between gap-2 mb-2">
+										<FieldLabel className="text-sm font-medium">
+											Line items (Stock &amp; Amount)
+										</FieldLabel>
 										<Button
 											type="button"
 											variant="outline"
@@ -196,13 +203,13 @@ export function CreatePurchaseOrderDialog({
 											Add line
 										</Button>
 									</div>
-									<div className="rounded-md border">
+									<div className="rounded-lg border bg-card overflow-hidden flex-1 min-h-[140px] flex flex-col">
 										<Table>
 											<TableHeader>
-												<TableRow>
-													<TableHead>Stock (SKU)</TableHead>
-													<TableHead className="w-28">Amount</TableHead>
-													<TableHead className="w-10" />
+												<TableRow className="hover:bg-transparent border-b">
+													<TableHead className="font-medium">Stock (SKU)</TableHead>
+													<TableHead className="w-32 font-medium">Quantity</TableHead>
+													<TableHead className="w-12" />
 												</TableRow>
 											</TableHeader>
 											<TableBody>
@@ -223,17 +230,21 @@ export function CreatePurchaseOrderDialog({
 							)}
 						</form.Subscribe>
 
+						{/* Notes */}
 						<form.Field
 							name="notes"
 							children={(field: any) => (
-								<Field>
-									<FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+								<Field className="px-6 pb-4 space-y-2">
+									<FieldLabel htmlFor={field.name} className="text-sm font-medium">
+										Notes
+									</FieldLabel>
 									<Textarea
 										id={field.name}
 										value={field.state.value}
 										placeholder="Enter any additional notes..."
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
+										className="min-h-[72px] resize-none"
 									/>
 								</Field>
 							)}
@@ -248,7 +259,7 @@ export function CreatePurchaseOrderDialog({
 						selector={(state: any) => [state.isSubmitting, state.canSubmit]}
 					>
 						{([isSubmitting, canSubmit]: any) => (
-							<DialogFooter>
+							<DialogFooter className="px-6 py-4 border-t bg-muted/20 gap-2 sm:gap-0">
 								<Button
 									type="button"
 									variant="outline"
