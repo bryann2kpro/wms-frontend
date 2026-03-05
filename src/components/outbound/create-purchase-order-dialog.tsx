@@ -26,7 +26,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import type { UseMutationResult } from "@tanstack/react-query";
 import {
 	OUTLETS_QUERY,
@@ -61,21 +61,28 @@ export function CreatePurchaseOrderDialog({
 
 	const outlets = outletsData?.outlets?.query ?? [];
 
+	const handleOpenChange = (next: boolean) => {
+		// Keep dialog open and show loading until create finishes (prevent Escape/overlay/X from closing)
+		if (next === false && form.state.isSubmitting) return;
+		onOpenChange(next);
+		if (!next) form.reset();
+	};
+
 	return (
-		<Dialog
-			open={open}
-			onOpenChange={(next) => {
-				onOpenChange(next);
-				if (!next) form.reset();
-			}}
-		>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			{trigger != null ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
 			<DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
 				<DialogHeader className="space-y-1.5 px-6 pt-6 pb-4 border-b bg-muted/30">
-					<DialogTitle id="create-po-dialog-title" className="text-lg font-semibold">
+					<DialogTitle
+						id="create-po-dialog-title"
+						className="text-[22px] leading-tight font-semibold"
+					>
 						Create New Purchase Order
 					</DialogTitle>
-					<DialogDescription id="create-po-dialog-description" className="text-sm text-muted-foreground">
+					<DialogDescription
+						id="create-po-dialog-description"
+						className="text-[13px] text-muted-foreground"
+					>
 						Enter the purchase order number, select an outlet, and add line items
 						(stock and quantity). Delivery date is set automatically by the
 						system.
@@ -109,8 +116,8 @@ export function CreatePurchaseOrderDialog({
 									aria-busy={isSubmitting}
 								>
 					<FieldGroup className="flex flex-col gap-0 flex-1 min-h-0 overflow-hidden">
-						{/* Order details: two columns */}
-						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-4">
+						{/* Order details: two columns — 8px grid spacing (16/24) */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-6">
 							<form.Field
 								name="purchaseOrderNumber"
 								children={(field: any) => {
@@ -128,7 +135,7 @@ export function CreatePurchaseOrderDialog({
 												onBlur={field.handleBlur}
 												onChange={(e) => field.handleChange(e.target.value)}
 												aria-invalid={isInvalid}
-												className="h-9"
+												className="h-10 text-[13px]"
 											/>
 											{isInvalid && (
 												<FieldError errors={field.state.meta.errors} />
@@ -185,7 +192,7 @@ export function CreatePurchaseOrderDialog({
 							{(items: CreatePurchaseOrderLineItem[]) => (
 								<Field className="flex flex-col flex-1 min-h-0 px-6 pb-4">
 									<div className="flex items-center justify-between gap-2 mb-2">
-										<FieldLabel className="text-sm font-medium">
+										<FieldLabel className="text-[14px] font-semibold">
 											Line items (Stock &amp; Amount)
 										</FieldLabel>
 										<Button
@@ -203,12 +210,12 @@ export function CreatePurchaseOrderDialog({
 											Add line
 										</Button>
 									</div>
-									<div className="rounded-lg border bg-card overflow-hidden flex-1 min-h-[140px] flex flex-col">
+									<div className="rounded-xl border bg-card overflow-hidden flex-1 min-h-[140px] flex flex-col">
 										<Table>
 											<TableHeader>
-												<TableRow className="hover:bg-transparent border-b">
-													<TableHead className="font-medium">Stock (SKU)</TableHead>
-													<TableHead className="w-32 font-medium">Quantity</TableHead>
+												<TableRow className="hover:bg-transparent border-b h-12">
+													<TableHead className="font-semibold text-[14px]">Stock (SKU)</TableHead>
+													<TableHead className="w-32 font-semibold text-[14px]">Quantity</TableHead>
 													<TableHead className="w-12" />
 												</TableRow>
 											</TableHeader>
@@ -234,8 +241,8 @@ export function CreatePurchaseOrderDialog({
 						<form.Field
 							name="notes"
 							children={(field: any) => (
-								<Field className="px-6 pb-4 space-y-2">
-									<FieldLabel htmlFor={field.name} className="text-sm font-medium">
+								<Field className="px-6 pb-6 space-y-2">
+									<FieldLabel htmlFor={field.name} className="text-[14px] font-semibold">
 										Notes
 									</FieldLabel>
 									<Textarea
@@ -244,7 +251,7 @@ export function CreatePurchaseOrderDialog({
 										placeholder="Enter any additional notes..."
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										className="min-h-[72px] resize-none"
+										className="min-h-[72px] resize-none text-[13px]"
 									/>
 								</Field>
 							)}
@@ -269,7 +276,17 @@ export function CreatePurchaseOrderDialog({
 									Cancel
 								</Button>
 								<Button type="submit" disabled={isSubmitting || !canSubmit}>
-									{isSubmitting ? "Creating purchase order..." : "Create Purchase Order"}
+									{isSubmitting ? (
+										<>
+											<Loader2
+												className="mr-2 h-4 w-4 animate-spin"
+												aria-hidden
+											/>
+											Creating purchase order...
+										</>
+									) : (
+										"Create Purchase Order"
+									)}
 								</Button>
 							</DialogFooter>
 						)}
@@ -312,8 +329,8 @@ function LineItemRow({
 	};
 
 	return (
-		<TableRow>
-			<TableCell>
+		<TableRow className="h-12">
+			<TableCell className="align-middle py-2 text-[13px]">
 				<SkuCombobox
 					value={skuValue}
 					onChange={(v) => {
@@ -330,7 +347,7 @@ function LineItemRow({
 						.filter(Boolean) as string[]}
 				/>
 			</TableCell>
-			<TableCell>
+			<TableCell className="align-middle py-2">
 				<Input
 					type="number"
 					min={1}
@@ -338,9 +355,10 @@ function LineItemRow({
 					onChange={(e) =>
 						updateRow({ quantity: Number(e.target.value) || 1 })
 					}
+					className="h-10 w-24 text-[13px]"
 				/>
 			</TableCell>
-			<TableCell>
+			<TableCell className="align-middle py-2 w-12">
 				{canRemove ? (
 					<Button
 						type="button"

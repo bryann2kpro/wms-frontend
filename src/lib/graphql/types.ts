@@ -386,7 +386,12 @@ export interface CreateGrnItemInput {
 	qty: string;
 	lossQty?: string | null;
 	remarks?: string | null;
+	/** @deprecated Prefer rackIds. Single rack for legacy backends. */
 	rackId?: string | null;
+	/** Rack IDs for this line item (backend accepts string[]). */
+	rackIds?: string[] | null;
+	/** Expiry date (ISO date string YYYY-MM-DD). */
+	expiryDate?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
