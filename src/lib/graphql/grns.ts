@@ -46,6 +46,13 @@ export const GRNS_QUERY = gql`
 					id
 					displayName
 				}
+				warehouse {
+					warehouseId
+					warehouseName
+					warehouseCode
+					warehouseAddress
+					updatedBy
+				}
 				items {
 					id
 					grnId
@@ -55,13 +62,16 @@ export const GRNS_QUERY = gql`
 					qty
 					lossQty
 					remarks
-					warehouseId
-					warehouseName
-					warehouseAddress
 					createdAt
 					updatedAt
 					createdBy
 					updatedBy
+					rack {
+						rackId
+						rackLevel
+						rackRow
+						rackColumn
+					}
 				}
 			}
 		}
@@ -106,6 +116,13 @@ export const CREATE_GRN_MUTATION = gql`
 				updatedBy
 			}
 		}
+	}
+`;
+
+/** Create inbound → InboundServices.createInbound; returns Boolean! (no subfields) */
+export const CREATE_INBOUND_MUTATION = gql`
+	mutation CreateInbound($input: CreateInboundInput!) {
+		createInbound(input: $input)
 	}
 `;
 
@@ -217,9 +234,15 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 		const status: GrnStatusUI = (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnStatusUI;
 		byStatus[status] = (byStatus[status] ?? 0) + 1;
 
+		const warehouse = g.warehouse ?? null;
 		const lineItems = (g.items ?? []).map((i: GrnItem) => {
 			const cartonNum = Number(i.qty) || 0;
 			const lossNum = Number(i.lossQty) || 0;
+			const rack = i.rack ?? null;
+			const location =
+				rack
+					? `${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`
+					: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -228,7 +251,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 				expectedQuantity: cartonNum,
 				lossQuantity: lossNum,
 				receivedQuantity: cartonNum + lossNum,
-				location: i.warehouseName ?? undefined,
+				location,
+				rack: rack ?? null,
 			};
 		});
 		const totalItems = lineItems.reduce(
@@ -237,7 +261,6 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 		);
 		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
 
-		const firstItem = (g.items ?? [])[0] as GrnItem | undefined;
 		return {
 			id: g.id,
 			grnNo: g.grnNo,
@@ -245,7 +268,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			supplierDeliveryId: g.supplierDeliveryId,
 			supplierDeliveryNo: g.supplierDeliveryNo ?? null,
 			poNo: g.poNo,
-			warehouseId: firstItem?.warehouseId ?? null,
+			warehouseId: warehouse?.warehouseId ?? (g.items ?? [])[0]?.warehouseId ?? null,
+			warehouse: warehouse ?? null,
 			status,
 			receivedAt: g.receivedAt,
 			createdAt: g.createdAt,
