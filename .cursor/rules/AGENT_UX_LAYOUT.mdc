@@ -1,7 +1,7 @@
 ---
 description: "UX, layout, accessibility, and ops-style UI: loading states, 3-level layout, typography scale, buttons, page headers, feedback, evidence, data entry."
 globs: ["**/*.tsx", "**/*.css", "**/components/**", "**/routes/**"]
-alwaysApply: false
+alwaysApply: true
 ---
 
 # UX, Layout & Accessibility
