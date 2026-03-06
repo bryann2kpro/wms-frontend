@@ -3,14 +3,17 @@ import request from "graphql-request";
 import { env } from "@/env";
 import {
 	PURCHASE_ORDERS_WITH_OUTLET_QUERY,
+	PURCHASE_ORDERS_BY_WEEK_QUERY,
 	mapGqlToPurchaseOrderList,
+	mapGqlToPurchaseOrderDetail,
 	type PurchaseOrdersQueryVariables,
 	type PurchaseOrdersQueryData,
+	type PurchaseOrdersByWeekQueryData,
 } from "@/lib/graphql/purchase-orders";
 import type { PurchaseOrderDetail, PurchaseOrderStatus, PurchaseOrderSummary } from "@/data/purchase-orders.types";
-import { isInNext7Days, isInPastDays, getDateKey } from "@/lib/utils";
+import { isInNext7Days, isInPastDays, getDateKey, dateKeyFromDDMMYYYY } from "@/lib/utils";
 import type { DeliveryTab } from "@/lib/outbound";
-import { DATE_GROUPS_PER_PAGE } from "@/lib/outbound";
+import { getAccessToken } from "@/lib/auth/auth-storage";
 
 export type PurchaseOrderStatusFilter = PurchaseOrderStatus | "ALL";
 
@@ -37,7 +40,7 @@ export interface PurchaseOrdersResult {
 
 function getAuthHeaders(): Headers {
 	const headers = new Headers();
-	const token = localStorage.getItem("access_token");
+	const token = getAccessToken();
 	if (token) {
 		headers.set("Authorization", `Bearer ${token}`);
 	}
@@ -60,35 +63,41 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 		pageNumber: 1,
 	};
 
+	type RawWeek = { tab: "current-week"; entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"] };
+	type RawList = { tab: "past-weeks"; data: PurchaseOrdersQueryData };
+	type RawData = RawWeek | RawList;
+
 	return useQuery({
-		queryKey: ["purchase-orders-list", pageSize],
-		queryFn: async (): Promise<PurchaseOrdersResult> => {
+		queryKey: ["purchase-orders-list", pageSize, activeTab],
+		queryFn: async (): Promise<RawData> => {
 			const headers = getAuthHeaders();
+			if (activeTab === "current-week") {
+				const data = await request<PurchaseOrdersByWeekQueryData>(
+					env.VITE_GRAPHQL_ENDPOINT,
+					PURCHASE_ORDERS_BY_WEEK_QUERY,
+					{ filter: null },
+					headers,
+				);
+				return { tab: "current-week", entries: data.purchaseOrdersByWeek };
+			}
 			const data = await request<PurchaseOrdersQueryData>(
 				env.VITE_GRAPHQL_ENDPOINT,
 				PURCHASE_ORDERS_WITH_OUTLET_QUERY,
 				variables,
 				headers,
 			);
-
-			const result = mapGqlToPurchaseOrderList(data.purchaseOrders);
-			return processPurchaseOrders(result.items, result.summary, {
-				searchTerm,
-				statusFilter,
-				activeTab,
-				page,
-			});
+			return { tab: "past-weeks", data };
 		},
 		enabled,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
-		select: (data) => {
-			return processPurchaseOrders(data.purchaseOrders, data.summary, {
-				searchTerm,
-				statusFilter,
-				activeTab,
-				page,
-			});
+		select: (raw: RawData): PurchaseOrdersResult => {
+			const options = { searchTerm, statusFilter, activeTab, page };
+			if (raw.tab === "current-week") {
+				return processPurchaseOrdersFromWeek(raw.entries, options);
+			}
+			const result = mapGqlToPurchaseOrderList(raw.data.purchaseOrders);
+			return processPurchaseOrders(result.items, result.summary, options);
 		},
 	});
 }
@@ -98,6 +107,69 @@ interface ProcessOptions {
 	statusFilter: PurchaseOrderStatusFilter;
 	activeTab: DeliveryTab;
 	page: number;
+}
+
+/**
+ * Process purchaseOrdersByWeek API response into PurchaseOrdersResult.
+ * Converts backend date keys (DD/MM/YYYY UTC) to YYYY-MM-DD for consistent table headers.
+ */
+function processPurchaseOrdersFromWeek(
+	entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"],
+	options: ProcessOptions,
+): PurchaseOrdersResult {
+	const { searchTerm, statusFilter, page } = options;
+
+	const purchaseOrdersByDate: Record<string, PurchaseOrderDetail[]> = {};
+	const allDetails: PurchaseOrderDetail[] = [];
+
+	for (const entry of entries) {
+		const dateKey = dateKeyFromDDMMYYYY(entry.date);
+		const details = (entry.orders ?? []).map(mapGqlToPurchaseOrderDetail);
+		const filtered = details.filter((po) => {
+			const matchesSearch =
+				!searchTerm ||
+				po.purchaseOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				po.toLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				(po.regionName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+			const matchesStatus = statusFilter === "ALL" || po.status === statusFilter;
+			return matchesSearch && matchesStatus;
+		});
+		purchaseOrdersByDate[dateKey] = filtered;
+		allDetails.push(...filtered);
+	}
+
+	const dateKeys = entries.map((e) => dateKeyFromDDMMYYYY(e.date));
+	const totalDateGroups = dateKeys.length;
+	const paginatedDateKeys = dateKeys;
+	const totalPages = 1;
+	const startDateIndex = 0;
+
+	const summary: PurchaseOrderSummary = {
+		byStatus: {
+			preparing: 0,
+			"in-transit": 0,
+			"to-ship": 0,
+			cancel: 0,
+			return: 0,
+			other: 0,
+		},
+		total: allDetails.length,
+	};
+	for (const po of allDetails) {
+		summary.byStatus[po.status] = (summary.byStatus[po.status] ?? 0) + 1;
+	}
+
+	return {
+		purchaseOrders: allDetails,
+		purchaseOrdersByDate,
+		dateKeys,
+		paginatedDateKeys,
+		totalDateGroups,
+		startDateIndex,
+		totalPages,
+		filteredTotal: allDetails.length,
+		summary,
+	};
 }
 
 function processPurchaseOrders(
@@ -145,12 +217,9 @@ function processPurchaseOrders(
 	);
 
 	const totalDateGroups = dateKeys.length;
-	const startDateIndex = (page - 1) * DATE_GROUPS_PER_PAGE;
-	const paginatedDateKeys = dateKeys.slice(
-		startDateIndex,
-		startDateIndex + DATE_GROUPS_PER_PAGE,
-	);
-	const totalPages = Math.max(1, Math.ceil(totalDateGroups / DATE_GROUPS_PER_PAGE));
+	const paginatedDateKeys = dateKeys;
+	const totalPages = 1;
+	const startDateIndex = 0;
 
 	const tabSummary = tabFilteredOrders.reduce(
 		(acc, po) => {

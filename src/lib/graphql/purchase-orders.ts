@@ -129,6 +129,42 @@ export type PurchaseOrdersQueryData = {
 };
 
 // ---------------------------------------------------------------------------
+// Purchase orders by week (grouped by scheduled delivery date, UTC)
+// ---------------------------------------------------------------------------
+
+export type PurchaseOrderWeekFilterInput = {
+	scheduledDeliveryDateFrom?: string | null;
+	scheduledDeliveryDateTo?: string | null;
+	outletId?: string | null;
+	status?: string | null;
+};
+
+export interface PurchaseOrdersByDateEntry {
+	date: string;
+	orders: PurchaseOrder[];
+}
+
+export const PURCHASE_ORDERS_BY_WEEK_QUERY = gql`
+	query PurchaseOrdersByWeek($filter: PurchaseOrderWeekFilterInput) {
+		purchaseOrdersByWeek(filter: $filter) {
+			date
+			orders {
+				...PurchaseOrderWithOutletFields
+			}
+		}
+	}
+	${PURCHASE_ORDER_WITH_OUTLET_FRAGMENT}
+`;
+
+export type PurchaseOrdersByWeekQueryVariables = {
+	filter?: PurchaseOrderWeekFilterInput | null;
+};
+
+export type PurchaseOrdersByWeekQueryData = {
+	purchaseOrdersByWeek: PurchaseOrdersByDateEntry[];
+};
+
+// ---------------------------------------------------------------------------
 // Mapping helper – GraphQL PurchaseOrder -> PurchaseOrderDetail (for UI)
 // ---------------------------------------------------------------------------
 

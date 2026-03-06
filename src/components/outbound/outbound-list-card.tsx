@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   Eye,
@@ -32,9 +33,9 @@ import {
   XCircle,
   Calendar,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
+  PackageOpen,
+  AlertCircle,
 } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
@@ -45,7 +46,7 @@ import {
   getPurchaseOrderStatusColor,
 } from "@/lib/outbound";
 import type { DeliveryTab } from "@/lib/outbound";
-import { formatDateOnly, formatDeliveryDateHeader } from "@/lib/utils";
+import { formatDateOnly, formatDeliveryDateHeader, formatWeekRange } from "@/lib/utils";
 import {
   usePurchaseOrders,
   type PurchaseOrderStatusFilter,
@@ -69,28 +70,29 @@ export function OutboundListCard({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatusFilter>("ALL");
   const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
-  const [page, setPage] = useState(1);
 
   const {
     data,
     isLoading,
     isFetching,
     error,
+    refetch,
   } = usePurchaseOrders({
     searchTerm,
     statusFilter,
     activeTab,
-    page,
+    page: 1,
   });
 
   const purchaseOrdersByDate = data?.purchaseOrdersByDate ?? {};
   const paginatedDateKeys = data?.paginatedDateKeys ?? [];
-  const totalDateGroups = data?.totalDateGroups ?? 0;
-  const startDateIndex = data?.startDateIndex ?? 0;
-  const totalPages = data?.totalPages ?? 1;
-  const filteredTotal = data?.filteredTotal ?? 0;
+  const dateKeys = data?.dateKeys ?? [];
 
   const loading = isLoading || isFetching;
+  const weekRangeLabel =
+    activeTab === "current-week" && dateKeys.length > 0
+      ? formatWeekRange(dateKeys[0], dateKeys[dateKeys.length - 1])
+      : null;
 
   return (
     <Card role="region" aria-labelledby="purchase-order-title">
@@ -102,7 +104,9 @@ export function OutboundListCard({
                 Purchase Order List
               </CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
-                View and manage all purchase orders
+                {weekRangeLabel
+                  ? `This week: ${weekRangeLabel}`
+                  : "View and manage all purchase orders"}
               </CardDescription>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -115,20 +119,14 @@ export function OutboundListCard({
                   id="search-purchase-orders"
                   placeholder="Search purchase orders..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setPage(1);
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label="Search purchase orders by PO number, outlet, or region"
                 />
               </div>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value as PurchaseOrderStatusFilter);
-                  setPage(1);
-                }}
+                onValueChange={(value) => setStatusFilter(value as PurchaseOrderStatusFilter)}
               >
                 <SelectTrigger 
                   className="sm:w-48 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -154,10 +152,7 @@ export function OutboundListCard({
           <div className="flex gap-2 border-b" role="tablist" aria-label="Delivery period tabs">
             <Button
               variant={activeTab === "current-week" ? "default" : "ghost"}
-              onClick={() => {
-                setActiveTab("current-week");
-                setPage(1);
-              }}
+              onClick={() => setActiveTab("current-week")}
               className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               role="tab"
               aria-selected={activeTab === "current-week"}
@@ -168,10 +163,7 @@ export function OutboundListCard({
             </Button>
             <Button
               variant={activeTab === "past-weeks" ? "default" : "ghost"}
-              onClick={() => {
-                setActiveTab("past-weeks");
-                setPage(1);
-              }}
+              onClick={() => setActiveTab("past-weeks")}
               className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               role="tab"
               aria-selected={activeTab === "past-weeks"}
@@ -201,32 +193,51 @@ export function OutboundListCard({
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="h-24 text-center text-muted-foreground"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      <span>Loading purchase orders...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <>
+                  <TableRow aria-hidden="true">
+                    <TableCell colSpan={8} className="sr-only" role="status" aria-live="polite">
+                      Loading purchase orders…
+                    </TableCell>
+                  </TableRow>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : error ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
-                    className="h-24 text-center text-destructive"
+                    className="py-12 text-center"
                     role="alert"
                     aria-live="assertive"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <span>Failed to load purchase orders</span>
-                      <span className="text-sm text-muted-foreground">
-                        {error instanceof Error ? error.message : "Please try again"}
-                      </span>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="rounded-full bg-destructive/10 p-3">
+                        <AlertCircle className="h-8 w-8 text-destructive" aria-hidden />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Failed to load purchase orders</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {error instanceof Error ? error.message : "Something went wrong."}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetch()}
+                        className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        Try again
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -234,9 +245,26 @@ export function OutboundListCard({
                 <TableRow>
                   <TableCell
                     colSpan={8}
-                    className="h-24 text-center text-muted-foreground"
+                    className="py-12 text-center"
+                    role="status"
                   >
-                    No purchase orders found.
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="rounded-full bg-muted p-3">
+                        <PackageOpen className="h-10 w-10 text-muted-foreground" aria-hidden />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {activeTab === "current-week"
+                            ? "No orders scheduled for this week"
+                            : "No purchase orders found"}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {activeTab === "current-week"
+                            ? "Orders will appear here when they are scheduled for delivery."
+                            : "Try adjusting your search or filters."}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -247,15 +275,32 @@ export function OutboundListCard({
                   return [
                     <TableRow
                       key={dateKey}
-                      className="bg-muted/50 hover:bg-muted/50"
+                      className="bg-muted/50 hover:bg-muted/50 border-l-4 border-l-primary/30"
                     >
                       <TableCell
                         colSpan={8}
                         className="font-semibold text-foreground py-3"
                       >
                         {headerLabel}
+                        {datePurchaseOrders.length > 0 && (
+                          <span className="ml-2 text-muted-foreground font-normal">
+                            ({datePurchaseOrders.length} {datePurchaseOrders.length === 1 ? "order" : "orders"})
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>,
+                    ...(datePurchaseOrders.length === 0
+                      ? [
+                          <TableRow key={`${dateKey}-empty`}>
+                            <TableCell
+                              colSpan={8}
+                              className="py-4 text-center text-sm text-muted-foreground italic"
+                            >
+                              No orders for this day
+                            </TableCell>
+                          </TableRow>,
+                        ]
+                      : []),
                     ...datePurchaseOrders.map((purchaseOrder) => {
                       const doCreated =
                         purchaseOrder.status === "to-ship" ||
@@ -365,73 +410,12 @@ export function OutboundListCard({
             </TableBody>
           </Table>
         </div>
-
-        {(totalDateGroups > 0 || filteredTotal > 0) && (
-          <nav 
-            className="mt-4 flex items-center justify-between text-xs text-muted-foreground"
-            aria-label="Pagination"
-          >
-            <div aria-live="polite" aria-atomic="true">
-              {totalDateGroups > 0 ? (
-                <>
-                  Showing delivery dates{" "}
-                  <span className="font-medium">
-                    {startDateIndex + 1}
-                  </span>{" "}
-                  -{" "}
-                  <span className="font-medium">
-                    {startDateIndex + paginatedDateKeys.length}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-medium">
-                    {totalDateGroups}
-                  </span>{" "}
-                  (
-                  <span className="font-medium">
-                    {filteredTotal}
-                  </span>{" "}
-                  orders)
-                </>
-              ) : (
-                <>
-                  <span className="font-medium">0</span> delivery dates (
-                  <span className="font-medium">{filteredTotal}</span> orders)
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-2" role="group" aria-label="Page navigation">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={page === 1}
-                onClick={() => setPage(Math.max(1, page - 1))}
-                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                aria-label="Go to previous page"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              <span aria-current="page">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={page === totalPages}
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                aria-label="Go to next page"
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
-          </nav>
-        )}
       </CardContent>
     </Card>
   );
 }
 
 export function useOutboundSummary() {
-  const { data } = usePurchaseOrders({ page: 1 });
-  return data?.summary;
+  const { data, isLoading } = usePurchaseOrders({ page: 1 });
+  return { summary: data?.summary, isLoading };
 }

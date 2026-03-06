@@ -10,6 +10,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw } from "lucide-react";
 import {
 	type PurchaseOrderDetail,
@@ -50,7 +51,7 @@ function OutboundRouteComponent() {
 	const [rejectReason, setRejectReason] = useState("");
 
 	const queryClient = useQueryClient();
-	const summary = useOutboundSummary();
+	const { summary, isLoading: isSummaryLoading } = useOutboundSummary();
 
 	const createMutation = useMutation({
 		mutationFn: createPurchaseOrder,
@@ -149,9 +150,9 @@ function OutboundRouteComponent() {
 				</div>
 			</header>
 
-			{summary && (
-				<div className="grid gap-4 md:grid-cols-5">
-					{purchaseOrderStatuses.map((status) => (
+			<div className="grid gap-4 md:grid-cols-5" role="region" aria-label="Purchase order summary by status">
+				{isSummaryLoading ? (
+					purchaseOrderStatuses.map((status) => (
 						<Card key={status}>
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium">
@@ -159,14 +160,27 @@ function OutboundRouteComponent() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
-									{summary.byStatus[status] ?? 0}
+								<Skeleton className="h-8 w-12" aria-hidden />
+							</CardContent>
+						</Card>
+					))
+				) : (
+					purchaseOrderStatuses.map((status) => (
+						<Card key={status} className="transition-colors hover:bg-muted/30">
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium">
+									{formatStatus(status)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold tabular-nums">
+									{summary?.byStatus[status] ?? 0}
 								</div>
 							</CardContent>
 						</Card>
-					))}
-				</div>
-			)}
+					))
+				)}
+			</div>
 
 			<OutboundListCard
 				onViewPurchaseOrder={(purchaseOrder) => {

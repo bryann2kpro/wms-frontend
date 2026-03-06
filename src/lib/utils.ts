@@ -292,3 +292,29 @@ export function getDateKey(date: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * Convert backend date key (DD/MM/YYYY UTC) to frontend date key (YYYY-MM-DD)
+ * so table headers and sorting stay consistent.
+ */
+export function dateKeyFromDDMMYYYY(ddMmYyyy: string): string {
+  const [dd, mm, yyyy] = ddMmYyyy.split("/");
+  if (!dd || !mm || !yyyy) return ddMmYyyy;
+  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+}
+
+/** Format a week range from two date keys (YYYY-MM-DD), e.g. "6 Mar – 12 Mar 2026". */
+export function formatWeekRange(fromKey: string, toKey: string): string {
+  try {
+    const from = new Date(fromKey + "T12:00:00");
+    const to = new Date(toKey + "T12:00:00");
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+    const fromStr = from.toLocaleDateString("en-GB", opts);
+    const toStr = to.toLocaleDateString("en-GB", opts);
+    return from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth()
+      ? `${from.getDate()} – ${to.getDate()} ${to.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
+      : `${fromStr} – ${toStr}`;
+  } catch {
+    return `${fromKey} – ${toKey}`;
+  }
+}
