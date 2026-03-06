@@ -45,9 +45,11 @@ import {
 	ChevronRight,
 	Mail,
 	Key,
+	ArrowUpDown,
 } from "lucide-react";
 import type { WMSRole } from "@/lib/auth";
 import { getPrimaryRole } from "@/lib/auth";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 // GraphQL: list query, roles, create/update mutations (see src/lib/graphql/user-management.ts)
 import {
 	USERS_QUERY,
@@ -101,6 +103,23 @@ function roleNameToWMSRole(roleName: string | undefined): WMSRole {
 	return "store_keeper";
 }
 
+/** Backend sort field names for UserSort. */
+const SORT_FIELDS = [
+	{ value: "UPDATED_AT", label: "Updated at" },
+	{ value: "CREATED_AT", label: "Created at" },
+	{ value: "DISPLAY_NAME", label: "Name" },
+	{ value: "EMAIL", label: "Email" },
+] as const;
+
+const SORT_DIRECTIONS = [
+	{ value: "DESC", label: "Newest / Z→A" },
+	{ value: "ASC", label: "Oldest / A→Z" },
+] as const;
+
+type StatusFilterValue = "ALL" | "ACTIVE" | "INACTIVE";
+
+const SEARCH_DEBOUNCE_MS = 350;
+
 /**
  * User Management page: list, create, update via GraphQL (USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION).
  * ROLES_QUERY provides roleId for filter and create/edit dropdowns.
@@ -109,7 +128,11 @@ function UserManagementComponent() {
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
+	const debouncedSearchTerm = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [roleFilterId, setRoleFilterId] = useState<string>("ALL");
+	const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("ALL");
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<{
@@ -128,19 +151,25 @@ function UserManagementComponent() {
 		(r) => r.roleName.trim().toLowerCase() !== HIDDEN_ROLE_NAME,
 	);
 
-	// --- GraphQL: filter (search = email/displayName), sort, pagination — backend resolver uses repository
+	// --- GraphQL: filter (search = email/displayName, role, isActive), sort, pagination — backend resolver uses repository
+	const hasFilter =
+		debouncedSearchTerm.trim() ||
+		roleFilterId !== "ALL" ||
+		statusFilter !== "ALL";
 	const variables: UsersQueryVariables = {
-		filter:
-			searchTerm.trim() || roleFilterId !== "ALL"
-				? {
-						...(searchTerm.trim() && {
-							displayName: searchTerm.trim(),
-							email: searchTerm.trim(),
-						}),
-						...(roleFilterId !== "ALL" && { roleId: roleFilterId }),
-					}
-				: undefined,
-		sort: { field: "UPDATED_AT", direction: "DESC" },
+		filter: hasFilter
+			? {
+					...(debouncedSearchTerm.trim() && {
+						displayName: debouncedSearchTerm.trim(),
+						email: debouncedSearchTerm.trim(),
+					}),
+					...(roleFilterId !== "ALL" && { roleId: roleFilterId }),
+					...(statusFilter !== "ALL" && {
+						isActive: statusFilter === "ACTIVE",
+					}),
+				}
+			: undefined,
+		sort: { field: sortField, direction: sortDirection },
 		pagination: { page, pageSize },
 	};
 
@@ -292,7 +321,7 @@ function UserManagementComponent() {
 							<CardTitle>User List</CardTitle>
 							<CardDescription>View and manage all users</CardDescription>
 						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+						<div className="flex flex-wrap items-center gap-2">
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
@@ -303,6 +332,7 @@ function UserManagementComponent() {
 										setPage(1);
 									}}
 									className="pl-9 sm:w-64"
+									aria-label="Search users by name or email"
 								/>
 							</div>
 							<Select
@@ -312,7 +342,7 @@ function UserManagementComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-48">
+								<SelectTrigger className="sm:w-40" aria-label="Filter by role">
 									<SelectValue placeholder="Filter by role" />
 								</SelectTrigger>
 								<SelectContent>
@@ -324,6 +354,61 @@ function UserManagementComponent() {
 									))}
 								</SelectContent>
 							</Select>
+							<Select
+								value={statusFilter}
+								onValueChange={(value: StatusFilterValue) => {
+									setStatusFilter(value);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger className="sm:w-36" aria-label="Filter by status">
+									<SelectValue placeholder="Status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All statuses</SelectItem>
+									<SelectItem value="ACTIVE">Active</SelectItem>
+									<SelectItem value="INACTIVE">Inactive</SelectItem>
+								</SelectContent>
+							</Select>
+							<div className="flex items-center gap-1.5 shrink-0">
+								<ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+								<Select
+									value={sortField}
+									onValueChange={(value) => {
+										setSortField(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-36" aria-label="Sort by field">
+										<SelectValue placeholder="Sort by" />
+									</SelectTrigger>
+									<SelectContent>
+										{SORT_FIELDS.map((f) => (
+											<SelectItem key={f.value} value={f.value}>
+												{f.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortDirection}
+									onValueChange={(value: "ASC" | "DESC") => {
+										setSortDirection(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-36" aria-label="Sort direction">
+										<SelectValue placeholder="Order" />
+									</SelectTrigger>
+									<SelectContent>
+										{SORT_DIRECTIONS.map((d) => (
+											<SelectItem key={d.value} value={d.value}>
+												{d.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 				</CardHeader>
