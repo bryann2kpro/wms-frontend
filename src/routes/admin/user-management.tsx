@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery as useApolloQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import {
@@ -46,6 +47,8 @@ import {
 	Mail,
 	Key,
 	ArrowUpDown,
+	HelpCircle,
+	ImageOff,
 } from "lucide-react";
 import type { WMSRole } from "@/lib/auth";
 import { getPrimaryRole } from "@/lib/auth";
@@ -120,6 +123,87 @@ type StatusFilterValue = "ALL" | "ACTIVE" | "INACTIVE";
 
 const SEARCH_DEBOUNCE_MS = 350;
 
+/** Base path for User Management help screenshots. Add step-1.png, step-2.png, etc. under public/help/user-management/ */
+const HELP_IMAGES_BASE = "/help/user-management";
+
+const USER_MANAGEMENT_HELP_STEPS: Array<{
+	title: string;
+	description: ReactNode;
+	image: string;
+}> = [
+	{
+		title: "What this page does",
+		image: `${HELP_IMAGES_BASE}/step-1.png`,
+		description: (
+			<>
+				View all users, create new ones, and change roles or passwords. The
+				summary cards show counts by role (Supervisor, Logistic, Store Keeper)
+				and total users.
+			</>
+		),
+	},
+	{
+		title: "Search and filters",
+		image: `${HELP_IMAGES_BASE}/step-2.png`,
+		description: (
+			<>
+				Search by <strong>name</strong> or <strong>email</strong> (debounced).
+				Filter by <strong>Role</strong> and <strong>Status</strong> (Active /
+				Inactive). Use <strong>Sort</strong> to order by name, email, or date.
+			</>
+		),
+	},
+	{
+		title: "Create user",
+		image: `${HELP_IMAGES_BASE}/step-3.png`,
+		description: (
+			<>
+				Click <strong>Create User</strong>, enter email, display name, and role.
+				Set the password manually or send a system-generated one by email.
+			</>
+		),
+	},
+	{
+		title: "Edit user",
+		image: `${HELP_IMAGES_BASE}/step-4.png`,
+		description: (
+			<>
+				Click the <strong>edit</strong> icon on a row to change that user’s
+				role or password. Changes apply immediately.
+			</>
+		),
+	},
+];
+
+/** Renders step screenshot with a placeholder when the image is missing or fails to load. */
+function HelpStepImage({
+	src,
+	stepNumber,
+	alt,
+}: { src: string; stepNumber: number; alt?: string }) {
+	const [failed, setFailed] = useState(false);
+	if (failed) {
+		return (
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
+				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
+					<ImageOff className="h-6 w-6" />
+				</span>
+				<span>
+					Add screenshot: public/help/user-management/step-{stepNumber}.png
+				</span>
+			</div>
+		);
+	}
+	return (
+		<img
+			src={src}
+			alt={alt ?? ""}
+			className="h-full w-full object-contain object-top"
+			onError={() => setFailed(true)}
+		/>
+	);
+}
+
 /**
  * User Management page: list, create, update via GraphQL (USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION).
  * ROLES_QUERY provides roleId for filter and create/edit dropdowns.
@@ -135,6 +219,8 @@ function UserManagementComponent() {
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+	const [isHelpOpen, setIsHelpOpen] = useState(false);
+	const [helpStep, setHelpStep] = useState(0);
 	const [selectedUser, setSelectedUser] = useState<{
 		id: string;
 		name: string;
@@ -265,10 +351,94 @@ function UserManagementComponent() {
 						Manage users and assign roles
 					</p>
 				</div>
-				<Button onClick={() => setIsCreateDialogOpen(true)}>
-					<UserPlus className="h-4 w-4 mr-2" />
-					Create User
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="icon"
+						aria-label="Open help"
+						onClick={() => {
+							setIsHelpOpen(true);
+							setHelpStep(0);
+						}}
+					>
+						<HelpCircle className="h-4 w-4" />
+					</Button>
+					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+						<DialogContent className="sm:max-w-lg">
+							<DialogHeader>
+								<DialogTitle>User Management help</DialogTitle>
+								<DialogDescription>
+									Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
+								</DialogDescription>
+							</DialogHeader>
+							<div className="space-y-4">
+								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+									<HelpStepImage
+										src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
+										stepNumber={helpStep + 1}
+									/>
+								</div>
+								<div>
+									<h3 className="text-sm font-semibold text-foreground mb-1">
+										{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
+									</h3>
+									<p className="text-sm text-muted-foreground leading-relaxed">
+										{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
+									</p>
+								</div>
+								<div className="flex items-center justify-between gap-4 pt-2">
+									<div className="flex gap-1">
+										{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
+											<button
+												type="button"
+												key={i}
+												onClick={() => setHelpStep(i)}
+												aria-label={`Go to step ${i + 1}`}
+												className={`h-2 rounded-full transition-colors ${
+													i === helpStep
+														? "w-6 bg-primary"
+														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+												}`}
+											/>
+										))}
+									</div>
+									<div className="flex gap-2">
+										{helpStep > 0 ? (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => setHelpStep((s) => s - 1)}
+											>
+												<ChevronLeft className="h-4 w-4 mr-0.5" />
+												Previous
+											</Button>
+										) : null}
+										{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
+											<Button
+												size="sm"
+												onClick={() => setHelpStep((s) => s + 1)}
+											>
+												Next
+												<ChevronRight className="h-4 w-4 ml-0.5" />
+											</Button>
+										) : (
+											<Button
+												size="sm"
+												onClick={() => setIsHelpOpen(false)}
+											>
+												Got it
+											</Button>
+										)}
+									</div>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
+					<Button onClick={() => setIsCreateDialogOpen(true)}>
+						<UserPlus className="h-4 w-4 mr-2" />
+						Create User
+					</Button>
+				</div>
 			</div>
 
 			{summary && (
