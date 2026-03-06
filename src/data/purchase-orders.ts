@@ -1,8 +1,16 @@
 /**
- * Purchase Orders API. Replace with real GraphQL/REST when backend is ready.
- * No mock in-memory data; list is empty until backend is connected.
+ * Purchase Orders API. List and create via GraphQL.
  */
 
+import request from "graphql-request";
+import { env } from "@/env";
+import { getAccessToken } from "@/lib/auth/auth-storage";
+import {
+	CREATE_PURCHASE_ORDER_MUTATION,
+	mapGqlToPurchaseOrderDetail,
+	type CreatePurchaseOrderMutationData,
+	type CreatePurchaseOrderMutationVariables,
+} from "@/lib/graphql/purchase-orders";
 import type {
 	PurchaseOrderDetail,
 	PurchaseOrderListFilters,
@@ -32,7 +40,7 @@ export type {
 	CreatePurchaseOrderLineItemInput,
 } from "./purchase-orders.types";
 
-/** List purchase orders. Returns empty result until backend is connected. */
+/** List purchase orders. Use GraphQL via usePurchaseOrders hook; this is for legacy/custom filters. */
 export async function getPurchaseOrders(
 	filters: PurchaseOrderListFilters,
 ): Promise<PurchaseOrderListResult> {
@@ -46,34 +54,33 @@ export async function getPurchaseOrders(
 	};
 }
 
-/** Create a purchase order. Succeeds and returns a minimal detail so UI can close; not persisted until backend is connected. */
+/** Create a purchase order via GraphQL. Persists to backend; invalidate purchase-orders-list to see it in the list. */
 export async function createPurchaseOrder(
 	input: CreatePurchaseOrderInput,
 ): Promise<PurchaseOrderDetail> {
-	const now = new Date();
-	const items = (input.items ?? []).map((line, idx) => ({
-		id: `temp-${idx + 1}`,
-		sku: line.skuCode ?? line.skuId,
-		description: line.description ?? "—",
-		quantity: line.quantity,
-		pickedQuantity: 0,
-		packedQuantity: 0,
-	}));
+	const headers = new Headers();
+	const token = getAccessToken();
+	if (token) headers.set("Authorization", `Bearer ${token}`);
 
-	return {
-		id: "temp",
-		purchaseOrderNumber: input.purchaseOrderNumber,
-		fromLocation: "Main Warehouse",
-		toLocation: input.outletName,
-		status: "preparing",
-		createdDate: now,
-		expectedDeliveryDate: input.expectedDeliveryDate,
-		createdBy: "Current User",
-		notes: input.notes,
-		items: items.length ? items : [{ id: "temp-1", sku: "—", description: "—", quantity: 0, pickedQuantity: 0, packedQuantity: 0 }],
-		totalItems: items.length || 0,
-		netsuiteStatus: undefined,
+	const variables: CreatePurchaseOrderMutationVariables["input"] = {
+		purchaseOrderNo: input.purchaseOrderNumber,
+		outletId: input.outletId,
+		items: (input.items ?? []).map((line) => ({
+			skuCode: line.skuCode ?? line.skuId ?? "",
+			skuId: line.skuId || undefined,
+			qtyRequired: line.quantity,
+		})),
 	};
+
+	const data = await request<CreatePurchaseOrderMutationData>(
+		env.VITE_GRAPHQL_ENDPOINT,
+		CREATE_PURCHASE_ORDER_MUTATION,
+		{ input: variables },
+		headers,
+	);
+
+	const po = data.createPurchaseOrder;
+	return mapGqlToPurchaseOrderDetail({ ...po, outlet: null });
 }
 
 /** Update purchase order status (e.g. accept / reject). No-op until backend is connected. */

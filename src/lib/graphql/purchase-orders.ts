@@ -19,7 +19,6 @@ export const PURCHASE_ORDER_FRAGMENT = gql`
 	fragment PurchaseOrderFields on PurchaseOrder {
 		id
 		purchaseOrderNo
-		outletId
 		status
 		scheduledDeliveryDate
 		createdAt
@@ -162,6 +161,37 @@ export type PurchaseOrdersByWeekQueryVariables = {
 
 export type PurchaseOrdersByWeekQueryData = {
 	purchaseOrdersByWeek: PurchaseOrdersByDateEntry[];
+};
+
+// ---------------------------------------------------------------------------
+// Create Purchase Order mutation
+// ---------------------------------------------------------------------------
+
+export const CREATE_PURCHASE_ORDER_MUTATION = gql`
+	mutation CreatePurchaseOrder($input: CreatePurchaseOrderInput!) {
+		createPurchaseOrder(input: $input) {
+			id
+			purchaseOrderNo
+			status
+			scheduledDeliveryDate
+			createdAt
+			updatedAt
+			createdBy
+			updatedBy
+		}
+	}
+`;
+
+export type CreatePurchaseOrderMutationVariables = {
+	input: {
+		purchaseOrderNo: string;
+		outletId: string;
+		items: Array<{ skuCode: string; skuId?: string; qtyRequired: number }>;
+	};
+};
+
+export type CreatePurchaseOrderMutationData = {
+	createPurchaseOrder: PurchaseOrder;
 };
 
 // ---------------------------------------------------------------------------

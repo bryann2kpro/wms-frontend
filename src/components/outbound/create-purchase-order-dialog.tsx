@@ -93,7 +93,7 @@ export function CreatePurchaseOrderDialog({
 						e.preventDefault();
 						form.handleSubmit();
 					}}
-					className="flex flex-col min-h-0"
+					className="relative flex flex-col min-h-0"
 					aria-labelledby="create-po-dialog-title"
 					aria-describedby="create-po-dialog-description"
 				>
@@ -101,14 +101,23 @@ export function CreatePurchaseOrderDialog({
 						{(isSubmitting: boolean) => (
 							<>
 								{isSubmitting && (
-									<div
-										role="status"
-										aria-live="polite"
-										aria-busy="true"
-										className="sr-only"
-									>
-										Creating purchase order...
-									</div>
+									<>
+										<div
+											role="status"
+											aria-live="polite"
+											aria-busy="true"
+											className="sr-only"
+										>
+											Creating purchase order...
+										</div>
+										<div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[2px]">
+											<div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-4 shadow-sm">
+												<Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden />
+												<p className="text-sm font-medium text-foreground">Creating purchase order...</p>
+												<p className="text-xs text-muted-foreground">Please wait</p>
+											</div>
+										</div>
+									</>
 								)}
 								<fieldset
 									disabled={isSubmitting}

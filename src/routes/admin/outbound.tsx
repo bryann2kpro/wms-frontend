@@ -78,6 +78,7 @@ function OutboundRouteComponent() {
 			items: [{ skuId: "", quantity: 1 }] as { skuId: string; skuCode?: string; description?: string; quantity: number }[],
 		},
 		validators: {
+			onChange: createPurchaseOrderSchema as any,
 			onBlur: createPurchaseOrderSchema as any,
 			onSubmit: createPurchaseOrderSchema as any,
 		},
