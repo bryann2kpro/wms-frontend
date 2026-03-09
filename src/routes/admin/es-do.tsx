@@ -1,8 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Table,
 	TableBody,
@@ -13,84 +15,113 @@ import {
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { getPrimaryRole } from "@/lib/auth";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
-	type DOItem,
-	type DOStatusFilter,
-	getDOs,
-} from "@/data/do.mock-data";
+	DELIVERY_ORDER_ITEMS_QUERY,
+	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
+	type DeliveryOrderItemsQueryData,
+	type DeliveryOrderItemsQueryVariables,
+	type MarkDeliveryOrderItemPickedMutationData,
+	type MarkDeliveryOrderItemPickedMutationVariables,
+} from "@/lib/graphql/delivery-orders";
+import type { DeliveryOrderItemWithDetails } from "@/lib/graphql/types";
+import { toast } from "sonner";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
-	"Delivery order work queue for Empire Sushi — stock movement and inventory.";
+	"Delivery order work queue for Empire Sushi — stock movement based on DO.";
 
 export const Route = createFileRoute("/admin/es-do")({
 	component: EmpireSushiDOComponent,
 });
 
-// Extended item type for flattened view
-interface FlattenedItem extends DOItem {
-	doNumber: string;
-	doId: string;
+function formatQty(qty: string | null): string {
+	if (!qty) return "0";
+	const num = parseFloat(qty);
+	return Number.isInteger(num) ? String(num) : num.toFixed(2);
+}
+
+function getStatusBadgeVariant(status: string | null): "default" | "secondary" | "outline" | "destructive" {
+	switch (status) {
+		case "CREATED":
+			return "secondary";
+		case "PICKING":
+			return "default";
+		case "PACKED":
+		case "READY_FOR_COLLECTION":
+		case "COLLECTED":
+			return "outline";
+		case "DELIVERED_CONFIRMED":
+			return "default";
+		case "CANCELLED":
+			return "destructive";
+		default:
+			return "secondary";
+	}
 }
 
 function EmpireSushiDOComponent() {
-	const { user } = useCurrentUser();
 	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
-	const [statusFilter, setStatusFilter] = useState<DOStatusFilter>("ALL");
+	const [debouncedSearch, setDebouncedSearch] = useState("");
 
-	// Filter by assigned user for Store Keeper and Logistic roles
-	const userRole = user ? getPrimaryRole(user.roles) : null;
-	const assignedTo =
-		userRole === "store_keeper" || userRole === "logistic"
-			? user?.id
-			: undefined;
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(searchTerm);
+			setPage(1);
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [searchTerm]);
 
-	const { data, isLoading } = useQuery({
-		queryKey: ["dos-empire-sushi", { searchTerm, statusFilter, assignedTo }],
-		queryFn: () =>
-			getDOs({
-				page: 1,
-				pageSize: 100, // Get more to flatten
-				search: searchTerm,
-				status: statusFilter,
-				assignedTo,
-			}),
-		staleTime: 30_000,
-	})
-
-	// Document title and accessibility: page title for browser tab and screen readers
 	useEffect(() => {
 		document.title = `${PAGE_TITLE} | SME Ederan`;
 		return () => {
 			document.title = "SME Ederan";
-		}
+		};
 	}, []);
 
-	// Flatten all items from all DOs
-	const allItems: FlattenedItem[] = useMemo(() => {
-		if (!data?.items) return [];
-		return data.items.flatMap((do_) =>
-			do_.items.map((item) => ({
-				...item,
-				doNumber: do_.doNumber,
-				doId: do_.id,
-			})),
-		)
-	}, [data?.items]);
+	const { data, loading, refetch } = useQuery<
+		DeliveryOrderItemsQueryData,
+		DeliveryOrderItemsQueryVariables
+	>(DELIVERY_ORDER_ITEMS_QUERY, {
+		variables: {
+			filter: debouncedSearch ? { search: debouncedSearch } : null,
+			pageSize,
+			pageNumber: page,
+		},
+		fetchPolicy: "cache-and-network",
+	});
 
-	// Paginate the flattened items
-	const totalItems = allItems.length;
-	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-	const paginatedItems = allItems.slice(
-		(page - 1) * pageSize,
-		page * pageSize,
-	)
+	const [markAsPicked, { loading: markingPicked }] = useMutation<
+		MarkDeliveryOrderItemPickedMutationData,
+		MarkDeliveryOrderItemPickedMutationVariables
+	>(MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION);
+
+	const items: DeliveryOrderItemWithDetails[] = data?.deliveryOrderItems?.query ?? [];
+	const pagination = data?.deliveryOrderItems?.pagination;
+	const totalItems = pagination?.totalCount ?? 0;
+	const totalPages = pagination?.totalPages ?? 1;
+
+	const handleMarkAsPicked = async (item: DeliveryOrderItemWithDetails) => {
+		const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
+		const newQtyPicked = isPicked ? "0" : item.qtyRequired;
+
+		try {
+			await markAsPicked({
+				variables: {
+					id: item.id,
+					qtyPicked: newQtyPicked,
+				},
+			});
+			toast.success(isPicked ? "Item unmarked as picked" : "Item marked as picked");
+			refetch();
+		} catch (error) {
+			console.error("Failed to mark item as picked:", error);
+			toast.error("Failed to update item. Please try again.");
+		}
+	};
 
 	const tableColSpan = 11;
 
@@ -100,18 +131,17 @@ function EmpireSushiDOComponent() {
 			className="container mx-auto p-6 space-y-6"
 			aria-label={PAGE_TITLE}
 		>
-			{/* Live region for loading/status feedback — announced to screen readers */}
 			<div
 				aria-live="polite"
 				aria-atomic="true"
 				className="sr-only"
 				role="status"
 			>
-				{isLoading
+				{loading
 					? "Loading items…"
-					: paginatedItems.length === 0
+					: items.length === 0
 						? "No items found."
-						: `Showing ${paginatedItems.length} items.`}
+						: `Showing ${items.length} items.`}
 			</div>
 
 			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -133,20 +163,16 @@ function EmpireSushiDOComponent() {
 						aria-hidden
 					/>
 					<Input
-						aria-label="Search items by SKU, description, GRN or DO number"
+						aria-label="Search items by SKU, description, or DO number"
 						placeholder="Search items..."
 						value={searchTerm}
-						onChange={(e) => {
-							setSearchTerm(e.target.value);
-							setPage(1)
-						}}
+						onChange={(e) => setSearchTerm(e.target.value)}
 						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					/>
 				</div>
 			</header>
 
-			{/* Visible loading feedback when data is loading */}
-			{isLoading && (
+			{loading && (
 				<div
 					className="flex items-center gap-2 text-muted-foreground text-sm"
 					role="status"
@@ -160,44 +186,32 @@ function EmpireSushiDOComponent() {
 			<section
 				className="relative"
 				aria-label="Delivery order items table"
-				aria-busy={isLoading}
+				aria-busy={loading}
 			>
 				<GlobalLoadingShadow />
 				<div className="overflow-x-auto rounded-lg border">
-					<Table aria-label="Empire Sushi DO work queue items with SKU, GRN, quantities and storage">
+					<Table aria-label="Empire Sushi DO work queue items with SKU, quantities and inventory">
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-16">Item</TableHead>
+								<TableHead className="w-12">Item</TableHead>
 								<TableHead>SKU</TableHead>
 								<TableHead>Description</TableHead>
-								<TableHead>GRN</TableHead>
 								<TableHead>DO</TableHead>
-								<TableHead>Date</TableHead>
+								<TableHead>PO</TableHead>
+								<TableHead className="text-center">Qty Required</TableHead>
+								<TableHead className="text-center">Qty Picked</TableHead>
+								<TableHead className="text-center">Qty Packed</TableHead>
 								<TableHead className="text-center">
-									Opening Qty
+									On Hand
 									<br />
 									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
-								<TableHead className="text-center">
-									Stock In
-									<br />
-									<span className="text-xs font-normal">({unitName}/Loss)</span>
-								</TableHead>
-								<TableHead className="text-center">
-									Stock Out
-									<br />
-									<span className="text-xs font-normal">({unitName}/Loss)</span>
-								</TableHead>
-								<TableHead className="text-center">
-									Close Qty
-									<br />
-									<span className="text-xs font-normal">({unitName}/Loss)</span>
-								</TableHead>
-								<TableHead>Storage Rack</TableHead>
+								<TableHead>Status</TableHead>
+								<TableHead className="text-center">Picked</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{isLoading ? (
+							{loading && items.length === 0 ? (
 								<TableRow>
 									<TableCell
 										colSpan={tableColSpan}
@@ -206,7 +220,7 @@ function EmpireSushiDOComponent() {
 										Loading items…
 									</TableCell>
 								</TableRow>
-							) : paginatedItems.length === 0 ? (
+							) : items.length === 0 ? (
 								<TableRow>
 									<TableCell
 										colSpan={tableColSpan}
@@ -216,35 +230,53 @@ function EmpireSushiDOComponent() {
 									</TableCell>
 								</TableRow>
 							) : (
-								paginatedItems.map((item, index) => (
-									<TableRow key={item.id}>
-										<TableCell className="font-medium">
-											{(page - 1) * pageSize + index + 1}
-										</TableCell>
-										<TableCell>{item.sku}</TableCell>
-										<TableCell className="max-w-[200px] truncate">
-											{item.description}
-										</TableCell>
-										<TableCell>{item.grnNumber}</TableCell>
-										<TableCell>{item.doNumber}</TableCell>
-										<TableCell>
-											{item.deliveryDate?.toLocaleDateString() || "-"}
-										</TableCell>
-										<TableCell className="text-center">
-											{item.openingQtyDozen} / {item.openingQtyLoss}
-										</TableCell>
-										<TableCell className="text-center">
-											{item.stockInDozen} / {item.stockInLoss}
-										</TableCell>
-										<TableCell className="text-center">
-											{item.stockOutDozen} / {item.stockOutLoss}
-										</TableCell>
-										<TableCell className="text-center">
-											{item.closeQtyDozen} / {item.closeQtyLoss}
-										</TableCell>
-										<TableCell>{item.storageRack}</TableCell>
-									</TableRow>
-								))
+								items.map((item, index) => {
+									const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
+									return (
+										<TableRow key={item.id} className={isPicked ? "bg-muted/50" : ""}>
+											<TableCell className="font-medium">
+												{(page - 1) * pageSize + index + 1}
+											</TableCell>
+											<TableCell className="font-mono text-sm">
+												{item.skuCode ?? "-"}
+											</TableCell>
+											<TableCell className="max-w-[200px] truncate">
+												{item.skuDescription ?? "-"}
+											</TableCell>
+											<TableCell className="font-mono text-sm">
+												{item.doNo ?? "-"}
+											</TableCell>
+											<TableCell className="font-mono text-sm">
+												{item.purchaseOrderNo}
+											</TableCell>
+											<TableCell className="text-center">
+												{formatQty(item.qtyRequired)}
+											</TableCell>
+											<TableCell className="text-center">
+												{formatQty(item.qtyPicked)}
+											</TableCell>
+											<TableCell className="text-center">
+												{formatQty(item.qtyPacked)}
+											</TableCell>
+											<TableCell className="text-center">
+												{formatQty(item.onHandQty)} / {formatQty(item.lossQty)}
+											</TableCell>
+											<TableCell>
+												<Badge variant={getStatusBadgeVariant(item.doStatus)}>
+													{item.doStatus ?? "Unknown"}
+												</Badge>
+											</TableCell>
+											<TableCell className="text-center">
+												<Checkbox
+													checked={isPicked}
+													disabled={markingPicked}
+													onCheckedChange={() => handleMarkAsPicked(item)}
+													aria-label={`Mark ${item.skuCode} as ${isPicked ? "not picked" : "picked"}`}
+												/>
+											</TableCell>
+										</TableRow>
+									);
+								})
 							)}
 						</TableBody>
 					</Table>
@@ -270,7 +302,7 @@ function EmpireSushiDOComponent() {
 							<Button
 								variant="outline"
 								size="icon"
-								disabled={page === 1}
+								disabled={page === 1 || loading}
 								onClick={() => setPage((p) => Math.max(1, p - 1))}
 								aria-label="Previous page"
 								className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -283,7 +315,7 @@ function EmpireSushiDOComponent() {
 							<Button
 								variant="outline"
 								size="icon"
-								disabled={page === totalPages}
+								disabled={page === totalPages || loading}
 								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 								aria-label="Next page"
 								className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -295,5 +327,5 @@ function EmpireSushiDOComponent() {
 				)}
 			</section>
 		</main>
-	)
+	);
 }
