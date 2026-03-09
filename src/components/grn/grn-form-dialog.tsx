@@ -43,9 +43,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
@@ -57,7 +62,7 @@ import {
 	Send,
 	Trash2,
 	Clock,
-	Warehouse,
+	CalendarClock,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -101,8 +106,10 @@ export type GRNLineItemForm = {
 	loss: number;
 	uom: string;
 	unitPrice: number;
-	/** Rack ID (required for every line item) */
-	rackId: string;
+	/** Expiry date (YYYY-MM-DD). Required per line. */
+	expiryDate: string;
+	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
+	rackIds: string[];
 };
 
 function toDatetimeLocal(value: string | null | undefined): string {
@@ -224,6 +231,7 @@ function GRNLineRow({
 	racks: Array<{ rackId: string; rackRow: string; rackColumn: string; rackLevel: string }>;
 	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
+	const rackIds = item.rackIds ?? [];
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -322,6 +330,22 @@ function GRNLineRow({
 				/>
 			</TableCell>
 			<TableCell>
+				<Input
+					type="date"
+					value={item.expiryDate ?? ""}
+					onChange={(e) => {
+						const newItems = [...items];
+						newItems[index] = {
+							...newItems[index],
+							expiryDate: e.target.value,
+						};
+						onItemsChange(newItems);
+					}}
+					className="min-w-[140px]"
+					placeholder="YYYY-MM-DD"
+				/>
+			</TableCell>
+			<TableCell>
 				<Select
 					value={item.uom}
 					onValueChange={(value) => {
@@ -346,37 +370,80 @@ function GRNLineRow({
 					</SelectContent>
 				</Select>
 			</TableCell>
-			<TableCell>
-				<Select
-					value={item.rackId || undefined}
-					onValueChange={(value) => {
-						if (value === "__create_rack__") {
-							onOpenCreateRack?.(index);
-							return;
-						}
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							rackId: value,
-						};
-						onItemsChange(newItems);
-					}}
-				>
-					<SelectTrigger className="h-8 min-w-[200px] font-normal text-sm">
-						<SelectValue placeholder="Select rack (required)" />
-					</SelectTrigger>
-					<SelectContent>
-						{racks.map((r) => (
-							<SelectItem key={r.rackId} value={r.rackId}>
-								{r.rackRow}-{r.rackColumn}-{r.rackLevel}
-							</SelectItem>
-						))}
-						<SelectItem value="__create_rack__" className="text-muted-foreground">
-							<Plus className="inline h-3.5 w-3.5 mr-1" />
-							Create new rack
-						</SelectItem>
-					</SelectContent>
-				</Select>
+			<TableCell className="min-w-[220px]">
+				<div className="flex flex-wrap items-center gap-1.5">
+					{rackIds.map((rid) => {
+						const r = racks.find((x) => x.rackId === rid);
+						const label = r ? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}` : rid;
+						return (
+							<Badge
+								key={rid}
+								variant="secondary"
+								className="gap-1 pr-1 font-normal"
+							>
+								{label}
+								<button
+									type="button"
+									onClick={() => {
+										const newItems = [...items];
+										newItems[index] = {
+											...newItems[index],
+											rackIds: rackIds.filter((id) => id !== rid),
+										};
+										onItemsChange(newItems);
+									}}
+									className="rounded-full p-0.5 hover:bg-muted"
+									aria-label={`Remove rack ${label}`}
+								>
+									<XCircle className="h-3 w-3" />
+								</button>
+							</Badge>
+						);
+					})}
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button type="button" variant="outline" size="sm" className="h-7 gap-1">
+								<Plus className="h-3.5 w-3.5" />
+								Add rack
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-56 p-2" align="start">
+							<div className="flex flex-col gap-1">
+								{racks
+									.filter((r) => !rackIds.includes(r.rackId))
+									.map((r) => (
+										<Button
+											key={r.rackId}
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="justify-start font-normal"
+											onClick={() => {
+												const newItems = [...items];
+												newItems[index] = {
+													...newItems[index],
+													rackIds: [...rackIds, r.rackId],
+												};
+												onItemsChange(newItems);
+											}}
+										>
+											{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+										</Button>
+									))}
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="justify-start gap-1 text-muted-foreground"
+									onClick={() => onOpenCreateRack?.(index)}
+								>
+									<Plus className="h-3.5 w-3.5" />
+									Create new rack
+								</Button>
+							</div>
+						</PopoverContent>
+					</Popover>
+				</div>
 			</TableCell>
 			<TableCell className="text-right">
 				<Button
@@ -520,9 +587,16 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingRack = items.find((i) => !(i.rackId ?? "").trim());
-						if (missingRack) {
-							fields.items = "Each line item must have a rack selected.";
+						const missingExpiry = items.find((i) => !(i.expiryDate ?? "").trim());
+						if (missingExpiry) {
+							fields.items = "Each line item must have an expiry date.";
+						} else {
+							const missingRack = items.find(
+								(i) => !(i.rackIds ?? []).length,
+							);
+							if (missingRack) {
+								fields.items = "Each line item must have at least one rack.";
+							}
 						}
 					}
 				}
@@ -550,7 +624,8 @@ export function GrnFormDialog({
 						loss: i.loss,
 						uom: i.uom,
 						unitPrice: i.unitPrice,
-						rackId: i.rackId ?? "",
+						expiryDate: i.expiryDate ?? "",
+						rackIds: i.rackIds ?? [],
 					})),
 				};
 				try {
@@ -585,7 +660,7 @@ export function GrnFormDialog({
 								const uomId = i.uom
 									? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
 									: undefined;
-								const rackId = (i.rackId ?? "").trim() || undefined;
+								const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
 								return {
 									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
 									skuCode: i.skuCode,
@@ -593,7 +668,8 @@ export function GrnFormDialog({
 									qty: String(i.carton),
 									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
-									...(rackId && { rackId }),
+									expiryDate: (i.expiryDate ?? "").trim() || undefined,
+									...(rackIds.length > 0 && { rackIds }),
 								};
 							}),
 						},
@@ -616,6 +692,11 @@ export function GrnFormDialog({
 					)
 					: undefined;
 				const rack = it.rack;
+				const rackIds =
+					(it as { rackIds?: string[] }).rackIds ??
+					(rack ? [rack.rackId] : []);
+				const expiryDate =
+					(it as { expiryDate?: string }).expiryDate ?? "";
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -623,7 +704,8 @@ export function GrnFormDialog({
 					loss: it.lossQuantity ?? 0,
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
-					rackId: rack?.rackId ?? "",
+					expiryDate,
+					rackIds,
 				};
 			});
 			form.reset({
@@ -656,9 +738,11 @@ export function GrnFormDialog({
 	const handleSubmitForApproval = () => {
 		if (!grn?.id || grn.status !== "Draft") return;
 		const items = form.state.values.items ?? [];
-		const missingRack = items.find((i: { rackId?: string }) => !(i.rackId ?? "").trim());
+		const missingRack = items.find(
+			(i: { rackIds?: string[] }) => !(i.rackIds ?? []).length,
+		);
 		if (missingRack) {
-			toast.error("Each line item must have a rack selected before submitting for approval.");
+			toast.error("Each line item must have at least one rack before submitting for approval.");
 			return;
 		}
 		updateGRN({
@@ -810,27 +894,6 @@ export function GrnFormDialog({
 												);
 											}}
 										</form.Field>
-										<form.Field name="warehouseId">
-											{(field) => (
-												<Field>
-													<FieldLabel
-														htmlFor={field.name}
-														className="flex items-center gap-2"
-													>
-														<Warehouse className="h-4 w-4 text-muted-foreground" />
-														Warehouse
-													</FieldLabel>
-													<WarehouseCombobox
-														id={field.name}
-														value={field.state.value ?? ""}
-														onChange={(v: string) => field.handleChange(v)}
-														warehouses={warehouses}
-														onWarehouseCreated={onWarehouseCreated}
-														placeholder="Select warehouse"
-													/>
-												</Field>
-											)}
-										</form.Field>
 									</FieldGroup>
 								</CardContent>
 							</Card>
@@ -865,7 +928,8 @@ export function GrnFormDialog({
 																	unitPrice: 0,
 																	carton: 1,
 																	loss: 0,
-																	rackId: "",
+																	expiryDate: "",
+																	rackIds: [],
 																},
 															]);
 														}}
@@ -879,16 +943,21 @@ export function GrnFormDialog({
 									</div>
 								</CardHeader>
 								<CardContent>
-									<form.Field name="items">
-										{(field) => {
-											const items = (field.state.value ?? []) as GRNLineItemForm[];
-											updateItemsWithRackRef.current = (lineIndex, rackId) => {
-												const current = (field.state.value ?? []) as GRNLineItemForm[];
-												if (current[lineIndex] == null) return;
-												const next = [...current];
-												next[lineIndex] = { ...next[lineIndex], rackId };
-												field.handleChange(next);
-											};
+										<form.Field name="items">
+											{(field) => {
+												const items = (field.state.value ?? []) as GRNLineItemForm[];
+												updateItemsWithRackRef.current = (lineIndex, rackId) => {
+													const current = (field.state.value ?? []) as GRNLineItemForm[];
+													if (current[lineIndex] == null) return;
+													const next = [...current];
+													const existing = next[lineIndex].rackIds ?? [];
+													if (existing.includes(rackId)) return;
+													next[lineIndex] = {
+														...next[lineIndex],
+														rackIds: [...existing, rackId],
+													};
+													field.handleChange(next);
+												};
 											return (
 												<>
 												<div className="rounded-lg border">
@@ -899,8 +968,9 @@ export function GrnFormDialog({
 																<TableHead>Description</TableHead>
 																<TableHead>Carton</TableHead>
 																<TableHead>Loss</TableHead>
+																<TableHead>Expiry date *</TableHead>
 																<TableHead>UOM</TableHead>
-																<TableHead>Rack *</TableHead>
+																<TableHead>Racks *</TableHead>
 																<TableHead className="text-right w-[80px]">
 																	Actions
 																</TableHead>
@@ -910,7 +980,7 @@ export function GrnFormDialog({
 															{items.length === 0 ? (
 																<TableRow>
 																	<TableCell
-																		colSpan={7}
+																		colSpan={8}
 																		className="h-40 text-center"
 																	>
 																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">

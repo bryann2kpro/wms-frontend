@@ -76,7 +76,7 @@ export function formatDateOnly(dateValue: string | number | Date): string {
       return String(dateValue);
     }
     
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("en-MY", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -139,6 +139,8 @@ export function toUserFriendlyMessage(raw: string, fallback: string): string {
   const technicalMarkers = [
     "audit_log_id",
     "params:",
+    "Failed query",
+    "insert into",
     "user_agent",
     "old_data",
     "new_data",
@@ -231,6 +233,27 @@ export function isInCurrentWeek(date: Date): boolean {
   );
 }
 
+/** Whether the date falls within the next 7 days (today + 6 days). */
+export function isInNext7Days(date: Date): boolean {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 7);
+  
+  return targetDate >= today && targetDate < endDate;
+}
+
+/** Whether the date is before today (past deliveries). */
+export function isInPastDays(date: Date): boolean {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  return targetDate < today;
+}
+
 /** Whether the date is in a past week and is a delivery day. */
 export function isInPastWeeks(date: Date): boolean {
   const now = new Date();
@@ -268,4 +291,30 @@ export function getDateKey(date: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/**
+ * Convert backend date key (DD/MM/YYYY UTC) to frontend date key (YYYY-MM-DD)
+ * so table headers and sorting stay consistent.
+ */
+export function dateKeyFromDDMMYYYY(ddMmYyyy: string): string {
+  const [dd, mm, yyyy] = ddMmYyyy.split("/");
+  if (!dd || !mm || !yyyy) return ddMmYyyy;
+  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+}
+
+/** Format a week range from two date keys (YYYY-MM-DD), e.g. "6 Mar – 12 Mar 2026". */
+export function formatWeekRange(fromKey: string, toKey: string): string {
+  try {
+    const from = new Date(fromKey + "T12:00:00");
+    const to = new Date(toKey + "T12:00:00");
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+    const fromStr = from.toLocaleDateString("en-GB", opts);
+    const toStr = to.toLocaleDateString("en-GB", opts);
+    return from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth()
+      ? `${from.getDate()} – ${to.getDate()} ${to.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
+      : `${fromStr} – ${toStr}`;
+  } catch {
+    return `${fromKey} – ${toKey}`;
+  }
 }

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import type { TransferDetail } from "@/data/transfers.types";
+import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
   getStatusColor,
@@ -27,25 +27,25 @@ import {
   formatStatus,
 } from "@/lib/outbound";
 
-interface ViewTransferDialogProps {
+interface ViewPurchaseOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  transfer: TransferDetail | null;
+  purchaseOrder: PurchaseOrderDetail | null;
   onAcceptClick: () => void;
   onRejectClick: () => void;
   hasAcceptPermission: boolean;
   hasRejectPermission: boolean;
 }
 
-export function ViewTransferDialog({
+export function ViewPurchaseOrderDialog({
   open,
   onOpenChange,
-  transfer,
+  purchaseOrder,
   onAcceptClick,
   onRejectClick,
   hasAcceptPermission,
   hasRejectPermission,
-}: ViewTransferDialogProps) {
+}: ViewPurchaseOrderDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -53,30 +53,30 @@ export function ViewTransferDialog({
         style={{ maxWidth: "min(95vw, 1400px)" }}
       >
         <DialogHeader>
-          <DialogTitle>Delivery Order Details</DialogTitle>
+          <DialogTitle>Purchase Order Details</DialogTitle>
           <DialogDescription>
-            View and manage Delivery order information
+            View and manage purchase order information
           </DialogDescription>
         </DialogHeader>
-        {transfer && (
+        {purchaseOrder && (
           <ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <Label className="text-xs text-muted-foreground">PO Number</Label>
                   <p className="text-sm font-medium">
-                    {transfer.transferOrderNumber}
+                    {purchaseOrder.purchaseOrderNumber}
                   </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Outlet</Label>
-                  <p className="text-sm font-medium">{transfer.toLocation}</p>
+                  <p className="text-sm font-medium">{purchaseOrder.toLocation}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Region</Label>
                   <p className="text-sm font-medium">
-                    {transfer.regionName
-                      ? `${transfer.regionName}${transfer.regionCode ? ` (${transfer.regionCode})` : ""}`
+                    {purchaseOrder.regionName
+                      ? `${purchaseOrder.regionName}${purchaseOrder.regionCode ? ` (${purchaseOrder.regionCode})` : ""}`
                       : "—"}
                   </p>
                 </div>
@@ -85,13 +85,13 @@ export function ViewTransferDialog({
                     Scheduled Delivery
                   </Label>
                   <p className="text-sm font-medium">
-                    {transfer.expectedDeliveryDate.toLocaleDateString()}
+                    {purchaseOrder.expectedDeliveryDate.toLocaleDateString()}
                   </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Created Date</Label>
                   <p className="text-sm font-medium">
-                    {transfer.createdDate.toLocaleDateString()}
+                    {purchaseOrder.createdDate.toLocaleDateString()}
                   </p>
                 </div>
                 <div>
@@ -99,16 +99,16 @@ export function ViewTransferDialog({
                     Expected Delivery
                   </Label>
                   <p className="text-sm font-medium">
-                    {transfer.expectedDeliveryDate.toLocaleDateString()}
+                    {purchaseOrder.expectedDeliveryDate.toLocaleDateString()}
                   </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
                   <Badge
                     variant="outline"
-                    className={getStatusColor(transfer.status)}
+                    className={getStatusColor(purchaseOrder.status)}
                   >
-                    {formatStatus(transfer.status)}
+                    {formatStatus(purchaseOrder.status)}
                   </Badge>
                 </div>
                 <div>
@@ -118,22 +118,22 @@ export function ViewTransferDialog({
                   <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
-                      className={getNetSuiteStatusColor(transfer.netsuiteStatus)}
+                      className={getNetSuiteStatusColor(purchaseOrder.netsuiteStatus)}
                     >
-                      {transfer.netsuiteStatus || "N/A"}
+                      {purchaseOrder.netsuiteStatus || "N/A"}
                     </Badge>
-                    {transfer.netsuiteStatus === "error" && (
+                    {purchaseOrder.netsuiteStatus === "error" && (
                       <AlertCircle className="h-4 w-4 text-red-600" />
                     )}
                   </div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Created By</Label>
-                  <p className="text-sm font-medium">{transfer.createdBy}</p>
+                  <p className="text-sm font-medium">{purchaseOrder.createdBy}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Total Items</Label>
-                  <p className="text-sm font-medium">{transfer.totalItems}</p>
+                  <p className="text-sm font-medium">{purchaseOrder.totalItems}</p>
                 </div>
               </div>
 
@@ -151,7 +151,7 @@ export function ViewTransferDialog({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transfer.items.map((item) => {
+                      {purchaseOrder.items.map((item) => {
                         const availableQty =
                           item.quantity + Math.floor(Math.random() * 10);
                         const canFulfill = availableQty >= item.quantity;
@@ -197,15 +197,15 @@ export function ViewTransferDialog({
                 </div>
               </div>
 
-              {transfer.notes && (
+              {purchaseOrder.notes && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Notes</Label>
-                  <p className="text-sm">{transfer.notes}</p>
+                  <p className="text-sm">{purchaseOrder.notes}</p>
                 </div>
               )}
 
               <IntegrationLogPanel
-                entityId={transfer.id}
+                entityId={purchaseOrder.id}
                 entityType="po"
                 onRetry={(logId) => {
                   console.log("Retry log:", logId);
@@ -216,13 +216,13 @@ export function ViewTransferDialog({
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Close
                 </Button>
-                {hasAcceptPermission && transfer.status === "preparing" && (
+                {hasAcceptPermission && purchaseOrder.status === "preparing" && (
                   <Button onClick={onAcceptClick}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Accept &amp; Create DO
                   </Button>
                 )}
-                {hasRejectPermission && transfer.status === "preparing" && (
+                {hasRejectPermission && purchaseOrder.status === "preparing" && (
                   <Button variant="destructive" onClick={onRejectClick}>
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject

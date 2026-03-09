@@ -202,16 +202,19 @@ function GRNRouteComponent() {
 				loss: number;
 				uom?: string;
 				unitPrice?: number;
-				rackId?: string;
+				expiryDate?: string;
+				rackIds?: string[];
 			}>;
 		}) => {
 			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
-			const warehouseId = payload.warehouseId?.trim() || undefined;
+			/** Warehouse is hidden in UI; always use first warehouse from query. */
+			const warehouseId =
+				(warehouses[0]?.warehouseId ?? payload.warehouseId ?? "").trim() || undefined;
 			const items = payload.items?.map((i) => {
 				const uomId = i.uom
 					? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
 					: undefined;
-				const rackId = (i.rackId ?? "").trim() || undefined;
+				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
 				return {
 					skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 					skuCode: i.sku,
@@ -219,7 +222,8 @@ function GRNRouteComponent() {
 					qty: String(i.carton),
 					lossQty: String(i.loss ?? 0),
 					skuUom: uomId ?? undefined,
-					...(rackId && { rackId }),
+					expiryDate: (i.expiryDate ?? "").trim() || undefined,
+					...(rackIds.length > 0 && { rackIds }),
 				};
 			});
 			const baseInput = {
@@ -367,7 +371,8 @@ function GRNRouteComponent() {
 									loss: i.loss,
 									uom: i.uom,
 									unitPrice: i.unitPrice,
-									rackId: i.rackId ?? "",
+									expiryDate: i.expiryDate ?? "",
+									rackIds: i.rackIds ?? [],
 								})),
 							});
 						}}

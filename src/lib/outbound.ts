@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { TransferStatus } from "@/data/transfers.types";
+import type { PurchaseOrderStatus } from "@/data/purchase-orders.types";
 
 export type DeliveryTab = "current-week" | "past-weeks";
 
-export const transferStatuses: TransferStatus[] = [
+export const purchaseOrderStatuses: PurchaseOrderStatus[] = [
 	"preparing",
 	"in-transit",
 	"to-ship",
@@ -22,28 +22,28 @@ export const locations = [
 	{ value: "warehouse-d", label: "Warehouse D" },
 ];
 
-const createTransferLineItemSchema = z.object({
+const createPurchaseOrderLineItemSchema = z.object({
 	skuId: z.string().min(1, "Stock is required"),
 	quantity: z.coerce.number().min(1, "Amount must be at least 1"),
 });
 
-export type CreateTransferLineItem = z.infer<typeof createTransferLineItemSchema>;
+export type CreatePurchaseOrderLineItem = z.infer<typeof createPurchaseOrderLineItemSchema>;
 
-export const createTransferSchema = z.object({
-	transferOrderNumber: z
+export const createPurchaseOrderSchema = z.object({
+	purchaseOrderNumber: z
 		.string()
-		.min(1, "Delivery order number is required")
+		.min(1, "Purchase order number is required")
 		.regex(/^PO-20\d{2}-[A-Z0-9]+$/, "Use format like PO-2024-001"),
 	outletId: z.string().min(1, "Outlet is required"),
 	outletName: z.string().default(""),
 	notes: z.string(),
 	items: z
-		.array(createTransferLineItemSchema)
+		.array(createPurchaseOrderLineItemSchema)
 		.min(1, "Add at least one line (stock and amount)"),
 });
 
-export function getStatusColor(status: TransferStatus): string {
-	const colors: Record<TransferStatus, string> = {
+export function getStatusColor(status: PurchaseOrderStatus): string {
+	const colors: Record<PurchaseOrderStatus, string> = {
 		preparing: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
 		"in-transit": "bg-blue-500/10 text-blue-600 border-blue-500/20",
 		"to-ship": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
@@ -74,8 +74,8 @@ export function formatStatus(status: string): string {
 	return status;
 }
 
-export function getTransferStatusColor(status: TransferStatus): string {
-	const colors: Record<TransferStatus, string> = {
+export function getPurchaseOrderStatusColor(status: PurchaseOrderStatus): string {
+	const colors: Record<PurchaseOrderStatus, string> = {
 		preparing:
 			"!text-yellow-600 data-[highlighted]:!bg-yellow-500/10 data-[highlighted]:!text-yellow-700 focus:!bg-yellow-500/10 focus:!text-yellow-700",
 		"in-transit":

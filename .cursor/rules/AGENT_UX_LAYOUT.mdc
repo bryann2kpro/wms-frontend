@@ -1,0 +1,115 @@
+---
+description: "UX, layout, accessibility, and ops-style UI: loading states, 3-level layout, typography scale, buttons, page headers, feedback, evidence, data entry."
+globs: ["**/*.tsx", "**/*.css", "**/components/**", "**/routes/**"]
+alwaysApply: true
+---
+
+# UX, Layout & Accessibility
+
+Apply these for consistent, accessible, ops-friendly UI across the app.
+
+## Loading & feedback
+
+- **Loading state:** Every async action must show a loading state. Use skeletons for content, spinners for buttons/actions, and **explicit text** where appropriate (e.g. "Signing in...", "Saving...", "Loading orders...").
+- **Visual feedback:** Users must always know something is happening or has happened—loading text, success/error toasts, inline validation messages.
+
+## Accessibility
+
+- **Focus states:** All interactive elements (buttons, links, inputs, tabs, custom controls) must have a visible focus state. Never remove focus outlines without replacing them with a clear focus ring.
+- **Page title and description:** Set a meaningful document title and, where helpful, a short meta description or heading so screen readers and tabs get context.
+- **High contrast:** Keep text and status readable; don’t rely on low-contrast gray for critical info.
+- **Don’t encode meaning with color alone:** Status must be clear from text/label as well (e.g. "Approved" chip, not only green). Buttons should read like actions ("Approve", "Issue invoice", "Upload proof").
+
+## Layout
+
+Use a **3-level structure** everywhere:
+
+1. **App shell:** Left sidebar + top bar.
+2. **Page header:** Title + optional subtitle; status chip if applicable; primary action + 0–2 secondary actions on the right.
+3. **Content:** Cards/sections below.
+
+- **Content width:** Center content with a **max width 1200–1400px**.
+- **Spacing system:** Stick to an **8px grid** (8 / 16 / 24 / 32).
+
+## Typography
+
+- **One clean sans font:** Inter or Geist.
+- **Hierarchy:**
+  - Page title: **22–26px**, semibold
+  - Section title: **14–16px**, semibold
+  - Body: **13–14px**
+  - Helper text: **12px**
+- Use weight to guide attention; avoid bolding everything.
+
+## Color
+
+- **Base:** Mostly neutral UI—white cards, light gray background.
+- **Color only for:** Status chips, warnings/errors, primary CTA.
+- **Limit:** Never more than **one primary accent** plus semantic colors (success / warn / danger).
+
+## Spacing & density
+
+- **Cards:** Padding **16–24px**; gap **12–16px** between cards.
+- **Tables:** Compact but readable:
+  - Row height **~44–52px**
+  - Prefer 1-line cells; truncate long text with a **tooltip on hover**.
+
+## Components (consistent patterns)
+
+- **Buttons:** 3 tiers only—**Primary** (one per view), **Secondary**, **Ghost** (low emphasis).
+- **Inputs:** Same height everywhere (e.g. **40–44px**); clear focus state.
+- **Cards:** Same border radius everywhere (**10–14px**).
+- **Modals vs drawers:** Use a **drawer** for "details" (view/edit); use a **modal** for "confirmations" (confirm/cancel).
+
+## Page header rule
+
+Every page header should have:
+
+- **Left:** Title + optional subtitle.
+- **Near title:** Status chip if the page has a status.
+- **Right:** Primary action + 0–2 secondary actions.
+- **Lists/reports:** A **filter bar** directly below the header.
+
+## Worklist-first navigation
+
+Most modules should open into a **queue/list** page:
+
+- Tabs by status
+- Filters (date range, region, outlet, supplier)
+- Table with **clickable rows**
+- Bulk actions only when truly needed
+
+## Status language
+
+- Always show status as a **chip**; keep names **consistent** across the app.
+- Prefer short verbs/nouns, e.g.: Draft, Submitted, Approved, Ready, Pending Proof, Confirmed, Settled, Failed.
+
+## Feedback & trust (non-negotiable in ops)
+
+- **Every action** shows immediate feedback: **toast/snackbar** for success/fail; **inline error** under the field for validation.
+- Always show **system truth** where relevant: last updated time, last sync time (if integrated), audit trail link or panel.
+
+## Evidence & attachments
+
+Where documents exist:
+
+- **Attachments section** (files, thumbnails)
+- **Upload** button with clear constraints (e.g. "Max 5MB")
+- Show **who uploaded** and **timestamp**
+
+## Data entry UX
+
+- Prefer **editable tables** over long forms where it fits.
+- Minimize steps: e.g. save as draft automatically or one-click "Save Draft".
+- Keep **keyboard flow** smooth (Tab/Enter moves forward).
+
+## Content consistency
+
+- **Same naming everywhere** for IDs: GRN#, TO#, DO#, Invoice#.
+- **Same date format** everywhere; show timezone if needed.
+- Show **references together** (e.g. DO# with TO#).
+
+## Animation
+
+- **Minimal only:** Subtle transitions—hover states, drawer slide-in, **skeleton loading**.
+- Avoid fancy motion; this is ops software.

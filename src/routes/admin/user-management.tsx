@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery as useApolloQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import {
@@ -45,9 +46,13 @@ import {
 	ChevronRight,
 	Mail,
 	Key,
+	ArrowUpDown,
+	HelpCircle,
+	ImageOff,
 } from "lucide-react";
 import type { WMSRole } from "@/lib/auth";
 import { getPrimaryRole } from "@/lib/auth";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 // GraphQL: list query, roles, create/update mutations (see src/lib/graphql/user-management.ts)
 import {
 	USERS_QUERY,
@@ -101,6 +106,104 @@ function roleNameToWMSRole(roleName: string | undefined): WMSRole {
 	return "store_keeper";
 }
 
+/** Backend sort field names for UserSort. */
+const SORT_FIELDS = [
+	{ value: "UPDATED_AT", label: "Updated at" },
+	{ value: "CREATED_AT", label: "Created at" },
+	{ value: "DISPLAY_NAME", label: "Name" },
+	{ value: "EMAIL", label: "Email" },
+] as const;
+
+const SORT_DIRECTIONS = [
+	{ value: "DESC", label: "Newest / Z→A" },
+	{ value: "ASC", label: "Oldest / A→Z" },
+] as const;
+
+type StatusFilterValue = "ALL" | "ACTIVE" | "INACTIVE";
+
+const SEARCH_DEBOUNCE_MS = 350;
+
+/** Base path for User Management help screenshots. Add step-1.png, step-2.png, etc. under public/help/user-management/ */
+const HELP_IMAGES_BASE = "/help/user-management";
+
+const USER_MANAGEMENT_HELP_STEPS: Array<{
+	title: string;
+	description: ReactNode;
+	image: string;
+}> = [
+	{
+		title: "What this page does",
+		image: `${HELP_IMAGES_BASE}/step-1.png`,
+		description: (
+			<>
+				View all users, create new ones, and change roles or passwords. The
+				summary cards show counts by role (Supervisor, Logistic, Store Keeper)
+				and total users.
+			</>
+		),
+	},
+	{
+		title: "Search and filters",
+		image: `${HELP_IMAGES_BASE}/step-2.png`,
+		description: (
+			<>
+				Search by <strong>name</strong> or <strong>email</strong> (debounced).
+				Filter by <strong>Role</strong> and <strong>Status</strong> (Active /
+				Inactive). Use <strong>Sort</strong> to order by name, email, or date.
+			</>
+		),
+	},
+	{
+		title: "Create user",
+		image: `${HELP_IMAGES_BASE}/step-3.png`,
+		description: (
+			<>
+				Click <strong>Create User</strong>, enter email, display name, and role.
+				Set the password manually or send a system-generated one by email.
+			</>
+		),
+	},
+	{
+		title: "Edit user",
+		image: `${HELP_IMAGES_BASE}/step-4.png`,
+		description: (
+			<>
+				Click the <strong>edit</strong> icon on a row to change that user’s
+				role or password. Changes apply immediately.
+			</>
+		),
+	},
+];
+
+/** Renders step screenshot with a placeholder when the image is missing or fails to load. */
+function HelpStepImage({
+	src,
+	stepNumber,
+	alt,
+}: { src: string; stepNumber: number; alt?: string }) {
+	const [failed, setFailed] = useState(false);
+	if (failed) {
+		return (
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
+				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
+					<ImageOff className="h-6 w-6" />
+				</span>
+				<span>
+					Add screenshot: public/help/user-management/step-{stepNumber}.png
+				</span>
+			</div>
+		);
+	}
+	return (
+		<img
+			src={src}
+			alt={alt ?? ""}
+			className="h-full w-full object-contain object-top"
+			onError={() => setFailed(true)}
+		/>
+	);
+}
+
 /**
  * User Management page: list, create, update via GraphQL (USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION).
  * ROLES_QUERY provides roleId for filter and create/edit dropdowns.
@@ -109,9 +212,15 @@ function UserManagementComponent() {
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
+	const debouncedSearchTerm = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [roleFilterId, setRoleFilterId] = useState<string>("ALL");
+	const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("ALL");
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+	const [isHelpOpen, setIsHelpOpen] = useState(false);
+	const [helpStep, setHelpStep] = useState(0);
 	const [selectedUser, setSelectedUser] = useState<{
 		id: string;
 		name: string;
@@ -128,19 +237,25 @@ function UserManagementComponent() {
 		(r) => r.roleName.trim().toLowerCase() !== HIDDEN_ROLE_NAME,
 	);
 
-	// --- GraphQL: filter (search = email/displayName), sort, pagination — backend resolver uses repository
+	// --- GraphQL: filter (search = email/displayName, role, isActive), sort, pagination — backend resolver uses repository
+	const hasFilter =
+		debouncedSearchTerm.trim() ||
+		roleFilterId !== "ALL" ||
+		statusFilter !== "ALL";
 	const variables: UsersQueryVariables = {
-		filter:
-			searchTerm.trim() || roleFilterId !== "ALL"
-				? {
-						...(searchTerm.trim() && {
-							displayName: searchTerm.trim(),
-							email: searchTerm.trim(),
-						}),
-						...(roleFilterId !== "ALL" && { roleId: roleFilterId }),
-					}
-				: undefined,
-		sort: { field: "UPDATED_AT", direction: "DESC" },
+		filter: hasFilter
+			? {
+					...(debouncedSearchTerm.trim() && {
+						displayName: debouncedSearchTerm.trim(),
+						email: debouncedSearchTerm.trim(),
+					}),
+					...(roleFilterId !== "ALL" && { roleId: roleFilterId }),
+					...(statusFilter !== "ALL" && {
+						isActive: statusFilter === "ACTIVE",
+					}),
+				}
+			: undefined,
+		sort: { field: sortField, direction: sortDirection },
 		pagination: { page, pageSize },
 	};
 
@@ -236,10 +351,94 @@ function UserManagementComponent() {
 						Manage users and assign roles
 					</p>
 				</div>
-				<Button onClick={() => setIsCreateDialogOpen(true)}>
-					<UserPlus className="h-4 w-4 mr-2" />
-					Create User
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="icon"
+						aria-label="Open help"
+						onClick={() => {
+							setIsHelpOpen(true);
+							setHelpStep(0);
+						}}
+					>
+						<HelpCircle className="h-4 w-4" />
+					</Button>
+					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+						<DialogContent className="sm:max-w-lg">
+							<DialogHeader>
+								<DialogTitle>User Management help</DialogTitle>
+								<DialogDescription>
+									Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
+								</DialogDescription>
+							</DialogHeader>
+							<div className="space-y-4">
+								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+									<HelpStepImage
+										src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
+										stepNumber={helpStep + 1}
+									/>
+								</div>
+								<div>
+									<h3 className="text-sm font-semibold text-foreground mb-1">
+										{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
+									</h3>
+									<p className="text-sm text-muted-foreground leading-relaxed">
+										{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
+									</p>
+								</div>
+								<div className="flex items-center justify-between gap-4 pt-2">
+									<div className="flex gap-1">
+										{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
+											<button
+												type="button"
+												key={i}
+												onClick={() => setHelpStep(i)}
+												aria-label={`Go to step ${i + 1}`}
+												className={`h-2 rounded-full transition-colors ${
+													i === helpStep
+														? "w-6 bg-primary"
+														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+												}`}
+											/>
+										))}
+									</div>
+									<div className="flex gap-2">
+										{helpStep > 0 ? (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => setHelpStep((s) => s - 1)}
+											>
+												<ChevronLeft className="h-4 w-4 mr-0.5" />
+												Previous
+											</Button>
+										) : null}
+										{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
+											<Button
+												size="sm"
+												onClick={() => setHelpStep((s) => s + 1)}
+											>
+												Next
+												<ChevronRight className="h-4 w-4 ml-0.5" />
+											</Button>
+										) : (
+											<Button
+												size="sm"
+												onClick={() => setIsHelpOpen(false)}
+											>
+												Got it
+											</Button>
+										)}
+									</div>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
+					<Button onClick={() => setIsCreateDialogOpen(true)}>
+						<UserPlus className="h-4 w-4 mr-2" />
+						Create User
+					</Button>
+				</div>
 			</div>
 
 			{summary && (
@@ -292,7 +491,7 @@ function UserManagementComponent() {
 							<CardTitle>User List</CardTitle>
 							<CardDescription>View and manage all users</CardDescription>
 						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+						<div className="flex flex-wrap items-center gap-2">
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
@@ -303,6 +502,7 @@ function UserManagementComponent() {
 										setPage(1);
 									}}
 									className="pl-9 sm:w-64"
+									aria-label="Search users by name or email"
 								/>
 							</div>
 							<Select
@@ -312,7 +512,7 @@ function UserManagementComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-48">
+								<SelectTrigger className="sm:w-40" aria-label="Filter by role">
 									<SelectValue placeholder="Filter by role" />
 								</SelectTrigger>
 								<SelectContent>
@@ -324,6 +524,61 @@ function UserManagementComponent() {
 									))}
 								</SelectContent>
 							</Select>
+							<Select
+								value={statusFilter}
+								onValueChange={(value: StatusFilterValue) => {
+									setStatusFilter(value);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger className="sm:w-36" aria-label="Filter by status">
+									<SelectValue placeholder="Status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All statuses</SelectItem>
+									<SelectItem value="ACTIVE">Active</SelectItem>
+									<SelectItem value="INACTIVE">Inactive</SelectItem>
+								</SelectContent>
+							</Select>
+							<div className="flex items-center gap-1.5 shrink-0">
+								<ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+								<Select
+									value={sortField}
+									onValueChange={(value) => {
+										setSortField(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-36" aria-label="Sort by field">
+										<SelectValue placeholder="Sort by" />
+									</SelectTrigger>
+									<SelectContent>
+										{SORT_FIELDS.map((f) => (
+											<SelectItem key={f.value} value={f.value}>
+												{f.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortDirection}
+									onValueChange={(value: "ASC" | "DESC") => {
+										setSortDirection(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-36" aria-label="Sort direction">
+										<SelectValue placeholder="Order" />
+									</SelectTrigger>
+									<SelectContent>
+										{SORT_DIRECTIONS.map((d) => (
+											<SelectItem key={d.value} value={d.value}>
+												{d.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 				</CardHeader>
