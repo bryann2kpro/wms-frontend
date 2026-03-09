@@ -46,7 +46,7 @@ import {
   getPurchaseOrderStatusColor,
 } from "@/lib/outbound";
 import type { DeliveryTab } from "@/lib/outbound";
-import { formatDateOnly, formatDeliveryDateHeader, formatWeekRange } from "@/lib/utils";
+import { formatDeliveryDateHeader, formatWeekRange } from "@/lib/utils";
 import {
   usePurchaseOrders,
   type PurchaseOrderStatusFilter,
@@ -184,8 +184,6 @@ export function OutboundListCard({
                 <TableHead scope="col">PO Number</TableHead>
                 <TableHead scope="col">Outlet</TableHead>
                 <TableHead scope="col">Region</TableHead>
-                <TableHead scope="col">Schedule Delivery Date</TableHead>
-                <TableHead scope="col">DO Created?</TableHead>
                 <TableHead scope="col">Status</TableHead>
                 <TableHead scope="col">NetSuite (API)</TableHead>
                 <TableHead scope="col" className="text-right">Actions</TableHead>
@@ -195,7 +193,7 @@ export function OutboundListCard({
               {loading ? (
                 <>
                   <TableRow aria-hidden="true">
-                    <TableCell colSpan={8} className="sr-only" role="status" aria-live="polite">
+                    <TableCell colSpan={6} className="sr-only" role="status" aria-live="polite">
                       Loading purchase orders…
                     </TableCell>
                   </TableRow>
@@ -204,8 +202,6 @@ export function OutboundListCard({
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
@@ -215,7 +211,7 @@ export function OutboundListCard({
               ) : error ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={6}
                     className="py-12 text-center"
                     role="alert"
                     aria-live="assertive"
@@ -244,7 +240,7 @@ export function OutboundListCard({
               ) : paginatedDateKeys.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={6}
                     className="py-12 text-center"
                     role="status"
                   >
@@ -278,7 +274,7 @@ export function OutboundListCard({
                       className="bg-muted/50 hover:bg-muted/50 border-l-4 border-l-primary/30"
                     >
                       <TableCell
-                        colSpan={8}
+                        colSpan={6}
                         className="font-semibold text-foreground py-3"
                       >
                         {headerLabel}
@@ -293,7 +289,7 @@ export function OutboundListCard({
                       ? [
                           <TableRow key={`${dateKey}-empty`}>
                             <TableCell
-                              colSpan={8}
+                              colSpan={6}
                               className="py-4 text-center text-sm text-muted-foreground italic"
                             >
                               No orders for this day
@@ -302,10 +298,6 @@ export function OutboundListCard({
                         ]
                       : []),
                     ...datePurchaseOrders.map((purchaseOrder) => {
-                      const doCreated =
-                        purchaseOrder.status === "to-ship" ||
-                        purchaseOrder.status === "in-transit";
-
                       return (
                         <TableRow key={purchaseOrder.id}>
                           <TableCell className="font-medium">
@@ -324,26 +316,6 @@ export function OutboundListCard({
                               </div>
                             ) : (
                               "—"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {formatDateOnly(purchaseOrder.expectedDeliveryDate)}
-                          </TableCell>
-                          <TableCell>
-                            {doCreated ? (
-                              <Badge
-                                variant="outline"
-                                className="bg-green-500/10 text-green-600 border-green-500/20"
-                              >
-                                Yes
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="bg-gray-500/10 text-gray-600 border-gray-500/20"
-                              >
-                                No
-                              </Badge>
                             )}
                           </TableCell>
                           <TableCell>
