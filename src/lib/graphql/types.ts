@@ -416,10 +416,16 @@ export interface CreateGrnInput {
 export interface GrnFilterInput {
 	id?: string | null;
 	grnNo?: string | null;
+	/** Search across GRN number, PO reference, and Supplier DO. */
+	search?: string | null;
 	status?: string | null;
 	page?: number | null;
 	pageSize?: number | null;
 	pageNumber?: number | null;
+	/** Sort field: GRN_NO, UPDATED_AT, CREATED_AT, STATUS, RECEIVED_AT */
+	sortBy?: string | null;
+	/** Sort direction: ASC or DESC */
+	sortOrder?: string | null;
 }
 
 export interface GrnPaginatedResponse {

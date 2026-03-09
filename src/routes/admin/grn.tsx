@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation as useApolloMutation } from "@apollo/client/react";
 import {
@@ -46,6 +47,8 @@ import {
 	ChevronRight,
 	Edit,
 	Send,
+	HelpCircle,
+	ImageOff,
 } from "lucide-react";
 import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
@@ -69,6 +72,7 @@ import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
 import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 function getGrnErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
@@ -93,6 +97,93 @@ const grnStatuses: GRNStatus[] = [
 	"Failed",
 ];
 
+const SEARCH_DEBOUNCE_MS = 350;
+
+/** Base path for GRN help screenshots. Add step-1.png, step-2.png, etc. under public/help/grn/ */
+const HELP_IMAGES_BASE = "/help/grn";
+
+const GRN_HELP_STEPS: Array<{
+	title: string;
+	description: ReactNode;
+	image: string;
+}> = [
+	{
+		title: "What this page does",
+		image: `${HELP_IMAGES_BASE}/step-1.png`,
+		description: (
+			<>
+				Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
+				counts by status (Draft, Submitted, Failed), and create new GRNs. Use
+				this page to record incoming inventory and track receipts.
+			</>
+		),
+	},
+	{
+		title: "Search, filter, and sort",
+		image: `${HELP_IMAGES_BASE}/step-2.png`,
+		description: (
+			<>
+				Search by <strong>GRN number</strong>, <strong>PO reference</strong>, or{" "}
+				<strong>Supplier DO</strong> (debounced). Filter by <strong>Status</strong>.
+				Use <strong>Sort by</strong> and <strong>Order</strong>. Pagination is at
+				the bottom.
+			</>
+		),
+	},
+	{
+		title: "Create GRN",
+		image: `${HELP_IMAGES_BASE}/step-3.png`,
+		description: (
+			<>
+				Click <strong>Create GRN</strong>, then enter GRN number, PO reference,
+				supplier DO, received date, and line items (SKU, carton, loss, etc.).
+				Save as <strong>Draft</strong> or <strong>Submit</strong> for approval.
+			</>
+		),
+	},
+	{
+		title: "View, edit, and approve",
+		image: `${HELP_IMAGES_BASE}/step-4.png`,
+		description: (
+			<>
+				Use the <strong>eye</strong> icon to view details. From the view
+				dialog you can <strong>Approve</strong> a Submitted GRN, or{" "}
+				<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
+				icon to change Draft or Submitted GRNs.
+			</>
+		),
+	},
+];
+
+/** Renders step screenshot with a placeholder when the image is missing or fails to load. */
+function HelpStepImage({
+	src,
+	stepNumber,
+	alt,
+}: { src: string; stepNumber: number; alt?: string }) {
+	const [failed, setFailed] = useState(false);
+	if (failed) {
+		return (
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
+				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
+					<ImageOff className="h-6 w-6" />
+				</span>
+				<span>
+					Add screenshot: public/help/grn/step-{stepNumber}.png
+				</span>
+			</div>
+		);
+	}
+	return (
+		<img
+			src={src}
+			alt={alt ?? ""}
+			className="h-full w-full object-contain object-top"
+			onError={() => setFailed(true)}
+		/>
+	);
+}
+
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
@@ -100,10 +191,15 @@ function GRNRouteComponent() {
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] = useState<GRNStatusFilter>("ALL");
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
+	const debouncedSearchTerm = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [selectedGRN, setSelectedGRN] = useState<GrnDetailForList | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
+	const [isHelpOpen, setIsHelpOpen] = useState(false);
+	const [helpStep, setHelpStep] = useState(0);
 	const { data: stockUnitsData } = useApolloQuery<
 		StockUnitsQueryData
 	>(STOCK_UNITS_QUERY);
@@ -133,8 +229,10 @@ function GRNRouteComponent() {
 			filter: {
 				page,
 				pageSize,
-				grnNo: searchTerm || undefined,
+				search: debouncedSearchTerm.trim() || undefined,
 				status: statusFilter === "ALL" ? undefined : statusFilter,
+				sortBy: sortField,
+				sortOrder: sortDirection,
 			},
 		},
 		fetchPolicy: "cache-and-network",
@@ -339,49 +437,133 @@ function GRNRouteComponent() {
 						Manage incoming inventory and track receipts
 					</p>
 				</div>
-				{hasPermission("grn:create") && (
-					<GrnFormDialog
-						mode="create"
-						open={isCreateOpen}
-						onOpenChange={setIsCreateOpen}
-						skuOptions={skuOptions}
-						stockUnits={stockUnits}
-						canCreate={hasPermission("grn:create")}
-						trigger={
-							<Button>
-								<Plus className="mr-2 h-4 w-4" />
-								Create GRN
-							</Button>
-						}
-						warehouses={warehouses}
-						racks={racks}
-						onCreateSubmit={async (payload) => {
-							await createMutation.mutateAsync({
-								grnNumber: payload.grnNumber,
-								poReference: payload.poReference,
-								supplierDO: payload.supplierDO,
-								receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
-								notes: payload.notes || undefined,
-								warehouseId: payload.warehouseId || undefined,
-								submitIntent: payload.submitIntent,
-								items: payload.items.map((i) => ({
-									sku: i.skuCode,
-									description: i.description,
-									carton: i.carton,
-									loss: i.loss,
-									uom: i.uom,
-									unitPrice: i.unitPrice,
-									expiryDate: i.expiryDate ?? "",
-									rackIds: i.rackIds ?? [],
-								})),
-							});
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="icon"
+						aria-label="Open help"
+						onClick={() => {
+							setIsHelpOpen(true);
+							setHelpStep(0);
 						}}
-						onSuccess={() => refetchGRNs()}
-						onSkusRefetch={() => void refetchSkus()}
-						onWarehouseCreated={async () => { await refetchWarehouses(); }}
-						onRackCreated={() => void refetchRacks()}
-					/>
-				)}
+					>
+						<HelpCircle className="h-4 w-4" />
+					</Button>
+					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+						<DialogContent className="sm:max-w-lg">
+							<DialogHeader>
+								<DialogTitle>GRN help</DialogTitle>
+								<DialogDescription>
+									Step {helpStep + 1} of {GRN_HELP_STEPS.length}
+								</DialogDescription>
+							</DialogHeader>
+							<div className="space-y-4">
+								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+									<HelpStepImage
+										src={GRN_HELP_STEPS[helpStep].image}
+										stepNumber={helpStep + 1}
+									/>
+								</div>
+								<div>
+									<h3 className="text-sm font-semibold text-foreground mb-1">
+										{GRN_HELP_STEPS[helpStep].title}
+									</h3>
+									<p className="text-sm text-muted-foreground leading-relaxed">
+										{GRN_HELP_STEPS[helpStep].description}
+									</p>
+								</div>
+								<div className="flex items-center justify-between gap-4 pt-2">
+									<div className="flex gap-1">
+										{GRN_HELP_STEPS.map((_, i) => (
+											<button
+												type="button"
+												key={i}
+												onClick={() => setHelpStep(i)}
+												aria-label={`Go to step ${i + 1}`}
+												className={`h-2 rounded-full transition-colors ${
+													i === helpStep
+														? "w-6 bg-primary"
+														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+												}`}
+											/>
+										))}
+									</div>
+									<div className="flex gap-2">
+										{helpStep > 0 ? (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => setHelpStep((s) => s - 1)}
+											>
+												<ChevronLeft className="h-4 w-4 mr-0.5" />
+												Previous
+											</Button>
+										) : null}
+										{helpStep < GRN_HELP_STEPS.length - 1 ? (
+											<Button
+												size="sm"
+												onClick={() => setHelpStep((s) => s + 1)}
+											>
+												Next
+												<ChevronRight className="h-4 w-4 ml-0.5" />
+											</Button>
+										) : (
+											<Button
+												size="sm"
+												onClick={() => setIsHelpOpen(false)}
+											>
+												Got it
+											</Button>
+										)}
+									</div>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
+					{hasPermission("grn:create") && (
+						<GrnFormDialog
+							mode="create"
+							open={isCreateOpen}
+							onOpenChange={setIsCreateOpen}
+							skuOptions={skuOptions}
+							stockUnits={stockUnits}
+							canCreate={hasPermission("grn:create")}
+							trigger={
+								<Button>
+									<Plus className="mr-2 h-4 w-4" />
+									Create GRN
+								</Button>
+							}
+							warehouses={warehouses}
+							racks={racks}
+							onCreateSubmit={async (payload) => {
+								await createMutation.mutateAsync({
+									grnNumber: payload.grnNumber,
+									poReference: payload.poReference,
+									supplierDO: payload.supplierDO,
+									receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
+									notes: payload.notes || undefined,
+									warehouseId: payload.warehouseId || undefined,
+									submitIntent: payload.submitIntent,
+									items: payload.items.map((i) => ({
+										sku: i.skuCode,
+										description: i.description,
+										carton: i.carton,
+										loss: i.loss,
+										uom: i.uom,
+										unitPrice: i.unitPrice,
+										expiryDate: i.expiryDate ?? "",
+										rackIds: i.rackIds ?? [],
+									})),
+								});
+							}}
+							onSuccess={() => refetchGRNs()}
+							onSkusRefetch={() => void refetchSkus()}
+							onWarehouseCreated={async () => { await refetchWarehouses(); }}
+							onRackCreated={() => void refetchRacks()}
+						/>
+					)}
+				</div>
 			</div>
 
 			{summary && summary.byStatus && (
@@ -416,7 +598,7 @@ function GRNRouteComponent() {
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search GRNs..."
+									placeholder="Search GRN, PO, Supplier DO..."
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
@@ -442,6 +624,39 @@ function GRNRouteComponent() {
 											{formatStatus(status)}
 										</SelectItem>
 									))}
+								</SelectContent>
+							</Select>
+							<Select
+								value={sortField}
+								onValueChange={(value) => {
+									setSortField(value);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger className="sm:w-44">
+									<SelectValue placeholder="Sort by" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="UPDATED_AT">Updated at</SelectItem>
+									<SelectItem value="CREATED_AT">Created at</SelectItem>
+									<SelectItem value="GRN_NO">GRN Number</SelectItem>
+									<SelectItem value="RECEIVED_AT">Received date</SelectItem>
+									<SelectItem value="STATUS">Status</SelectItem>
+								</SelectContent>
+							</Select>
+							<Select
+								value={sortDirection}
+								onValueChange={(value: "ASC" | "DESC") => {
+									setSortDirection(value);
+									setPage(1);
+								}}
+							>
+								<SelectTrigger className="sm:w-40">
+									<SelectValue placeholder="Order" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="DESC">Newest first</SelectItem>
+									<SelectItem value="ASC">Oldest first</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
