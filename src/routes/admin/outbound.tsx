@@ -100,7 +100,7 @@ function OutboundRouteComponent() {
 		},
 	});
 
-	const pageTitle = "Outbound Purchase Orders";
+	const pageTitle = "Outbound Delivery Orders";
 	useEffect(() => {
 		document.title = `${pageTitle} | SME Ederan`;
 		return () => {
@@ -121,7 +121,7 @@ function OutboundRouteComponent() {
 						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
 						tabIndex={-1}
 					>
-						Outbound Purchase Orders
+						Outbound Delivery Orders
 					</h1>
 					<p id="page-description" className="text-muted-foreground mt-1">
 						Manage purchase orders from ES. Create new orders or refresh from

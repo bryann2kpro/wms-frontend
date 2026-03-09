@@ -101,7 +101,7 @@ export function OutboundListCard({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle id="purchase-order-title" className="text-xl font-semibold">
-                Purchase Order List
+                Delivery Order List
               </CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
                 {weekRangeLabel
