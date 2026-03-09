@@ -86,7 +86,7 @@ function getActionName(entityType: string): string {
 function getEndpoint(entityType: string): string {
 	const endpoints: Record<string, string> = {
 		grn: "/api/netsuite/grn",
-		po: "/api/netsuite/transfer-orders",
+		po: "/api/netsuite/purchase-orders",
 		do: "/api/netsuite/delivery-confirmation",
 		invoice: "/api/netsuite/invoice",
 	};
