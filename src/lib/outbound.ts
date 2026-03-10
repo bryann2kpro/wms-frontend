@@ -40,6 +40,7 @@ export const createPurchaseOrderSchema = z.object({
 	items: z
 		.array(createPurchaseOrderLineItemSchema)
 		.min(1, "Add at least one line (stock and amount)"),
+	isEmergency: z.boolean().optional().default(false),
 });
 
 export function getStatusColor(status: PurchaseOrderStatus): string {

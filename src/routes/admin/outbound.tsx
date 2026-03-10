@@ -177,6 +177,7 @@ function OutboundRouteComponent() {
 			outletId: "",
 			outletName: "",
 			notes: "",
+			isEmergency: false,
 			items: [{ skuId: "", quantity: 1 }] as { skuId: string; skuCode?: string; description?: string; quantity: number }[],
 		},
 		validators: {
@@ -191,6 +192,7 @@ function OutboundRouteComponent() {
 				outletName: value.outletName ?? "",
 				expectedDeliveryDate: new Date(),
 				notes: value.notes || undefined,
+				isEmergency: value.isEmergency ?? false,
 				items: value.items.map((line) => ({
 					skuId: line.skuId,
 					skuCode: line.skuCode,

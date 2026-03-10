@@ -516,6 +516,7 @@ export interface DeliveryOrder {
 	doNo: string;
 	poNo: string;
 	status: string;
+	isEmergency: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -532,6 +533,7 @@ export interface DeliveryOrderFilterInput {
 	doNo?: string | null;
 	toId?: string | null;
 	status?: string | null;
+	isEmergency?: boolean | null;
 	createdBy?: string | null;
 	createdAtFrom?: string | null;
 	createdAtTo?: string | null;

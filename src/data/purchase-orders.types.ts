@@ -72,4 +72,6 @@ export interface CreatePurchaseOrderInput {
 	expectedDeliveryDate: Date;
 	notes?: string;
 	items: CreatePurchaseOrderLineItemInput[];
+	/** When true, assigns to next delivery day regardless of cutoff (emergency delivery). */
+	isEmergency?: boolean;
 }

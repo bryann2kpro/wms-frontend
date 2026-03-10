@@ -25,6 +25,7 @@ export const DELIVERY_ORDER_FRAGMENT = gql`
 		doNo
 		poNo
 		status
+		isEmergency
 		createdAt
 		updatedAt
 		createdBy
