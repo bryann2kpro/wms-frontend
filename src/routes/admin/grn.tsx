@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation as useApolloMutation } from "@apollo/client/react";
+import {
+	useQuery,
+	useMutation as useApolloMutation,
+} from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -50,14 +53,20 @@ import {
 	HelpCircle,
 	ImageOff,
 } from "lucide-react";
-import { type GRNStatus, type GRNStatusFilter } from "@/data/grn.mock-data";
+import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
-import { STOCK_UNITS_QUERY, type StockUnitsQueryData } from "@/lib/graphql/stock-units";
-import { WAREHOUSES_QUERY, type WarehousesQueryData } from "@/lib/graphql/warehouses";
+import {
+	STOCK_UNITS_QUERY,
+	type StockUnitsQueryData,
+} from "@/lib/graphql/stock-units";
+import {
+	WAREHOUSES_QUERY,
+	type WarehousesQueryData,
+} from "@/lib/graphql/warehouses";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	GRNS_QUERY,
@@ -68,22 +77,40 @@ import {
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
 } from "@/lib/graphql/grns";
-import { Skus, type GrnDetailForList } from "@/lib/graphql/types";
-import { SKUS_QUERY, type SkusQueryData, type SkusQueryVariables } from "@/lib/graphql/skus";
+import type { Skus, GrnDetailForList } from "@/lib/graphql/types";
+import {
+	SKUS_QUERY,
+	type SkusQueryData,
+	type SkusQueryVariables,
+} from "@/lib/graphql/skus";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 function getGrnErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
-			.graphQLErrors?.[0];
-		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const first = (
+			err as {
+				graphQLErrors?: Array<{
+					message?: string;
+					extensions?: { code?: string };
+				}>;
+			}
+		).graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
 		const gql = first?.message;
-		if (gql) return toUserFriendlyMessage(gql, "Failed to update GRN. Please try again.");
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Failed to update GRN. Please try again.",
+			);
 	}
 	if (err instanceof Error)
-		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+		return toUserFriendlyMessage(
+			err.message,
+			"Something went wrong. Please try again.",
+		);
 	return "Something went wrong. Please try again.";
 }
 
@@ -91,11 +118,7 @@ export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
 });
 
-const grnStatuses: GRNStatus[] = [
-	"Draft",
-	"Submitted",
-	"Failed",
-];
+const grnStatuses: GRNStatus[] = ["Draft", "Submitted", "Failed"];
 
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -124,9 +147,9 @@ const GRN_HELP_STEPS: Array<{
 		description: (
 			<>
 				Search by <strong>GRN number</strong>, <strong>PO reference</strong>, or{" "}
-				<strong>Supplier DO</strong> (debounced). Filter by <strong>Status</strong>.
-				Use <strong>Sort by</strong> and <strong>Order</strong>. Pagination is at
-				the bottom.
+				<strong>Supplier DO</strong> (debounced). Filter by{" "}
+				<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
+				<strong>Order</strong>. Pagination is at the bottom.
 			</>
 		),
 	},
@@ -146,8 +169,8 @@ const GRN_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-4.png`,
 		description: (
 			<>
-				Use the <strong>eye</strong> icon to view details. From the view
-				dialog you can <strong>Approve</strong> a Submitted GRN, or{" "}
+				Use the <strong>eye</strong> icon to view details. From the view dialog
+				you can <strong>Approve</strong> a Submitted GRN, or{" "}
 				<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
 				icon to change Draft or Submitted GRNs.
 			</>
@@ -160,7 +183,11 @@ function HelpStepImage({
 	src,
 	stepNumber,
 	alt,
-}: { src: string; stepNumber: number; alt?: string }) {
+}: {
+	src: string;
+	stepNumber: number;
+	alt?: string;
+}) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
@@ -168,9 +195,7 @@ function HelpStepImage({
 				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
 					<ImageOff className="h-6 w-6" />
 				</span>
-				<span>
-					Add screenshot: public/help/grn/step-{stepNumber}.png
-				</span>
+				<span>Add screenshot: public/help/grn/step-{stepNumber}.png</span>
 			</div>
 		);
 	}
@@ -200,24 +225,24 @@ function GRNRouteComponent() {
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
-	const { data: stockUnitsData } = useApolloQuery<
-		StockUnitsQueryData
-	>(STOCK_UNITS_QUERY);
+	const { data: stockUnitsData } =
+		useApolloQuery<StockUnitsQueryData>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
-	const { data: skusData, refetch: refetchSkus } = useApolloQuery<SkusQueryData, SkusQueryVariables>(
-		SKUS_QUERY,
-		{ variables: {} }
-	);
+	const { data: skusData, refetch: refetchSkus } = useApolloQuery<
+		SkusQueryData,
+		SkusQueryVariables
+	>(SKUS_QUERY, { variables: {} });
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
-	const { data: warehousesData, refetch: refetchWarehouses } = useApolloQuery<WarehousesQueryData>(
-		WAREHOUSES_QUERY,
-		{ variables: { pageSize: 500, pageNumber: 1 } },
-	);
+	const { data: warehousesData, refetch: refetchWarehouses } =
+		useApolloQuery<WarehousesQueryData>(WAREHOUSES_QUERY, {
+			variables: { pageSize: 500, pageNumber: 1 },
+		});
 	const warehouses = warehousesData?.warehouses?.query ?? [];
 
-	const { data: racksData, refetch: refetchRacks } = useApolloQuery<RacksQueryData>(RACKS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-	});
+	const { data: racksData, refetch: refetchRacks } =
+		useApolloQuery<RacksQueryData>(RACKS_QUERY, {
+			variables: { pageSize: 500, pageNumber: 1 },
+		});
 	const racks = racksData?.racks?.query ?? [];
 
 	const {
@@ -240,12 +265,24 @@ function GRNRouteComponent() {
 
 	const emptyResult: import("@/lib/graphql/types").GrnListResult = {
 		items: [],
-		summary: { byStatus: { Draft: 0, Submitted: 0, Approved: 0, "Sent-to-ES": 0, Failed: 0 }, total: 0 },
+		summary: {
+			byStatus: {
+				Draft: 0,
+				Submitted: 0,
+				Approved: 0,
+				"Sent-to-ES": 0,
+				Failed: 0,
+			},
+			total: 0,
+		},
 		page: 1,
 		pageSize: 10,
 		total: 0,
 	};
-	const data = grnsQueryData?.grns != null ? mapGrnsQueryToResult(grnsQueryData.grns) : emptyResult;
+	const data =
+		grnsQueryData?.grns != null
+			? mapGrnsQueryToResult(grnsQueryData.grns)
+			: emptyResult;
 	const isLoading = grnsLoading;
 
 	const [createGRNApollo, { loading: createGrnLoading }] = useApolloMutation(
@@ -256,20 +293,20 @@ function GRNRouteComponent() {
 				refetchGRNs();
 				setIsCreateOpen(false);
 			},
-		}
+		},
 	);
-	const [createInboundApollo, { loading: createInboundLoading }] = useApolloMutation(
-		CREATE_INBOUND_MUTATION,
-		{
+	const [createInboundApollo, { loading: createInboundLoading }] =
+		useApolloMutation(CREATE_INBOUND_MUTATION, {
 			onError: (err) => toast.error(getGrnErrorMessage(err)),
 			onCompleted: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
 			},
-		}
-	);
+		});
 	const useCreateInbound = true; // set false to use createGrn (no userId)
-	const createLoading = useCreateInbound ? createInboundLoading : createGrnLoading;
+	const createLoading = useCreateInbound
+		? createInboundLoading
+		: createGrnLoading;
 
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
@@ -280,7 +317,7 @@ function GRNRouteComponent() {
 			onCompleted: () => {
 				refetchGRNs();
 			},
-		}
+		},
 	);
 
 	const createMutation = {
@@ -304,17 +341,20 @@ function GRNRouteComponent() {
 				rackIds?: string[];
 			}>;
 		}) => {
-			const status: GRNStatus = payload.submitIntent === "submit" ? "Submitted" : "Draft";
+			const status: GRNStatus =
+				payload.submitIntent === "submit" ? "Submitted" : "Draft";
 			/** Warehouse is hidden in UI; always use first warehouse from query. */
 			const warehouseId =
-				(warehouses[0]?.warehouseId ?? payload.warehouseId ?? "").trim() || undefined;
+				(warehouses[0]?.warehouseId ?? payload.warehouseId ?? "").trim() ||
+				undefined;
 			const items = payload.items?.map((i) => {
 				const uomId = i.uom
-					? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
 				return {
-					skuId: skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+					skuId:
+						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 					skuCode: i.sku,
 					skuDescription: i.description ?? undefined,
 					qty: String(i.carton),
@@ -354,7 +394,11 @@ function GRNRouteComponent() {
 
 	const statusMutation = {
 		mutateAsync: async ({ id, status }: { id: string; status: GRNStatus }) => {
-			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+			const input: {
+				status: string;
+				approvedBy?: string;
+				approvedAt?: string;
+			} = {
 				status: UI_STATUS_TO_GQL[status],
 			};
 			if (status === "Approved" && user?.id) {
@@ -367,7 +411,11 @@ function GRNRouteComponent() {
 			return undefined;
 		},
 		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
-			const input: { status: string; approvedBy?: string; approvedAt?: string } = {
+			const input: {
+				status: string;
+				approvedBy?: string;
+				approvedAt?: string;
+			} = {
 				status: UI_STATUS_TO_GQL[status],
 			};
 			if (status === "Approved" && user?.id) {
@@ -410,7 +458,10 @@ function GRNRouteComponent() {
 	const formatGrnDate = (v: string | null | undefined): string | null => {
 		if (v == null || v === "") return null;
 		const ms = Number(v);
-		const date = !isNaN(ms) && String(ms) === String(v).trim() ? new Date(ms) : new Date(v);
+		const date =
+			!isNaN(ms) && String(ms) === String(v).trim()
+				? new Date(ms)
+				: new Date(v);
 		return isNaN(date.getTime()) ? null : date.toLocaleString();
 	};
 
@@ -508,10 +559,7 @@ function GRNRouteComponent() {
 												<ChevronRight className="h-4 w-4 ml-0.5" />
 											</Button>
 										) : (
-											<Button
-												size="sm"
-												onClick={() => setIsHelpOpen(false)}
-											>
+											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
 												Got it
 											</Button>
 										)}
@@ -541,7 +589,9 @@ function GRNRouteComponent() {
 									grnNumber: payload.grnNumber,
 									poReference: payload.poReference,
 									supplierDO: payload.supplierDO,
-									receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
+									receivedDate: payload.receivedDate
+										? new Date(payload.receivedDate)
+										: new Date(),
 									notes: payload.notes || undefined,
 									warehouseId: payload.warehouseId || undefined,
 									submitIntent: payload.submitIntent,
@@ -559,7 +609,9 @@ function GRNRouteComponent() {
 							}}
 							onSuccess={() => refetchGRNs()}
 							onSkusRefetch={() => void refetchSkus()}
-							onWarehouseCreated={async () => { await refetchWarehouses(); }}
+							onWarehouseCreated={async () => {
+								await refetchWarehouses();
+							}}
 							onRackCreated={() => void refetchRacks()}
 						/>
 					)}
@@ -702,16 +754,22 @@ function GRNRouteComponent() {
 											grn.status &&
 											(grn.status === "Draft" || grn.status === "Submitted");
 										const showApprove =
-											hasPermission("grn:approve") && grn.status === "Submitted";
+											hasPermission("grn:approve") &&
+											grn.status === "Submitted";
 										const showSend =
-											hasPermission("grn:send_to_es") && grn.status === "Approved";
+											hasPermission("grn:send_to_es") &&
+											grn.status === "Approved";
 										return (
 											<TableRow key={grn.id}>
 												<TableCell className="font-medium">
 													{grn.grnNo || "-"}
 												</TableCell>
 												<TableCell>{grn.poNo ?? "-"}</TableCell>
-												<TableCell>{(grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "-"}</TableCell>
+												<TableCell>
+													{grn.supplierDeliveryNo ??
+														grn.supplierDeliveryId ??
+														"-"}
+												</TableCell>
 												<TableCell>
 													{formatGrnDate(grn.receivedAt) ?? "-"}
 												</TableCell>
@@ -719,7 +777,9 @@ function GRNRouteComponent() {
 													{grn.status ? (
 														<Badge
 															variant="outline"
-															className={getStatusColor(grn.status as GRNStatus)}
+															className={getStatusColor(
+																grn.status as GRNStatus,
+															)}
 														>
 															{formatStatus(grn.status)}
 														</Badge>
@@ -862,7 +922,9 @@ function GRNRouteComponent() {
 													Supplier DO
 												</Label>
 												<p className="text-sm font-medium">
-													{(selectedGRN.supplierDeliveryNo ?? selectedGRN.supplierDeliveryId) || "-"}
+													{(selectedGRN.supplierDeliveryNo ??
+														selectedGRN.supplierDeliveryId) ||
+														"-"}
 												</p>
 											</div>
 											<div>
@@ -879,9 +941,13 @@ function GRNRouteComponent() {
 												</Label>
 												<p className="text-sm font-medium">
 													{selectedGRN.warehouse?.warehouseName
-														? [selectedGRN.warehouse.warehouseName, selectedGRN.warehouse.warehouseCode]
+														? [
+																selectedGRN.warehouse.warehouseName,
+																selectedGRN.warehouse.warehouseCode,
+															]
 																.filter(Boolean)
-																.join(" · ") || selectedGRN.warehouse.warehouseName
+																.join(" · ") ||
+															selectedGRN.warehouse.warehouseName
 														: "-"}
 												</p>
 											</div>
@@ -897,7 +963,9 @@ function GRNRouteComponent() {
 														{formatStatus(selectedGRN.status)}
 													</Badge>
 												) : (
-													<span className="text-sm text-muted-foreground">-</span>
+													<span className="text-sm text-muted-foreground">
+														-
+													</span>
 												)}
 											</div>
 											<div>
@@ -1034,7 +1102,9 @@ function GRNRouteComponent() {
 					setSelectedGRN(null);
 				}}
 				onSkusRefetch={() => void refetchSkus()}
-				onWarehouseCreated={async () => { await refetchWarehouses(); }}
+				onWarehouseCreated={async () => {
+					await refetchWarehouses();
+				}}
 				onRackCreated={() => void refetchRacks()}
 			/>
 		</div>

@@ -75,7 +75,6 @@ export const SKU_QUERY = gql`
 	${SKUS_FRAGMENT}
 `;
 
-
 export const CREATE_SKUS_MUTATION = gql`
 	mutation CreateSku($input: CreateSkuInput!) {
 		createSku(input: $input) {

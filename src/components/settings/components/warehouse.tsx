@@ -62,30 +62,27 @@ export function WarehouseSection() {
 		},
 	});
 
-	const [createWarehouse, { loading: createLoading }] = useMutation<
-		CreateWarehouseMutationData
-	>(CREATE_WAREHOUSE_MUTATION, {
-		onCompleted: () => {
-			refetch();
-			setIsCreateOpen(false);
-		},
-	});
-	const [updateWarehouse, { loading: updateLoading }] = useMutation<
-		UpdateWarehouseMutationData
-	>(UPDATE_WAREHOUSE_MUTATION, {
-		onCompleted: () => {
-			refetch();
-			setEditing(null);
-		},
-	});
-	const [deleteWarehouse, { loading: deleteLoading }] = useMutation<
-		DeleteWarehouseMutationData
-	>(DELETE_WAREHOUSE_MUTATION, {
-		onCompleted: () => {
-			refetch();
-			setDeleting(null);
-		},
-	});
+	const [createWarehouse, { loading: createLoading }] =
+		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setIsCreateOpen(false);
+			},
+		});
+	const [updateWarehouse, { loading: updateLoading }] =
+		useMutation<UpdateWarehouseMutationData>(UPDATE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setEditing(null);
+			},
+		});
+	const [deleteWarehouse, { loading: deleteLoading }] =
+		useMutation<DeleteWarehouseMutationData>(DELETE_WAREHOUSE_MUTATION, {
+			onCompleted: () => {
+				refetch();
+				setDeleting(null);
+			},
+		});
 
 	const list = data?.warehouses?.query ?? [];
 
@@ -95,9 +92,7 @@ export function WarehouseSection() {
 					w.warehouseCode
 						?.toLowerCase()
 						.includes(search.toLowerCase().trim()) ||
-					w.warehouseName
-						.toLowerCase()
-						.includes(search.toLowerCase().trim()) ||
+					w.warehouseName.toLowerCase().includes(search.toLowerCase().trim()) ||
 					w.warehouseAddress
 						?.toLowerCase()
 						.includes(search.toLowerCase().trim()),
@@ -329,7 +324,12 @@ function WarehouseFormDialog({
 			setName(initial?.warehouseName ?? "");
 			setAddress(initial?.warehouseAddress ?? "");
 		}
-	}, [open, initial?.warehouseCode, initial?.warehouseName, initial?.warehouseAddress]);
+	}, [
+		open,
+		initial?.warehouseCode,
+		initial?.warehouseName,
+		initial?.warehouseAddress,
+	]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {

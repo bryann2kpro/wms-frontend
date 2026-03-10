@@ -42,7 +42,13 @@ export interface TransferOrder {
 	transferOrderNumber: string;
 	fromLocation: string;
 	toLocation: string;
-	status: "preparing" | "in-transit" | "to-ship" | "cancel" | "return" | "other";
+	status:
+		| "preparing"
+		| "in-transit"
+		| "to-ship"
+		| "cancel"
+		| "return"
+		| "other";
 	createdAt: Date;
 	itemCount: number;
 }

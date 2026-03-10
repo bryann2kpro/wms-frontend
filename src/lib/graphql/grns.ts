@@ -231,7 +231,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 	} as Record<GrnStatusUI, number>;
 
 	const items: GrnListResult["items"] = query.map((g: Grn) => {
-		const status: GrnStatusUI = (GQL_STATUS_TO_UI[g.status] ?? "Draft") as GrnStatusUI;
+		const status: GrnStatusUI = (GQL_STATUS_TO_UI[g.status] ??
+			"Draft") as GrnStatusUI;
 		byStatus[status] = (byStatus[status] ?? 0) + 1;
 
 		const warehouse = g.warehouse ?? null;
@@ -239,10 +240,9 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			const cartonNum = Number(i.qty) || 0;
 			const lossNum = Number(i.lossQty) || 0;
 			const rack = i.rack ?? null;
-			const location =
-				rack
-					? `${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`
-					: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
+			const location = rack
+				? `${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`
+				: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -259,7 +259,10 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			(s, it) => s + it.expectedQuantity + it.lossQuantity,
 			0,
 		);
-		const receivedItems = lineItems.reduce((s, it) => s + it.receivedQuantity, 0);
+		const receivedItems = lineItems.reduce(
+			(s, it) => s + it.receivedQuantity,
+			0,
+		);
 
 		return {
 			id: g.id,
@@ -268,7 +271,8 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			supplierDeliveryId: g.supplierDeliveryId,
 			supplierDeliveryNo: g.supplierDeliveryNo ?? null,
 			poNo: g.poNo,
-			warehouseId: warehouse?.warehouseId ?? (g.items ?? [])[0]?.warehouseId ?? null,
+			warehouseId:
+				warehouse?.warehouseId ?? (g.items ?? [])[0]?.warehouseId ?? null,
 			warehouse: warehouse ?? null,
 			status,
 			receivedAt: g.receivedAt,

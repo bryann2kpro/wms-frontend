@@ -10,8 +10,17 @@ import {
 	type PurchaseOrdersQueryData,
 	type PurchaseOrdersByWeekQueryData,
 } from "@/lib/graphql/purchase-orders";
-import type { PurchaseOrderDetail, PurchaseOrderStatus, PurchaseOrderSummary } from "@/data/purchase-orders.types";
-import { isInNext7Days, isInPastDays, getDateKey, dateKeyFromDDMMYYYY } from "@/lib/utils";
+import type {
+	PurchaseOrderDetail,
+	PurchaseOrderStatus,
+	PurchaseOrderSummary,
+} from "@/data/purchase-orders.types";
+import {
+	isInNext7Days,
+	isInPastDays,
+	getDateKey,
+	dateKeyFromDDMMYYYY,
+} from "@/lib/utils";
 import type { DeliveryTab } from "@/lib/outbound";
 import { getAccessToken } from "@/lib/auth/auth-storage";
 
@@ -63,7 +72,10 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 		pageNumber: 1,
 	};
 
-	type RawWeek = { tab: "current-week"; entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"] };
+	type RawWeek = {
+		tab: "current-week";
+		entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"];
+	};
 	type RawList = { tab: "past-weeks"; data: PurchaseOrdersQueryData };
 	type RawData = RawWeek | RawList;
 
@@ -128,10 +140,14 @@ function processPurchaseOrdersFromWeek(
 		const filtered = details.filter((po) => {
 			const matchesSearch =
 				!searchTerm ||
-				po.purchaseOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				po.purchaseOrderNumber
+					.toLowerCase()
+					.includes(searchTerm.toLowerCase()) ||
 				po.toLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				(po.regionName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-			const matchesStatus = statusFilter === "ALL" || po.status === statusFilter;
+				(po.regionName?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+					false);
+			const matchesStatus =
+				statusFilter === "ALL" || po.status === statusFilter;
 			return matchesSearch && matchesStatus;
 		});
 		purchaseOrdersByDate[dateKey] = filtered;
@@ -190,27 +206,24 @@ function processPurchaseOrders(
 	const purchaseOrders = tabFilteredOrders.filter((po) => {
 		const matchesSearch =
 			!searchTerm ||
-			po.purchaseOrderNumber
-				.toLowerCase()
-				.includes(searchTerm.toLowerCase()) ||
+			po.purchaseOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			po.toLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(po.regionName?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+			(po.regionName?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+				false);
 
-		const matchesStatus =
-			statusFilter === "ALL" || po.status === statusFilter;
+		const matchesStatus = statusFilter === "ALL" || po.status === statusFilter;
 
 		return matchesSearch && matchesStatus;
 	});
 
-	const purchaseOrdersByDate = purchaseOrders.reduce<Record<string, PurchaseOrderDetail[]>>(
-		(acc, po) => {
-			const key = getDateKey(new Date(po.expectedDeliveryDate));
-			if (!acc[key]) acc[key] = [];
-			acc[key].push(po);
-			return acc;
-		},
-		{},
-	);
+	const purchaseOrdersByDate = purchaseOrders.reduce<
+		Record<string, PurchaseOrderDetail[]>
+	>((acc, po) => {
+		const key = getDateKey(new Date(po.expectedDeliveryDate));
+		if (!acc[key]) acc[key] = [];
+		acc[key].push(po);
+		return acc;
+	}, {});
 
 	const dateKeys = Object.keys(purchaseOrdersByDate).sort((a, b) =>
 		activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),

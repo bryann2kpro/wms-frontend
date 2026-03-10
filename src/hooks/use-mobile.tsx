@@ -1,5 +1,5 @@
 export const useIsMobile = () => {
-    if (typeof window === "undefined") return false;
+	if (typeof window === "undefined") return false;
 
-    return window.innerWidth < 768;
+	return window.innerWidth < 768;
 };

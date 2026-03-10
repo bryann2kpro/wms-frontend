@@ -16,6 +16,7 @@ import {
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
+import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 import {
 	DELIVERY_ORDER_ITEMS_QUERY,
 	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
@@ -96,6 +97,10 @@ function DOWorkQueueComponent() {
 		fetchPolicy: "cache-and-network",
 	});
 
+	// Paginate the flattened items
+	const totalItems = allItems.length;
+	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
 	const [markAsPicked, { loading: markingPicked }] = useMutation<
 		MarkDeliveryOrderItemPickedMutationData,
 		MarkDeliveryOrderItemPickedMutationVariables
@@ -300,10 +305,7 @@ function DOWorkQueueComponent() {
 					>
 						<div>
 							Showing{" "}
-							<span className="font-medium">
-								{(page - 1) * pageSize + 1}
-							</span>{" "}
-							-{" "}
+							<span className="font-medium">{(page - 1) * pageSize + 1}</span> -{" "}
 							<span className="font-medium">
 								{Math.min(page * pageSize, totalItems)}
 							</span>{" "}

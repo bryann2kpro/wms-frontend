@@ -16,16 +16,7 @@ import {
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
-import {
-	DELIVERY_ORDER_ITEMS_QUERY,
-	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
-	type DeliveryOrderItemsQueryData,
-	type DeliveryOrderItemsQueryVariables,
-	type MarkDeliveryOrderItemPickedMutationData,
-	type MarkDeliveryOrderItemPickedMutationVariables,
-} from "@/lib/graphql/delivery-orders";
-import type { DeliveryOrderItemWithDetails } from "@/lib/graphql/types";
-import { toast } from "sonner";
+import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -67,13 +58,18 @@ function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
 
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setDebouncedSearch(searchTerm);
-			setPage(1);
-		}, 300);
-		return () => clearTimeout(timer);
-	}, [searchTerm]);
+	const { data, isLoading } = useQuery({
+		queryKey: ["dos-empire-sushi", { searchTerm, statusFilter, assignedTo }],
+		queryFn: () =>
+			getDOs({
+				page: 1,
+				pageSize: 100, // Get more to flatten
+				search: searchTerm,
+				status: statusFilter,
+				assignedTo,
+			}),
+		staleTime: 30_000,
+	});
 
 	useEffect(() => {
 		document.title = `${PAGE_TITLE} | SME Ederan`;
@@ -82,46 +78,22 @@ function EmpireSushiDOComponent() {
 		};
 	}, []);
 
-	const { data, loading, refetch } = useQuery<
-		DeliveryOrderItemsQueryData,
-		DeliveryOrderItemsQueryVariables
-	>(DELIVERY_ORDER_ITEMS_QUERY, {
-		variables: {
-			filter: debouncedSearch ? { search: debouncedSearch } : null,
-			pageSize,
-			pageNumber: page,
-		},
-		fetchPolicy: "cache-and-network",
-	});
+	// Flatten all items from all DOs
+	const allItems: FlattenedItem[] = useMemo(() => {
+		if (!data?.items) return [];
+		return data.items.flatMap((do_) =>
+			do_.items.map((item) => ({
+				...item,
+				doNumber: do_.doNumber,
+				doId: do_.id,
+			})),
+		);
+	}, [data?.items]);
 
-	const [markAsPicked, { loading: markingPicked }] = useMutation<
-		MarkDeliveryOrderItemPickedMutationData,
-		MarkDeliveryOrderItemPickedMutationVariables
-	>(MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION);
-
-	const items: DeliveryOrderItemWithDetails[] = data?.deliveryOrderItems?.query ?? [];
-	const pagination = data?.deliveryOrderItems?.pagination;
-	const totalItems = pagination?.totalCount ?? 0;
-	const totalPages = pagination?.totalPages ?? 1;
-
-	const handleMarkAsPicked = async (item: DeliveryOrderItemWithDetails) => {
-		const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
-		const newQtyPicked = isPicked ? "0" : item.qtyRequired;
-
-		try {
-			await markAsPicked({
-				variables: {
-					id: item.id,
-					qtyPicked: newQtyPicked,
-				},
-			});
-			toast.success(isPicked ? "Item unmarked as picked" : "Item marked as picked");
-			refetch();
-		} catch (error) {
-			console.error("Failed to mark item as picked:", error);
-			toast.error("Failed to update item. Please try again.");
-		}
-	};
+	// Paginate the flattened items
+	const totalItems = allItems.length;
+	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
 
 	const tableColSpan = 11;
 
@@ -166,7 +138,10 @@ function EmpireSushiDOComponent() {
 						aria-label="Search items by SKU, description, or DO number"
 						placeholder="Search items..."
 						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
+						onChange={(e) => {
+							setSearchTerm(e.target.value);
+							setPage(1);
+						}}
 						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					/>
 				</div>
@@ -289,10 +264,7 @@ function EmpireSushiDOComponent() {
 					>
 						<div>
 							Showing{" "}
-							<span className="font-medium">
-								{(page - 1) * pageSize + 1}
-							</span>{" "}
-							-{" "}
+							<span className="font-medium">{(page - 1) * pageSize + 1}</span> -{" "}
 							<span className="font-medium">
 								{Math.min(page * pageSize, totalItems)}
 							</span>{" "}

@@ -223,30 +223,32 @@ export function mapDeliveryOrdersToPurchaseOrderList(
 ): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
-	const items: PurchaseOrderDetail[] = (raw.query ?? []).map((d: DeliveryOrder) => {
-		const status: PurchaseOrderStatus =
-			GQL_DO_STATUS_TO_PO_STATUS[d.status] ?? "other";
+	const items: PurchaseOrderDetail[] = (raw.query ?? []).map(
+		(d: DeliveryOrder) => {
+			const status: PurchaseOrderStatus =
+				GQL_DO_STATUS_TO_PO_STATUS[d.status] ?? "other";
 
-		const createdAt = new Date(d.createdAt);
-		const expectedDeliveryDate = new Date(d.createdAt);
+			const createdAt = new Date(d.createdAt);
+			const expectedDeliveryDate = new Date(d.createdAt);
 
-		return {
-			id: d.id,
-			purchaseOrderNumber: d.poNo ?? d.doNo,
-			fromLocation: "Main Warehouse",
-			toLocation: "Unknown outlet",
-			status,
-			createdDate: createdAt,
-			expectedDeliveryDate,
-			createdBy: d.createdBy,
-			notes: undefined,
-			items: [],
-			totalItems: 0,
-			netsuiteStatus: undefined,
-			regionName: null,
-			regionCode: null,
-		};
-	});
+			return {
+				id: d.id,
+				purchaseOrderNumber: d.poNo ?? d.doNo,
+				fromLocation: "Main Warehouse",
+				toLocation: "Unknown outlet",
+				status,
+				createdDate: createdAt,
+				expectedDeliveryDate,
+				createdBy: d.createdBy,
+				notes: undefined,
+				items: [],
+				totalItems: 0,
+				netsuiteStatus: undefined,
+				regionName: null,
+				regionCode: null,
+			};
+		},
+	);
 
 	const byStatus: Record<PurchaseOrderStatus, number> = {
 		preparing: 0,

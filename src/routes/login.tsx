@@ -34,7 +34,8 @@ export const Route = createFileRoute("/login")({
 			{ title: "Sign in — SME Ederan WMS" },
 			{
 				name: "description",
-				content: "Sign in to access the SME Ederan Warehouse Management System.",
+				content:
+					"Sign in to access the SME Ederan Warehouse Management System.",
 			},
 		],
 	}),
@@ -44,7 +45,6 @@ const formSchema = z.object({
 	email: z.string().email("Please enter a valid email address"),
 	password: z.string().min(1, "Password is required"),
 });
-
 
 function RouteComponent() {
 	const navigate = useNavigate();
@@ -170,8 +170,7 @@ function RouteComponent() {
 								<form.Field name="email">
 									{(field) => {
 										const isInvalid =
-											field.state.meta.isDirty &&
-											!field.state.meta.isValid;
+											field.state.meta.isDirty && !field.state.meta.isValid;
 										const errorId = `${field.name}-error`;
 										return (
 											<Field data-invalid={isInvalid}>
@@ -189,14 +188,10 @@ function RouteComponent() {
 														placeholder="you@smee.com.my"
 														value={field.state.value}
 														onBlur={field.handleBlur}
-														onChange={(e) =>
-															field.handleChange(e.target.value)
-														}
+														onChange={(e) => field.handleChange(e.target.value)}
 														disabled={form.state.isSubmitting}
 														aria-invalid={isInvalid}
-														aria-describedby={
-															isInvalid ? errorId : undefined
-														}
+														aria-describedby={isInvalid ? errorId : undefined}
 														autoComplete="email"
 														autoFocus
 													/>
@@ -216,15 +211,12 @@ function RouteComponent() {
 								<form.Field name="password">
 									{(field) => {
 										const isInvalid =
-											field.state.meta.isDirty &&
-											!field.state.meta.isValid;
+											field.state.meta.isDirty && !field.state.meta.isValid;
 										const errorId = `${field.name}-error`;
 										return (
 											<Field data-invalid={isInvalid}>
 												<div className="flex items-center justify-between">
-													<FieldLabel htmlFor={field.name}>
-														Password
-													</FieldLabel>
+													<FieldLabel htmlFor={field.name}>Password</FieldLabel>
 													<Link
 														to="/forgot-password"
 														className="text-[12px] text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
@@ -243,14 +235,10 @@ function RouteComponent() {
 														placeholder="Enter your password"
 														value={field.state.value}
 														onBlur={field.handleBlur}
-														onChange={(e) =>
-															field.handleChange(e.target.value)
-														}
+														onChange={(e) => field.handleChange(e.target.value)}
 														disabled={form.state.isSubmitting}
 														aria-invalid={isInvalid}
-														aria-describedby={
-															isInvalid ? errorId : undefined
-														}
+														aria-describedby={isInvalid ? errorId : undefined}
 														autoComplete="current-password"
 													/>
 													<InputGroupAddon align="inline-end">
@@ -258,9 +246,7 @@ function RouteComponent() {
 															type="button"
 															onClick={() => setShowPassword(!showPassword)}
 															aria-label={
-																showPassword
-																	? "Hide password"
-																	: "Show password"
+																showPassword ? "Hide password" : "Show password"
 															}
 															disabled={form.state.isSubmitting}
 															variant="ghost"

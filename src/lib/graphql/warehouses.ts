@@ -113,5 +113,3 @@ export type UpdateWarehouseMutationData = { updateWarehouse: Warehouse | null };
 
 export type DeleteWarehouseMutationVariables = { id: string };
 export type DeleteWarehouseMutationData = { deleteWarehouse: boolean };
-
-

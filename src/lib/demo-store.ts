@@ -5,6 +5,6 @@ export const store = createStore({
 	lastName: "Smith",
 });
 
-export const fullName = createAtom(() =>
-	`${store.get().firstName} ${store.get().lastName}`
+export const fullName = createAtom(
+	() => `${store.get().firstName} ${store.get().lastName}`,
 );

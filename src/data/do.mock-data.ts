@@ -10,13 +10,7 @@ export type DOStatus =
 	| "DELIVERED_CONFIRMED"
 	| "CANCELLED";
 
-const regions = [
-	"Klang Valley",
-	"Perlis",
-	"North",
-	"South",
-	"East Coast",
-]
+const regions = ["Klang Valley", "Perlis", "North", "South", "East Coast"];
 
 export type ExceptionType = "SHORTAGE" | "DAMAGE";
 
@@ -106,7 +100,7 @@ export interface DOListResult {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate mock DOs
-let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
+const doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 	const statuses: DOStatus[] = [
 		"CREATED",
 		"PICKING",

@@ -43,17 +43,15 @@ import {
 function getErrorMessage(err: unknown): string {
 	const fallback = "Failed to create outlet. Please try again.";
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const graphQLErrors = (err as { graphQLErrors?: Array<{ message?: string }> })
-			.graphQLErrors;
+		const graphQLErrors = (
+			err as { graphQLErrors?: Array<{ message?: string }> }
+		).graphQLErrors;
 		if (graphQLErrors?.length) {
 			const messages = graphQLErrors
 				.map((e) => e?.message?.trim())
 				.filter(Boolean);
 			if (messages.length)
-				return toUserFriendlyMessage(
-					messages.join(" "),
-					fallback,
-				);
+				return toUserFriendlyMessage(messages.join(" "), fallback);
 		}
 	}
 	// Apollo often puts the first GraphQL error message on the error itself
@@ -156,10 +154,7 @@ function CreateOutletDialog({
 					</div>
 					<div className="grid gap-2">
 						<Label htmlFor="create-outlet-region">Region</Label>
-						<Select
-							value={regionId || ""}
-							onValueChange={setRegionId}
-						>
+						<Select value={regionId || ""} onValueChange={setRegionId}>
 							<SelectTrigger id="create-outlet-region">
 								<SelectValue placeholder="Select region" />
 							</SelectTrigger>
@@ -198,10 +193,7 @@ function CreateOutletDialog({
 					>
 						{loading ? (
 							<>
-								<Loader2
-									className="mr-2 h-4 w-4 animate-spin"
-									aria-hidden
-								/>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
 								Creating...
 							</>
 						) : (

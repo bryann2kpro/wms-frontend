@@ -1,4 +1,4 @@
-import { gql, TypedDocumentNode } from "@apollo/client";
+import { gql, type TypedDocumentNode } from "@apollo/client";
 import { useReadQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";

@@ -4,7 +4,7 @@ import {
 	useState,
 	useEffect,
 	useCallback,
-	ReactNode,
+	type ReactNode,
 } from "react";
 import { hasValidTokens, clearAuthTokens } from "./auth/auth-storage";
 import {

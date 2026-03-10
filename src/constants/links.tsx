@@ -1,3 +1,20 @@
+import {
+	LayoutDashboard,
+	Package,
+	ArrowRightLeft,
+	Warehouse,
+	FileCheck,
+	CheckCircle2,
+	ClipboardCheck,
+	FileText,
+	PackageSearch,
+	BarChart3,
+	Users,
+	Settings,
+	Shield,
+} from "lucide-react";
+import { z } from "zod";
+
 import { LayoutDashboard, Package, ArrowRightLeft, Warehouse, FileCheck, ClipboardCheck, FileText, PackageSearch, BarChart3, Users, Settings, Shield } from "lucide-react";
 import { z } from "zod";
 
@@ -38,13 +55,13 @@ const ChildNavLinkSchema = z.object({
 });
 
 type NavLinkSchemaType = z.infer<typeof ChildNavLinkSchema> & {
-    children?: NavLinkSchemaType[];
+	children?: NavLinkSchemaType[];
 };
 
 const NavLinkSchema: z.ZodType<NavLinkSchemaType[]> = z.array(
-  ChildNavLinkSchema.extend({
-    children: z.lazy(() => NavLinkSchema.optional()),
-  })
+	ChildNavLinkSchema.extend({
+		children: z.lazy(() => NavLinkSchema.optional()),
+	}),
 );
 
 export { NavLinkSchema, type NavLinkSchemaType };
