@@ -5,6 +5,9 @@ import type {
 	DeliveryOrderFilterInput,
 	CreateDeliveryOrderInputGql,
 	Pagination,
+	DeliveryOrderItemWithDetails,
+	DeliveryOrderItemWithDetailsPaginatedResponse,
+	DeliveryOrderItemFilterInput,
 } from "./types";
 import type {
 	PurchaseOrderDetail,
@@ -22,6 +25,7 @@ export const DELIVERY_ORDER_FRAGMENT = gql`
 		doNo
 		poNo
 		status
+		isEmergency
 		createdAt
 		updatedAt
 		createdBy
@@ -83,6 +87,69 @@ export const COMPLETE_DELIVERY_ORDER_MUTATION = gql`
 `;
 
 // ---------------------------------------------------------------------------
+// Delivery Order Items (Work Queue)
+// ---------------------------------------------------------------------------
+
+export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
+	fragment DeliveryOrderItemWithDetailsFields on DeliveryOrderItemWithDetails {
+		id
+		purchaseOrderId
+		purchaseOrderNo
+		skuId
+		qtyRequired
+		qtyPicked
+		qtyPacked
+		createdAt
+		updatedAt
+		createdBy
+		updatedBy
+		skuCode
+		skuDescription
+		doNo
+		doStatus
+		onHandQty
+		lossQty
+		reservedQty
+	}
+`;
+
+export const DELIVERY_ORDER_ITEMS_QUERY = gql`
+	query DeliveryOrderItems(
+		$filter: DeliveryOrderItemFilterInput
+		$pageSize: Int
+		$pageNumber: Int
+	) {
+		deliveryOrderItems(
+			filter: $filter
+			pageSize: $pageSize
+			pageNumber: $pageNumber
+		) {
+			query {
+				...DeliveryOrderItemWithDetailsFields
+			}
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+		}
+	}
+	${DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT}
+`;
+
+export const MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION = gql`
+	mutation MarkDeliveryOrderItemPicked($id: ID!, $qtyPicked: String!) {
+		markDeliveryOrderItemPicked(id: $id, qtyPicked: $qtyPicked) {
+			...DeliveryOrderItemWithDetailsFields
+		}
+	}
+	${DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT}
+`;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -110,6 +177,29 @@ export type CompleteDeliveryOrderMutationVariables = {
 
 export type CompleteDeliveryOrderMutationData = {
 	completeDeliveryOrder: DeliveryOrder;
+};
+
+// ---------------------------------------------------------------------------
+// Delivery Order Items Types
+// ---------------------------------------------------------------------------
+
+export type DeliveryOrderItemsQueryVariables = {
+	filter?: DeliveryOrderItemFilterInput | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+};
+
+export type DeliveryOrderItemsQueryData = {
+	deliveryOrderItems: DeliveryOrderItemWithDetailsPaginatedResponse;
+};
+
+export type MarkDeliveryOrderItemPickedMutationVariables = {
+	id: string;
+	qtyPicked: string;
+};
+
+export type MarkDeliveryOrderItemPickedMutationData = {
+	markDeliveryOrderItemPicked: DeliveryOrderItemWithDetails;
 };
 
 // ---------------------------------------------------------------------------

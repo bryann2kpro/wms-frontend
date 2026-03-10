@@ -521,6 +521,7 @@ export interface DeliveryOrder {
 	doNo: string;
 	poNo: string;
 	status: string;
+	isEmergency: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -537,6 +538,7 @@ export interface DeliveryOrderFilterInput {
 	doNo?: string | null;
 	toId?: string | null;
 	status?: string | null;
+	isEmergency?: boolean | null;
 	createdBy?: string | null;
 	createdAtFrom?: string | null;
 	createdAtTo?: string | null;
@@ -557,6 +559,44 @@ export interface CreateDeliveryOrderInputGql {
 	outletId: string;
 	orderCreatedAt?: string | null;
 	items: CreateDeliveryOrderItemInputGql[];
+}
+
+// ---------------------------------------------------------------------------
+// Delivery Order Items (Work Queue)
+// ---------------------------------------------------------------------------
+
+export interface DeliveryOrderItemWithDetails {
+	id: string;
+	purchaseOrderId: string;
+	purchaseOrderNo: string;
+	skuId: string;
+	qtyRequired: string;
+	qtyPicked: string | null;
+	qtyPacked: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+	skuCode: string | null;
+	skuDescription: string | null;
+	doNo: string | null;
+	doStatus: string | null;
+	onHandQty: string | null;
+	lossQty: string | null;
+	reservedQty: string | null;
+}
+
+export interface DeliveryOrderItemWithDetailsPaginatedResponse {
+	query: DeliveryOrderItemWithDetails[];
+	pagination: Pagination;
+}
+
+export interface DeliveryOrderItemFilterInput {
+	id?: string | null;
+	purchaseOrderNo?: string | null;
+	doNo?: string | null;
+	doStatus?: string | null;
+	search?: string | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +12,14 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { allNavigationItems, type NavLinkSchemaType } from "@/constants/links";
+import { Sidebar as SidebarUi, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+	allNavigationItems,
+	NavLinkSchemaType,
+	SIDEBAR_GROUP_ORDER,
+	SIDEBAR_GROUP_LABELS,
+	type SidebarGroupKey,
+} from "@/constants/links";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
@@ -80,28 +89,56 @@ export function Sidebar() {
 	};
 
 	const visibleItems = allNavigationItems.filter(accessControl);
-	const mainItems = visibleItems.filter((link) => link.group !== "work-queues");
-	const workQueueItems = visibleItems.filter(
-		(link) => link.group === "work-queues",
+
+	// Partition by group, preserving item order within each group
+	const byGroup = new Map<SidebarGroupKey | string, NavLinkSchemaType[]>();
+	for (const link of visibleItems) {
+		const group = link.group ?? "overview";
+		if (!byGroup.has(group)) byGroup.set(group, []);
+		byGroup.get(group)!.push(link);
+	}
+
+	const renderNavLink = (link: NavLinkSchemaType) => (
+		<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
+			<Link
+				to={link.href}
+				className={cn(
+					"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+					isActive(link.href)
+						? "bg-primary text-primary-foreground"
+						: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+				)}
+			>
+				<link.icon className="h-5 w-5" />
+				{link.title}
+			</Link>
+		</SidebarMenuItem>
 	);
 
-	const renderNavLinks = (links: NavLinkSchemaType[]) =>
-		links.map((link) => (
-			<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
-				<Link
-					to={link.href}
-					className={cn(
-						"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-						isActive(link.href)
-							? "bg-primary text-primary-foreground"
-							: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-					)}
-				>
-					<link.icon className="h-5 w-5" />
-					{link.title}
-				</Link>
-			</SidebarMenuItem>
-		));
+	// Render groups in defined order, each with a label (like Work Queues)
+	const navSections: ReactNode[] = [];
+	for (const groupKey of SIDEBAR_GROUP_ORDER) {
+		const links = byGroup.get(groupKey);
+		if (!links?.length) continue;
+		const label = SIDEBAR_GROUP_LABELS[groupKey];
+		navSections.push(
+			<SidebarGroup key={groupKey} className="space-y-1">
+				<SidebarGroupLabel>{label}</SidebarGroupLabel>
+				<SidebarMenu>{links.map((l) => renderNavLink(l))}</SidebarMenu>
+			</SidebarGroup>,
+		);
+	}
+	// If any items have a group not in SIDEBAR_GROUP_ORDER, render them at the end
+	for (const [groupKey, links] of byGroup) {
+		if (SIDEBAR_GROUP_ORDER.includes(groupKey as SidebarGroupKey) || !links.length)
+			continue;
+		navSections.push(
+			<SidebarGroup key={groupKey} className="space-y-1">
+				<SidebarGroupLabel>{groupKey}</SidebarGroupLabel>
+				<SidebarMenu>{links.map((l) => renderNavLink(l))}</SidebarMenu>
+			</SidebarGroup>,
+		);
+	}
 
 	return (
 		<SidebarUi className="space-y-4 rounded-lg" collapsible="icon">
@@ -119,15 +156,7 @@ export function Sidebar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<ScrollArea className="flex-1 px-3 py-4">
-					<SidebarGroup className="space-y-1">
-						<SidebarMenu>{renderNavLinks(mainItems)}</SidebarMenu>
-					</SidebarGroup>
-					{workQueueItems.length > 0 && (
-						<SidebarGroup className="space-y-1">
-							<SidebarGroupLabel>Work Queues</SidebarGroupLabel>
-							<SidebarMenu>{renderNavLinks(workQueueItems)}</SidebarMenu>
-						</SidebarGroup>
-					)}
+					{navSections}
 				</ScrollArea>
 			</SidebarContent>
 		</SidebarUi>

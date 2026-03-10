@@ -15,6 +15,33 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
+import { LayoutDashboard, Package, ArrowRightLeft, Warehouse, FileCheck, ClipboardCheck, FileText, PackageSearch, BarChart3, Users, Settings, Shield } from "lucide-react";
+import { z } from "zod";
+
+/** Sidebar group keys – order here defines display order. */
+export const SIDEBAR_GROUP_ORDER = [
+	"overview",
+	"inbound",
+	"outbound",
+	"work-queues",
+	"operations",
+	"documents",
+	"administration",
+] as const;
+
+export type SidebarGroupKey = (typeof SIDEBAR_GROUP_ORDER)[number];
+
+/** Display labels for each sidebar group. */
+export const SIDEBAR_GROUP_LABELS: Record<SidebarGroupKey, string> = {
+	overview: "Overview",
+	inbound: "Inbound",
+	outbound: "Outbound",
+	"work-queues": "Work Queues",
+	operations: "Operations",
+	documents: "Documents",
+	administration: "Administration",
+};
+
 const ChildNavLinkSchema = z.object({
 	key: z.string(),
 	title: z.string(),
@@ -23,7 +50,7 @@ const ChildNavLinkSchema = z.object({
 	variant: z.enum(["default", "ghost"]),
 	href: z.string(),
 	allowedPermission: z.array(z.string()),
-	/** Optional group key for sidebar grouping (e.g. "work-queues"). */
+	/** Group key – items with the same group are shown under one labeled section. */
 	group: z.string().optional(),
 });
 
@@ -39,6 +66,11 @@ const NavLinkSchema: z.ZodType<NavLinkSchemaType[]> = z.array(
 
 export { NavLinkSchema, type NavLinkSchemaType };
 
+
+/**
+ * Sidebar navigation: each item has a group. Groups are rendered in SIDEBAR_GROUP_ORDER
+ * with labels from SIDEBAR_GROUP_LABELS (Overview, Inbound, Outbound, Work Queues, etc.).
+ */
 export const allNavigationItems: NavLinkSchemaType[] = [
 	{
 		key: "sidebar-dashboard",
@@ -47,6 +79,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: LayoutDashboard,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "overview",
 	},
 	{
 		key: "sidebar-grn",
@@ -55,6 +88,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Package,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "inbound",
 	},
 	{
 		key: "sidebar-transfers",
@@ -63,6 +97,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: ArrowRightLeft,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "outbound",
 	},
 	{
 		key: "sidebar-do-work-queue",
@@ -89,15 +124,8 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: FileCheck,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "operations",
 	},
-	// {
-	// 	key: "sidebar-settlement",
-	// 	title: "Settlement",
-	// 	href: "/admin/settlement",
-	// 	icon: CheckCircle2,
-	// 	allowedPermission: ["*"],
-	// 	variant: "default",
-	// },
 	{
 		key: "sidebar-stock-count",
 		title: "Stock Count",
@@ -105,6 +133,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: PackageSearch,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "operations",
 	},
 	{
 		key: "sidebar-invoices",
@@ -113,15 +142,8 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: FileText,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "documents",
 	},
-	// {
-	// 	key: "sidebar-inventory",
-	// 	title: "Inventory",
-	// 	href: "/admin/inventory",
-	// 	icon: PackageSearch,
-	// 	allowedPermission: ["*"],
-	// 	variant: "default",
-	// },
 	{
 		key: "sidebar-reports",
 		title: "Reports / Exports",
@@ -129,6 +151,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: BarChart3,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "documents",
 	},
 	{
 		key: "sidebar-user-management",
@@ -137,6 +160,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Users,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "administration",
 	},
 	{
 		key: "sidebar-rbac",
@@ -145,6 +169,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Shield,
 		allowedPermission: ["Role"],
 		variant: "default",
+		group: "administration",
 	},
 	{
 		key: "sidebar-settings",
@@ -153,6 +178,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Settings,
 		allowedPermission: ["*"],
 		variant: "default",
+		group: "administration",
 	},
 	{
 		key: "sidebar-audit-log",
@@ -161,5 +187,6 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: FileText,
 		allowedPermission: ["Audit Log"],
 		variant: "default",
+		group: "administration",
 	},
 ];

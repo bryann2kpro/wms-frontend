@@ -18,7 +18,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { XCircle, AlertCircle } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
