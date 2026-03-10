@@ -29,10 +29,13 @@ import { toUserFriendlyMessage } from "@/lib/utils";
 
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const first = (err as { graphQLErrors?: Array<{ message?: string }> }).graphQLErrors?.[0];
-		if (first?.message) return toUserFriendlyMessage(first.message, "Something went wrong.");
+		const first = (err as { graphQLErrors?: Array<{ message?: string }> })
+			.graphQLErrors?.[0];
+		if (first?.message)
+			return toUserFriendlyMessage(first.message, "Something went wrong.");
 	}
-	if (err instanceof Error) return toUserFriendlyMessage(err.message, "Something went wrong.");
+	if (err instanceof Error)
+		return toUserFriendlyMessage(err.message, "Something went wrong.");
 	return "Something went wrong.";
 }
 
@@ -62,7 +65,11 @@ function CreateWarehouseDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (v: { warehouseName: string; warehouseCode: string; warehouseAddress: string }) => void;
+	onSubmit: (v: {
+		warehouseName: string;
+		warehouseCode: string;
+		warehouseAddress: string;
+	}) => void;
 	loading: boolean;
 }) {
 	const [name, setName] = useState("");
@@ -147,9 +154,8 @@ export function WarehouseCombobox({
 	const [search, setSearch] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
 
-	const [createWarehouse, { loading: createLoading }] = useMutation<CreateWarehouseMutationData>(
-		CREATE_WAREHOUSE_MUTATION,
-		{
+	const [createWarehouse, { loading: createLoading }] =
+		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
 			onError: (err) => toast.error(getErrorMessage(err)),
 			onCompleted: async (data) => {
 				const newId = data?.createWarehouse?.warehouseId;
@@ -160,8 +166,7 @@ export function WarehouseCombobox({
 				setOpen(false);
 				toast.success("Warehouse created.");
 			},
-		}
-	);
+		});
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
@@ -169,13 +174,13 @@ export function WarehouseCombobox({
 		return warehouses.filter(
 			(w) =>
 				w.warehouseName.toLowerCase().includes(q) ||
-				(w.warehouseCode && w.warehouseCode.toLowerCase().includes(q))
+				(w.warehouseCode && w.warehouseCode.toLowerCase().includes(q)),
 		);
 	}, [warehouses, search]);
 
 	const selectedWarehouse = useMemo(
 		() => warehouses.find((w) => w.warehouseId === value),
-		[warehouses, value]
+		[warehouses, value],
 	);
 	const displayLabel = selectedWarehouse
 		? `${selectedWarehouse.warehouseName}${selectedWarehouse.warehouseCode ? ` (${selectedWarehouse.warehouseCode})` : ""}`
@@ -250,7 +255,7 @@ export function WarehouseCombobox({
 												title={`${w.warehouseName}${w.warehouseCode ? ` (${w.warehouseCode})` : ""}`}
 												className={cn(
 													"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
-													value === w.warehouseId && "bg-accent"
+													value === w.warehouseId && "bg-accent",
 												)}
 												onClick={() => handleSelect(w.warehouseId)}
 											>

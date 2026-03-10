@@ -1,30 +1,43 @@
-import { LayoutDashboard, Package, ArrowRightLeft, Warehouse, FileCheck, CheckCircle2, ClipboardCheck, FileText, PackageSearch, BarChart3, Users, Settings, Shield } from "lucide-react";
+import {
+	LayoutDashboard,
+	Package,
+	ArrowRightLeft,
+	Warehouse,
+	FileCheck,
+	CheckCircle2,
+	ClipboardCheck,
+	FileText,
+	PackageSearch,
+	BarChart3,
+	Users,
+	Settings,
+	Shield,
+} from "lucide-react";
 import { z } from "zod";
 
-const ChildNavLinkSchema= z.object({
-    key: z.string(),
-    title: z.string(),
-    label: z.string().optional(),
-    icon: z.any(),
-    variant: z.enum(["default", "ghost"]),
-    href: z.string(),
-    allowedPermission: z.array(z.string()),
-    /** Optional group key for sidebar grouping (e.g. "work-queues"). */
-    group: z.string().optional(),
+const ChildNavLinkSchema = z.object({
+	key: z.string(),
+	title: z.string(),
+	label: z.string().optional(),
+	icon: z.any(),
+	variant: z.enum(["default", "ghost"]),
+	href: z.string(),
+	allowedPermission: z.array(z.string()),
+	/** Optional group key for sidebar grouping (e.g. "work-queues"). */
+	group: z.string().optional(),
 });
 
 type NavLinkSchemaType = z.infer<typeof ChildNavLinkSchema> & {
-    children?: NavLinkSchemaType[];
+	children?: NavLinkSchemaType[];
 };
 
 const NavLinkSchema: z.ZodType<NavLinkSchemaType[]> = z.array(
-  ChildNavLinkSchema.extend({
-    children: z.lazy(() => NavLinkSchema.optional()),
-  })
+	ChildNavLinkSchema.extend({
+		children: z.lazy(() => NavLinkSchema.optional()),
+	}),
 );
 
 export { NavLinkSchema, type NavLinkSchemaType };
-
 
 export const allNavigationItems: NavLinkSchemaType[] = [
 	{
@@ -32,8 +45,8 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Dashboard",
 		href: "/admin/dashboard",
 		icon: LayoutDashboard,
-        allowedPermission: ["*"],
-        variant: "default",
+		allowedPermission: ["*"],
+		variant: "default",
 	},
 	{
 		key: "sidebar-grn",
@@ -41,7 +54,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/grn",
 		icon: Package,
 		allowedPermission: ["*"],
-        variant: "default",
+		variant: "default",
 	},
 	{
 		key: "sidebar-transfers",
@@ -148,5 +161,5 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: FileText,
 		allowedPermission: ["Audit Log"],
 		variant: "default",
-	}
+	},
 ];

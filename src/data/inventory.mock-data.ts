@@ -41,7 +41,7 @@ export interface InventoryListResult {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate mock inventory
-let inventoryItems: InventoryItem[] = Array.from({ length: 50 }, (_, i) => {
+const inventoryItems: InventoryItem[] = Array.from({ length: 50 }, (_, i) => {
 	const quantity = 50 + i * 10;
 	const reservedQuantity = i % 5 === 0 ? 10 + (i % 20) : 0;
 	const minimumStockLevel = 20;
@@ -74,7 +74,8 @@ export async function getInventory(
 ): Promise<InventoryListResult> {
 	await delay(300);
 
-	const { page, pageSize, search, location, lowStock, lowStockThreshold } = filters;
+	const { page, pageSize, search, location, lowStock, lowStockThreshold } =
+		filters;
 
 	let filtered = [...inventoryItems];
 

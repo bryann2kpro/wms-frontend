@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery as useApolloQuery, useMutation as useApolloMutation } from "@apollo/client/react";
+import {
+	useQuery as useApolloQuery,
+	useMutation as useApolloMutation,
+} from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -168,8 +171,8 @@ const USER_MANAGEMENT_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-4.png`,
 		description: (
 			<>
-				Click the <strong>edit</strong> icon on a row to change that user’s
-				role or password. Changes apply immediately.
+				Click the <strong>edit</strong> icon on a row to change that user’s role
+				or password. Changes apply immediately.
 			</>
 		),
 	},
@@ -180,7 +183,11 @@ function HelpStepImage({
 	src,
 	stepNumber,
 	alt,
-}: { src: string; stepNumber: number; alt?: string }) {
+}: {
+	src: string;
+	stepNumber: number;
+	alt?: string;
+}) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
@@ -230,7 +237,9 @@ function UserManagementComponent() {
 	} | null>(null);
 
 	// GraphQL: roles for filter and create/edit dropdowns (backend expects roleId)
-	const { data: rolesData } = useApolloQuery<{ roles: RoleOption[] }>(ROLES_QUERY);
+	const { data: rolesData } = useApolloQuery<{ roles: RoleOption[] }>(
+		ROLES_QUERY,
+	);
 	const allRoles = rolesData?.roles ?? [];
 	// Exclude Super Admin so it cannot be assigned in create/update or filter
 	const displayRolesList = allRoles.filter(
@@ -259,10 +268,13 @@ function UserManagementComponent() {
 		pagination: { page, pageSize },
 	};
 
-	const { data, loading: isLoading, refetch } = useApolloQuery<
-		UsersQueryData,
-		UsersQueryVariables
-	>(USERS_QUERY, { variables });
+	const {
+		data,
+		loading: isLoading,
+		refetch,
+	} = useApolloQuery<UsersQueryData, UsersQueryVariables>(USERS_QUERY, {
+		variables,
+	});
 
 	// GraphQL create user mutation (backend: CreateUserInput with email, displayName, password, roleId)
 	const [createUserMutation, { loading: createLoading }] = useApolloMutation<
@@ -347,9 +359,7 @@ function UserManagementComponent() {
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-					<p className="text-muted-foreground">
-						Manage users and assign roles
-					</p>
+					<p className="text-muted-foreground">Manage users and assign roles</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button
@@ -422,10 +432,7 @@ function UserManagementComponent() {
 												<ChevronRight className="h-4 w-4 ml-0.5" />
 											</Button>
 										) : (
-											<Button
-												size="sm"
-												onClick={() => setIsHelpOpen(false)}
-											>
+											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
 												Got it
 											</Button>
 										)}
@@ -465,7 +472,9 @@ function UserManagementComponent() {
 					</Card>
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Store Keepers</CardTitle>
+							<CardTitle className="text-sm font-medium">
+								Store Keepers
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
@@ -531,7 +540,10 @@ function UserManagementComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-36" aria-label="Filter by status">
+								<SelectTrigger
+									className="sm:w-36"
+									aria-label="Filter by status"
+								>
 									<SelectValue placeholder="Status" />
 								</SelectTrigger>
 								<SelectContent>
@@ -541,7 +553,10 @@ function UserManagementComponent() {
 								</SelectContent>
 							</Select>
 							<div className="flex items-center gap-1.5 shrink-0">
-								<ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+								<ArrowUpDown
+									className="h-4 w-4 text-muted-foreground shrink-0"
+									aria-hidden
+								/>
 								<Select
 									value={sortField}
 									onValueChange={(value) => {
@@ -567,7 +582,10 @@ function UserManagementComponent() {
 										setPage(1);
 									}}
 								>
-									<SelectTrigger className="sm:w-36" aria-label="Sort direction">
+									<SelectTrigger
+										className="sm:w-36"
+										aria-label="Sort direction"
+									>
 										<SelectValue placeholder="Order" />
 									</SelectTrigger>
 									<SelectContent>
@@ -616,46 +634,46 @@ function UserManagementComponent() {
 								) : (
 									// user from GraphQL: id, displayName, email, isActive, roles: { roleId, roleName }[]
 									users.map((user) => {
-									const primaryRole = roleNameToWMSRole(
-										user.roles[0]?.roleName,
-									);
-									return (
-										<TableRow key={user.id}>
-											<TableCell className="font-medium">
-												{user.displayName}
-											</TableCell>
-											<TableCell className="text-muted-foreground">
-												{user.email}
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant="outline"
-													className={roleColors[primaryRole] ?? "bg-muted"}
-												>
-													{roleLabels[primaryRole] ??
-														user.roles[0]?.roleName ??
-														primaryRole}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-right">
-												<Button
-													variant="ghost"
-													size="icon"
-													onClick={() =>
-														handleEditRole({
-															id: user.id,
-															displayName: user.displayName,
-															email: user.email,
-															roles: user.roles,
-														})
-													}
-												>
-													<Edit className="h-4 w-4" />
-												</Button>
-											</TableCell>
-										</TableRow>
-									);
-								})
+										const primaryRole = roleNameToWMSRole(
+											user.roles[0]?.roleName,
+										);
+										return (
+											<TableRow key={user.id}>
+												<TableCell className="font-medium">
+													{user.displayName}
+												</TableCell>
+												<TableCell className="text-muted-foreground">
+													{user.email}
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant="outline"
+														className={roleColors[primaryRole] ?? "bg-muted"}
+													>
+														{roleLabels[primaryRole] ??
+															user.roles[0]?.roleName ??
+															primaryRole}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-right">
+													<Button
+														variant="ghost"
+														size="icon"
+														onClick={() =>
+															handleEditRole({
+																id: user.id,
+																displayName: user.displayName,
+																email: user.email,
+																roles: user.roles,
+															})
+														}
+													>
+														<Edit className="h-4 w-4" />
+													</Button>
+												</TableCell>
+											</TableRow>
+										);
+									})
 								)}
 							</TableBody>
 						</Table>
@@ -675,8 +693,8 @@ function UserManagementComponent() {
 										pagination.totalCount,
 									)}
 								</span>{" "}
-								of{" "}
-								<span className="font-medium">{pagination.totalCount}</span> users
+								of <span className="font-medium">{pagination.totalCount}</span>{" "}
+								users
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -739,7 +757,8 @@ function UserManagementComponent() {
 function generateTempPassword(length = 10): string {
 	const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
 	let s = "";
-	for (let i = 0; i < length; i++) s += chars[Math.floor(Math.random() * chars.length)];
+	for (let i = 0; i < length; i++)
+		s += chars[Math.floor(Math.random() * chars.length)];
 	return s;
 }
 
@@ -935,7 +954,8 @@ function CreateUserDialog({
 										onCheckedChange={(checked) => {
 											setPasswordOption(checked ? "manual" : "email");
 											setPassword("");
-											if (errors.password) setErrors({ ...errors, password: "" });
+											if (errors.password)
+												setErrors({ ...errors, password: "" });
 										}}
 									/>
 								</div>
@@ -957,7 +977,9 @@ function CreateUserDialog({
 										aria-invalid={!!errors.password}
 									/>
 									{errors.password && (
-										<p className="text-sm text-destructive">{errors.password}</p>
+										<p className="text-sm text-destructive">
+											{errors.password}
+										</p>
 									)}
 									<p className="text-xs text-muted-foreground">
 										Password must be at least 6 characters long
@@ -1018,9 +1040,9 @@ function EditUserDialog({
 	isSubmitting,
 }: EditUserDialogProps) {
 	const [roleId, setRoleId] = useState(user?.roleId ?? "");
-	const [passwordOption, setPasswordOption] = useState<"email" | "manual" | null>(
-		null,
-	);
+	const [passwordOption, setPasswordOption] = useState<
+		"email" | "manual" | null
+	>(null);
 	const [password, setPassword] = useState("");
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -1083,10 +1105,7 @@ function EditUserDialog({
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
 							<Label htmlFor="edit-role">Role</Label>
-							<Select
-								value={roleId}
-								onValueChange={setRoleId}
-							>
+							<Select value={roleId} onValueChange={setRoleId}>
 								<SelectTrigger id="edit-role">
 									<SelectValue placeholder="Select role" />
 								</SelectTrigger>
@@ -1119,7 +1138,8 @@ function EditUserDialog({
 										} else {
 											setPasswordOption(null);
 											setPassword("");
-											if (errors.password) setErrors({ ...errors, password: "" });
+											if (errors.password)
+												setErrors({ ...errors, password: "" });
 										}
 									}}
 								/>

@@ -16,11 +16,7 @@ import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
-import {
-	type DOItem,
-	type DOStatusFilter,
-	getDOs,
-} from "@/data/do.mock-data";
+import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -62,14 +58,14 @@ function EmpireSushiDOComponent() {
 				assignedTo,
 			}),
 		staleTime: 30_000,
-	})
+	});
 
 	// Document title and accessibility: page title for browser tab and screen readers
 	useEffect(() => {
 		document.title = `${PAGE_TITLE} | SME Ederan`;
 		return () => {
 			document.title = "SME Ederan";
-		}
+		};
 	}, []);
 
 	// Flatten all items from all DOs
@@ -81,16 +77,13 @@ function EmpireSushiDOComponent() {
 				doNumber: do_.doNumber,
 				doId: do_.id,
 			})),
-		)
+		);
 	}, [data?.items]);
 
 	// Paginate the flattened items
 	const totalItems = allItems.length;
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-	const paginatedItems = allItems.slice(
-		(page - 1) * pageSize,
-		page * pageSize,
-	)
+	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
 
 	const tableColSpan = 11;
 
@@ -138,7 +131,7 @@ function EmpireSushiDOComponent() {
 						value={searchTerm}
 						onChange={(e) => {
 							setSearchTerm(e.target.value);
-							setPage(1)
+							setPage(1);
 						}}
 						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					/>
@@ -257,10 +250,7 @@ function EmpireSushiDOComponent() {
 					>
 						<div>
 							Showing{" "}
-							<span className="font-medium">
-								{(page - 1) * pageSize + 1}
-							</span>{" "}
-							-{" "}
+							<span className="font-medium">{(page - 1) * pageSize + 1}</span> -{" "}
 							<span className="font-medium">
 								{Math.min(page * pageSize, totalItems)}
 							</span>{" "}
@@ -295,5 +285,5 @@ function EmpireSushiDOComponent() {
 				)}
 			</section>
 		</main>
-	)
+	);
 }

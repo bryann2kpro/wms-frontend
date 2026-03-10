@@ -49,10 +49,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import request from "graphql-request";
 import { toast } from "sonner";
 import { env } from "@/env";
-import {
-	REGIONS_QUERY,
-	type RegionsQueryData,
-} from "@/lib/graphql/regions";
+import { REGIONS_QUERY, type RegionsQueryData } from "@/lib/graphql/regions";
 import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin/reports")({
@@ -96,8 +93,8 @@ const REPORTS_HELP_STEPS: Array<{
 		description: (
 			<>
 				Generate and download reports in <strong>PDF</strong> or{" "}
-				<strong>Excel (XLSX)</strong>. Choose a report type, set region and
-				date range, then click Generate & Download.
+				<strong>Excel (XLSX)</strong>. Choose a report type, set region and date
+				range, then click Generate & Download.
 			</>
 		),
 	},
@@ -132,7 +129,11 @@ function HelpStepImage({
 	src,
 	stepNumber,
 	alt,
-}: { src: string; stepNumber: number; alt?: string }) {
+}: {
+	src: string;
+	stepNumber: number;
+	alt?: string;
+}) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
@@ -140,9 +141,7 @@ function HelpStepImage({
 				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
 					<ImageOff className="h-6 w-6" />
 				</span>
-				<span>
-					Add screenshot: public/help/reports/step-{stepNumber}.png
-				</span>
+				<span>Add screenshot: public/help/reports/step-{stepNumber}.png</span>
 			</div>
 		);
 	}
@@ -161,11 +160,19 @@ function ReportsComponent() {
 	const [helpStep, setHelpStep] = useState(0);
 
 	const { data, isLoading: isLoadingRegions } = useQuery({
-		queryKey: ['regions'],
+		queryKey: ["regions"],
 		queryFn: async () => {
 			const headers = new Headers();
-			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
-			const data = await request<RegionsQueryData>(env.VITE_GRAPHQL_ENDPOINT, REGIONS_QUERY, { }, headers);
+			headers.set(
+				"Authorization",
+				`Bearer ${localStorage.getItem("access_token")}`,
+			);
+			const data = await request<RegionsQueryData>(
+				env.VITE_GRAPHQL_ENDPOINT,
+				REGIONS_QUERY,
+				{},
+				headers,
+			);
 			return data;
 		},
 	});
@@ -189,12 +196,16 @@ function ReportsComponent() {
 			if (!selectedReport) return;
 
 			// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
-			if (format === "PDF" && (selectedReport === "Movement" || selectedReport === "InvoiceSummary")) {
+			if (
+				format === "PDF" &&
+				(selectedReport === "Movement" || selectedReport === "InvoiceSummary")
+			) {
 				if (!regionId?.trim()) {
 					toast.error("Region is required for this report.");
 					return;
 				}
-				const reportType = selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
+				const reportType =
+					selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
 				const input: GenerateReportMutationVariables["input"] = {
 					type: reportType,
 					regionId: regionId.trim(),
@@ -205,23 +216,31 @@ function ReportsComponent() {
 				try {
 					const result = await generateReportMutation({ variables: { input } });
 					if (result.error) {
-						const err = result.error as { graphQLErrors?: Array<{ message: string }>; message: string };
+						const err = result.error as {
+							graphQLErrors?: Array<{ message: string }>;
+							message: string;
+						};
 						const message =
-							err.graphQLErrors?.[0]?.message ?? err.message ?? "Failed to generate report.";
+							err.graphQLErrors?.[0]?.message ??
+							err.message ??
+							"Failed to generate report.";
 						toast.error(message);
 						return;
 					}
 					const payload = result.data?.generateReport;
 					if (!payload?.pdfBase64 || !payload?.filename) {
-						toast.error("Report generated but no file was returned. Please try again.");
+						toast.error(
+							"Report generated but no file was returned. Please try again.",
+						);
 						return;
 					}
 					downloadPdfFromBase64(payload.pdfBase64, payload.filename);
-					toast.success(
-						"Report downloaded."
-					);
+					toast.success("Report downloaded.");
 				} catch (err) {
-					const message = err instanceof Error ? err.message : "Failed to generate report. Please try again.";
+					const message =
+						err instanceof Error
+							? err.message
+							: "Failed to generate report. Please try again.";
 					toast.error(message);
 				}
 				return;
@@ -296,7 +315,10 @@ function ReportsComponent() {
 						<HelpCircle className="h-4 w-4" />
 					</Button>
 					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent className="sm:max-w-lg" aria-describedby="reports-help-description">
+						<DialogContent
+							className="sm:max-w-lg"
+							aria-describedby="reports-help-description"
+						>
 							<DialogHeader>
 								<DialogTitle>Reports help</DialogTitle>
 								<DialogDescription id="reports-help-description">
@@ -320,7 +342,11 @@ function ReportsComponent() {
 									</p>
 								</div>
 								<div className="flex items-center justify-between gap-4 pt-2">
-									<div className="flex gap-1" role="tablist" aria-label="Help steps">
+									<div
+										className="flex gap-1"
+										role="tablist"
+										aria-label="Help steps"
+									>
 										{REPORTS_HELP_STEPS.map((_, i) => (
 											<button
 												type="button"
@@ -384,14 +410,20 @@ function ReportsComponent() {
 				<FieldGroup className="grid gap-6 lg:grid-cols-2">
 					{/* Report Types */}
 					<Card>
-					<CardHeader>
-						<CardTitle id="report-type-label">Available Reports</CardTitle>
-						<CardDescription>Select a report type to generate</CardDescription>
-					</CardHeader>
+						<CardHeader>
+							<CardTitle id="report-type-label">Available Reports</CardTitle>
+							<CardDescription>
+								Select a report type to generate
+							</CardDescription>
+						</CardHeader>
 						<CardContent>
 							<form.Field name="selectedReport">
 								{(field) => (
-									<Field className="grid gap-3 sm:grid-cols-2" role="group" aria-labelledby="report-type-label">
+									<Field
+										className="grid gap-3 sm:grid-cols-2"
+										role="group"
+										aria-labelledby="report-type-label"
+									>
 										{reportTypes.map((report) => {
 											const Icon = report.icon;
 											const isSelected = field.state.value === report.value;
@@ -443,11 +475,23 @@ function ReportsComponent() {
 											}}
 											disabled={isLoadingRegions}
 										>
-											<SelectTrigger id="regionId" aria-label="Select region" aria-busy={isLoadingRegions}>
-												<SelectValue placeholder={isLoadingRegions ? "Loading regions…" : "Select Region"} />
+											<SelectTrigger
+												id="regionId"
+												aria-label="Select region"
+												aria-busy={isLoadingRegions}
+											>
+												<SelectValue
+													placeholder={
+														isLoadingRegions
+															? "Loading regions…"
+															: "Select Region"
+													}
+												/>
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="all" disabled>Select Region</SelectItem>
+												<SelectItem value="all" disabled>
+													Select Region
+												</SelectItem>
 												{regions.map((r) => (
 													<SelectItem key={r.regionId} value={r.regionId}>
 														{r.regionName}
@@ -458,7 +502,11 @@ function ReportsComponent() {
 									</div>
 								)}
 							</form.Field>
-							<div className="space-y-2" role="group" aria-labelledby="date-range-label">
+							<div
+								className="space-y-2"
+								role="group"
+								aria-labelledby="date-range-label"
+							>
 								<Label id="date-range-label">Date Range</Label>
 								<div className="grid gap-2 sm:grid-cols-2">
 									<form.Field name="dateFrom">
@@ -511,7 +559,10 @@ function ReportsComponent() {
 											}}
 											disabled={isGenerating}
 										>
-											<SelectTrigger id="format" aria-label="Export format (PDF or Excel)">
+											<SelectTrigger
+												id="format"
+												aria-label="Export format (PDF or Excel)"
+											>
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
@@ -531,26 +582,29 @@ function ReportsComponent() {
 							>
 								{({ selectedReport, regionId, format }) => {
 									const needsRegion =
-										selectedReport === "Movement" || selectedReport === "InvoiceSummary";
+										selectedReport === "Movement" ||
+										selectedReport === "InvoiceSummary";
 									const missingRequiredRegion =
 										format === "PDF" && needsRegion && !regionId?.trim();
 									return (
-									<Button
-										type="submit"
-										disabled={
-											!selectedReport ||
-											missingRequiredRegion ||
-											isGenerating
-										}
-										className="w-full"
-										aria-busy={isGenerating}
-										aria-label={isGenerating ? "Generating report" : "Generate and download report"}
-									>
-										<Download className="mr-2 h-4 w-4" aria-hidden />
-										{isGenerating
-											? "Generating…"
-											: "Generate & Download Report"}
-									</Button>
+										<Button
+											type="submit"
+											disabled={
+												!selectedReport || missingRequiredRegion || isGenerating
+											}
+											className="w-full"
+											aria-busy={isGenerating}
+											aria-label={
+												isGenerating
+													? "Generating report"
+													: "Generate and download report"
+											}
+										>
+											<Download className="mr-2 h-4 w-4" aria-hidden />
+											{isGenerating
+												? "Generating…"
+												: "Generate & Download Report"}
+										</Button>
 									);
 								}}
 							</form.Subscribe>

@@ -65,7 +65,7 @@ function DeliveryProofComponent() {
 				status: "DELIVERED_PENDING_PROOF",
 			}),
 		staleTime: 30_000,
-	})
+	});
 
 	const uploadMutation = useMutation({
 		mutationFn: (doId: string) => updateDOStatus(doId, "DELIVERED_CONFIRMED"),
@@ -76,35 +76,37 @@ function DeliveryProofComponent() {
 			setProofFiles([]);
 			setSelectedDO(null);
 		},
-	})
+	});
 
 	const dos = data?.items ?? [];
 	const totalPages = data
 		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1
+		: 1;
 
 	const calculateDaysPending = (deliveredAt?: Date) => {
 		if (!deliveredAt) return 0;
 		const diff = Date.now() - deliveredAt.getTime();
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
-	}
+	};
 
 	const handleUploadProof = (do_: DeliveryOrder) => {
 		setSelectedDO(do_);
 		setIsUploadDialogOpen(true);
-	}
+	};
 
 	const handleSubmitProof = () => {
 		if (selectedDO && proofFiles.length > 0) {
 			uploadMutation.mutate(selectedDO.id);
 		}
-	}
+	};
 
 	return (
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Proof of Delivery</h1>
+					<h1 className="text-3xl font-bold tracking-tight">
+						Proof of Delivery
+					</h1>
 					<p className="text-muted-foreground">
 						Upload signed delivery orders awaiting proof
 					</p>
@@ -127,7 +129,7 @@ function DeliveryProofComponent() {
 								value={searchTerm}
 								onChange={(e) => {
 									setSearchTerm(e.target.value);
-									setPage(1)
+									setPage(1);
 								}}
 								className="pl-9 sm:w-64"
 							/>
@@ -199,7 +201,7 @@ function DeliveryProofComponent() {
 													</Button>
 												</TableCell>
 											</TableRow>
-										)
+										);
 									})
 								)}
 							</TableBody>
@@ -294,5 +296,5 @@ function DeliveryProofComponent() {
 				</DialogContent>
 			</Dialog>
 		</div>
-	)
+	);
 }

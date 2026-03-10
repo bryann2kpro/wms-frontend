@@ -68,9 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<AuthProvider>
-					<SidebarProvider defaultOpen={true}>
-						{children}
-					</SidebarProvider>
+					<SidebarProvider defaultOpen={true}>{children}</SidebarProvider>
 				</AuthProvider>
 				<TanStackDevtools
 					config={{

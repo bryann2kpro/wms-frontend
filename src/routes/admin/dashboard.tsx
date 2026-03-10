@@ -44,7 +44,7 @@ function DashboardComponent() {
 
 	const { data: queryData, loading } = useQuery<DashboardQueryData>(
 		DASHBOARD_QUERY,
-		{ fetchPolicy: "cache-and-network" }
+		{ fetchPolicy: "cache-and-network" },
 	);
 
 	const data: DashboardData | undefined =
@@ -103,7 +103,9 @@ function DashboardComponent() {
 			{/* Header */}
 			<div className="space-y-1">
 				<h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-				<p className="text-muted-foreground">Welcome back, {user?.displayName}</p>
+				<p className="text-muted-foreground">
+					Welcome back, {user?.displayName}
+				</p>
 			</div>
 
 			{/* KPI Cards */}
@@ -133,7 +135,10 @@ function DashboardComponent() {
 					<CardContent>
 						<div className="text-2xl font-bold">{stats.tosPulledToday}</div>
 						<p className="text-xs text-muted-foreground">
-							Last: {stats.tosLastPullTime ? new Date(stats.tosLastPullTime).toLocaleTimeString() : "N/A"}
+							Last:{" "}
+							{stats.tosLastPullTime
+								? new Date(stats.tosLastPullTime).toLocaleTimeString()
+								: "N/A"}
 						</p>
 					</CardContent>
 				</Card>
@@ -339,45 +344,70 @@ function DashboardComponent() {
 							<TableBody>
 								<TableRow>
 									<TableCell className="font-medium">BGRN-2024-001</TableCell>
-									<TableCell className="text-muted-foreground">ES Kuala Lumpur</TableCell>
+									<TableCell className="text-muted-foreground">
+										ES Kuala Lumpur
+									</TableCell>
 									<TableCell className="text-right">
-										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+										<Badge
+											variant="outline"
+											className="bg-green-500/10 text-green-600 border-green-500/20"
+										>
 											Completed
 										</Badge>
 									</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">BGRN-2024-002</TableCell>
-									<TableCell className="text-muted-foreground">ES Penang</TableCell>
+									<TableCell className="text-muted-foreground">
+										ES Penang
+									</TableCell>
 									<TableCell className="text-right">
-										<Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+										<Badge
+											variant="outline"
+											className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+										>
 											Pending
 										</Badge>
 									</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">BGRN-2024-003</TableCell>
-									<TableCell className="text-muted-foreground">ES Johor Bahru</TableCell>
+									<TableCell className="text-muted-foreground">
+										ES Johor Bahru
+									</TableCell>
 									<TableCell className="text-right">
-										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+										<Badge
+											variant="outline"
+											className="bg-green-500/10 text-green-600 border-green-500/20"
+										>
 											Completed
 										</Badge>
 									</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">BGRN-2024-004</TableCell>
-									<TableCell className="text-muted-foreground">ES Kuching</TableCell>
+									<TableCell className="text-muted-foreground">
+										ES Kuching
+									</TableCell>
 									<TableCell className="text-right">
-										<Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+										<Badge
+											variant="outline"
+											className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+										>
 											Pending
 										</Badge>
 									</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">BGRN-2024-005</TableCell>
-									<TableCell className="text-muted-foreground">ES Kota Kinabalu</TableCell>
+									<TableCell className="text-muted-foreground">
+										ES Kota Kinabalu
+									</TableCell>
 									<TableCell className="text-right">
-										<Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+										<Badge
+											variant="outline"
+											className="bg-green-500/10 text-green-600 border-green-500/20"
+										>
 											Completed
 										</Badge>
 									</TableCell>
@@ -392,7 +422,9 @@ function DashboardComponent() {
 					<CardHeader className="flex flex-row items-center justify-between">
 						<div>
 							<CardTitle>Purchase Orders from ES</CardTitle>
-							<CardDescription>In progress purchase orders from ES</CardDescription>
+							<CardDescription>
+								In progress purchase orders from ES
+							</CardDescription>
 						</div>
 						<Button variant="outline" size="sm" asChild>
 							<Link to="/">View All</Link>

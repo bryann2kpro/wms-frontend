@@ -124,7 +124,7 @@ export type DashboardQueryData = {
 
 /** Map GraphQL response to DashboardData shape (with Date objects) for existing UI */
 export function mapDashboardQueryToData(
-	raw: DashboardQueryData["dashboard"]
+	raw: DashboardQueryData["dashboard"],
 ): import("@/data/dashboard.mock-data").DashboardData {
 	return {
 		stats: {

@@ -1,56 +1,71 @@
 import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar as SidebarUi, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
-import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
+import {
+	Sidebar as SidebarUi,
+	SidebarContent,
+	SidebarGroup,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { allNavigationItems, type NavLinkSchemaType } from "@/constants/links";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
 	const location = useLocation();
-	
+
 	const { user } = useCurrentUser();
 	const searchParams = useSearch({
-		from: "/admin"
+		from: "/admin",
 	});
 
-	
-
 	const isActive = (href: string) => {
-        // Remove /en prefix if it exists in the pathname
-        const cleanPathname = location.pathname.replace(/^\/en/, '');
-        // Remove /en prefix if it exists in the href
-        const cleanHref = href.replace(/^\/en/, '');
-        
-        // Build the full URL with search params for comparison
-        const currentUrl = cleanPathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
-        
-        // Normalize URLs by removing trailing slashes and handling query parameters
-        const normalizedCurrentUrl = currentUrl.replace(/\/\?/, '?').replace(/\/$/, '');
-        const normalizedCleanHref = cleanHref.replace(/\/\?/, '?').replace(/\/$/, '');
-        
-        // Handle query parameters by extracting the path part
-        const pathnameWithoutQuery = cleanPathname.split('?')[0];
-        const hrefWithoutQuery = cleanHref.split('?')[0];
+		// Remove /en prefix if it exists in the pathname
+		const cleanPathname = location.pathname.replace(/^\/en/, "");
+		// Remove /en prefix if it exists in the href
+		const cleanHref = href.replace(/^\/en/, "");
 
-        if (href === '/admin/master-data') {
-            return pathnameWithoutQuery === hrefWithoutQuery;
-        }
-        
-        // For exact matches (including query parameters) - this should catch child items
-        if (normalizedCurrentUrl === normalizedCleanHref) {
-            // console.log('Exact match found:', { normalizedCurrentUrl, normalizedCleanHref });
-            return true;
-        }
-        
-        // For parent items, check if we're on a child page
-        // Only consider parent active if we're on a child page with the same base path
-        if (hrefWithoutQuery !== '/admin/application') {
-            return pathnameWithoutQuery === hrefWithoutQuery || pathnameWithoutQuery.startsWith(`${hrefWithoutQuery}/`);
-        }
-        
-        // Special handling for application parent - only active if we're on application page
-        return pathnameWithoutQuery === hrefWithoutQuery;
-    };
+		// Build the full URL with search params for comparison
+		const currentUrl =
+			cleanPathname +
+			(searchParams.toString() ? `?${searchParams.toString()}` : "");
+
+		// Normalize URLs by removing trailing slashes and handling query parameters
+		const normalizedCurrentUrl = currentUrl
+			.replace(/\/\?/, "?")
+			.replace(/\/$/, "");
+		const normalizedCleanHref = cleanHref
+			.replace(/\/\?/, "?")
+			.replace(/\/$/, "");
+
+		// Handle query parameters by extracting the path part
+		const pathnameWithoutQuery = cleanPathname.split("?")[0];
+		const hrefWithoutQuery = cleanHref.split("?")[0];
+
+		if (href === "/admin/master-data") {
+			return pathnameWithoutQuery === hrefWithoutQuery;
+		}
+
+		// For exact matches (including query parameters) - this should catch child items
+		if (normalizedCurrentUrl === normalizedCleanHref) {
+			// console.log('Exact match found:', { normalizedCurrentUrl, normalizedCleanHref });
+			return true;
+		}
+
+		// For parent items, check if we're on a child page
+		// Only consider parent active if we're on a child page with the same base path
+		if (hrefWithoutQuery !== "/admin/application") {
+			return (
+				pathnameWithoutQuery === hrefWithoutQuery ||
+				pathnameWithoutQuery.startsWith(`${hrefWithoutQuery}/`)
+			);
+		}
+
+		// Special handling for application parent - only active if we're on application page
+		return pathnameWithoutQuery === hrefWithoutQuery;
+	};
 
 	// Filter navigation based on permissions
 	const accessControl = (link: NavLinkSchemaType) => {

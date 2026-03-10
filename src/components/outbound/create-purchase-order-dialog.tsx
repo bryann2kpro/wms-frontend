@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { useQuery } from "@apollo/client/react";
 import {
 	Dialog,
@@ -70,7 +70,9 @@ export function CreatePurchaseOrderDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			{trigger != null ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
+			{trigger != null ? (
+				<DialogTrigger asChild>{trigger}</DialogTrigger>
+			) : null}
 			<DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
 				<DialogHeader className="space-y-1.5 px-6 pt-6 pb-4 border-b bg-muted/30">
 					<DialogTitle
@@ -83,9 +85,9 @@ export function CreatePurchaseOrderDialog({
 						id="create-po-dialog-description"
 						className="text-[13px] text-muted-foreground"
 					>
-						Enter the purchase order number, select an outlet, and add line items
-						(stock and quantity). Delivery date is set automatically by the
-						system.
+						Enter the purchase order number, select an outlet, and add line
+						items (stock and quantity). Delivery date is set automatically by
+						the system.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -112,9 +114,16 @@ export function CreatePurchaseOrderDialog({
 										</div>
 										<div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[2px]">
 											<div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-4 shadow-sm">
-												<Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden />
-												<p className="text-sm font-medium text-foreground">Creating purchase order...</p>
-												<p className="text-xs text-muted-foreground">Please wait</p>
+												<Loader2
+													className="h-10 w-10 animate-spin text-primary"
+													aria-hidden
+												/>
+												<p className="text-sm font-medium text-foreground">
+													Creating purchase order...
+												</p>
+												<p className="text-xs text-muted-foreground">
+													Please wait
+												</p>
 											</div>
 										</div>
 									</>
@@ -124,148 +133,169 @@ export function CreatePurchaseOrderDialog({
 									className="flex flex-col gap-0 border-0 p-0 m-0 min-w-0 disabled:opacity-70 disabled:pointer-events-none flex-1 overflow-hidden"
 									aria-busy={isSubmitting}
 								>
-					<FieldGroup className="flex flex-col gap-0 flex-1 min-h-0 overflow-hidden">
-						{/* Order details: two columns — 8px grid spacing (16/24) */}
-						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-6">
-							<form.Field
-								name="purchaseOrderNumber"
-								children={(field: any) => {
-									const isInvalid =
-										field.state.meta.isTouched && !field.state.meta.isValid;
-									return (
-										<Field data-invalid={isInvalid} className="space-y-2">
-											<FieldLabel htmlFor={field.name}>
-												Purchase Order Number
-											</FieldLabel>
-											<Input
-												id={field.name}
-												value={field.state.value}
-												placeholder="PO-2024-001"
-												onBlur={field.handleBlur}
-												onChange={(e) => field.handleChange(e.target.value)}
-												aria-invalid={isInvalid}
-												className="h-10 text-[13px]"
-											/>
-											{isInvalid && (
-												<FieldError errors={field.state.meta.errors} />
-											)}
-										</Field>
-									);
-								}}
-							/>
-
-							<form.Field
-								name="outletId"
-								children={(field: any) => {
-									const isInvalid =
-										field.state.meta.isTouched && !field.state.meta.isValid;
-									return (
-										<Field data-invalid={isInvalid} className="space-y-2">
-											<FieldLabel htmlFor={field.name}>Outlet</FieldLabel>
-											<OutletCombobox
-												id={field.name}
-												value={field.state.value}
-												outlets={outlets}
-												onOutletCreated={async () => {
-													await refetchOutlets();
-												}}
-												placeholder="Search or select outlet..."
-												aria-invalid={isInvalid}
-												onChange={(value) => {
-													const outlet = outlets.find(
-														(o: { outletId: string }) => o.outletId === value,
+									<FieldGroup className="flex flex-col gap-0 flex-1 min-h-0 overflow-hidden">
+										{/* Order details: two columns — 8px grid spacing (16/24) */}
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-6">
+											<form.Field
+												name="purchaseOrderNumber"
+												children={(field: any) => {
+													const isInvalid =
+														field.state.meta.isTouched &&
+														!field.state.meta.isValid;
+													return (
+														<Field
+															data-invalid={isInvalid}
+															className="space-y-2"
+														>
+															<FieldLabel htmlFor={field.name}>
+																Purchase Order Number
+															</FieldLabel>
+															<Input
+																id={field.name}
+																value={field.state.value}
+																placeholder="PO-2024-001"
+																onBlur={field.handleBlur}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
+																aria-invalid={isInvalid}
+																className="h-10 text-[13px]"
+															/>
+															{isInvalid && (
+																<FieldError errors={field.state.meta.errors} />
+															)}
+														</Field>
 													);
-													field.handleChange(value);
-													if (outlet) {
-														form.setFieldValue(
-															"outletName",
-															(outlet as { outletName: string }).outletName ?? value,
-														);
-													}
-													field.handleBlur();
 												}}
 											/>
-											{isInvalid && (
-												<FieldError errors={field.state.meta.errors} />
-											)}
-										</Field>
-									);
-								}}
-							/>
-						</div>
 
-						{/* Line items section */}
-						<form.Subscribe
-							selector={(state: any) => state.values.items ?? []}
-						>
-							{(items: CreatePurchaseOrderLineItem[]) => (
-								<Field className="flex flex-col flex-1 min-h-0 px-6 pb-4">
-									<div className="flex items-center justify-between gap-2 mb-2">
-										<FieldLabel className="text-[14px] font-semibold">
-											Line items (Stock &amp; Amount)
-										</FieldLabel>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											onClick={() => {
-												form.setFieldValue("items", [
-													...(items ?? []),
-													{ skuId: "", quantity: 1 },
-												]);
-											}}
+											<form.Field
+												name="outletId"
+												children={(field: any) => {
+													const isInvalid =
+														field.state.meta.isTouched &&
+														!field.state.meta.isValid;
+													return (
+														<Field
+															data-invalid={isInvalid}
+															className="space-y-2"
+														>
+															<FieldLabel htmlFor={field.name}>
+																Outlet
+															</FieldLabel>
+															<OutletCombobox
+																id={field.name}
+																value={field.state.value}
+																outlets={outlets}
+																onOutletCreated={async () => {
+																	await refetchOutlets();
+																}}
+																placeholder="Search or select outlet..."
+																aria-invalid={isInvalid}
+																onChange={(value) => {
+																	const outlet = outlets.find(
+																		(o: { outletId: string }) =>
+																			o.outletId === value,
+																	);
+																	field.handleChange(value);
+																	if (outlet) {
+																		form.setFieldValue(
+																			"outletName",
+																			(outlet as { outletName: string })
+																				.outletName ?? value,
+																		);
+																	}
+																	field.handleBlur();
+																}}
+															/>
+															{isInvalid && (
+																<FieldError errors={field.state.meta.errors} />
+															)}
+														</Field>
+													);
+												}}
+											/>
+										</div>
+
+										{/* Line items section */}
+										<form.Subscribe
+											selector={(state: any) => state.values.items ?? []}
 										>
-											<Plus className="mr-2 h-4 w-4" />
-											Add line
-										</Button>
-									</div>
-									<div className="rounded-xl border bg-card overflow-hidden flex-1 min-h-[140px] flex flex-col">
-										<Table>
-											<TableHeader>
-												<TableRow className="hover:bg-transparent border-b h-12">
-													<TableHead className="font-semibold text-[14px]">Stock (SKU)</TableHead>
-													<TableHead className="w-32 font-semibold text-[14px]">Quantity</TableHead>
-													<TableHead className="w-12" />
-												</TableRow>
-											</TableHeader>
-											<TableBody>
-												{(items ?? []).map((item, index) => (
-													<LineItemRow
-														key={index}
-														index={index}
-														item={item}
-														items={items ?? []}
-														form={form}
-														canRemove={(items ?? []).length > 1}
-													/>
-												))}
-											</TableBody>
-										</Table>
-									</div>
-								</Field>
-							)}
-						</form.Subscribe>
+											{(items: CreatePurchaseOrderLineItem[]) => (
+												<Field className="flex flex-col flex-1 min-h-0 px-6 pb-4">
+													<div className="flex items-center justify-between gap-2 mb-2">
+														<FieldLabel className="text-[14px] font-semibold">
+															Line items (Stock &amp; Amount)
+														</FieldLabel>
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															onClick={() => {
+																form.setFieldValue("items", [
+																	...(items ?? []),
+																	{ skuId: "", quantity: 1 },
+																]);
+															}}
+														>
+															<Plus className="mr-2 h-4 w-4" />
+															Add line
+														</Button>
+													</div>
+													<div className="rounded-xl border bg-card overflow-hidden flex-1 min-h-[140px] flex flex-col">
+														<Table>
+															<TableHeader>
+																<TableRow className="hover:bg-transparent border-b h-12">
+																	<TableHead className="font-semibold text-[14px]">
+																		Stock (SKU)
+																	</TableHead>
+																	<TableHead className="w-32 font-semibold text-[14px]">
+																		Quantity
+																	</TableHead>
+																	<TableHead className="w-12" />
+																</TableRow>
+															</TableHeader>
+															<TableBody>
+																{(items ?? []).map((item, index) => (
+																	<LineItemRow
+																		key={index}
+																		index={index}
+																		item={item}
+																		items={items ?? []}
+																		form={form}
+																		canRemove={(items ?? []).length > 1}
+																	/>
+																))}
+															</TableBody>
+														</Table>
+													</div>
+												</Field>
+											)}
+										</form.Subscribe>
 
-						{/* Notes */}
-						<form.Field
-							name="notes"
-							children={(field: any) => (
-								<Field className="px-6 pb-6 space-y-2">
-									<FieldLabel htmlFor={field.name} className="text-[14px] font-semibold">
-										Notes
-									</FieldLabel>
-									<Textarea
-										id={field.name}
-										value={field.state.value}
-										placeholder="Enter any additional notes..."
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
-										className="min-h-[72px] resize-none text-[13px]"
-									/>
-								</Field>
-							)}
-						/>
-					</FieldGroup>
+										{/* Notes */}
+										<form.Field
+											name="notes"
+											children={(field: any) => (
+												<Field className="px-6 pb-6 space-y-2">
+													<FieldLabel
+														htmlFor={field.name}
+														className="text-[14px] font-semibold"
+													>
+														Notes
+													</FieldLabel>
+													<Textarea
+														id={field.name}
+														value={field.state.value}
+														placeholder="Enter any additional notes..."
+														onBlur={field.handleBlur}
+														onChange={(e) => field.handleChange(e.target.value)}
+														className="min-h-[72px] resize-none text-[13px]"
+													/>
+												</Field>
+											)}
+										/>
+									</FieldGroup>
 								</fieldset>
 							</>
 						)}
@@ -314,8 +344,14 @@ function LineItemRow({
 	canRemove,
 }: {
 	index: number;
-	item: CreatePurchaseOrderLineItem & { skuCode?: string; description?: string };
-	items: (CreatePurchaseOrderLineItem & { skuCode?: string; description?: string })[];
+	item: CreatePurchaseOrderLineItem & {
+		skuCode?: string;
+		description?: string;
+	};
+	items: (CreatePurchaseOrderLineItem & {
+		skuCode?: string;
+		description?: string;
+	})[];
 	form: any;
 	canRemove: boolean;
 }) {
@@ -331,9 +367,7 @@ function LineItemRow({
 		: null;
 
 	const updateRow = (patch: Partial<typeof item>) => {
-		const next = items.map((it, i) =>
-			i === index ? { ...it, ...patch } : it,
-		);
+		const next = items.map((it, i) => (i === index ? { ...it, ...patch } : it));
 		form.setFieldValue("items", next);
 	};
 
@@ -350,10 +384,12 @@ function LineItemRow({
 						});
 					}}
 					placeholder="Select SKU..."
-					usedSkuCodes={items
-						.filter((_, i) => i !== index)
-						.map((it) => it.skuCode)
-						.filter(Boolean) as string[]}
+					usedSkuCodes={
+						items
+							.filter((_, i) => i !== index)
+							.map((it) => it.skuCode)
+							.filter(Boolean) as string[]
+					}
 				/>
 			</TableCell>
 			<TableCell className="align-middle py-2">
@@ -361,9 +397,7 @@ function LineItemRow({
 					type="number"
 					min={1}
 					value={item.quantity}
-					onChange={(e) =>
-						updateRow({ quantity: Number(e.target.value) || 1 })
-					}
+					onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
 					className="h-10 w-24 text-[13px]"
 				/>
 			</TableCell>

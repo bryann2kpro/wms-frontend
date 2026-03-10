@@ -473,7 +473,12 @@ export interface GrnItemForList {
 	receivedQuantity: number;
 	/** Display: warehouse name or rack (e.g. "A-01-2") */
 	location?: string;
-	rack?: { rackId: string; rackLevel: number | string; rackRow: string; rackColumn: string } | null;
+	rack?: {
+		rackId: string;
+		rackLevel: number | string;
+		rackRow: string;
+		rackColumn: string;
+	} | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */

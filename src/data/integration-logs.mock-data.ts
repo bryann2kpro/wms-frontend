@@ -30,7 +30,7 @@ export interface IntegrationLogFilters {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate mock integration logs
-let integrationLogs: IntegrationLog[] = Array.from({ length: 50 }, (_, i) => {
+const integrationLogs: IntegrationLog[] = Array.from({ length: 50 }, (_, i) => {
 	const actions: IntegrationAction[] = [
 		"TO_PULL",
 		"STOCK_SYNC",

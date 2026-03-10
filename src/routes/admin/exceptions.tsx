@@ -79,9 +79,12 @@ function skuToException(sku: Skus): Exception {
 	const date = sku.skuExpiryDate
 		? (() => {
 				const raw = sku.skuExpiryDate;
-				const ms = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
+				const ms =
+					typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
 				const d = new Date(ms);
-				return Number.isNaN(d.getTime()) ? new Date(sku.createdAt ?? Date.now()) : d;
+				return Number.isNaN(d.getTime())
+					? new Date(sku.createdAt ?? Date.now())
+					: d;
 			})()
 		: new Date(sku.createdAt ?? Date.now());
 	return {
@@ -157,19 +160,16 @@ function ExceptionsComponent() {
 		setRowApprovals((prev) => ({ ...prev, [id]: true }));
 	}, []);
 
-	const handleCloseAction = useCallback(
-		(exc: Exception) => {
-			// Demo: Replace closed qty with opening qty
-			setClosedQuantities((prev) => ({
-				...prev,
-				[exc.id]: {
-					dozen: exc.openingQtyDozen,
-					loss: exc.openingQtyLoss,
-				},
-			}));
-		},
-		[],
-	);
+	const handleCloseAction = useCallback((exc: Exception) => {
+		// Demo: Replace closed qty with opening qty
+		setClosedQuantities((prev) => ({
+			...prev,
+			[exc.id]: {
+				dozen: exc.openingQtyDozen,
+				loss: exc.openingQtyLoss,
+			},
+		}));
+	}, []);
 
 	const { data: skusData, loading: isLoading } = useQuery<
 		SkusQueryData,
@@ -374,18 +374,24 @@ function ExceptionsComponent() {
 									<TableHead className="text-center">
 										Opening Qty
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
 									<TableHead>Stock Count Date</TableHead>
 									<TableHead className="text-center">
 										Qty
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
 									<TableHead className="text-center">
 										Diff
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
 									<TableHead>Stock Count</TableHead>
 									<TableHead>Reason</TableHead>
@@ -430,8 +436,7 @@ function ExceptionsComponent() {
 												: baseClosed.loss;
 										const diffDozen = exc.openingQtyDozen - closedDozen;
 										const diffLoss = exc.openingQtyLoss - closedLoss;
-										const isApproved =
-											rowApprovals[exc.id] ?? exc.isApproved;
+										const isApproved = rowApprovals[exc.id] ?? exc.isApproved;
 										const displayDozen =
 											rowManualAmounts[exc.id]?.dozen ?? baseClosed.dozen;
 										const displayLoss =

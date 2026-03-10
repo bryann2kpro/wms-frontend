@@ -5,12 +5,12 @@ import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { useNavigate } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -42,20 +42,28 @@ export function Header() {
 					<span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
 				</Button>
 
-
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button variant="ghost" className="relative h-10 w-10 rounded-full">
 							<Avatar className="h-10 w-10">
-								<AvatarImage src={`http://210.187.49.131:913/9.x/glass/svg?seed=${user?.displayName}`} alt={user?.displayName ?? ""} />
-								<AvatarFallback>{user?.displayName?.charAt(0) ?? <UserIcon className="h-4 w-4" />}</AvatarFallback>
+								<AvatarImage
+									src={`http://210.187.49.131:913/9.x/glass/svg?seed=${user?.displayName}`}
+									alt={user?.displayName ?? ""}
+								/>
+								<AvatarFallback>
+									{user?.displayName?.charAt(0) ?? (
+										<UserIcon className="h-4 w-4" />
+									)}
+								</AvatarFallback>
 							</Avatar>
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent className="w-56" align="end" forceMount>
 						<DropdownMenuLabel className="font-normal">
 							<div className="flex flex-col space-y-1">
-								<p className="text-sm font-medium leading-none">{user?.displayName}</p>
+								<p className="text-sm font-medium leading-none">
+									{user?.displayName}
+								</p>
 								<p className="text-xs leading-none text-muted-foreground">
 									{user?.email}
 								</p>

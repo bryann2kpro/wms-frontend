@@ -206,7 +206,9 @@ const GQL_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	CANCELLED: "cancel",
 };
 
-export function mapGqlToPurchaseOrderDetail(po: PurchaseOrder): PurchaseOrderDetail {
+export function mapGqlToPurchaseOrderDetail(
+	po: PurchaseOrder,
+): PurchaseOrderDetail {
 	const status: PurchaseOrderStatus =
 		GQL_STATUS_TO_PO_STATUS[po.status] ?? "other";
 
@@ -241,7 +243,9 @@ export function mapGqlToPurchaseOrderList(
 ): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
-	const items: PurchaseOrderDetail[] = (raw.query ?? []).map(mapGqlToPurchaseOrderDetail);
+	const items: PurchaseOrderDetail[] = (raw.query ?? []).map(
+		mapGqlToPurchaseOrderDetail,
+	);
 
 	const byStatus: Record<PurchaseOrderStatus, number> = {
 		preparing: 0,

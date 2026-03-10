@@ -16,11 +16,7 @@ import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
-import {
-	type DOItem,
-	type DOStatusFilter,
-	getDOs,
-} from "@/data/do.mock-data";
+import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 
 const PAGE_TITLE = "Supplier DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -87,10 +83,7 @@ function DOWorkQueueComponent() {
 	// Paginate the flattened items
 	const totalItems = allItems.length;
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-	const paginatedItems = allItems.slice(
-		(page - 1) * pageSize,
-		page * pageSize,
-	);
+	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
 
 	const tableColSpan = 11;
 
@@ -257,10 +250,7 @@ function DOWorkQueueComponent() {
 					>
 						<div>
 							Showing{" "}
-							<span className="font-medium">
-								{(page - 1) * pageSize + 1}
-							</span>{" "}
-							-{" "}
+							<span className="font-medium">{(page - 1) * pageSize + 1}</span> -{" "}
 							<span className="font-medium">
 								{Math.min(page * pageSize, totalItems)}
 							</span>{" "}

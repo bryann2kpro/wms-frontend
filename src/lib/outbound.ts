@@ -27,7 +27,9 @@ const createPurchaseOrderLineItemSchema = z.object({
 	quantity: z.coerce.number().min(1, "Amount must be at least 1"),
 });
 
-export type CreatePurchaseOrderLineItem = z.infer<typeof createPurchaseOrderLineItemSchema>;
+export type CreatePurchaseOrderLineItem = z.infer<
+	typeof createPurchaseOrderLineItemSchema
+>;
 
 export const createPurchaseOrderSchema = z.object({
 	purchaseOrderNumber: z
@@ -74,7 +76,9 @@ export function formatStatus(status: string): string {
 	return status;
 }
 
-export function getPurchaseOrderStatusColor(status: PurchaseOrderStatus): string {
+export function getPurchaseOrderStatusColor(
+	status: PurchaseOrderStatus,
+): string {
 	const colors: Record<PurchaseOrderStatus, string> = {
 		preparing:
 			"!text-yellow-600 data-[highlighted]:!bg-yellow-500/10 data-[highlighted]:!text-yellow-700 focus:!bg-yellow-500/10 focus:!text-yellow-700",
@@ -84,7 +88,7 @@ export function getPurchaseOrderStatusColor(status: PurchaseOrderStatus): string
 			"!text-indigo-600 data-[highlighted]:!bg-indigo-500/10 data-[highlighted]:!text-indigo-700 focus:!bg-indigo-500/10 focus:!text-indigo-700",
 		cancel:
 			"!text-red-600 data-[highlighted]:!bg-red-500/10 data-[highlighted]:!text-red-700 focus:!bg-red-500/10 focus:!text-red-700",
-		"return":
+		return:
 			"!text-orange-600 data-[highlighted]:!bg-orange-500/10 data-[highlighted]:!text-orange-700 focus:!bg-orange-500/10 focus:!text-orange-700",
 		other:
 			"!text-gray-600 data-[highlighted]:!bg-gray-500/10 data-[highlighted]:!text-gray-700 focus:!bg-gray-500/10 focus:!text-gray-700",

@@ -39,7 +39,7 @@ export const getRouter = () => {
 			new HttpLink({
 				uri: graphqlUri,
 				headers: { "Content-Type": "application/json" },
-			})
+			}),
 		),
 	});
 

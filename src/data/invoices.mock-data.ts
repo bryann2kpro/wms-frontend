@@ -11,13 +11,7 @@ export interface InvoiceItem {
 	totalPrice?: number;
 }
 
-const regions = [
-	"Klang Valley",
-	"Perlis",
-	"North",
-	"South",
-	"East Coast",
-]
+const regions = ["Klang Valley", "Perlis", "North", "South", "East Coast"];
 
 export interface Invoice {
 	id: string;
@@ -147,7 +141,8 @@ export async function getInvoices(
 ): Promise<InvoiceListResult> {
 	await delay(300);
 
-	const { page, pageSize, search, status, region, outlet, dateFrom, dateTo } = filters;
+	const { page, pageSize, search, status, region, outlet, dateFrom, dateTo } =
+		filters;
 
 	let filtered = [...invoices];
 
@@ -205,21 +200,25 @@ export interface CreateInvoiceInput {
 	outlet: string;
 	outletAddress?: string;
 	issuedDate: Date;
-	items: Array<{ sku: string; description: string; quantity: number; unitPrice: number }>;
+	items: Array<{
+		sku: string;
+		description: string;
+		quantity: number;
+		unitPrice: number;
+	}>;
 	subtotal?: number;
 	tax?: number;
 	notes?: string;
 }
 
-export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
+export async function createInvoice(
+	input: CreateInvoiceInput,
+): Promise<Invoice> {
 	await delay(300);
 
 	const subtotal =
 		input.subtotal ??
-		input.items.reduce(
-			(sum, item) => sum + item.quantity * item.unitPrice,
-			0,
-		);
+		input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 	const tax = input.tax ?? subtotal * 0.1; // 10% tax
 	const totalAmount = subtotal + tax;
 

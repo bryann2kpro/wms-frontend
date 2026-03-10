@@ -3,12 +3,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,7 +13,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { RefreshCw, HelpCircle, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import {
+	RefreshCw,
+	HelpCircle,
+	ChevronLeft,
+	ChevronRight,
+	ImageOff,
+} from "lucide-react";
 import {
 	type PurchaseOrderDetail,
 	type PurchaseOrderStatus,
@@ -33,7 +34,7 @@ import {
 	formatStatus,
 } from "@/lib/outbound";
 import {
-	CreatePurchaseOrderDialog,
+	type CreatePurchaseOrderDialog,
 	CreatePurchaseOrderDialogTrigger,
 	ViewPurchaseOrderDialog,
 	AcceptPurchaseOrderDialog,
@@ -70,9 +71,9 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-2.png`,
 		description: (
 			<>
-				Click <strong>Create Purchase Order</strong> to add a new order.
-				Select the outlet, add line items with SKU and quantity. The delivery
-				date is set automatically.
+				Click <strong>Create Purchase Order</strong> to add a new order. Select
+				the outlet, add line items with SKU and quantity. The delivery date is
+				set automatically.
 			</>
 		),
 	},
@@ -81,8 +82,8 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-3.png`,
 		description: (
 			<>
-				Click on any row in the table to view full order details including
-				line items, outlet info, and current status.
+				Click on any row in the table to view full order details including line
+				items, outlet info, and current status.
 			</>
 		),
 	},
@@ -92,8 +93,8 @@ const OUTBOUND_HELP_STEPS: Array<{
 		description: (
 			<>
 				Use the <strong>Accept</strong> button to move an order to "To Ship"
-				status. Use <strong>Reject</strong> to cancel an order — you'll need
-				to provide a reason.
+				status. Use <strong>Reject</strong> to cancel an order — you'll need to
+				provide a reason.
 			</>
 		),
 	},
@@ -102,9 +103,9 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-5.png`,
 		description: (
 			<>
-				Click <strong>Refresh from NetSuite</strong> to sync the latest
-				purchase orders from the ERP system. This updates the list with any
-				new or changed orders.
+				Click <strong>Refresh from NetSuite</strong> to sync the latest purchase
+				orders from the ERP system. This updates the list with any new or
+				changed orders.
 			</>
 		),
 	},
@@ -115,7 +116,11 @@ function HelpStepImage({
 	src,
 	stepNumber,
 	alt,
-}: { src: string; stepNumber: number; alt?: string }) {
+}: {
+	src: string;
+	stepNumber: number;
+	alt?: string;
+}) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
@@ -123,9 +128,7 @@ function HelpStepImage({
 				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
 					<ImageOff className="h-6 w-6" />
 				</span>
-				<span>
-					Add screenshot: public/help/outbound/step-{stepNumber}.png
-				</span>
+				<span>Add screenshot: public/help/outbound/step-{stepNumber}.png</span>
 			</div>
 		);
 	}
@@ -177,7 +180,12 @@ function OutboundRouteComponent() {
 			outletId: "",
 			outletName: "",
 			notes: "",
-			items: [{ skuId: "", quantity: 1 }] as { skuId: string; skuCode?: string; description?: string; quantity: number }[],
+			items: [{ skuId: "", quantity: 1 }] as {
+				skuId: string;
+				skuCode?: string;
+				description?: string;
+				quantity: number;
+			}[],
 		},
 		validators: {
 			onChange: createPurchaseOrderSchema as any,
@@ -302,10 +310,7 @@ function OutboundRouteComponent() {
 												<ChevronRight className="h-4 w-4 ml-0.5" />
 											</Button>
 										) : (
-											<Button
-												size="sm"
-												onClick={() => setIsHelpOpen(false)}
-											>
+											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
 												Got it
 											</Button>
 										)}
@@ -318,7 +323,9 @@ function OutboundRouteComponent() {
 						<Button
 							variant="outline"
 							onClick={() => {
-								queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+								queryClient.invalidateQueries({
+									queryKey: ["purchase-orders-list"],
+								});
 							}}
 							aria-label="Refresh purchase orders from NetSuite"
 						>
@@ -329,42 +336,49 @@ function OutboundRouteComponent() {
 					<CreatePurchaseOrderDialogTrigger
 						open={isCreateOpen}
 						onOpenChange={setIsCreateOpen}
-						form={form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]}
+						form={
+							form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]
+						}
 						createMutation={createMutation}
 					/>
 				</div>
 			</header>
 
-			<div className="grid gap-4 md:grid-cols-5" role="region" aria-label="Purchase order summary by status">
-				{isSummaryLoading ? (
-					purchaseOrderStatuses.map((status) => (
-						<Card key={status}>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium">
-									{formatStatus(status)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Skeleton className="h-8 w-12" aria-hidden />
-							</CardContent>
-						</Card>
-					))
-				) : (
-					purchaseOrderStatuses.map((status) => (
-						<Card key={status} className="transition-colors hover:bg-muted/30">
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium">
-									{formatStatus(status)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold tabular-nums">
-									{summary?.byStatus[status] ?? 0}
-								</div>
-							</CardContent>
-						</Card>
-					))
-				)}
+			<div
+				className="grid gap-4 md:grid-cols-5"
+				role="region"
+				aria-label="Purchase order summary by status"
+			>
+				{isSummaryLoading
+					? purchaseOrderStatuses.map((status) => (
+							<Card key={status}>
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm font-medium">
+										{formatStatus(status)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<Skeleton className="h-8 w-12" aria-hidden />
+								</CardContent>
+							</Card>
+						))
+					: purchaseOrderStatuses.map((status) => (
+							<Card
+								key={status}
+								className="transition-colors hover:bg-muted/30"
+							>
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm font-medium">
+										{formatStatus(status)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold tabular-nums">
+										{summary?.byStatus[status] ?? 0}
+									</div>
+								</CardContent>
+							</Card>
+						))}
 			</div>
 
 			<OutboundListCard

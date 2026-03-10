@@ -84,16 +84,38 @@ import { Label } from "@/components/ui/label";
 /** Get a user-facing message from Apollo or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
-			.graphQLErrors?.[0];
-		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const first = (
+			err as {
+				graphQLErrors?: Array<{
+					message?: string;
+					extensions?: { code?: string };
+				}>;
+			}
+		).graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
 		const gql = first?.message;
-		if (gql) return toUserFriendlyMessage(gql, "Something went wrong. Please try again.");
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Something went wrong. Please try again.",
+			);
 	}
-	if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
-		return toUserFriendlyMessage((err as Error).message, "Something went wrong. Please try again.");
+	if (
+		err &&
+		typeof err === "object" &&
+		"message" in err &&
+		typeof (err as Error).message === "string"
+	)
+		return toUserFriendlyMessage(
+			(err as Error).message,
+			"Something went wrong. Please try again.",
+		);
 	if (err instanceof Error)
-		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+		return toUserFriendlyMessage(
+			err.message,
+			"Something went wrong. Please try again.",
+		);
 	return "Something went wrong. Please try again.";
 }
 
@@ -127,7 +149,9 @@ function normalizeFieldErrors(
 	errors: unknown[],
 ): Array<{ message?: string } | undefined> {
 	return errors.map((e) =>
-		typeof e === "string" ? { message: e } : (e as { message?: string } | undefined),
+		typeof e === "string"
+			? { message: e }
+			: (e as { message?: string } | undefined),
 	);
 }
 
@@ -139,7 +163,11 @@ function CreateRackDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (v: { rackRow: string; rackColumn: string; rackLevel: string }) => void;
+	onSubmit: (v: {
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}) => void;
 	loading: boolean;
 }) {
 	const [rackRow, setRackRow] = useState("");
@@ -157,7 +185,9 @@ function CreateRackDialog({
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Create rack</DialogTitle>
-					<DialogDescription>Add a new rack location (row, column, level).</DialogDescription>
+					<DialogDescription>
+						Add a new rack location (row, column, level).
+					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
@@ -194,7 +224,10 @@ function CreateRackDialog({
 					</Button>
 					<Button
 						disabled={
-							!rackRow.trim() || !rackColumn.trim() || !rackLevel.trim() || loading
+							!rackRow.trim() ||
+							!rackColumn.trim() ||
+							!rackLevel.trim() ||
+							loading
 						}
 						onClick={() =>
 							onSubmit({
@@ -228,7 +261,12 @@ function GRNLineRow({
 	onItemsChange: (newItems: GRNLineItemForm[]) => void;
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
-	racks: Array<{ rackId: string; rackRow: string; rackColumn: string; rackLevel: string }>;
+	racks: Array<{
+		rackId: string;
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}>;
 	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
 	const rackIds = item.rackIds ?? [];
@@ -374,7 +412,9 @@ function GRNLineRow({
 				<div className="flex flex-wrap items-center gap-1.5">
 					{rackIds.map((rid) => {
 						const r = racks.find((x) => x.rackId === rid);
-						const label = r ? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}` : rid;
+						const label = r
+							? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+							: rid;
 						return (
 							<Badge
 								key={rid}
@@ -402,7 +442,12 @@ function GRNLineRow({
 					})}
 					<Popover>
 						<PopoverTrigger asChild>
-							<Button type="button" variant="outline" size="sm" className="h-7 gap-1">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-7 gap-1"
+							>
 								<Plus className="h-3.5 w-3.5" />
 								Add rack
 							</Button>
@@ -481,9 +526,18 @@ export type GrnFormDialogProps = {
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	/** Warehouses for warehouse dropdown (create & edit) */
-	warehouses: Array<{ warehouseId: string; warehouseCode?: string | null; warehouseName: string }>;
+	warehouses: Array<{
+		warehouseId: string;
+		warehouseCode?: string | null;
+		warehouseName: string;
+	}>;
 	/** Racks for rack dropdown per line item (create & edit) */
-	racks: Array<{ rackId: string; rackRow: string; rackColumn: string; rackLevel: string }>;
+	racks: Array<{
+		rackId: string;
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}>;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -521,7 +575,9 @@ export function GrnFormDialog({
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const [createRackOpen, setCreateRackOpen] = useState(false);
-	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<number | null>(null);
+	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<
+		number | null
+	>(null);
 
 	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
 		onCompleted: () => {
@@ -530,21 +586,25 @@ export function GrnFormDialog({
 		},
 	});
 
-	const [deleteGRN, { loading: deleteLoading }] = useMutation(DELETE_GRN_MUTATION, {
-		onError: (err) => {
-			toast.error(getErrorMessage(err));
+	const [deleteGRN, { loading: deleteLoading }] = useMutation(
+		DELETE_GRN_MUTATION,
+		{
+			onError: (err) => {
+				toast.error(getErrorMessage(err));
+			},
+			onCompleted: () => {
+				onSuccess?.();
+				onOpenChange(false);
+			},
 		},
-		onCompleted: () => {
-			onSuccess?.();
-			onOpenChange(false);
-		},
-	});
+	);
 
 	const createdBy = user?.id ?? "";
-	const updateItemsWithRackRef = useRef<((lineIndex: number, rackId: string) => void) | null>(null);
-	const [createRack, { loading: createRackLoading }] = useMutation<CreateRackMutationData>(
-		CREATE_RACK_MUTATION,
-		{
+	const updateItemsWithRackRef = useRef<
+		((lineIndex: number, rackId: string) => void) | null
+	>(null);
+	const [createRack, { loading: createRackLoading }] =
+		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
 			onError: (err) => toast.error(getErrorMessage(err)),
 			onCompleted: (data) => {
 				const rack = data?.createRack;
@@ -556,8 +616,7 @@ export function GrnFormDialog({
 					toast.success("Rack created.");
 				}
 			},
-		},
-	);
+		});
 
 	const form = useForm({
 		defaultValues: {
@@ -572,10 +631,14 @@ export function GrnFormDialog({
 		validators: {
 			onSubmit: ({ value }) => {
 				const fields: Partial<Record<string, string>> = {};
-				if (!value.grnNumber?.trim()) fields.grnNumber = "GRN Number is required";
-				if (!value.poReference?.trim()) fields.poReference = "PO Reference is required";
-				if (!value.supplierDO?.trim()) fields.supplierDO = "Supplier DO is required";
-				if (!value.receivedDate?.trim()) fields.receivedDate = "Received Date/Time is required";
+				if (!value.grnNumber?.trim())
+					fields.grnNumber = "GRN Number is required";
+				if (!value.poReference?.trim())
+					fields.poReference = "PO Reference is required";
+				if (!value.supplierDO?.trim())
+					fields.supplierDO = "Supplier DO is required";
+				if (!value.receivedDate?.trim())
+					fields.receivedDate = "Received Date/Time is required";
 				const items = value.items ?? [];
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
@@ -587,13 +650,13 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingExpiry = items.find((i) => !(i.expiryDate ?? "").trim());
+						const missingExpiry = items.find(
+							(i) => !(i.expiryDate ?? "").trim(),
+						);
 						if (missingExpiry) {
 							fields.items = "Each line item must have an expiry date.";
 						} else {
-							const missingRack = items.find(
-								(i) => !(i.rackIds ?? []).length,
-							);
+							const missingRack = items.find((i) => !(i.rackIds ?? []).length);
 							if (missingRack) {
 								fields.items = "Each line item must have at least one rack.";
 							}
@@ -601,7 +664,9 @@ export function GrnFormDialog({
 					}
 				}
 				if (Object.keys(fields).length > 0) {
-					toast.error("Please enter all mandatory fields and ensure line item quantities are valid.");
+					toast.error(
+						"Please enter all mandatory fields and ensure line item quantities are valid.",
+					);
 					return { fields };
 				}
 				return undefined;
@@ -640,7 +705,9 @@ export function GrnFormDialog({
 			}
 			// Edit mode
 			if (!grn?.id) return;
-			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
+			const parsedDate = value.receivedDate
+				? new Date(value.receivedDate)
+				: null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
 				await updateGRN({
@@ -658,11 +725,16 @@ export function GrnFormDialog({
 							warehouseId: value.warehouseId?.trim() || undefined,
 							items: (value.items ?? []).map((i) => {
 								const uomId = i.uom
-									? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+									? (stockUnits.find((u) => u.unitCode === i.uom)
+											?.stockUnitId ?? i.uom)
 									: undefined;
-								const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
+								const rackIds = (i.rackIds ?? []).filter((id) =>
+									(id ?? "").trim(),
+								);
 								return {
-									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
+									skuId:
+										skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
+										undefined,
 									skuCode: i.skuCode,
 									skuDescription: i.description ?? undefined,
 									qty: String(i.carton),
@@ -688,15 +760,13 @@ export function GrnFormDialog({
 				const sku = skuOptions.find((s) => s.skuCode === it.skuCode);
 				const uomUnit = sku
 					? stockUnits.find(
-						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom
-					)
+							(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
+						)
 					: undefined;
 				const rack = it.rack;
 				const rackIds =
-					(it as { rackIds?: string[] }).rackIds ??
-					(rack ? [rack.rackId] : []);
-				const expiryDate =
-					(it as { expiryDate?: string }).expiryDate ?? "";
+					(it as { rackIds?: string[] }).rackIds ?? (rack ? [rack.rackId] : []);
+				const expiryDate = (it as { expiryDate?: string }).expiryDate ?? "";
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -711,7 +781,7 @@ export function GrnFormDialog({
 			form.reset({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
-				supplierDO: (grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "",
+				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
@@ -742,7 +812,9 @@ export function GrnFormDialog({
 			(i: { rackIds?: string[] }) => !(i.rackIds ?? []).length,
 		);
 		if (missingRack) {
-			toast.error("Each line item must have at least one rack before submitting for approval.");
+			toast.error(
+				"Each line item must have at least one rack before submitting for approval.",
+			);
 			return;
 		}
 		updateGRN({
@@ -755,7 +827,11 @@ export function GrnFormDialog({
 
 	const handleDelete = () => {
 		if (!grn?.id) return;
-		if (!window.confirm("Delete this GRN and all its items? This cannot be undone."))
+		if (
+			!window.confirm(
+				"Delete this GRN and all its items? This cannot be undone.",
+			)
+		)
 			return;
 		deleteGRN({ variables: { id: grn.id } });
 	};
@@ -776,7 +852,9 @@ export function GrnFormDialog({
 					<Package className="h-5 w-5 text-primary" />
 					{title}
 				</DialogTitle>
-				<DialogDescription className="text-base">{description}</DialogDescription>
+				<DialogDescription className="text-base">
+					{description}
+				</DialogDescription>
 			</DialogHeader>
 			<Separator />
 			{(isCreate || grn) && (
@@ -804,18 +882,26 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>GRN Number</FieldLabel>
+															<FieldLabel htmlFor={field.name}>
+																GRN Number
+															</FieldLabel>
 															<Input
 																id={field.name}
 																value={field.state.value}
 																placeholder="GRN-2024-001"
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																required
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
-																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+																<FieldError
+																	errors={normalizeFieldErrors(
+																		field.state.meta.errors,
+																	)}
+																/>
 															)}
 														</Field>
 													);
@@ -826,18 +912,26 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>PO Reference</FieldLabel>
+															<FieldLabel htmlFor={field.name}>
+																PO Reference
+															</FieldLabel>
 															<Input
 																id={field.name}
 																value={field.state.value}
 																placeholder="PO-2024-001"
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																required
 																aria-invalid={isInvalid}
 															/>
 															{isInvalid && (
-																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+																<FieldError
+																	errors={normalizeFieldErrors(
+																		field.state.meta.errors,
+																	)}
+																/>
 															)}
 														</Field>
 													);
@@ -849,18 +943,26 @@ export function GrnFormDialog({
 												const isInvalid = field.state.meta.errors.length > 0;
 												return (
 													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name}>Supplier DO</FieldLabel>
+														<FieldLabel htmlFor={field.name}>
+															Supplier DO
+														</FieldLabel>
 														<Input
 															id={field.name}
 															value={field.state.value}
 															placeholder="DO-2024-001"
 															onBlur={field.handleBlur}
 															required
-															onChange={(e) => field.handleChange(e.target.value)}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
 															aria-invalid={isInvalid}
 														/>
 														{isInvalid && (
-															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+															<FieldError
+																errors={normalizeFieldErrors(
+																	field.state.meta.errors,
+																)}
+															/>
 														)}
 													</Field>
 												);
@@ -883,12 +985,18 @@ export function GrnFormDialog({
 															type="datetime-local"
 															value={field.state.value}
 															onBlur={field.handleBlur}
-															onChange={(e) => field.handleChange(e.target.value)}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
 															required
 															aria-invalid={isInvalid}
 														/>
 														{isInvalid && (
-															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+															<FieldError
+																errors={normalizeFieldErrors(
+																	field.state.meta.errors,
+																)}
+															/>
 														)}
 													</Field>
 												);
@@ -912,7 +1020,8 @@ export function GrnFormDialog({
 										</div>
 										<form.Field name="items">
 											{(field) => {
-												const items = (field.state.value ?? []) as GRNLineItemForm[];
+												const items = (field.state.value ??
+													[]) as GRNLineItemForm[];
 												return (
 													<Button
 														type="button"
@@ -943,108 +1052,121 @@ export function GrnFormDialog({
 									</div>
 								</CardHeader>
 								<CardContent>
-										<form.Field name="items">
-											{(field) => {
-												const items = (field.state.value ?? []) as GRNLineItemForm[];
-												updateItemsWithRackRef.current = (lineIndex, rackId) => {
-													const current = (field.state.value ?? []) as GRNLineItemForm[];
-													if (current[lineIndex] == null) return;
-													const next = [...current];
-													const existing = next[lineIndex].rackIds ?? [];
-													if (existing.includes(rackId)) return;
-													next[lineIndex] = {
-														...next[lineIndex],
-														rackIds: [...existing, rackId],
-													};
-													field.handleChange(next);
+									<form.Field name="items">
+										{(field) => {
+											const items = (field.state.value ??
+												[]) as GRNLineItemForm[];
+											updateItemsWithRackRef.current = (lineIndex, rackId) => {
+												const current = (field.state.value ??
+													[]) as GRNLineItemForm[];
+												if (current[lineIndex] == null) return;
+												const next = [...current];
+												const existing = next[lineIndex].rackIds ?? [];
+												if (existing.includes(rackId)) return;
+												next[lineIndex] = {
+													...next[lineIndex],
+													rackIds: [...existing, rackId],
 												};
+												field.handleChange(next);
+											};
 											return (
 												<>
-												<div className="rounded-lg border">
-													<Table>
-														<TableHeader>
-															<TableRow>
-																<TableHead>SKU</TableHead>
-																<TableHead>Description</TableHead>
-																<TableHead>Carton</TableHead>
-																<TableHead>Loss</TableHead>
-																<TableHead>Expiry date *</TableHead>
-																<TableHead>UOM</TableHead>
-																<TableHead>Racks *</TableHead>
-																<TableHead className="text-right w-[80px]">
-																	Actions
-																</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{items.length === 0 ? (
+													<div className="rounded-lg border">
+														<Table>
+															<TableHeader>
 																<TableRow>
-																	<TableCell
-																		colSpan={8}
-																		className="h-40 text-center"
-																	>
-																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
-																			<div className="rounded-full bg-muted p-3">
-																				<Package className="h-10 w-10 opacity-60" />
-																			</div>
-																			<div>
-																				<p className="text-sm font-medium">No line items yet</p>
-																				<p className="text-xs mt-1">
-																					Click &quot;Add Line Item&quot; above to add your first
-																					item, then fill in the table
-																				</p>
-																			</div>
-																		</div>
-																	</TableCell>
+																	<TableHead>SKU</TableHead>
+																	<TableHead>Description</TableHead>
+																	<TableHead>Carton</TableHead>
+																	<TableHead>Loss</TableHead>
+																	<TableHead>Expiry date *</TableHead>
+																	<TableHead>UOM</TableHead>
+																	<TableHead>Racks *</TableHead>
+																	<TableHead className="text-right w-[80px]">
+																		Actions
+																	</TableHead>
 																</TableRow>
-															) : (
-																items.map((item, index) => (
-																	<GRNLineRow
-																		key={`line-${index}-${item.skuCode || "new"}`}
-																		item={item}
-																		index={index}
-																		items={items}
-																		onItemsChange={field.handleChange}
-																		skuOptions={skuOptions}
-																		stockUnits={stockUnits}
-																		racks={racks}
-																		onOpenCreateRack={(lineIndex) => {
-																			setCreateRackForLineIndex(lineIndex);
-																			setCreateRackOpen(true);
-																		}}
-																	/>
-																))
-															)}
-														</TableBody>
-													</Table>
-												</div>
-												{field.state.meta.errors.length > 0 && (
-													<p className="text-sm text-destructive mt-2">
-														{field.state.meta.errors.map((e) => (typeof e === "string" ? e : (e as unknown as { message?: string }).message)).filter(Boolean).join(" ")}
-													</p>
-												)}
-												<CreateRackDialog
-													open={createRackOpen}
-													onOpenChange={(open) => {
-														setCreateRackOpen(open);
-														if (!open) setCreateRackForLineIndex(null);
-													}}
-													onSubmit={(values) =>
-														createRack({
-															variables: {
-																input: {
-																	rackRow: values.rackRow,
-																	rackColumn: values.rackColumn,
-																	rackLevel: values.rackLevel,
-																	createdBy,
-																	updatedBy: createdBy,
+															</TableHeader>
+															<TableBody>
+																{items.length === 0 ? (
+																	<TableRow>
+																		<TableCell
+																			colSpan={8}
+																			className="h-40 text-center"
+																		>
+																			<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+																				<div className="rounded-full bg-muted p-3">
+																					<Package className="h-10 w-10 opacity-60" />
+																				</div>
+																				<div>
+																					<p className="text-sm font-medium">
+																						No line items yet
+																					</p>
+																					<p className="text-xs mt-1">
+																						Click &quot;Add Line Item&quot;
+																						above to add your first item, then
+																						fill in the table
+																					</p>
+																				</div>
+																			</div>
+																		</TableCell>
+																	</TableRow>
+																) : (
+																	items.map((item, index) => (
+																		<GRNLineRow
+																			key={`line-${index}-${item.skuCode || "new"}`}
+																			item={item}
+																			index={index}
+																			items={items}
+																			onItemsChange={field.handleChange}
+																			skuOptions={skuOptions}
+																			stockUnits={stockUnits}
+																			racks={racks}
+																			onOpenCreateRack={(lineIndex) => {
+																				setCreateRackForLineIndex(lineIndex);
+																				setCreateRackOpen(true);
+																			}}
+																		/>
+																	))
+																)}
+															</TableBody>
+														</Table>
+													</div>
+													{field.state.meta.errors.length > 0 && (
+														<p className="text-sm text-destructive mt-2">
+															{field.state.meta.errors
+																.map((e) =>
+																	typeof e === "string"
+																		? e
+																		: (e as unknown as { message?: string })
+																				.message,
+																)
+																.filter(Boolean)
+																.join(" ")}
+														</p>
+													)}
+													<CreateRackDialog
+														open={createRackOpen}
+														onOpenChange={(open) => {
+															setCreateRackOpen(open);
+															if (!open) setCreateRackForLineIndex(null);
+														}}
+														onSubmit={(values) =>
+															createRack({
+																variables: {
+																	input: {
+																		rackRow: values.rackRow,
+																		rackColumn: values.rackColumn,
+																		rackLevel: values.rackLevel,
+																		createdBy,
+																		updatedBy: createdBy,
+																	},
 																},
-															},
-														})
-													}
-													loading={createRackLoading}
-												/>
-											</>
+															})
+														}
+														loading={createRackLoading}
+													/>
+												</>
 											);
 										}}
 									</form.Field>
@@ -1101,7 +1223,9 @@ export function GrnFormDialog({
 						</div>
 					</div>
 
-					<form.Subscribe selector={(state) => [state.isSubmitting, state.canSubmit]}>
+					<form.Subscribe
+						selector={(state) => [state.isSubmitting, state.canSubmit]}
+					>
 						{([isSubmitting, canSubmit]) => (
 							<>
 								<Separator className="mt-6" />

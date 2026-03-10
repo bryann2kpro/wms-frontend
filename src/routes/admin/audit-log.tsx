@@ -71,43 +71,43 @@ function RouteComponent() {
 
 	const filter: AuditLogsQueryVariables["filter"] = useMemo(() => {
 		const filterObj: AuditLogsQueryVariables["filter"] = {};
-		
+
 		if (dateFrom) {
 			filterObj.dateFrom = dateFrom;
 		}
-		
+
 		if (dateTo) {
 			filterObj.dateTo = dateTo;
 		}
-		
+
 		if (selectedAction !== "all") {
 			filterObj.action = selectedAction;
 		}
-		
+
 		if (selectedEntity !== "all") {
 			filterObj.entity = selectedEntity;
 		}
-		
+
 		return filterObj;
 	}, [dateFrom, dateTo, selectedAction, selectedEntity]);
 
-	const { data, loading, error } = useQuery<AuditLogsQueryData, AuditLogsQueryVariables>(
-		AUDIT_LOGS_QUERY,
-		{
-			variables: {
-				filter,
-				pageSize,
-				pageNumber: currentPage,
-			},
-			fetchPolicy: "cache-and-network",
-		}
-	);
+	const { data, loading, error } = useQuery<
+		AuditLogsQueryData,
+		AuditLogsQueryVariables
+	>(AUDIT_LOGS_QUERY, {
+		variables: {
+			filter,
+			pageSize,
+			pageNumber: currentPage,
+		},
+		fetchPolicy: "cache-and-network",
+	});
 
 	const { data: filtersData } = useQuery<AuditLogFiltersQueryData>(
 		AUDIT_LOG_FILTERS_QUERY,
 		{
 			fetchPolicy: "cache-first",
-		}
+		},
 	);
 
 	const auditLogs = data?.auditLogs.query || [];
@@ -182,7 +182,10 @@ function RouteComponent() {
 							<div className="flex gap-2">
 								<div className="flex items-center gap-2">
 									<Calendar className="h-4 w-4 text-muted-foreground" />
-									<Label htmlFor="dateFrom" className="text-xs whitespace-nowrap">
+									<Label
+										htmlFor="dateFrom"
+										className="text-xs whitespace-nowrap"
+									>
 										From
 									</Label>
 									<Input
@@ -351,7 +354,7 @@ function RouteComponent() {
 								<span className="font-medium">
 									{Math.min(
 										pagination.currentPage * pageSize,
-										pagination.totalCount
+										pagination.totalCount,
 									)}
 								</span>{" "}
 								of <span className="font-medium">{pagination.totalCount}</span>{" "}
@@ -375,9 +378,7 @@ function RouteComponent() {
 									disabled={!pagination.hasNextPage || loading}
 									onClick={() =>
 										setCurrentPage((p) =>
-											pagination
-												? Math.min(pagination.totalPages, p + 1)
-												: p
+											pagination ? Math.min(pagination.totalPages, p + 1) : p,
 										)
 									}
 								>
@@ -400,7 +401,9 @@ function RouteComponent() {
 							<DialogHeader>
 								<div className="flex items-center justify-between">
 									<div>
-										<DialogTitle className="text-2xl">Audit Log Detail</DialogTitle>
+										<DialogTitle className="text-2xl">
+											Audit Log Detail
+										</DialogTitle>
 										<p className="text-sm text-muted-foreground mt-1">
 											{selectedLog.entity} - {selectedLog.entityId}
 										</p>
@@ -439,7 +442,8 @@ function RouteComponent() {
 													</span>
 												</div>
 												<p className="text-lg font-semibold">
-													{selectedLog.userName || truncateId(selectedLog.userId)}
+													{selectedLog.userName ||
+														truncateId(selectedLog.userId)}
 												</p>
 												{selectedLog.role && (
 													<p className="text-sm text-muted-foreground mt-1">
@@ -482,7 +486,10 @@ function RouteComponent() {
 														User Agent
 													</span>
 												</div>
-												<p className="text-sm font-semibold truncate" title={selectedLog.userAgent}>
+												<p
+													className="text-sm font-semibold truncate"
+													title={selectedLog.userAgent}
+												>
 													{selectedLog.userAgent}
 												</p>
 											</CardContent>
@@ -510,8 +517,9 @@ function RouteComponent() {
 															const oldValue = selectedLog.oldData?.[key];
 															const newValue = selectedLog.newData?.[key];
 															const hasChanged =
-																JSON.stringify(oldValue) !== JSON.stringify(newValue);
-															
+																JSON.stringify(oldValue) !==
+																JSON.stringify(newValue);
+
 															return (
 																<TableRow key={key}>
 																	<TableCell>
@@ -523,7 +531,8 @@ function RouteComponent() {
 																		</div>
 																	</TableCell>
 																	<TableCell className="min-w-[200px] max-w-[300px]">
-																		{oldValue !== null && oldValue !== undefined ? (
+																		{oldValue !== null &&
+																		oldValue !== undefined ? (
 																			<span
 																				className={
 																					hasChanged
@@ -542,7 +551,8 @@ function RouteComponent() {
 																		)}
 																	</TableCell>
 																	<TableCell className="min-w-[200px] max-w-[300px]">
-																		{newValue !== null && newValue !== undefined ? (
+																		{newValue !== null &&
+																		newValue !== undefined ? (
 																			<span
 																				className={
 																					hasChanged
@@ -565,19 +575,28 @@ function RouteComponent() {
 														})
 													) : selectedLog.oldData ? (
 														<TableRow>
-															<TableCell colSpan={3} className="text-center text-muted-foreground">
+															<TableCell
+																colSpan={3}
+																className="text-center text-muted-foreground"
+															>
 																Deleted entity data
 															</TableCell>
 														</TableRow>
 													) : selectedLog.newData ? (
 														<TableRow>
-															<TableCell colSpan={3} className="text-center text-muted-foreground">
+															<TableCell
+																colSpan={3}
+																className="text-center text-muted-foreground"
+															>
 																Created entity data
 															</TableCell>
 														</TableRow>
 													) : (
 														<TableRow>
-															<TableCell colSpan={3} className="text-center text-muted-foreground">
+															<TableCell
+																colSpan={3}
+																className="text-center text-muted-foreground"
+															>
 																No changes data available
 															</TableCell>
 														</TableRow>

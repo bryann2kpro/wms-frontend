@@ -174,5 +174,8 @@ export type UpdateUserInputGql = {
 	password?: string | null;
 };
 
-export type UpdateUserMutationVariables = { id: string; input: UpdateUserInputGql };
+export type UpdateUserMutationVariables = {
+	id: string;
+	input: UpdateUserInputGql;
+};
 export type UpdateUserMutationData = { updateUser: User | null };
