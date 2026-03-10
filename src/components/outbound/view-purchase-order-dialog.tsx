@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { XCircle, AlertCircle } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
@@ -31,9 +31,7 @@ interface ViewPurchaseOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrderDetail | null;
-  onAcceptClick: () => void;
   onRejectClick: () => void;
-  hasAcceptPermission: boolean;
   hasRejectPermission: boolean;
 }
 
@@ -41,9 +39,7 @@ export function ViewPurchaseOrderDialog({
   open,
   onOpenChange,
   purchaseOrder,
-  onAcceptClick,
   onRejectClick,
-  hasAcceptPermission,
   hasRejectPermission,
 }: ViewPurchaseOrderDialogProps) {
   return (
@@ -216,12 +212,6 @@ export function ViewPurchaseOrderDialog({
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Close
                 </Button>
-                {hasAcceptPermission && purchaseOrder.status === "preparing" && (
-                  <Button onClick={onAcceptClick}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Accept &amp; Create DO
-                  </Button>
-                )}
                 {hasRejectPermission && purchaseOrder.status === "preparing" && (
                   <Button variant="destructive" onClick={onRejectClick}>
                     <XCircle className="mr-2 h-4 w-4" />

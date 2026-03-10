@@ -197,7 +197,7 @@ export function CreatePurchaseOrderDialog({
 							<form.Field
 								name="isEmergency"
 								children={(field: any) => (
-									<Field className="space-y-2 flex flex-row items-start gap-3 pt-2 sm:col-span-2">
+									<div className="flex flex-row items-start gap-3 pt-2 sm:col-span-2">
 										<Checkbox
 											id={field.name}
 											checked={Boolean(field.state.value)}
@@ -206,14 +206,14 @@ export function CreatePurchaseOrderDialog({
 											}
 											onBlur={field.handleBlur}
 											aria-describedby="isEmergency-description"
-											className="mt-0.5"
+											className="mt-0.5 shrink-0"
 										/>
-										<div className="grid gap-1.5 leading-none">
+										<div className="grid gap-1.5 leading-none min-w-0">
 											<FieldLabel
 												htmlFor={field.name}
 												className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
 											>
-												<Zap className="h-4 w-4 text-amber-500" aria-hidden />
+												<Zap className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />
 												Emergency delivery
 											</FieldLabel>
 											<p
@@ -223,7 +223,7 @@ export function CreatePurchaseOrderDialog({
 												Assign to the next delivery day even if the normal cutoff has passed.
 											</p>
 										</div>
-									</Field>
+									</div>
 								)}
 							/>
 						</div>

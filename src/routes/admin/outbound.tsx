@@ -36,7 +36,6 @@ import {
 	CreatePurchaseOrderDialog,
 	CreatePurchaseOrderDialogTrigger,
 	ViewPurchaseOrderDialog,
-	AcceptPurchaseOrderDialog,
 	RejectPurchaseOrderDialog,
 	OutboundListCard,
 	useOutboundSummary,
@@ -87,13 +86,13 @@ const OUTBOUND_HELP_STEPS: Array<{
 		),
 	},
 	{
-		title: "Accept or reject orders",
+		title: "Reject orders",
 		image: `${HELP_IMAGES_BASE}/step-4.png`,
 		description: (
 			<>
-				Use the <strong>Accept</strong> button to move an order to "To Ship"
-				status. Use <strong>Reject</strong> to cancel an order — you'll need
-				to provide a reason.
+				When a PO is received and accepted, a Delivery Order (DO) is created.
+				Use <strong>Reject</strong> to cancel an order — you'll need to provide
+				a reason.
 			</>
 		),
 	},
@@ -146,7 +145,6 @@ function OutboundRouteComponent() {
 		useState<PurchaseOrderDetail | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isViewOpen, setIsViewOpen] = useState(false);
-	const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
 	const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 	const [rejectReason, setRejectReason] = useState("");
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -374,15 +372,10 @@ function OutboundRouteComponent() {
 					setSelectedPurchaseOrder(purchaseOrder);
 					setIsViewOpen(true);
 				}}
-				onAcceptClick={(purchaseOrder) => {
-					setSelectedPurchaseOrder(purchaseOrder);
-					setIsAcceptDialogOpen(true);
-				}}
 				onRejectClick={(purchaseOrder) => {
 					setSelectedPurchaseOrder(purchaseOrder);
 					setIsRejectDialogOpen(true);
 				}}
-				hasAcceptPermission={hasPermission("to:accept")}
 				hasRejectPermission={hasPermission("to:reject")}
 			/>
 
@@ -390,32 +383,11 @@ function OutboundRouteComponent() {
 				open={isViewOpen}
 				onOpenChange={setIsViewOpen}
 				purchaseOrder={selectedPurchaseOrder}
-				onAcceptClick={() => {
-					setIsViewOpen(false);
-					setIsAcceptDialogOpen(true);
-				}}
 				onRejectClick={() => {
 					setIsViewOpen(false);
 					setIsRejectDialogOpen(true);
 				}}
-				hasAcceptPermission={hasPermission("to:accept")}
 				hasRejectPermission={hasPermission("to:reject")}
-			/>
-
-			<AcceptPurchaseOrderDialog
-				open={isAcceptDialogOpen}
-				onOpenChange={setIsAcceptDialogOpen}
-				purchaseOrder={selectedPurchaseOrder}
-				onAccept={() => {
-					if (selectedPurchaseOrder) {
-						statusMutation.mutate({
-							id: selectedPurchaseOrder.id,
-							status: "to-ship",
-						});
-						setIsAcceptDialogOpen(false);
-					}
-				}}
-				isPending={statusMutation.isPending}
 			/>
 
 			<RejectPurchaseOrderDialog
