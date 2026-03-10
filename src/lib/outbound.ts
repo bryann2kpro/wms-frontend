@@ -32,14 +32,14 @@ export type CreatePurchaseOrderLineItem = z.infer<typeof createPurchaseOrderLine
 export const createPurchaseOrderSchema = z.object({
 	purchaseOrderNumber: z
 		.string()
-		.min(1, "Purchase order number is required")
-		.regex(/^PO-20\d{2}-[A-Z0-9]+$/, "Use format like PO-2024-001"),
+		.min(1, "Purchase order number is required"),
 	outletId: z.string().min(1, "Outlet is required"),
 	outletName: z.string().default(""),
 	notes: z.string(),
 	items: z
 		.array(createPurchaseOrderLineItemSchema)
 		.min(1, "Add at least one line (stock and amount)"),
+	isEmergency: z.boolean().optional().default(false),
 });
 
 export function getStatusColor(status: PurchaseOrderStatus): string {

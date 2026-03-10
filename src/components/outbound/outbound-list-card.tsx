@@ -29,11 +29,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   Eye,
-  CheckCircle,
   XCircle,
   Calendar,
   Clock,
-  Loader2,
   PackageOpen,
   AlertCircle,
 } from "lucide-react";
@@ -54,17 +52,13 @@ import {
 
 interface OutboundListCardProps {
   onViewPurchaseOrder: (purchaseOrder: PurchaseOrderDetail) => void;
-  onAcceptClick: (purchaseOrder: PurchaseOrderDetail) => void;
   onRejectClick: (purchaseOrder: PurchaseOrderDetail) => void;
-  hasAcceptPermission: boolean;
   hasRejectPermission: boolean;
 }
 
 export function OutboundListCard({
   onViewPurchaseOrder,
-  onAcceptClick,
   onRejectClick,
-  hasAcceptPermission,
   hasRejectPermission,
 }: OutboundListCardProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -347,18 +341,6 @@ export function OutboundListCard({
                               >
                                 <Eye className="h-4 w-4" aria-hidden="true" />
                               </Button>
-                              {hasAcceptPermission &&
-                                purchaseOrder.status === "preparing" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => onAcceptClick(purchaseOrder)}
-                                    className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
-                                  >
-                                    <CheckCircle className="h-4 w-4 text-green-600" aria-hidden="true" />
-                                  </Button>
-                                )}
                               {hasRejectPermission &&
                                 purchaseOrder.status === "preparing" && (
                                   <Button

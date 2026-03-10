@@ -26,7 +26,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Plus, Trash2, Zap } from "lucide-react";
 import type { UseMutationResult } from "@tanstack/react-query";
 import {
 	OUTLETS_QUERY,
@@ -191,6 +192,39 @@ export function CreatePurchaseOrderDialog({
 										</Field>
 									);
 								}}
+							/>
+
+							<form.Field
+								name="isEmergency"
+								children={(field: any) => (
+									<div className="flex flex-row items-start gap-3 pt-2 sm:col-span-2">
+										<Checkbox
+											id={field.name}
+											checked={Boolean(field.state.value)}
+											onCheckedChange={(checked) =>
+												field.handleChange(checked === true)
+											}
+											onBlur={field.handleBlur}
+											aria-describedby="isEmergency-description"
+											className="mt-0.5 shrink-0"
+										/>
+										<div className="grid gap-1.5 leading-none min-w-0">
+											<FieldLabel
+												htmlFor={field.name}
+												className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+											>
+												<Zap className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />
+												Emergency delivery
+											</FieldLabel>
+											<p
+												id="isEmergency-description"
+												className="text-xs text-muted-foreground"
+											>
+												Assign to the next delivery day even if the normal cutoff has passed.
+											</p>
+										</div>
+									</div>
+								)}
 							/>
 						</div>
 

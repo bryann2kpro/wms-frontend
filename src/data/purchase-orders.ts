@@ -70,6 +70,7 @@ export async function createPurchaseOrder(
 			skuId: line.skuId || undefined,
 			qtyRequired: line.quantity,
 		})),
+		isEmergency: input.isEmergency ?? false,
 	};
 
 	const data = await request<CreatePurchaseOrderMutationData>(
