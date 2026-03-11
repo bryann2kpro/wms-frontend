@@ -630,6 +630,14 @@ export interface PurchaseOrder {
 	updatedAt: string;
 	createdBy?: string | null;
 	updatedBy?: string | null;
+	createdByUser?: { id: string; displayName: string; email: string } | null;
+	updatedByUser?: { id: string; displayName: string; email: string } | null;
+	items?: Array<{
+		id: string;
+		skuCode: string;
+		skuDescription: string;
+		qtyRequired: string;
+	}> | null;
 }
 
 export interface PurchaseOrderPaginatedResponse {

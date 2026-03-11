@@ -26,9 +26,9 @@ export const Route = createFileRoute("/admin/es-do")({
 	component: EmpireSushiDOComponent,
 });
 
-function formatQty(qty: string | null): string {
-	if (!qty) return "0";
-	const num = parseFloat(qty);
+function formatQty(qty: string | number | null): string {
+	if (qty == null) return "0";
+	const num = typeof qty === "number" ? qty : parseFloat(qty);
 	return Number.isInteger(num) ? String(num) : num.toFixed(2);
 }
 
@@ -216,7 +216,7 @@ function EmpireSushiDOComponent() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{loading && items.length === 0 ? (
+							{isLoading && paginatedItems.length === 0 ? (
 								<TableRow>
 									<TableCell
 										colSpan={tableColSpan}
@@ -225,7 +225,7 @@ function EmpireSushiDOComponent() {
 										Loading items…
 									</TableCell>
 								</TableRow>
-							) : items.length === 0 ? (
+							) : paginatedItems.length === 0 ? (
 								<TableRow>
 									<TableCell
 										colSpan={tableColSpan}
@@ -235,8 +235,8 @@ function EmpireSushiDOComponent() {
 									</TableCell>
 								</TableRow>
 							) : (
-								items.map((item, index) => {
-									const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
+								paginatedItems.map((item, index) => {
+									const isPicked = Number(item.qtyPicked ?? 0) > 0;
 									return (
 										<TableRow key={item.id} className={isPicked ? "bg-muted/50" : ""}>
 											<TableCell className="font-medium">
@@ -304,7 +304,7 @@ function EmpireSushiDOComponent() {
 							<Button
 								variant="outline"
 								size="icon"
-								disabled={page === 1 || loading}
+								disabled={page === 1 || isLoading}
 								onClick={() => setPage((p) => Math.max(1, p - 1))}
 								aria-label="Previous page"
 								className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -317,7 +317,7 @@ function EmpireSushiDOComponent() {
 							<Button
 								variant="outline"
 								size="icon"
-								disabled={page === totalPages || loading}
+								disabled={page === totalPages || isLoading}
 								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 								aria-label="Next page"
 								className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

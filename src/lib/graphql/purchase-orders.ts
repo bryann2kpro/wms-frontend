@@ -1,15 +1,15 @@
 import { gql } from "graphql-request";
 import type {
-	PurchaseOrder,
-	PurchaseOrderPaginatedResponse,
-	PurchaseOrderFilterInput,
-	Pagination,
-} from "./types";
-import type {
 	PurchaseOrderDetail,
 	PurchaseOrderListResult,
 	PurchaseOrderStatus,
 } from "@/data/purchase-orders.types";
+import type {
+	Pagination,
+	PurchaseOrder,
+	PurchaseOrderFilterInput,
+	PurchaseOrderPaginatedResponse,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Fragment (basic fields without nested outlet)
@@ -56,6 +56,22 @@ export const PURCHASE_ORDER_WITH_OUTLET_FRAGMENT = gql`
 		updatedAt
 		createdBy
 		updatedBy
+		createdByUser {
+			id
+			displayName
+			email
+		}
+		updatedByUser {
+			id
+			displayName
+			email
+		}
+		items {
+			id
+			skuCode
+			skuDescription
+			qtyRequired
+		}
 	}
 `;
 
@@ -215,7 +231,10 @@ export const APPLY_EMERGENCY_DELIVERY_MUTATION = gql`
 
 export type ApplyEmergencyDeliveryMutationVariables = { id: string };
 export type ApplyEmergencyDeliveryMutationData = {
-	applyEmergencyDelivery: Pick<PurchaseOrder, "id" | "scheduledDeliveryDate" | "status">;
+	applyEmergencyDelivery: Pick<
+		PurchaseOrder,
+		"id" | "scheduledDeliveryDate" | "status"
+	>;
 };
 
 // ---------------------------------------------------------------------------
@@ -252,9 +271,9 @@ export function mapGqlToPurchaseOrderDetail(
 		rawDoStatus === "CREATED"
 			? "NEW"
 			: DO_STEP_STATUSES.includes(
-					rawDoStatus as (typeof DO_STEP_STATUSES)[number],
-				)
-					? (rawDoStatus as "NEW" | "PACKING" | "SHIPPED" | "DELIVERED")
+						rawDoStatus as (typeof DO_STEP_STATUSES)[number],
+					)
+				? (rawDoStatus as "NEW" | "PACKING" | "SHIPPED" | "DELIVERED")
 				: "NEW";
 	const deliveryOrderStep =
 		po.deliveryOrder?.id && rawDoStatus != null
@@ -269,10 +288,17 @@ export function mapGqlToPurchaseOrderDetail(
 		status,
 		createdDate,
 		expectedDeliveryDate,
-		createdBy: po.createdBy ?? "System",
+		createdBy: po.createdByUser?.displayName ?? po.createdBy ?? "System",
 		notes: undefined,
-		items: [],
-		totalItems: 0,
+		items: (po.items ?? []).map((item) => ({
+			id: item.id,
+			sku: item.skuCode,
+			description: item.skuDescription,
+			quantity: Number(item.qtyRequired),
+			pickedQuantity: 0,
+			packedQuantity: 0,
+		})),
+		totalItems: po.items?.length ?? 0,
 		netsuiteStatus: undefined,
 		regionName: region?.regionName ?? outlet?.regionName ?? null,
 		regionCode: region?.regionCode ?? outlet?.regionCode ?? null,
