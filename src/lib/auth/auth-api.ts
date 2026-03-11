@@ -83,3 +83,29 @@ export async function fetchProfile(
 export function logout(): void {
 	clearAuthTokens();
 }
+
+/**
+ * Request a password reset email
+ * POST /auth/forgot-password
+ */
+export async function requestPasswordReset(email: string): Promise<ApiResponse<null>> {
+	const client = getPublicClient();
+	const response = await client.post<ApiResponse<null>>('/auth/forgot-password', { email });
+	return response.data;
+}
+
+/**
+ * Reset password using a token from the reset email
+ * POST /auth/reset-password
+ */
+export async function resetPassword(
+	token: string,
+	password: string,
+): Promise<ApiResponse<null>> {
+	const client = getPublicClient();
+	const response = await client.post<ApiResponse<null>>('/auth/reset-password', {
+		token,
+		password,
+	});
+	return response.data;
+}

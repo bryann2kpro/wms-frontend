@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { requestPasswordReset } from "@/lib/auth/auth-api";
-import axios from "axios";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import {
-	Mail,
+	Lock,
+	Eye,
+	EyeOff,
 	Loader2,
 	AlertCircle,
 	Package,
-	ArrowLeft,
 	CircleCheck,
+	ArrowLeft,
 } from "lucide-react";
+import { resetPassword } from "@/lib/auth/auth-api";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -22,34 +23,47 @@ import {
 import {
 	InputGroup,
 	InputGroupAddon,
+	InputGroupButton,
 	InputGroupInput,
 } from "@/components/ui/input-group";
+import axios from "axios";
 
-export const Route = createFileRoute("/forgot-password")({
+export const Route = createFileRoute("/reset-password")({
+	validateSearch: z.object({
+		token: z.string().min(1),
+	}),
 	component: RouteComponent,
 	head: () => ({
 		meta: [
-			{ title: "Reset password — SME Ederan WMS" },
+			{ title: "Set new password — SME Ederan WMS" },
 			{
 				name: "description",
-				content:
-					"Request a password reset link for your SME Ederan WMS account.",
+				content: "Set a new password for your SME Ederan WMS account.",
 			},
 		],
 	}),
 });
 
-const formSchema = z.object({
-	email: z.string().email("Please enter a valid email address"),
-});
+const formSchema = z
+	.object({
+		password: z.string().min(6, "Password must be at least 6 characters"),
+		confirmPassword: z.string().min(1, "Please confirm your password"),
+	})
+	.refine((d) => d.password === d.confirmPassword, {
+		message: "Passwords do not match",
+		path: ["confirmPassword"],
+	});
 
 function RouteComponent() {
+	const navigate = useNavigate();
+	const { token } = Route.useSearch();
 	const [error, setError] = useState<string>("");
-	const [submitted, setSubmitted] = useState(false);
-	const [submittedEmail, setSubmittedEmail] = useState<string>("");
+	const [done, setDone] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirm, setShowConfirm] = useState(false);
 
 	const form = useForm({
-		defaultValues: { email: "" },
+		defaultValues: { password: "", confirmPassword: "" },
 		validators: {
 			onChange: formSchema,
 			onSubmit: formSchema,
@@ -57,9 +71,8 @@ function RouteComponent() {
 		onSubmit: async ({ value }) => {
 			setError("");
 			try {
-				await requestPasswordReset(value.email);
-				setSubmittedEmail(value.email);
-				setSubmitted(true);
+				await resetPassword(token, value.password);
+				setDone(true);
 			} catch (err) {
 				if (axios.isAxiosError(err)) {
 					const message =
@@ -134,16 +147,15 @@ function RouteComponent() {
 				</div>
 
 				<div className="w-full max-w-[400px] space-y-6">
-					{submitted ? (
+					{done ? (
 						/* ── Success state ── */
 						<>
 							<div className="space-y-1">
 								<h1 className="text-[22px] font-semibold leading-tight text-foreground">
-									Check your email
+									Password updated
 								</h1>
 								<p className="text-[13px] text-muted-foreground">
-									If an account exists for that address, you'll receive a reset
-									link shortly.
+									Your password has been reset successfully.
 								</p>
 							</div>
 
@@ -151,64 +163,61 @@ function RouteComponent() {
 								<div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-3 py-3">
 									<CircleCheck className="mt-px h-4 w-4 shrink-0 text-foreground" />
 									<p className="text-[13px] text-foreground leading-snug">
-										A reset link was sent to{" "}
-										<span className="font-medium">{submittedEmail}</span>. Check
-										your inbox and spam folder.
+										You can now sign in with your new password.
 									</p>
 								</div>
 
-								<Link to="/login">
-									<Button
-										variant="outline"
-										className="w-full h-10 text-sm font-medium mt-2"
-									>
-										<ArrowLeft className="h-4 w-4" />
-										Back to sign in
-									</Button>
-								</Link>
+								<Button
+									className="w-full h-10 text-sm font-medium mt-2"
+									onClick={() => navigate({ to: "/login" })}
+								>
+									Go to sign in
+								</Button>
 							</div>
 						</>
 					) : (
-						/* ── Request form ── */
+						/* ── New password form ── */
 						<>
 							<div className="space-y-1">
 								<h1 className="text-[22px] font-semibold leading-tight text-foreground">
-									Reset password
+									Set new password
 								</h1>
 								<p className="text-[13px] text-muted-foreground">
-									Enter your email address and we'll send you a reset link.
+									Choose a strong password for your account.
 								</p>
 							</div>
 
 							<div className="rounded-xl border border-border bg-card shadow-sm p-6">
 								<form
-									id="forgot-password-form"
-									aria-label="Reset password form"
+									id="reset-password-form"
+									aria-label="Set new password form"
 									onSubmit={(e) => {
 										e.preventDefault();
 										form.handleSubmit();
 									}}
 								>
-									<FieldGroup>
-										<form.Field name="email">
+									<FieldGroup className="gap-4">
+										{/* New password */}
+										<form.Field name="password">
 											{(field) => {
 												const isInvalid =
-													field.state.meta.isDirty && !field.state.meta.isValid;
+													field.state.meta.isDirty &&
+													!field.state.meta.isValid;
 												const errorId = `${field.name}-error`;
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel htmlFor={field.name}>
-															Email address
+															New password
 														</FieldLabel>
 														<InputGroup>
 															<InputGroupAddon align="inline-start">
-																<Mail className="h-4 w-4 text-muted-foreground" />
+																<Lock className="h-4 w-4 text-muted-foreground" />
 															</InputGroupAddon>
 															<InputGroupInput
 																id={field.name}
 																name={field.name}
-																type="email"
-																placeholder="you@smee.com.my"
+																type={showPassword ? "text" : "password"}
+																placeholder="At least 6 characters"
 																value={field.state.value}
 																onBlur={field.handleBlur}
 																onChange={(e) =>
@@ -219,9 +228,96 @@ function RouteComponent() {
 																aria-describedby={
 																	isInvalid ? errorId : undefined
 																}
-																autoComplete="email"
+																autoComplete="new-password"
 																autoFocus
 															/>
+															<InputGroupAddon align="inline-end">
+																<InputGroupButton
+																	type="button"
+																	onClick={() =>
+																		setShowPassword(!showPassword)
+																	}
+																	aria-label={
+																		showPassword
+																			? "Hide password"
+																			: "Show password"
+																	}
+																	disabled={form.state.isSubmitting}
+																	variant="ghost"
+																	size="icon-xs"
+																>
+																	{showPassword ? (
+																		<EyeOff className="h-4 w-4" />
+																	) : (
+																		<Eye className="h-4 w-4" />
+																	)}
+																</InputGroupButton>
+															</InputGroupAddon>
+														</InputGroup>
+														{isInvalid && (
+															<FieldError
+																id={errorId}
+																errors={field.state.meta.errors}
+															/>
+														)}
+													</Field>
+												);
+											}}
+										</form.Field>
+
+										{/* Confirm password */}
+										<form.Field name="confirmPassword">
+											{(field) => {
+												const isInvalid =
+													field.state.meta.isDirty &&
+													!field.state.meta.isValid;
+												const errorId = `${field.name}-error`;
+												return (
+													<Field data-invalid={isInvalid}>
+														<FieldLabel htmlFor={field.name}>
+															Confirm new password
+														</FieldLabel>
+														<InputGroup>
+															<InputGroupAddon align="inline-start">
+																<Lock className="h-4 w-4 text-muted-foreground" />
+															</InputGroupAddon>
+															<InputGroupInput
+																id={field.name}
+																name={field.name}
+																type={showConfirm ? "text" : "password"}
+																placeholder="Re-enter your password"
+																value={field.state.value}
+																onBlur={field.handleBlur}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
+																disabled={form.state.isSubmitting}
+																aria-invalid={isInvalid}
+																aria-describedby={
+																	isInvalid ? errorId : undefined
+																}
+																autoComplete="new-password"
+															/>
+															<InputGroupAddon align="inline-end">
+																<InputGroupButton
+																	type="button"
+																	onClick={() => setShowConfirm(!showConfirm)}
+																	aria-label={
+																		showConfirm
+																			? "Hide password"
+																			: "Show password"
+																	}
+																	disabled={form.state.isSubmitting}
+																	variant="ghost"
+																	size="icon-xs"
+																>
+																	{showConfirm ? (
+																		<EyeOff className="h-4 w-4" />
+																	) : (
+																		<Eye className="h-4 w-4" />
+																	)}
+																</InputGroupButton>
+															</InputGroupAddon>
 														</InputGroup>
 														{isInvalid && (
 															<FieldError
@@ -258,7 +354,7 @@ function RouteComponent() {
 										{([isSubmitting, canSubmit]) => (
 											<Button
 												type="submit"
-												form="forgot-password-form"
+												form="reset-password-form"
 												className="w-full mt-5 h-10 text-sm font-medium"
 												disabled={isSubmitting || !canSubmit}
 												aria-busy={isSubmitting}
@@ -266,10 +362,10 @@ function RouteComponent() {
 												{isSubmitting ? (
 													<>
 														<Loader2 className="h-4 w-4 animate-spin" />
-														Sending reset link…
+														Saving…
 													</>
 												) : (
-													"Send reset link"
+													"Set new password"
 												)}
 											</Button>
 										)}
