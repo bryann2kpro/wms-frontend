@@ -77,6 +77,7 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 type ExceptionRow = Exception & {
 	qtyDifference: number;
 	lossQtyDifference: number;
+	reservedQty: number;
 };
 
 function stockCountToException(sc: StockCount): ExceptionRow {
@@ -112,6 +113,7 @@ function stockCountToException(sc: StockCount): ExceptionRow {
 		status: "pending",
 		qtyDifference: sc.qtyDifference,
 		lossQtyDifference: sc.lossQtyDifference,
+		reservedQty: sc.reservedQty,
 	};
 }
 
@@ -393,6 +395,7 @@ function ExceptionsComponent() {
 											({unitName}/Loss)
 										</span>
 									</TableHead>
+									<TableHead className="text-center">Reserved Qty</TableHead>
 									<TableHead className="text-center">
 										Diff
 										<br />
@@ -410,7 +413,7 @@ function ExceptionsComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading inventory...
@@ -419,7 +422,7 @@ function ExceptionsComponent() {
 								) : exceptions.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No inventory found.
@@ -501,6 +504,9 @@ function ExceptionsComponent() {
 													) : (
 														`${closedDozen} / ${closedLoss}`
 													)}
+												</TableCell>
+												<TableCell className="text-center">
+													{row.reservedQty}
 												</TableCell>
 												<TableCell className="text-center">
 													<span
