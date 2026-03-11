@@ -23,26 +23,11 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
 	Popover,
@@ -62,7 +47,7 @@ import {
 	Send,
 	Trash2,
 	Clock,
-	CalendarClock,
+	CalendarDays,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -128,7 +113,7 @@ export type GRNLineItemForm = {
 	loss: number;
 	uom: string;
 	unitPrice: number;
-	/** Expiry date (YYYY-MM-DD). Required per line. */
+	/** Expiry date (YYYY-MM-DD). Optional. */
 	expiryDate: string;
 	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
 	rackIds: string[];
@@ -283,225 +268,216 @@ function GRNLineRow({
 		};
 	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
-	/** UOM options for this line item only: derived from the SKU selected at this index */
-	const lineItemUomOptions = useMemo(() => {
-		if (!item.skuCode?.trim()) return [];
+	const uomLabel = useMemo(() => {
+		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
-		if (!sku?.skuUom) return [];
+		if (!sku?.skuUom) return null;
 		const unit = stockUnits.find(
 			(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
 		);
-		return unit ? [unit] : [];
+		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
 
 	return (
-		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
-			<TableCell>
-				<SkuCombobox
-					value={skuValue}
-					onChange={(v: SkuLineValue) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							skuCode: v.skuCode ?? "",
-							description: v.description ?? "",
-							uom: v.uom ?? "",
-						};
-						onItemsChange(newItems);
-					}}
-					usedSkuCodes={items
-						.filter((_, i) => i !== index)
-						.map((it) => it.skuCode)
-						.filter(Boolean)}
-					placeholder="Search or select SKU..."
-					className="min-w-[200px]"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					value={item.description}
-					onChange={(e) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							description: e.target.value,
-						};
-						onItemsChange(newItems);
-					}}
-					placeholder="Description"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="number"
-					min={0}
-					value={item.carton}
-					onChange={(e) => {
-						const newItems = [...items];
-						const v = Number(e.target.value);
-						newItems[index] = {
-							...newItems[index],
-							carton: Number.isFinite(v) && v >= 0 ? v : 0,
-						};
-						onItemsChange(newItems);
-					}}
-					className="w-20"
-					placeholder="0"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="number"
-					min={0}
-					value={item.loss}
-					onChange={(e) => {
-						const newItems = [...items];
-						const v = Number(e.target.value);
-						newItems[index] = {
-							...newItems[index],
-							loss: Number.isFinite(v) && v >= 0 ? v : 0,
-						};
-						onItemsChange(newItems);
-					}}
-					className="w-20"
-					placeholder="0"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="date"
-					value={item.expiryDate ?? ""}
-					onChange={(e) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							expiryDate: e.target.value,
-						};
-						onItemsChange(newItems);
-					}}
-					className="min-w-[140px]"
-					placeholder="YYYY-MM-DD"
-				/>
-			</TableCell>
-			<TableCell>
-				<Select
-					value={item.uom}
-					onValueChange={(value) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							uom: value,
-						};
-						onItemsChange(newItems);
-					}}
-					disabled
-				>
-					<SelectTrigger className="w-[120px]" disabled>
-						<SelectValue placeholder="UOM" />
-					</SelectTrigger>
-					<SelectContent>
-						{lineItemUomOptions.map((unit) => (
-							<SelectItem key={unit.stockUnitId} value={unit.unitCode}>
-								{unit.unitCode}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</TableCell>
-			<TableCell className="min-w-[220px]">
-				<div className="flex flex-wrap items-center gap-1.5">
-					{rackIds.map((rid) => {
-						const r = racks.find((x) => x.rackId === rid);
-						const label = r
-							? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
-							: rid;
-						return (
-							<Badge
-								key={rid}
-								variant="secondary"
-								className="gap-1 pr-1 font-normal"
-							>
-								{label}
-								<button
-									type="button"
-									onClick={() => {
-										const newItems = [...items];
-										newItems[index] = {
-											...newItems[index],
-											rackIds: rackIds.filter((id) => id !== rid),
-										};
-										onItemsChange(newItems);
-									}}
-									className="rounded-full p-0.5 hover:bg-muted"
-									aria-label={`Remove rack ${label}`}
+		<Card className="border-border/60">
+			<CardHeader className="pb-3 pt-4 px-4">
+				<div className="flex items-center justify-between">
+					<span className="text-sm font-medium text-muted-foreground">
+						Item {index + 1}
+					</span>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
+						className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+						aria-label="Remove item"
+					>
+						<XCircle className="h-4 w-4" />
+					</Button>
+				</div>
+			</CardHeader>
+			<CardContent className="px-4 pb-4 space-y-3">
+				{/* Row 1: SKU combobox + UOM badge */}
+				<div className="flex items-center gap-3">
+					<div className="flex-1">
+						<SkuCombobox
+							value={skuValue}
+							onChange={(v: SkuLineValue) => {
+								const newItems = [...items];
+								newItems[index] = {
+									...newItems[index],
+									skuCode: v.skuCode ?? "",
+									description: v.description ?? "",
+									uom: v.uom ?? "",
+								};
+								onItemsChange(newItems);
+							}}
+							usedSkuCodes={items
+								.filter((_, i) => i !== index)
+								.map((it) => it.skuCode)
+								.filter(Boolean)}
+							placeholder="Search or select SKU..."
+						/>
+					</div>
+					{uomLabel && (
+						<Badge variant="secondary" className="shrink-0 text-xs font-medium">
+							{uomLabel}
+						</Badge>
+					)}
+				</div>
+
+				{/* Row 2: Carton, Loss, Expiry date */}
+				<div className="grid grid-cols-3 gap-3">
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium">
+							Carton
+						</label>
+						<Input
+							type="number"
+							min={0}
+							value={item.carton}
+							onChange={(e) => {
+								const newItems = [...items];
+								const v = Number(e.target.value);
+								newItems[index] = {
+									...newItems[index],
+									carton: Number.isFinite(v) && v >= 0 ? v : 0,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="0"
+						/>
+					</div>
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium">
+							Loss
+						</label>
+						<Input
+							type="number"
+							min={0}
+							value={item.loss}
+							onChange={(e) => {
+								const newItems = [...items];
+								const v = Number(e.target.value);
+								newItems[index] = {
+									...newItems[index],
+									loss: Number.isFinite(v) && v >= 0 ? v : 0,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="0"
+						/>
+					</div>
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+							<CalendarDays className="h-3 w-3" />
+							Expiry date
+						</label>
+						<Input
+							type="date"
+							value={item.expiryDate ?? ""}
+							onChange={(e) => {
+								const newItems = [...items];
+								newItems[index] = {
+									...newItems[index],
+									expiryDate: e.target.value,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="YYYY-MM-DD"
+						/>
+					</div>
+				</div>
+
+				{/* Row 3: Racks */}
+				<div className="space-y-1">
+					<label className="text-xs text-muted-foreground font-medium">
+						Racks *
+					</label>
+					<div className="flex flex-wrap items-center gap-1.5">
+						{rackIds.map((rid) => {
+							const r = racks.find((x) => x.rackId === rid);
+							const label = r
+								? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+								: rid;
+							return (
+								<Badge
+									key={rid}
+									variant="secondary"
+									className="gap-1 pr-1 font-normal"
 								>
-									<XCircle className="h-3 w-3" />
-								</button>
-							</Badge>
-						);
-					})}
-					<Popover>
-						<PopoverTrigger asChild>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="h-7 gap-1"
-							>
-								<Plus className="h-3.5 w-3.5" />
-								Add rack
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent className="w-56 p-2" align="start">
-							<div className="flex flex-col gap-1">
-								{racks
-									.filter((r) => !rackIds.includes(r.rackId))
-									.map((r) => (
-										<Button
-											key={r.rackId}
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="justify-start font-normal"
-											onClick={() => {
-												const newItems = [...items];
-												newItems[index] = {
-													...newItems[index],
-													rackIds: [...rackIds, r.rackId],
-												};
-												onItemsChange(newItems);
-											}}
-										>
-											{r.rackRow}-{r.rackColumn}-{r.rackLevel}
-										</Button>
-									))}
+									{label}
+									<button
+										type="button"
+										onClick={() => {
+											const newItems = [...items];
+											newItems[index] = {
+												...newItems[index],
+												rackIds: rackIds.filter((id) => id !== rid),
+											};
+											onItemsChange(newItems);
+										}}
+										className="rounded-full p-0.5 hover:bg-muted"
+										aria-label={`Remove rack ${label}`}
+									>
+										<XCircle className="h-3 w-3" />
+									</button>
+								</Badge>
+							);
+						})}
+						<Popover>
+							<PopoverTrigger asChild>
 								<Button
 									type="button"
-									variant="ghost"
+									variant="outline"
 									size="sm"
-									className="justify-start gap-1 text-muted-foreground"
-									onClick={() => onOpenCreateRack?.(index)}
+									className="h-7 gap-1"
 								>
 									<Plus className="h-3.5 w-3.5" />
-									Create new rack
+									Add rack
 								</Button>
-							</div>
-						</PopoverContent>
-					</Popover>
+							</PopoverTrigger>
+							<PopoverContent className="w-56 p-2" align="start">
+								<div className="flex flex-col gap-1">
+									{racks
+										.filter((r) => !rackIds.includes(r.rackId))
+										.map((r) => (
+											<Button
+												key={r.rackId}
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="justify-start font-normal"
+												onClick={() => {
+													const newItems = [...items];
+													newItems[index] = {
+														...newItems[index],
+														rackIds: [...rackIds, r.rackId],
+													};
+													onItemsChange(newItems);
+												}}
+											>
+												{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+											</Button>
+										))}
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="justify-start gap-1 text-muted-foreground"
+										onClick={() => onOpenCreateRack?.(index)}
+									>
+										<Plus className="h-3.5 w-3.5" />
+										Create new rack
+									</Button>
+								</div>
+							</PopoverContent>
+						</Popover>
+					</div>
 				</div>
-			</TableCell>
-			<TableCell className="text-right">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
-					className="text-destructive hover:text-destructive"
-				>
-					<XCircle className="h-4 w-4" />
-				</Button>
-			</TableCell>
-		</TableRow>
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -650,16 +626,9 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingExpiry = items.find(
-							(i) => !(i.expiryDate ?? "").trim(),
-						);
-						if (missingExpiry) {
-							fields.items = "Each line item must have an expiry date.";
-						} else {
-							const missingRack = items.find((i) => !(i.rackIds ?? []).length);
-							if (missingRack) {
-								fields.items = "Each line item must have at least one rack.";
-							}
+						const missingRack = items.find((i) => !(i.rackIds ?? []).length);
+						if (missingRack) {
+							fields.items = "Each line item must have at least one rack.";
 						}
 					}
 				}
@@ -1071,67 +1040,41 @@ export function GrnFormDialog({
 											};
 											return (
 												<>
-													<div className="rounded-lg border">
-														<Table>
-															<TableHeader>
-																<TableRow>
-																	<TableHead>SKU</TableHead>
-																	<TableHead>Description</TableHead>
-																	<TableHead>Carton</TableHead>
-																	<TableHead>Loss</TableHead>
-																	<TableHead>Expiry date *</TableHead>
-																	<TableHead>UOM</TableHead>
-																	<TableHead>Racks *</TableHead>
-																	<TableHead className="text-right w-[80px]">
-																		Actions
-																	</TableHead>
-																</TableRow>
-															</TableHeader>
-															<TableBody>
-																{items.length === 0 ? (
-																	<TableRow>
-																		<TableCell
-																			colSpan={8}
-																			className="h-40 text-center"
-																		>
-																			<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
-																				<div className="rounded-full bg-muted p-3">
-																					<Package className="h-10 w-10 opacity-60" />
-																				</div>
-																				<div>
-																					<p className="text-sm font-medium">
-																						No line items yet
-																					</p>
-																					<p className="text-xs mt-1">
-																						Click &quot;Add Line Item&quot;
-																						above to add your first item, then
-																						fill in the table
-																					</p>
-																				</div>
-																			</div>
-																		</TableCell>
-																	</TableRow>
-																) : (
-																	items.map((item, index) => (
-																		<GRNLineRow
-																			key={`line-${index}-${item.skuCode || "new"}`}
-																			item={item}
-																			index={index}
-																			items={items}
-																			onItemsChange={field.handleChange}
-																			skuOptions={skuOptions}
-																			stockUnits={stockUnits}
-																			racks={racks}
-																			onOpenCreateRack={(lineIndex) => {
-																				setCreateRackForLineIndex(lineIndex);
-																				setCreateRackOpen(true);
-																			}}
-																		/>
-																	))
-																)}
-															</TableBody>
-														</Table>
-													</div>
+													{items.length === 0 ? (
+														<div className="flex h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-muted-foreground">
+															<div className="rounded-full bg-muted p-3">
+																<Package className="h-10 w-10 opacity-60" />
+															</div>
+															<div className="text-center">
+																<p className="text-sm font-medium">
+																	No line items yet
+																</p>
+																<p className="text-xs mt-1">
+																	Click &quot;Add Line Item&quot; above to get
+																	started
+																</p>
+															</div>
+														</div>
+													) : (
+														<div className="flex flex-col gap-3">
+															{items.map((item, index) => (
+																<GRNLineRow
+																	key={`line-${index}-${item.skuCode || "new"}`}
+																	item={item}
+																	index={index}
+																	items={items}
+																	onItemsChange={field.handleChange}
+																	skuOptions={skuOptions}
+																	stockUnits={stockUnits}
+																	racks={racks}
+																	onOpenCreateRack={(lineIndex) => {
+																		setCreateRackForLineIndex(lineIndex);
+																		setCreateRackOpen(true);
+																	}}
+																/>
+															))}
+														</div>
+													)}
 													{field.state.meta.errors.length > 0 && (
 														<p className="text-sm text-destructive mt-2">
 															{field.state.meta.errors
