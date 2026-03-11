@@ -208,10 +208,11 @@ const GQL_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	ACCEPTED: "preparing",
 	REJECTED: "cancel",
 	DO_CREATED: "to-ship",
+	SHIPPED: "in-transit",
 	CANCELLED: "cancel",
 };
 
-const DO_STEP_STATUSES = ["NEW", "PACKING", "DELIVERED"] as const;
+const DO_STEP_STATUSES = ["NEW", "PACKING", "SHIPPED", "DELIVERED"] as const;
 
 export function mapGqlToPurchaseOrderDetail(
 	po: PurchaseOrder,
@@ -234,7 +235,7 @@ export function mapGqlToPurchaseOrderDetail(
 			: DO_STEP_STATUSES.includes(
 					rawDoStatus as (typeof DO_STEP_STATUSES)[number],
 				)
-				? (rawDoStatus as "NEW" | "PACKING" | "DELIVERED")
+					? (rawDoStatus as "NEW" | "PACKING" | "SHIPPED" | "DELIVERED")
 				: "NEW";
 	const deliveryOrderStep =
 		po.deliveryOrder?.id && rawDoStatus != null

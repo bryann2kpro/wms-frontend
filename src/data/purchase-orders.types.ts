@@ -19,10 +19,10 @@ export interface PurchaseOrderItem {
 	packedQuantity: number;
 }
 
-/** Delivery order step status shown on the outbound list (NEW -> PACKING -> DELIVERED). */
+/** Delivery order step status (NEW -> PACKING -> SHIPPED = out from warehouse -> DELIVERED). */
 export interface DeliveryOrderStep {
 	id: string;
-	status: "NEW" | "PACKING" | "DELIVERED";
+	status: "NEW" | "PACKING" | "SHIPPED" | "DELIVERED";
 }
 
 export interface PurchaseOrderDetail {
