@@ -76,6 +76,28 @@ export function formatStatus(status: string): string {
 	return status;
 }
 
+/** Delivery order step status labels (NEW -> PACKING -> DELIVERED). */
+export function formatDeliveryOrderStepStatus(
+	status: "NEW" | "PACKING" | "DELIVERED",
+): string {
+	if (status === "NEW") return "New";
+	if (status === "PACKING") return "Packing";
+	if (status === "DELIVERED") return "Delivered";
+	return status;
+}
+
+/** Tailwind classes for delivery order step badge. */
+export function getDeliveryOrderStepStatusColor(
+	status: "NEW" | "PACKING" | "DELIVERED",
+): string {
+	const colors: Record<"NEW" | "PACKING" | "DELIVERED", string> = {
+		NEW: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+		PACKING: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+		DELIVERED: "bg-green-500/10 text-green-600 border-green-500/20",
+	};
+	return colors[status] ?? "bg-gray-500/10 text-gray-600 border-gray-500/20";
+}
+
 export function getPurchaseOrderStatusColor(
 	status: PurchaseOrderStatus,
 ): string {

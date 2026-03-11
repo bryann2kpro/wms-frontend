@@ -26,6 +26,7 @@ import {
 	createPurchaseOrder,
 	updatePurchaseOrderStatus,
 } from "@/data/purchase-orders";
+import { advanceDeliveryOrderStatus } from "@/data/delivery-orders";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
@@ -167,6 +168,14 @@ function OutboundRouteComponent() {
 	const statusMutation = useMutation({
 		mutationFn: ({ id, status }: { id: string; status: PurchaseOrderStatus }) =>
 			updatePurchaseOrderStatus(id, status),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+		},
+	});
+
+	const advanceStepMutation = useMutation({
+		mutationFn: (deliveryOrderId: string) =>
+			advanceDeliveryOrderStatus(deliveryOrderId),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 		},
@@ -391,6 +400,13 @@ function OutboundRouteComponent() {
 					setSelectedPurchaseOrder(purchaseOrder);
 					setIsRejectDialogOpen(true);
 				}}
+				onAdvanceStep={(purchaseOrder) => {
+					if (purchaseOrder.deliveryOrder?.id) {
+						advanceStepMutation.mutate(purchaseOrder.deliveryOrder.id);
+					}
+				}}
+				isAdvanceStepPending={advanceStepMutation.isPending}
+				advancingDeliveryOrderId={advanceStepMutation.variables ?? null}
 				hasRejectPermission={hasPermission("to:reject")}
 			/>
 
@@ -402,6 +418,17 @@ function OutboundRouteComponent() {
 					setIsViewOpen(false);
 					setIsRejectDialogOpen(true);
 				}}
+				onAdvanceStep={
+					selectedPurchaseOrder?.deliveryOrder?.id
+						? () => {
+								advanceStepMutation.mutate(
+									selectedPurchaseOrder.deliveryOrder!.id,
+								);
+							}
+						: undefined
+				}
+				isAdvanceStepPending={advanceStepMutation.isPending}
+				hasAcceptPermission={hasPermission("to:accept")}
 				hasRejectPermission={hasPermission("to:reject")}
 			/>
 

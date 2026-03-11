@@ -623,6 +623,7 @@ export interface PurchaseOrder {
 	id: string;
 	purchaseOrderNo: string;
 	outlet?: PurchaseOrderOutlet | null;
+	deliveryOrder?: DeliveryOrder | null;
 	status: string;
 	scheduledDeliveryDate?: string | null;
 	createdAt: string;

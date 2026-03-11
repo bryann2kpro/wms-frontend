@@ -19,6 +19,12 @@ export interface PurchaseOrderItem {
 	packedQuantity: number;
 }
 
+/** Delivery order step status shown on the outbound list (NEW -> PACKING -> DELIVERED). */
+export interface DeliveryOrderStep {
+	id: string;
+	status: "NEW" | "PACKING" | "DELIVERED";
+}
+
 export interface PurchaseOrderDetail {
 	id: string;
 	purchaseOrderNumber: string;
@@ -34,6 +40,8 @@ export interface PurchaseOrderDetail {
 	netsuiteStatus?: NetSuiteStatus;
 	regionName?: string | null;
 	regionCode?: string | null;
+	/** When present, the purchase order has an associated delivery order; use for step button. */
+	deliveryOrder?: DeliveryOrderStep | null;
 }
 
 export type PurchaseOrderStatusFilter = PurchaseOrderStatus | "ALL";

@@ -18,13 +18,15 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { XCircle, AlertCircle } from "lucide-react";
+import { XCircle, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
 	getStatusColor,
 	getNetSuiteStatusColor,
 	formatStatus,
+	formatDeliveryOrderStepStatus,
+	getDeliveryOrderStepStatusColor,
 } from "@/lib/outbound";
 
 interface ViewPurchaseOrderDialogProps {
@@ -33,6 +35,8 @@ interface ViewPurchaseOrderDialogProps {
 	purchaseOrder: PurchaseOrderDetail | null;
 	onAcceptClick: () => void;
 	onRejectClick: () => void;
+	onAdvanceStep?: () => void;
+	isAdvanceStepPending?: boolean;
 	hasAcceptPermission: boolean;
 	hasRejectPermission: boolean;
 }
@@ -43,6 +47,8 @@ export function ViewPurchaseOrderDialog({
 	purchaseOrder,
 	onAcceptClick,
 	onRejectClick,
+	onAdvanceStep,
+	isAdvanceStepPending,
 	hasAcceptPermission,
 	hasRejectPermission,
 }: ViewPurchaseOrderDialogProps) {
@@ -123,6 +129,38 @@ export function ViewPurchaseOrderDialog({
 										{formatStatus(purchaseOrder.status)}
 									</Badge>
 								</div>
+								{purchaseOrder.deliveryOrder && (
+									<div>
+										<Label className="text-xs text-muted-foreground">
+											Delivery step
+										</Label>
+										<div className="flex items-center gap-2">
+											<Badge
+												variant="outline"
+												className={getDeliveryOrderStepStatusColor(
+													purchaseOrder.deliveryOrder.status,
+												)}
+											>
+												{formatDeliveryOrderStepStatus(
+													purchaseOrder.deliveryOrder.status,
+												)}
+											</Badge>
+											{onAdvanceStep &&
+												purchaseOrder.deliveryOrder.status !== "DELIVERED" && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={onAdvanceStep}
+														disabled={isAdvanceStepPending}
+														aria-label="Mark delivery order to next step"
+													>
+														{isAdvanceStepPending ? "Updating…" : "Next step"}
+														<ChevronRight className="ml-1 h-4 w-4" />
+													</Button>
+												)}
+										</div>
+									</div>
+								)}
 								<div>
 									<Label className="text-xs text-muted-foreground">
 										NetSuite Status (API)

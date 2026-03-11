@@ -46,6 +46,10 @@ export const PURCHASE_ORDER_WITH_OUTLET_FRAGMENT = gql`
 				regionCode
 			}
 		}
+		deliveryOrder {
+			id
+			status
+		}
 		status
 		scheduledDeliveryDate
 		createdAt
@@ -207,6 +211,8 @@ const GQL_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	CANCELLED: "cancel",
 };
 
+const DO_STEP_STATUSES = ["NEW", "PACKING", "DELIVERED"] as const;
+
 export function mapGqlToPurchaseOrderDetail(
 	po: PurchaseOrder,
 ): PurchaseOrderDetail {
@@ -220,6 +226,20 @@ export function mapGqlToPurchaseOrderDetail(
 
 	const outlet = po.outlet;
 	const region = outlet?.region;
+
+	const rawDoStatus = po.deliveryOrder?.status;
+	const doStepStatus =
+		rawDoStatus === "CREATED"
+			? "NEW"
+			: DO_STEP_STATUSES.includes(
+					rawDoStatus as (typeof DO_STEP_STATUSES)[number],
+				)
+				? (rawDoStatus as "NEW" | "PACKING" | "DELIVERED")
+				: "NEW";
+	const deliveryOrderStep =
+		po.deliveryOrder?.id && rawDoStatus != null
+			? { id: po.deliveryOrder.id, status: doStepStatus }
+			: null;
 
 	return {
 		id: po.id,
@@ -236,6 +256,7 @@ export function mapGqlToPurchaseOrderDetail(
 		netsuiteStatus: undefined,
 		regionName: region?.regionName ?? outlet?.regionName ?? null,
 		regionCode: region?.regionCode ?? outlet?.regionCode ?? null,
+		deliveryOrder: deliveryOrderStep ?? undefined,
 	};
 }
 

@@ -86,6 +86,15 @@ export const COMPLETE_DELIVERY_ORDER_MUTATION = gql`
 	${DELIVERY_ORDER_FRAGMENT}
 `;
 
+export const ADVANCE_DELIVERY_ORDER_STATUS_MUTATION = gql`
+	mutation AdvanceDeliveryOrderStatus($id: ID!) {
+		advanceDeliveryOrderStatus(id: $id) {
+			...DeliveryOrderFields
+		}
+	}
+	${DELIVERY_ORDER_FRAGMENT}
+`;
+
 // ---------------------------------------------------------------------------
 // Delivery Order Items (Work Queue)
 // ---------------------------------------------------------------------------
@@ -177,6 +186,14 @@ export type CompleteDeliveryOrderMutationVariables = {
 
 export type CompleteDeliveryOrderMutationData = {
 	completeDeliveryOrder: DeliveryOrder;
+};
+
+export type AdvanceDeliveryOrderStatusMutationVariables = {
+	id: string;
+};
+
+export type AdvanceDeliveryOrderStatusMutationData = {
+	advanceDeliveryOrderStatus: DeliveryOrder;
 };
 
 // ---------------------------------------------------------------------------
