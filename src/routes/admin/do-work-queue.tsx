@@ -97,10 +97,6 @@ function DOWorkQueueComponent() {
 		fetchPolicy: "cache-and-network",
 	});
 
-	// Paginate the flattened items
-	const totalItems = allItems.length;
-	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
 	const [markAsPicked, { loading: markingPicked }] = useMutation<
 		MarkDeliveryOrderItemPickedMutationData,
 		MarkDeliveryOrderItemPickedMutationVariables

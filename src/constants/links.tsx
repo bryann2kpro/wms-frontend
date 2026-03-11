@@ -15,9 +15,6 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
-import { LayoutDashboard, Package, ArrowRightLeft, Warehouse, FileCheck, ClipboardCheck, FileText, PackageSearch, BarChart3, Users, Settings, Shield } from "lucide-react";
-import { z } from "zod";
-
 /** Sidebar group keys – order here defines display order. */
 export const SIDEBAR_GROUP_ORDER = [
 	"overview",

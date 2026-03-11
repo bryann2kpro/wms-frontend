@@ -11,11 +11,9 @@ import {
 	SidebarMenu,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { allNavigationItems, type NavLinkSchemaType } from "@/constants/links";
-import { Sidebar as SidebarUi, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
 import {
 	allNavigationItems,
-	NavLinkSchemaType,
+	type NavLinkSchemaType,
 	SIDEBAR_GROUP_ORDER,
 	SIDEBAR_GROUP_LABELS,
 	type SidebarGroupKey,

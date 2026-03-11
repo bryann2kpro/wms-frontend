@@ -36,13 +36,6 @@ import {
 	Loader2,
 	PackageOpen,
 	AlertCircle,
-  Search,
-  Eye,
-  XCircle,
-  Calendar,
-  Clock,
-  PackageOpen,
-  AlertCircle,
 } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
@@ -73,15 +66,6 @@ export function OutboundListCard({
 	onRejectClick,
 	hasAcceptPermission,
 	hasRejectPermission,
-  onViewPurchaseOrder: (purchaseOrder: PurchaseOrderDetail) => void;
-  onRejectClick: (purchaseOrder: PurchaseOrderDetail) => void;
-  hasRejectPermission: boolean;
-}
-
-export function OutboundListCard({
-  onViewPurchaseOrder,
-  onRejectClick,
-  hasRejectPermission,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
