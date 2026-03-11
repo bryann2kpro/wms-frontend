@@ -7,9 +7,11 @@ import { env } from "@/env";
 import { getAccessToken } from "@/lib/auth/auth-storage";
 import {
 	CREATE_PURCHASE_ORDER_MUTATION,
+	APPLY_EMERGENCY_DELIVERY_MUTATION,
 	mapGqlToPurchaseOrderDetail,
 	type CreatePurchaseOrderMutationData,
 	type CreatePurchaseOrderMutationVariables,
+	type ApplyEmergencyDeliveryMutationData,
 } from "@/lib/graphql/purchase-orders";
 import type {
 	PurchaseOrderDetail,
@@ -90,4 +92,22 @@ export async function updatePurchaseOrderStatus(
 	_status: PurchaseOrderStatus,
 ): Promise<PurchaseOrderDetail | undefined> {
 	return undefined;
+}
+
+/** Apply emergency delivery to a PO: re-computes scheduledDeliveryDate ignoring cutoff rules. */
+export async function applyEmergencyDelivery(
+	id: string,
+): Promise<{ id: string; scheduledDeliveryDate: string | null }> {
+	const headers = new Headers();
+	const token = getAccessToken();
+	if (token) headers.set("Authorization", `Bearer ${token}`);
+
+	const data = await request<ApplyEmergencyDeliveryMutationData>(
+		env.VITE_GRAPHQL_ENDPOINT,
+		APPLY_EMERGENCY_DELIVERY_MUTATION,
+		{ id },
+		headers,
+	);
+
+	return data.applyEmergencyDelivery;
 }

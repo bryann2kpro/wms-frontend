@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -51,12 +51,28 @@ function getStatusBadgeVariant(status: string | null): "default" | "secondary" |
 	}
 }
 
+interface FlattenedItem {
+	id: string;
+	skuCode: string | null;
+	skuDescription: string | null;
+	doNo: string | null;
+	purchaseOrderNo: string;
+	qtyRequired: string | number;
+	qtyPicked: string | number;
+	qtyPacked: string | number;
+	onHandQty: string | number | null;
+	lossQty: string | number | null;
+	doStatus: string | null;
+}
+
 function EmpireSushiDOComponent() {
 	const unitName = useStockUnitName();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
-	const [debouncedSearch, setDebouncedSearch] = useState("");
+	const [statusFilter, setStatusFilter] = useState<DOStatusFilter>("ALL");
+	const [assignedTo, setAssignedTo] = useState<string>("");
+	const [markingPicked, setMarkingPicked] = useState(false);
 
 	const { data, isLoading } = useQuery({
 		queryKey: ["dos-empire-sushi", { searchTerm, statusFilter, assignedTo }],
@@ -66,7 +82,7 @@ function EmpireSushiDOComponent() {
 				pageSize: 100, // Get more to flatten
 				search: searchTerm,
 				status: statusFilter,
-				assignedTo,
+				assignedTo: assignedTo || undefined,
 			}),
 		staleTime: 30_000,
 	});
@@ -78,14 +94,22 @@ function EmpireSushiDOComponent() {
 		};
 	}, []);
 
-	// Flatten all items from all DOs
+	// Flatten all items from all DOs and map to table shape
 	const allItems: FlattenedItem[] = useMemo(() => {
 		if (!data?.items) return [];
 		return data.items.flatMap((do_) =>
 			do_.items.map((item) => ({
-				...item,
-				doNumber: do_.doNumber,
-				doId: do_.id,
+				id: item.id,
+				skuCode: item.sku ?? null,
+				skuDescription: item.description ?? null,
+				doNo: do_.doNumber ?? null,
+				purchaseOrderNo: do_.toNumber,
+				qtyRequired: item.requiredQuantity,
+				qtyPicked: item.pickedQuantity,
+				qtyPacked: item.packedQuantity,
+				onHandQty: item.openingQtyDozen,
+				lossQty: item.openingQtyLoss,
+				doStatus: do_.status ?? null,
 			})),
 		);
 	}, [data?.items]);
@@ -94,6 +118,12 @@ function EmpireSushiDOComponent() {
 	const totalItems = allItems.length;
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 	const paginatedItems = allItems.slice((page - 1) * pageSize, page * pageSize);
+
+	function handleMarkAsPicked(_item: FlattenedItem) {
+		// TODO: wire to mutation when backend supports it
+		setMarkingPicked(true);
+		setTimeout(() => setMarkingPicked(false), 500);
+	}
 
 	const tableColSpan = 11;
 
@@ -109,11 +139,11 @@ function EmpireSushiDOComponent() {
 				className="sr-only"
 				role="status"
 			>
-				{loading
+				{isLoading
 					? "Loading items…"
-					: items.length === 0
+					: paginatedItems.length === 0
 						? "No items found."
-						: `Showing ${items.length} items.`}
+						: `Showing ${paginatedItems.length} items.`}
 			</div>
 
 			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -147,7 +177,7 @@ function EmpireSushiDOComponent() {
 				</div>
 			</header>
 
-			{loading && (
+			{isLoading && (
 				<div
 					className="flex items-center gap-2 text-muted-foreground text-sm"
 					role="status"
@@ -161,7 +191,7 @@ function EmpireSushiDOComponent() {
 			<section
 				className="relative"
 				aria-label="Delivery order items table"
-				aria-busy={loading}
+				aria-busy={isLoading}
 			>
 				<GlobalLoadingShadow />
 				<div className="overflow-x-auto rounded-lg border">

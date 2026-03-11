@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +19,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { XCircle, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight, Zap } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
@@ -33,25 +34,29 @@ interface ViewPurchaseOrderDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	purchaseOrder: PurchaseOrderDetail | null;
-	onAcceptClick: () => void;
-	onRejectClick: () => void;
 	onAdvanceStep?: () => void;
 	isAdvanceStepPending?: boolean;
-	hasAcceptPermission: boolean;
-	hasRejectPermission: boolean;
+	onEmergencyDelivery?: () => void;
+	isEmergencyDeliveryPending?: boolean;
 }
 
 export function ViewPurchaseOrderDialog({
 	open,
 	onOpenChange,
 	purchaseOrder,
-	onAcceptClick,
-	onRejectClick,
 	onAdvanceStep,
 	isAdvanceStepPending,
-	hasAcceptPermission,
-	hasRejectPermission,
+	onEmergencyDelivery,
+	isEmergencyDeliveryPending,
 }: ViewPurchaseOrderDialogProps) {
+	const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
+
+	const canApplyEmergency =
+		onEmergencyDelivery &&
+		purchaseOrder &&
+		purchaseOrder.status !== "cancel" &&
+		purchaseOrder.status !== "return";
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
@@ -120,7 +125,7 @@ export function ViewPurchaseOrderDialog({
 								</div>
 								<div>
 									<Label className="text-xs text-muted-foreground">
-										Status
+										PO Status
 									</Label>
 									<Badge
 										variant="outline"
@@ -132,7 +137,7 @@ export function ViewPurchaseOrderDialog({
 								{purchaseOrder.deliveryOrder && (
 									<div>
 										<Label className="text-xs text-muted-foreground">
-											Delivery step
+											DO Status
 										</Label>
 										<div className="flex items-center gap-2">
 											<Badge
@@ -272,24 +277,55 @@ export function ViewPurchaseOrderDialog({
 								}}
 							/>
 
+							{showEmergencyConfirm && (
+								<div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+									<p className="text-sm font-medium text-amber-900">
+										Apply Emergency Delivery?
+									</p>
+									<p className="mt-1 text-xs text-amber-700">
+										This will move the scheduled delivery date to the next
+										available slot, bypassing normal cutoff rules. This action
+										cannot be undone.
+									</p>
+									<div className="mt-3 flex gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => setShowEmergencyConfirm(false)}
+											disabled={isEmergencyDeliveryPending}
+										>
+											Cancel
+										</Button>
+										<Button
+											size="sm"
+											className="bg-amber-600 hover:bg-amber-700 text-white"
+											disabled={isEmergencyDeliveryPending}
+											onClick={() => {
+												onEmergencyDelivery?.();
+												setShowEmergencyConfirm(false);
+											}}
+										>
+											{isEmergencyDeliveryPending ? "Applying…" : "Confirm"}
+										</Button>
+									</div>
+								</div>
+							)}
+
 							<DialogFooter>
 								<Button variant="outline" onClick={() => onOpenChange(false)}>
 									Close
 								</Button>
-								{hasAcceptPermission &&
-									purchaseOrder.status === "preparing" && (
-										<Button onClick={onAcceptClick}>
-											<CheckCircle className="mr-2 h-4 w-4" />
-											Accept &amp; Create DO
-										</Button>
-									)}
-								{hasRejectPermission &&
-									purchaseOrder.status === "preparing" && (
-										<Button variant="destructive" onClick={onRejectClick}>
-											<XCircle className="mr-2 h-4 w-4" />
-											Reject
-										</Button>
-									)}
+								{canApplyEmergency && !showEmergencyConfirm && (
+									<Button
+										variant="outline"
+										className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+										onClick={() => setShowEmergencyConfirm(true)}
+										disabled={isEmergencyDeliveryPending}
+									>
+										<Zap className="mr-2 h-4 w-4" />
+										Emergency Delivery
+									</Button>
+								)}
 							</DialogFooter>
 						</div>
 					</ScrollArea>

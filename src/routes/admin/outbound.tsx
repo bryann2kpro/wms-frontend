@@ -25,6 +25,7 @@ import {
 	type PurchaseOrderStatus,
 	createPurchaseOrder,
 	updatePurchaseOrderStatus,
+	applyEmergencyDelivery,
 } from "@/data/purchase-orders";
 import { advanceDeliveryOrderStatus } from "@/data/delivery-orders";
 import { usePermissions } from "@/lib/permissions";
@@ -43,6 +44,15 @@ import {
 	useOutboundSummary,
 } from "@/components/outbound";
 
+const STATUS_BORDER_COLOR: Record<string, string> = {
+	preparing: "border-l-yellow-500",
+	"in-transit": "border-l-blue-500",
+	"to-ship": "border-l-indigo-500",
+	cancel: "border-l-red-500",
+	return: "border-l-orange-500",
+	other: "border-l-gray-400",
+};
+
 export const Route = createFileRoute("/admin/outbound")({
 	component: OutboundRouteComponent,
 });
@@ -60,9 +70,10 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-1.png`,
 		description: (
 			<>
-				View all purchase orders from ES. The summary cards show counts by
-				status (Pending, To Ship, Shipped, etc.). When a PO is created, a
-				Delivery Order (DO) is automatically generated.
+				View all outbound purchase orders. The summary cards at the top show
+				counts grouped by status — Preparing, To Ship, In Transit, and more.
+				When a purchase order is created, a Delivery Order (DO) is automatically
+				generated to track the shipment.
 			</>
 		),
 	},
@@ -72,8 +83,9 @@ const OUTBOUND_HELP_STEPS: Array<{
 		description: (
 			<>
 				Click <strong>Create Purchase Order</strong> to add a new order. Select
-				the outlet, add line items with SKU and quantity. The delivery date is
-				set automatically.
+				the outlet, enter the PO number, and add line items with stock and
+				quantity. Enable <strong>Emergency Delivery</strong> if the order needs
+				to be fulfilled urgently outside the regular schedule.
 			</>
 		),
 	},
@@ -82,19 +94,22 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-3.png`,
 		description: (
 			<>
-				Click on any row in the table to view full order details including line
-				items, outlet info, and current status.
+				Click on any row to open the full order details — line items, outlet
+				info, and current status. From the detail view you can also{" "}
+				<strong>Advance</strong> the delivery step or trigger an{" "}
+				<strong>Emergency Delivery</strong> if needed.
 			</>
 		),
 	},
 	{
-		title: "Reject orders",
+		title: "Accept or reject orders",
 		image: `${HELP_IMAGES_BASE}/step-4.png`,
 		description: (
 			<>
-				Use the <strong>Accept</strong> button to move an order to "To Ship"
-				status. Use <strong>Reject</strong> to cancel an order — you'll need to
-				provide a reason.
+				Use <strong>Accept</strong> on a pending order to move it to "To Ship"
+				status, signalling it is ready for dispatch. Use{" "}
+				<strong>Reject</strong> to cancel an order — you will be prompted to
+				enter a reason before confirming.
 			</>
 		),
 	},
@@ -103,9 +118,9 @@ const OUTBOUND_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-5.png`,
 		description: (
 			<>
-				Click <strong>Refresh from NetSuite</strong> to sync the latest purchase
-				orders from the ERP system. This updates the list with any new or
-				changed orders.
+				Click <strong>Refresh from NetSuite</strong> to pull the latest purchase
+				orders from the ERP system. Use this whenever you expect new or updated
+				orders that are not yet showing in the list.
 			</>
 		),
 	},
@@ -181,6 +196,13 @@ function OutboundRouteComponent() {
 		},
 	});
 
+	const emergencyDeliveryMutation = useMutation({
+		mutationFn: (poId: string) => applyEmergencyDelivery(poId),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+		},
+	});
+
 	const form = useForm({
 		defaultValues: {
 			purchaseOrderNumber: "",
@@ -228,6 +250,17 @@ function OutboundRouteComponent() {
 		};
 	}, []);
 
+	useEffect(() => {
+		if (!isHelpOpen) return;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === "ArrowRight")
+				setHelpStep((s) => Math.min(s + 1, OUTBOUND_HELP_STEPS.length - 1));
+			if (e.key === "ArrowLeft") setHelpStep((s) => Math.max(s - 1, 0));
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [isHelpOpen]);
+
 	return (
 		<main
 			className="container mx-auto p-6 space-y-6"
@@ -244,9 +277,9 @@ function OutboundRouteComponent() {
 						Outbound Delivery Orders
 					</h1>
 					<p id="page-description" className="text-muted-foreground mt-1">
-						Manage purchase orders from ES. Create new orders or refresh from
-						NetSuite. Delivery date is set automatically when you create an
-						order.
+						Manage outbound purchase orders. Create new orders or refresh from
+						NetSuite. A Delivery Order is automatically generated when an order
+						is created.
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -375,7 +408,7 @@ function OutboundRouteComponent() {
 					: purchaseOrderStatuses.map((status) => (
 							<Card
 								key={status}
-								className="transition-colors hover:bg-muted/30"
+								className={`transition-colors hover:bg-muted/30 border-l-4 ${STATUS_BORDER_COLOR[status] ?? "border-l-gray-400"}`}
 							>
 								<CardHeader className="pb-2">
 									<CardTitle className="text-sm font-medium">
@@ -396,10 +429,6 @@ function OutboundRouteComponent() {
 					setSelectedPurchaseOrder(purchaseOrder);
 					setIsViewOpen(true);
 				}}
-				onRejectClick={(purchaseOrder) => {
-					setSelectedPurchaseOrder(purchaseOrder);
-					setIsRejectDialogOpen(true);
-				}}
 				onAdvanceStep={(purchaseOrder) => {
 					if (purchaseOrder.deliveryOrder?.id) {
 						advanceStepMutation.mutate(purchaseOrder.deliveryOrder.id);
@@ -407,17 +436,12 @@ function OutboundRouteComponent() {
 				}}
 				isAdvanceStepPending={advanceStepMutation.isPending}
 				advancingDeliveryOrderId={advanceStepMutation.variables ?? null}
-				hasRejectPermission={hasPermission("to:reject")}
 			/>
 
 			<ViewPurchaseOrderDialog
 				open={isViewOpen}
 				onOpenChange={setIsViewOpen}
 				purchaseOrder={selectedPurchaseOrder}
-				onRejectClick={() => {
-					setIsViewOpen(false);
-					setIsRejectDialogOpen(true);
-				}}
 				onAdvanceStep={
 					selectedPurchaseOrder?.deliveryOrder?.id
 						? () => {
@@ -428,8 +452,12 @@ function OutboundRouteComponent() {
 						: undefined
 				}
 				isAdvanceStepPending={advanceStepMutation.isPending}
-				hasAcceptPermission={hasPermission("to:accept")}
-				hasRejectPermission={hasPermission("to:reject")}
+				onEmergencyDelivery={
+					selectedPurchaseOrder
+						? () => emergencyDeliveryMutation.mutate(selectedPurchaseOrder.id)
+						: undefined
+				}
+				isEmergencyDeliveryPending={emergencyDeliveryMutation.isPending}
 			/>
 
 			<RejectPurchaseOrderDialog

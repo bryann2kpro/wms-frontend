@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
 	Card,
 	CardContent,
@@ -30,14 +30,15 @@ import {
 	Search,
 	Eye,
 	CheckCircle,
-	XCircle,
 	Calendar,
 	Clock,
 	Loader2,
 	PackageOpen,
 	AlertCircle,
 	ChevronRight,
+	FlaskConical,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
 	purchaseOrderStatuses,
@@ -58,28 +59,32 @@ import {
 interface OutboundListCardProps {
 	onViewPurchaseOrder: (purchaseOrder: PurchaseOrderDetail) => void;
 	onAcceptClick?: (purchaseOrder: PurchaseOrderDetail) => void;
-	onRejectClick: (purchaseOrder: PurchaseOrderDetail) => void;
 	onAdvanceStep?: (purchaseOrder: PurchaseOrderDetail) => void;
 	isAdvanceStepPending?: boolean;
 	advancingDeliveryOrderId?: string | null;
 	hasAcceptPermission?: boolean;
-	hasRejectPermission: boolean;
 }
 
 export function OutboundListCard({
 	onViewPurchaseOrder,
 	onAcceptClick,
-	onRejectClick,
 	onAdvanceStep,
 	isAdvanceStepPending,
 	advancingDeliveryOrderId,
 	hasAcceptPermission,
-	hasRejectPermission,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
+	const [isTesting, setIsTesting] = useState(false);
+
+	/** Today's date key in YYYY-MM-DD format, using UTC+8 business timezone. */
+	const todayKey = useMemo(() => {
+		const now = new Date();
+		const utc8 = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+		return `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, "0")}-${String(utc8.getUTCDate()).padStart(2, "0")}`;
+	}, []);
 
 	const { data, isLoading, isFetching, error, refetch } = usePurchaseOrders({
 		searchTerm,
@@ -89,8 +94,10 @@ export function OutboundListCard({
 	});
 
 	const purchaseOrdersByDate = data?.purchaseOrdersByDate ?? {};
-	const paginatedDateKeys = data?.paginatedDateKeys ?? [];
+	const allDateKeys = data?.paginatedDateKeys ?? [];
 	const dateKeys = data?.dateKeys ?? [];
+
+	const paginatedDateKeys = allDateKeys;
 
 	const loading = isLoading || isFetching;
 	const weekRangeLabel =
@@ -156,6 +163,20 @@ export function OutboundListCard({
 									))}
 								</SelectContent>
 							</Select>
+							<div
+								className="flex items-center gap-2 rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-1.5"
+								title="Testing mode: show all scheduled dates, not just today"
+							>
+								<FlaskConical className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+								<span className="text-xs font-medium text-amber-700 select-none">Testing</span>
+								<Switch
+									id="testing-mode-toggle"
+									checked={isTesting}
+									onCheckedChange={setIsTesting}
+									aria-label="Toggle testing mode to show all scheduled dates"
+									className="data-[state=checked]:bg-amber-500"
+								/>
+							</div>
 						</div>
 					</div>
 					<div
@@ -202,8 +223,8 @@ export function OutboundListCard({
 								<TableHead scope="col">PO Number</TableHead>
 								<TableHead scope="col">Outlet</TableHead>
 								<TableHead scope="col">Region</TableHead>
-								<TableHead scope="col">Status</TableHead>
-								<TableHead scope="col">Delivery step</TableHead>
+								<TableHead scope="col">PO Status</TableHead>
+								<TableHead scope="col">DO Status</TableHead>
 								<TableHead scope="col">NetSuite (API)</TableHead>
 								<TableHead scope="col" className="text-right">
 									Actions
@@ -397,7 +418,8 @@ export function OutboundListCard({
 																</Badge>
 																{onAdvanceStep &&
 																	purchaseOrder.deliveryOrder.status !==
-																		"DELIVERED" && (
+																		"DELIVERED" &&
+																(isTesting || dateKey === todayKey) && (
 																		<Button
 																			variant="outline"
 																			size="sm"
@@ -463,21 +485,6 @@ export function OutboundListCard({
 																	>
 																		<CheckCircle
 																			className="h-4 w-4 text-green-600"
-																			aria-hidden="true"
-																		/>
-																	</Button>
-																)}
-															{hasRejectPermission &&
-																purchaseOrder.status === "preparing" && (
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		onClick={() => onRejectClick(purchaseOrder)}
-																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		aria-label={`Reject ${purchaseOrder.purchaseOrderNumber}`}
-																	>
-																		<XCircle
-																			className="h-4 w-4 text-red-600"
 																			aria-hidden="true"
 																		/>
 																	</Button>

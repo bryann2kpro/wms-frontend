@@ -200,6 +200,25 @@ export type CreatePurchaseOrderMutationData = {
 };
 
 // ---------------------------------------------------------------------------
+// Apply Emergency Delivery mutation
+// ---------------------------------------------------------------------------
+
+export const APPLY_EMERGENCY_DELIVERY_MUTATION = gql`
+	mutation ApplyEmergencyDelivery($id: ID!) {
+		applyEmergencyDelivery(id: $id) {
+			id
+			scheduledDeliveryDate
+			status
+		}
+	}
+`;
+
+export type ApplyEmergencyDeliveryMutationVariables = { id: string };
+export type ApplyEmergencyDeliveryMutationData = {
+	applyEmergencyDelivery: Pick<PurchaseOrder, "id" | "scheduledDeliveryDate" | "status">;
+};
+
+// ---------------------------------------------------------------------------
 // Mapping helper – GraphQL PurchaseOrder -> PurchaseOrderDetail (for UI)
 // ---------------------------------------------------------------------------
 
