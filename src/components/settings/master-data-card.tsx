@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Truck,
@@ -19,6 +19,7 @@ import {
 	RackSection,
 	SkusSection,
 } from "./master-data";
+import type { SettingsMasterDataSubTabId } from "@/lib/settings-permissions";
 
 type SubTab =
 	| "supplier"
@@ -30,84 +31,70 @@ type SubTab =
 	| "skus"
 	| "warehouse";
 
-export function MasterDataCard() {
-	const [subTab, setSubTab] = useState<SubTab>("supplier");
+const SUB_TAB_ORDER: SubTab[] = [
+	"supplier",
+	"warehouse",
+	"region",
+	"delivery-schedule",
+	"outlet",
+	"stock-unit",
+	"rack",
+	"skus",
+];
+
+const SUB_TAB_CONFIG: Record<
+	SubTab,
+	{ label: string; icon: typeof Truck }
+> = {
+	supplier: { label: "Suppliers", icon: Truck },
+	warehouse: { label: "Warehouses", icon: Building },
+	region: { label: "Regions", icon: MapPin },
+	"delivery-schedule": { label: "Delivery Schedules", icon: CalendarClock },
+	outlet: { label: "Outlets", icon: Store },
+	"stock-unit": { label: "Stock Units", icon: Package },
+	rack: { label: "Racks", icon: LayoutGrid },
+	skus: { label: "SKUS", icon: Package },
+};
+
+interface MasterDataCardProps {
+	/** When provided, only these sub-tabs are shown (permission-based). If empty, nothing is shown. */
+	allowedSubTabs?: SettingsMasterDataSubTabId[];
+}
+
+export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
+	const visibleSubTabs: SubTab[] =
+		allowedSubTabs && allowedSubTabs.length > 0
+			? SUB_TAB_ORDER.filter((id) =>
+					(allowedSubTabs as string[]).includes(id),
+				)
+			: SUB_TAB_ORDER;
+	const firstVisible = visibleSubTabs[0] ?? "supplier";
+	const [subTab, setSubTab] = useState<SubTab>(firstVisible);
+
+	useEffect(() => {
+		if (!visibleSubTabs.includes(subTab)) {
+			setSubTab(visibleSubTabs[0] ?? "supplier");
+		}
+	}, [visibleSubTabs.join(","), subTab]);
 
 	return (
 		<div className="space-y-4">
 			<div className="flex flex-wrap gap-2 border-b pb-2">
-				<Button
-					variant={subTab === "supplier" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("supplier")}
-					className="rounded-lg rounded-b-none"
-				>
-					<Truck className="mr-2 h-4 w-4" />
-					Suppliers
-				</Button>
-				<Button
-					variant={subTab === "warehouse" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("warehouse")}
-					className="rounded-lg rounded-b-none"
-				>
-					<Building className="mr-2 h-4 w-4" />
-					Warehouses
-				</Button>
-				<Button
-					variant={subTab === "region" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("region")}
-					className="rounded-lg rounded-b-none"
-				>
-					<MapPin className="mr-2 h-4 w-4" />
-					Regions
-				</Button>
-				<Button
-					variant={subTab === "delivery-schedule" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("delivery-schedule")}
-					className="rounded-lg rounded-b-none"
-				>
-					<CalendarClock className="mr-2 h-4 w-4" />
-					Delivery Schedules
-				</Button>
-				<Button
-					variant={subTab === "outlet" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("outlet")}
-					className="rounded-lg rounded-b-none"
-				>
-					<Store className="mr-2 h-4 w-4" />
-					Outlets
-				</Button>
-				<Button
-					variant={subTab === "stock-unit" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("stock-unit")}
-					className="rounded-lg rounded-b-none"
-				>
-					<Package className="mr-2 h-4 w-4" />
-					Stock Units
-				</Button>
-				<Button
-					variant={subTab === "rack" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("rack")}
-					className="rounded-lg rounded-b-none"
-				>
-					<LayoutGrid className="mr-2 h-4 w-4" />
-					Racks
-				</Button>
-				<Button
-					variant={subTab === "skus" ? "default" : "ghost"}
-					size="sm"
-					onClick={() => setSubTab("skus")}
-					className="rounded-lg rounded-b-none"
-				>
-					<Package className="mr-2 h-4 w-4" />
-					SKUS
-				</Button>
+				{visibleSubTabs.map((id) => {
+					const { label, icon: Icon } = SUB_TAB_CONFIG[id];
+					return (
+						<Button
+							key={id}
+							variant={subTab === id ? "default" : "ghost"}
+							size="sm"
+							onClick={() => setSubTab(id)}
+							className="rounded-lg rounded-b-none"
+						>
+							<Icon className="mr-2 h-4 w-4" />
+							{label}
+						</Button>
+					);
+				})}
 			</div>
 			{subTab === "supplier" && <SupplierSection />}
 			{subTab === "region" && <RegionSection />}

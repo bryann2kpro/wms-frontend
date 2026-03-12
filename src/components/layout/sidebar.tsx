@@ -102,22 +102,26 @@ export function Sidebar() {
 		byGroup.get(group)!.push(link);
 	}
 
-	const renderNavLink = (link: NavLinkSchemaType) => (
-		<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
-			<Link
-				to={link.href}
-				className={cn(
-					"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-					isActive(link.href)
-						? "bg-primary text-primary-foreground"
-						: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-				)}
-			>
-				<link.icon className="h-5 w-5" />
-				{link.title}
-			</Link>
-		</SidebarMenuItem>
-	);
+	const renderNavLink = (link: NavLinkSchemaType) => {
+		const active = isActive(link.href);
+		return (
+			<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
+				<Link
+					to={link.href}
+					className={cn(
+						"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none border-l-4 border-transparent",
+						active
+							? "bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:text-white dark:border-amber-500 dark:hover:bg-amber-700"
+							: "text-muted-foreground border-l-transparent hover:bg-muted/60 hover:text-foreground",
+					)}
+					style={{ fontFamily: '"Figtree", sans-serif' }}
+				>
+					<link.icon className="h-5 w-5 shrink-0" />
+					{link.title}
+				</Link>
+			</SidebarMenuItem>
+		);
+	};
 
 	// Render groups in defined order, each with a label (like Work Queues)
 	const navSections: ReactNode[] = [];
@@ -127,7 +131,12 @@ export function Sidebar() {
 		const label = SIDEBAR_GROUP_LABELS[groupKey];
 		navSections.push(
 			<SidebarGroup key={groupKey} className="space-y-1">
-				<SidebarGroupLabel>{label}</SidebarGroupLabel>
+				<SidebarGroupLabel
+					className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+				>
+					{label}
+				</SidebarGroupLabel>
 				<SidebarMenu>{links.map((l) => renderNavLink(l))}</SidebarMenu>
 			</SidebarGroup>,
 		);
@@ -138,29 +147,38 @@ export function Sidebar() {
 			continue;
 		navSections.push(
 			<SidebarGroup key={groupKey} className="space-y-1">
-				<SidebarGroupLabel>{groupKey}</SidebarGroupLabel>
+				<SidebarGroupLabel
+					className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+				>
+					{groupKey}
+				</SidebarGroupLabel>
 				<SidebarMenu>{links.map((l) => renderNavLink(l))}</SidebarMenu>
 			</SidebarGroup>,
 		);
 	}
 
 	return (
-		<SidebarUi className="space-y-4 rounded-lg" collapsible="icon">
-			<SidebarHeader>
-				<div className="relative z-20 flex items-center justify-center text-base font-medium">
+		<SidebarUi
+			className="app-sidebar space-y-4 rounded-none border-r border-sidebar-border"
+			collapsible="icon"
+		>
+			<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-4 py-4">
+				<div className="relative z-20 flex items-center justify-center">
 					<div className="flex flex-col">
 						<img
 							src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
 							alt="SME Logo"
 							width={100}
 							height={100}
+							className="rounded-lg object-contain"
 						/>
 					</div>
 				</div>
 			</SidebarHeader>
 			<SidebarContent>
 				<ScrollArea className="flex-1 px-3 py-4">
-					{navSections}
+					<div className="flex flex-col gap-6">{navSections}</div>
 				</ScrollArea>
 			</SidebarContent>
 		</SidebarUi>

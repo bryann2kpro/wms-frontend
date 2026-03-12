@@ -31,7 +31,11 @@ import {
 } from "@/components/ui/select";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
-import { usePermissions } from "@/lib/permissions";
+import {
+	canSeeIntegrationStatusTab,
+	canSeeMasterDataTab,
+	getAllowedMasterDataSubTabs,
+} from "@/lib/settings-permissions";
 import { MasterDataCard } from "@/components/settings/master-data-card";
 import {
 	User,
@@ -46,7 +50,7 @@ import {
 	Edit,
 	Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WMSRole } from "@/lib/auth";
 
@@ -84,12 +88,15 @@ export const Route = createFileRoute("/admin/settings")({
 
 function SettingsPage() {
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<
 		"profile" | "users" | "master-data" | "integration"
 	>("profile");
+
+	const allowedMasterDataSubTabs = getAllowedMasterDataSubTabs(user);
+	const showMasterDataTab = canSeeMasterDataTab(user);
+	const showIntegrationTab = canSeeIntegrationStatusTab(user);
 
 	// Mock mutation functions
 	const updateUserProfile = useMutation({
@@ -139,13 +146,10 @@ function SettingsPage() {
 
 	const tabs = [
 		{ id: "profile" as const, label: "Profile", icon: User },
-		// ...(hasPermission("admin:users")
-		// 	? [{ id: "users" as const, label: "Users/Roles", icon: Users }]
-		// 	: []),
-		...(hasPermission("admin:master_data")
+		...(showMasterDataTab
 			? [{ id: "master-data" as const, label: "Master Data", icon: Database }]
 			: []),
-		...(hasPermission("admin:integration_status")
+		...(showIntegrationTab
 			? [
 					{
 						id: "integration" as const,
@@ -155,6 +159,13 @@ function SettingsPage() {
 				]
 			: []),
 	];
+
+	const visibleTabIds = tabs.map((t) => t.id);
+	useEffect(() => {
+		if (visibleTabIds.length > 0 && !visibleTabIds.includes(activeTab)) {
+			setActiveTab(visibleTabIds[0]);
+		}
+	}, [activeTab, showMasterDataTab, showIntegrationTab]);
 
 	return (
 		<div className="settings-page min-h-screen bg-[var(--dashboard-surface)]">
@@ -223,16 +234,15 @@ function SettingsPage() {
 				</div>
 			)}
 
-			{activeTab === "users" && hasPermission("admin:users") && (
-				<UsersRolesCard />
+			{activeTab === "users" && <UsersRolesCard />}
+
+			{activeTab === "master-data" && showMasterDataTab && (
+				<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
 			)}
 
-			{activeTab === "master-data" && hasPermission("admin:master_data") && (
-				<MasterDataCard />
+			{activeTab === "integration" && showIntegrationTab && (
+				<IntegrationStatusCard />
 			)}
-
-			{activeTab === "integration" &&
-				hasPermission("admin:integration_status") && <IntegrationStatusCard />}
 			</div>
 		</div>
 	);

@@ -292,3 +292,16 @@ code {
 .settings-page .dashboard-card {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+/* App sidebar: align with admin design system (typography + amber active) */
+.app-sidebar {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+}
+.app-sidebar [data-sidebar="sidebar"] {
+	background: oklch(0.992 0.002 286);
+}
+.dark .app-sidebar [data-sidebar="sidebar"] {
+	background: oklch(0.19 0.008 286);
+}
