@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	useNavigate,
+	Link,
+	redirect,
+} from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import {
@@ -28,6 +33,11 @@ import {
 import axios from "axios";
 
 export const Route = createFileRoute("/login")({
+	beforeLoad: async ({ context }) => {
+		if (context.isAuthenticated()) {
+			throw redirect({ to: "/admin/dashboard" });
+		}
+	},
 	component: RouteComponent,
 	head: () => ({
 		meta: [

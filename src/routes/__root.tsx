@@ -23,6 +23,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 interface MyRouterContext extends ApolloClientIntegration.RouterContext {
 	queryClient: QueryClient;
+	isAuthenticated: () => boolean;
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
