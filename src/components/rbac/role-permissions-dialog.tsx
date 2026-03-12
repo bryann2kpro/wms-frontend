@@ -319,7 +319,6 @@ function PermissionModuleCard({
 }: PermissionModuleCardProps) {
 	// Define permission types in order
 	const permissionTypes = [
-		"View",
 		"Read",
 		"Create",
 		"Update",
@@ -341,7 +340,7 @@ function PermissionModuleCard({
 			</CardHeader>
 			<CardContent>
 				<div
-					className="grid grid-cols-5 gap-2"
+					className="grid grid-cols-4 gap-2"
 					role="group"
 					aria-label={`Permissions for ${moduleData.module}`}
 				>
