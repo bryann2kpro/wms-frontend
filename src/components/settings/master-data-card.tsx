@@ -40,7 +40,7 @@ export function MasterDataCard() {
 					variant={subTab === "supplier" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("supplier")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<Truck className="mr-2 h-4 w-4" />
 					Suppliers
@@ -49,7 +49,7 @@ export function MasterDataCard() {
 					variant={subTab === "warehouse" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("warehouse")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<Building className="mr-2 h-4 w-4" />
 					Warehouses
@@ -58,7 +58,7 @@ export function MasterDataCard() {
 					variant={subTab === "region" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("region")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<MapPin className="mr-2 h-4 w-4" />
 					Regions
@@ -67,7 +67,7 @@ export function MasterDataCard() {
 					variant={subTab === "delivery-schedule" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("delivery-schedule")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<CalendarClock className="mr-2 h-4 w-4" />
 					Delivery Schedules
@@ -76,7 +76,7 @@ export function MasterDataCard() {
 					variant={subTab === "outlet" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("outlet")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<Store className="mr-2 h-4 w-4" />
 					Outlets
@@ -85,7 +85,7 @@ export function MasterDataCard() {
 					variant={subTab === "stock-unit" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("stock-unit")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<Package className="mr-2 h-4 w-4" />
 					Stock Units
@@ -94,7 +94,7 @@ export function MasterDataCard() {
 					variant={subTab === "rack" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("rack")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<LayoutGrid className="mr-2 h-4 w-4" />
 					Racks
@@ -103,7 +103,7 @@ export function MasterDataCard() {
 					variant={subTab === "skus" ? "default" : "ghost"}
 					size="sm"
 					onClick={() => setSubTab("skus")}
-					className="rounded-b-none"
+					className="rounded-lg rounded-b-none"
 				>
 					<Package className="mr-2 h-4 w-4" />
 					SKUS

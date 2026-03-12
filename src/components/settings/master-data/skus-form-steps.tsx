@@ -89,7 +89,7 @@ export function SkusFormStep1({
 							setErrors((prev) => ({ ...prev, skuCode: undefined }));
 					}}
 					placeholder="SKU name"
-					className={errors.skuCode ? "border-destructive" : ""}
+					className={`rounded-lg border-muted-foreground/20 ${errors.skuCode ? "border-destructive" : ""}`}
 				/>
 				{errors.skuCode && (
 					<p className="text-sm text-destructive">{errors.skuCode}</p>
@@ -106,7 +106,7 @@ export function SkusFormStep1({
 							setErrors((prev) => ({ ...prev, skuDescription: undefined }));
 					}}
 					placeholder="SKU description"
-					className={errors.skuDescription ? "border-destructive" : ""}
+					className={`rounded-lg border-muted-foreground/20 ${errors.skuDescription ? "border-destructive" : ""}`}
 				/>
 				{errors.skuDescription && (
 					<p className="text-sm text-destructive">{errors.skuDescription}</p>
@@ -122,6 +122,7 @@ export function SkusFormStep1({
 						value={skuPrice}
 						onChange={(e) => setSkuPrice(e.target.value)}
 						placeholder="0.00"
+						className="rounded-lg border-muted-foreground/20"
 					/>
 				</div>
 				<div className="grid gap-2">
@@ -143,7 +144,7 @@ export function SkusFormStep1({
 							}
 						}}
 						placeholder="0"
-						className={errors.skuQuantity ? "border-destructive" : ""}
+						className={`rounded-lg border-muted-foreground/20 ${errors.skuQuantity ? "border-destructive" : ""}`}
 					/>
 					{errors.skuQuantity && (
 						<p className="text-sm text-destructive">{errors.skuQuantity}</p>
@@ -166,7 +167,7 @@ export function SkusFormStep1({
 						}
 					}}
 					placeholder="0"
-					className={errors.lossQuantity ? "border-destructive" : ""}
+					className={`rounded-lg border-muted-foreground/20 ${errors.lossQuantity ? "border-destructive" : ""}`}
 				/>
 				{errors.lossQuantity && (
 					<p className="text-sm text-destructive">{errors.lossQuantity}</p>
@@ -179,9 +180,7 @@ export function SkusFormStep1({
 						<Button
 							id="sku-expiry-date"
 							variant="outline"
-							className={`w-full justify-start text-left font-normal h-10 hover:bg-accent hover:text-accent-foreground transition-colors ${
-								!skuExpiryDate ? "text-muted-foreground" : "text-foreground"
-							} ${errors.skuExpiryDate ? "border-destructive" : ""}`}
+							className={`w-full justify-start rounded-lg border-muted-foreground/20 text-left font-normal h-10 hover:bg-accent hover:text-accent-foreground transition-colors ${!skuExpiryDate ? "text-muted-foreground" : "text-foreground"} ${errors.skuExpiryDate ? "border-destructive" : ""}`}
 						>
 							<CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
 							<span className="truncate">
@@ -231,7 +230,7 @@ export function SkusFormStep1({
 							setErrors((prev) => ({ ...prev, skuUom: undefined }));
 					}}
 				>
-					<SelectTrigger className={errors.skuUom ? "border-destructive" : ""}>
+					<SelectTrigger className={`rounded-lg border-muted-foreground/20 ${errors.skuUom ? "border-destructive" : ""}`}>
 						<SelectValue placeholder="Select UOM" />
 					</SelectTrigger>
 					<SelectContent>
@@ -282,7 +281,7 @@ export function SkusFormStep2({
 						placeholder="Search by supplier name or code..."
 						value={supplierSearch}
 						onChange={(e) => setSupplierSearch(e.target.value)}
-						className="pl-9"
+						className="pl-9 rounded-lg border-muted-foreground/20"
 					/>
 				</div>
 				{filteredSuppliers.length > 0 ? (
@@ -361,7 +360,7 @@ export function SkusFormStep2({
 												)
 											}
 											placeholder="Supplier's original SKU code"
-											className="mt-1"
+											className="mt-1 rounded-lg border-muted-foreground/20"
 										/>
 									</div>
 								</div>

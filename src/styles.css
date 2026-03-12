@@ -1,8 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 @import "tailwindcss";
-
 @import "tw-animate-css";
-
-@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -141,7 +139,7 @@ code {
 
 /* Dashboard page: industrial/ops aesthetic */
 .dashboard-page {
-	--dashboard-display: "Syne", sans-serif;
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
 	--dashboard-body: "Figtree", sans-serif;
 	--dashboard-accent: oklch(0.706 0.158 70.697); /* warm amber */
 	--dashboard-accent-muted: oklch(0.92 0.04 70);
@@ -172,5 +170,125 @@ code {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .dashboard-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* GRN (and other admin list) pages: same tokens as dashboard */
+.grn-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .grn-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.grn-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.grn-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.grn-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Outbound page: same tokens as dashboard/grn */
+.outbound-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .outbound-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.outbound-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.outbound-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.outbound-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* User Management page: same tokens as dashboard/grn/outbound */
+.user-management-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .user-management-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.user-management-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.user-management-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.user-management-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Audit Log page: same tokens as dashboard/grn/outbound */
+.audit-log-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .audit-log-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.audit-log-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.audit-log-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.audit-log-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Settings page: same tokens as dashboard/grn/outbound */
+.settings-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .settings-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.settings-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.settings-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-page .dashboard-card {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

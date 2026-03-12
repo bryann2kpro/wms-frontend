@@ -91,12 +91,22 @@ export function SupplierSection() {
 	const createdBy = user?.id ?? "";
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Suppliers</CardTitle>
-						<CardDescription>Manage supplier master data</CardDescription>
+						<CardTitle
+							className="text-xl"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Suppliers
+						</CardTitle>
+						<CardDescription
+							className="text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Manage supplier master data
+						</CardDescription>
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="relative">
@@ -108,13 +118,14 @@ export function SupplierSection() {
 									setSearch(e.target.value);
 									setPage(1);
 								}}
-								className="pl-9 w-48"
+								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
 						<Button
 							onClick={() => setIsCreateOpen(true)}
 							disabled={!createdBy}
 							title={!createdBy ? "Sign in to create" : undefined}
+							className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
 						>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Supplier
@@ -122,15 +133,15 @@ export function SupplierSection() {
 					</div>
 				</div>
 			</CardHeader>
-			<CardContent className="relative">
+			<CardContent className="relative px-0 pb-6">
 				<GlobalLoadingShadow />
-				<div className="overflow-x-auto rounded-lg border">
+				<div className="mx-6 overflow-x-auto rounded-xl border">
 					<Table>
 						<TableHeader>
-							<TableRow>
-								<TableHead>Code</TableHead>
-								<TableHead>Name</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+							<TableRow className="hover:bg-transparent">
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
+								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -138,7 +149,7 @@ export function SupplierSection() {
 								<TableRow>
 									<TableCell
 										colSpan={3}
-										className="h-24 text-center text-muted-foreground"
+										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										Loading...
 									</TableCell>
@@ -147,32 +158,33 @@ export function SupplierSection() {
 								<TableRow>
 									<TableCell
 										colSpan={3}
-										className="h-24 text-center text-muted-foreground"
+										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										No suppliers found.
 									</TableCell>
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.supplierId}>
-										<TableCell className="font-mono text-sm">
+									<TableRow key={row.supplierId} className="transition-colors hover:bg-muted/50">
+										<TableCell className="px-6 font-mono text-sm">
 											{row.supplierCode}
 										</TableCell>
-										<TableCell className="font-medium">
+										<TableCell className="px-6 font-medium">
 											{row.supplierName}
 										</TableCell>
-										<TableCell className="text-right">
+										<TableCell className="px-6 text-right">
 											<Button
 												variant="ghost"
 												size="icon"
 												onClick={() => setEditing(row)}
+												className="rounded-lg"
 											>
 												<Edit className="h-4 w-4" />
 											</Button>
 											<Button
 												variant="ghost"
 												size="icon"
-												className="text-destructive"
+												className="text-destructive rounded-lg"
 												onClick={() => setDeleting(row)}
 											>
 												<Trash2 className="h-4 w-4" />
@@ -185,9 +197,9 @@ export function SupplierSection() {
 					</Table>
 				</div>
 				{pagination && totalPages > 1 && (
-					<div className="mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground">
-							Page {currentPage} of {totalPages} ({pagination.totalCount} total)
+					<div className="mx-6 mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
 							<Button
@@ -195,6 +207,7 @@ export function SupplierSection() {
 								size="sm"
 								disabled={!pagination.hasPrevPage}
 								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								className="rounded-lg"
 							>
 								Previous
 							</Button>
@@ -203,6 +216,7 @@ export function SupplierSection() {
 								size="sm"
 								disabled={!pagination.hasNextPage}
 								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+								className="rounded-lg"
 							>
 								Next
 							</Button>
@@ -310,33 +324,35 @@ function SupplierFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="supplier-code">Code</Label>
+						<Label htmlFor="supplier-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
 						<Input
 							id="supplier-code"
 							value={code}
 							onChange={(e) => setCode(e.target.value)}
 							placeholder="e.g. SUP001"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="supplier-name">Name</Label>
+						<Label htmlFor="supplier-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
 						<Input
 							id="supplier-name"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Supplier name"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => handleOpenChange(false)}>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">
 						Cancel
 					</Button>
 					<Button
@@ -344,6 +360,7 @@ function SupplierFormDialog({
 						onClick={() =>
 							onSubmit({ supplierName: name.trim(), supplierCode: code.trim() })
 						}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 					>
 						{loading ? "Saving..." : "Save"}
 					</Button>

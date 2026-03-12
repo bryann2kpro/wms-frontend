@@ -88,21 +88,17 @@ export function DeliveryScheduleFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					{!hideRegion && (
 						<div className="grid gap-2">
-							<Label>Region</Label>
-							<Select
-								value={regionId || undefined}
-								onValueChange={setRegionId}
-								required
-							>
-								<SelectTrigger>
+							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>Region</Label>
+							<Select value={regionId || undefined} onValueChange={setRegionId} required>
+								<SelectTrigger className="rounded-lg border-muted-foreground/20">
 									<SelectValue placeholder="Select region" />
 								</SelectTrigger>
 								<SelectContent>
@@ -116,12 +112,9 @@ export function DeliveryScheduleFormDialog({
 						</div>
 					)}
 					<div className="grid gap-2">
-						<Label>Day of week</Label>
-						<Select
-							value={String(dayOfWeek)}
-							onValueChange={(v) => setDayOfWeek(Number(v))}
-						>
-							<SelectTrigger>
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>Day of week</Label>
+						<Select value={String(dayOfWeek)} onValueChange={(v) => setDayOfWeek(Number(v))}>
+							<SelectTrigger className="rounded-lg border-muted-foreground/20">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -134,50 +127,24 @@ export function DeliveryScheduleFormDialog({
 						</Select>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="cutoff-days">Cutoff (days before)</Label>
-						<Input
-							id="cutoff-days"
-							type="number"
-							min={0}
-							value={cutoffDaysBefore}
-							onChange={(e) => setCutoffDaysBefore(Number(e.target.value) || 0)}
-						/>
+						<Label htmlFor="cutoff-days" style={{ fontFamily: '"Figtree", sans-serif' }}>Cutoff (days before)</Label>
+						<Input id="cutoff-days" type="number" min={0} value={cutoffDaysBefore} onChange={(e) => setCutoffDaysBefore(Number(e.target.value) || 0)} className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="cutoff-time">Cutoff time</Label>
-						<Input
-							id="cutoff-time"
-							value={cutoffTime}
-							onChange={(e) => setCutoffTime(e.target.value)}
-							placeholder="e.g. 17:00"
-						/>
+						<Label htmlFor="cutoff-time" style={{ fontFamily: '"Figtree", sans-serif' }}>Cutoff time</Label>
+						<Input id="cutoff-time" value={cutoffTime} onChange={(e) => setCutoffTime(e.target.value)} placeholder="e.g. 17:00" className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="flex items-center justify-between">
-						<Label htmlFor="schedule-active">Active</Label>
-						<Switch
-							id="schedule-active"
-							checked={isActive}
-							onCheckedChange={setIsActive}
-						/>
+						<Label htmlFor="schedule-active" style={{ fontFamily: '"Figtree", sans-serif' }}>Active</Label>
+						<Switch id="schedule-active" checked={isActive} onCheckedChange={setIsActive} />
 					</div>
 				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => handleOpenChange(false)}>
-						Cancel
-					</Button>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
 					<Button
-						disabled={
-							(!hideRegion && !regionId) || cutoffTime.trim() === "" || loading
-						}
-						onClick={() =>
-							onSubmit({
-								...(hideRegion ? {} : { regionId }),
-								dayOfWeek,
-								cutoffDaysBefore,
-								cutoffTime: cutoffTime.trim(),
-								isActive,
-							})
-						}
+						disabled={(!hideRegion && !regionId) || cutoffTime.trim() === "" || loading}
+						onClick={() => onSubmit({ ...(hideRegion ? {} : { regionId }), dayOfWeek, cutoffDaysBefore, cutoffTime: cutoffTime.trim(), isActive })}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 					>
 						{loading ? "Saving..." : "Save"}
 					</Button>

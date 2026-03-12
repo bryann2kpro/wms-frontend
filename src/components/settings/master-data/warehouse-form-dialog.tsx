@@ -72,10 +72,10 @@ export function WarehouseFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				<form
 					onSubmit={(e) => {
@@ -102,6 +102,7 @@ export function WarehouseFormDialog({
 											onBlur={field.handleBlur}
 											onChange={(e) => field.handleChange(e.target.value)}
 											aria-invalid={isInvalid}
+											className="rounded-lg border-muted-foreground/20"
 										/>
 										{isInvalid && (
 											<FieldError errors={field.state.meta.errors} />
@@ -128,6 +129,7 @@ export function WarehouseFormDialog({
 											onBlur={field.handleBlur}
 											onChange={(e) => field.handleChange(e.target.value)}
 											aria-invalid={isInvalid}
+											className="rounded-lg border-muted-foreground/20"
 										/>
 										{isInvalid && (
 											<FieldError errors={field.state.meta.errors} />
@@ -154,6 +156,7 @@ export function WarehouseFormDialog({
 											onBlur={field.handleBlur}
 											onChange={(e) => field.handleChange(e.target.value)}
 											aria-invalid={isInvalid}
+											className="rounded-lg border-muted-foreground/20"
 										/>
 										{isInvalid && (
 											<FieldError errors={field.state.meta.errors} />
@@ -164,22 +167,13 @@ export function WarehouseFormDialog({
 						/>
 					</FieldGroup>
 
-					<DialogFooter className="gap-2">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => handleOpenChange(false)}
-						>
+					<DialogFooter className="gap-2 border-t bg-muted/20">
+						<Button type="button" variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">
 							Cancel
 						</Button>
-						<form.Subscribe
-							selector={(state) => [state.isSubmitting, state.canSubmit]}
-						>
+						<form.Subscribe selector={(state) => [state.isSubmitting, state.canSubmit]}>
 							{([isSubmitting, canSubmit]) => (
-								<Button
-									type="submit"
-									disabled={loading || isSubmitting || !canSubmit}
-								>
+								<Button type="submit" disabled={loading || isSubmitting || !canSubmit} className="rounded-lg bg-amber-600 text-white hover:bg-amber-700">
 									{loading || isSubmitting ? "Saving..." : "Save"}
 								</Button>
 							)}

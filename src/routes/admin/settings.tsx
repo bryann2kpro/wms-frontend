@@ -157,37 +157,52 @@ function SettingsPage() {
 	];
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Admin / Settings</h1>
-				<p className="text-muted-foreground">
-					Manage users, master data, and integration settings
-				</p>
-			</div>
-
-			{successMessage && (
-				<div className="rounded-lg border bg-green-500/10 border-green-500/20 text-green-600 px-4 py-3">
-					{successMessage}
-				</div>
-			)}
-
-			{/* Tabs */}
-			<div className="flex gap-2 border-b">
-				{tabs.map((tab) => {
-					const Icon = tab.icon;
-					return (
-						<Button
-							key={tab.id}
-							variant={activeTab === tab.id ? "default" : "ghost"}
-							onClick={() => setActiveTab(tab.id)}
-							className="rounded-b-none"
+		<div className="settings-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<div className="container relative mx-auto space-y-6 p-6">
+				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
+						<h1
+							className="text-3xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
 						>
-							<Icon className="mr-2 h-4 w-4" />
-							{tab.label}
-						</Button>
-					);
-				})}
-			</div>
+							Admin / Settings
+						</h1>
+						<p
+							className="mt-1 text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Manage users, master data, and integration settings
+						</p>
+					</div>
+				</header>
+
+				{successMessage && (
+					<div className="rounded-xl border border-green-500/20 bg-green-500/10 text-green-600 dark:bg-green-950/30 dark:border-green-500/30 px-4 py-3">
+						{successMessage}
+					</div>
+				)}
+
+				{/* Tabs */}
+				<div className="flex gap-2 border-b">
+					{tabs.map((tab) => {
+						const Icon = tab.icon;
+						return (
+							<Button
+								key={tab.id}
+								variant={activeTab === tab.id ? "default" : "ghost"}
+								onClick={() => setActiveTab(tab.id)}
+								className="rounded-lg rounded-b-none"
+							>
+								<Icon className="mr-2 h-4 w-4" />
+								{tab.label}
+							</Button>
+						);
+					})}
+				</div>
 
 			{/* Tab Content */}
 			{activeTab === "profile" && (
@@ -218,6 +233,7 @@ function SettingsPage() {
 
 			{activeTab === "integration" &&
 				hasPermission("admin:integration_status") && <IntegrationStatusCard />}
+			</div>
 		</div>
 	);
 }
@@ -245,13 +261,21 @@ function UserProfileCard({
 	});
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
+				<CardTitle
+					className="flex items-center gap-2 text-xl"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<User className="h-5 w-5" />
 					User Profile
 				</CardTitle>
-				<CardDescription>Update your personal information</CardDescription>
+				<CardDescription
+					className="text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
+					Update your personal information
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<form
@@ -265,13 +289,19 @@ function UserProfileCard({
 					<form.Field name="name">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="name">Full Name</Label>
+								<Label
+									htmlFor="name"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Full Name
+								</Label>
 								<Input
 									id="name"
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -283,27 +313,47 @@ function UserProfileCard({
 					</form.Field>
 
 					<div className="space-y-2">
-						<Label htmlFor="email">Email</Label>
-						<Input id="email" type="email" value={user?.email || ""} disabled />
+						<Label
+							htmlFor="email"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Email
+						</Label>
+						<Input
+							id="email"
+							type="email"
+							value={user?.email || ""}
+							disabled
+							className="rounded-lg border-muted-foreground/20"
+						/>
 						<p className="text-xs text-muted-foreground">
 							Email cannot be changed
 						</p>
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="role">Role</Label>
+						<Label
+							htmlFor="role"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Role
+						</Label>
 						<Input
 							id="role"
 							value={user ? getPrimaryRole(user.roles) : ""}
 							disabled
-							className="capitalize"
+							className="capitalize rounded-lg border-muted-foreground/20"
 						/>
 						<p className="text-xs text-muted-foreground">
 							Contact administrator to change roles
 						</p>
 					</div>
 
-					<Button type="submit" disabled={isSubmitting}>
+					<Button
+						type="submit"
+						disabled={isSubmitting}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+					>
 						{isSubmitting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -342,13 +392,19 @@ function CompanySettingsCard({
 	});
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
+				<CardTitle
+					className="flex items-center gap-2 text-xl"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<Building className="h-5 w-5" />
 					Company Settings
 				</CardTitle>
-				<CardDescription>
+				<CardDescription
+					className="text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
 					Configure warehouse locations and settings
 				</CardDescription>
 			</CardHeader>
@@ -364,13 +420,19 @@ function CompanySettingsCard({
 					<form.Field name="companyName">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="company">Company Name</Label>
+								<Label
+									htmlFor="company"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Company Name
+								</Label>
 								<Input
 									id="company"
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -384,13 +446,19 @@ function CompanySettingsCard({
 					<form.Field name="defaultWarehouse">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="warehouse">Default Warehouse</Label>
+								<Label
+									htmlFor="warehouse"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Default Warehouse
+								</Label>
 								<Input
 									id="warehouse"
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -404,13 +472,19 @@ function CompanySettingsCard({
 					<form.Field name="timezone">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="timezone">Timezone</Label>
+								<Label
+									htmlFor="timezone"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Timezone
+								</Label>
 								<Input
 									id="timezone"
 									value={field.state.value}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -421,7 +495,11 @@ function CompanySettingsCard({
 						)}
 					</form.Field>
 
-					<Button type="submit" disabled={isSubmitting}>
+					<Button
+						type="submit"
+						disabled={isSubmitting}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+					>
 						{isSubmitting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -459,13 +537,21 @@ function NotificationsCard({
 	});
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
+				<CardTitle
+					className="flex items-center gap-2 text-xl"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<Bell className="h-5 w-5" />
 					Notifications
 				</CardTitle>
-				<CardDescription>Manage your notification preferences</CardDescription>
+				<CardDescription
+					className="text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
+					Manage your notification preferences
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<form
@@ -480,7 +566,12 @@ function NotificationsCard({
 						{(field) => (
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium">GRN Notifications</p>
+									<p
+										className="text-sm font-medium"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										GRN Notifications
+									</p>
 									<p className="text-xs text-muted-foreground">
 										Receive alerts for new GRN entries
 									</p>
@@ -500,7 +591,12 @@ function NotificationsCard({
 						{(field) => (
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium">Delivery Updates</p>
+									<p
+										className="text-sm font-medium"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										Delivery Updates
+									</p>
 									<p className="text-xs text-muted-foreground">
 										Get notified about delivery status changes
 									</p>
@@ -520,7 +616,12 @@ function NotificationsCard({
 						{(field) => (
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium">Low Stock Alerts</p>
+									<p
+										className="text-sm font-medium"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										Low Stock Alerts
+									</p>
 									<p className="text-xs text-muted-foreground">
 										Alert when inventory is below threshold
 									</p>
@@ -534,7 +635,11 @@ function NotificationsCard({
 						)}
 					</form.Field>
 
-					<Button type="submit" disabled={isSubmitting} className="w-full">
+					<Button
+						type="submit"
+						disabled={isSubmitting}
+						className="w-full rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+					>
 						{isSubmitting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -575,13 +680,21 @@ function SecurityCard({
 	});
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
+				<CardTitle
+					className="flex items-center gap-2 text-xl"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<Shield className="h-5 w-5" />
 					Security
 				</CardTitle>
-				<CardDescription>Manage your account security settings</CardDescription>
+				<CardDescription
+					className="text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
+					Manage your account security settings
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<form
@@ -595,7 +708,12 @@ function SecurityCard({
 					<form.Field name="currentPassword">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="current-password">Current Password</Label>
+								<Label
+									htmlFor="current-password"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Current Password
+								</Label>
 								<Input
 									id="current-password"
 									type="password"
@@ -603,6 +721,7 @@ function SecurityCard({
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -616,7 +735,12 @@ function SecurityCard({
 					<form.Field name="newPassword">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="new-password">New Password</Label>
+								<Label
+									htmlFor="new-password"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									New Password
+								</Label>
 								<Input
 									id="new-password"
 									type="password"
@@ -624,6 +748,7 @@ function SecurityCard({
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -637,7 +762,12 @@ function SecurityCard({
 					<form.Field name="confirmPassword">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor="confirm-password">Confirm New Password</Label>
+								<Label
+									htmlFor="confirm-password"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Confirm New Password
+								</Label>
 								<Input
 									id="confirm-password"
 									type="password"
@@ -645,6 +775,7 @@ function SecurityCard({
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
 									disabled={isSubmitting}
+									className="rounded-lg border-muted-foreground/20"
 								/>
 								{field.state.meta.errors.length > 0 && (
 									<p className="text-sm text-destructive">
@@ -655,7 +786,11 @@ function SecurityCard({
 						)}
 					</form.Field>
 
-					<Button type="submit" disabled={isSubmitting}>
+					<Button
+						type="submit"
+						disabled={isSubmitting}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+					>
 						{isSubmitting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -697,52 +832,83 @@ function UsersRolesCard() {
 	const [users] = useState(mockUsersList);
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div>
-						<CardTitle>Users & Roles Management</CardTitle>
-						<CardDescription>
+						<CardTitle
+							className="text-xl"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Users & Roles Management
+						</CardTitle>
+						<CardDescription
+							className="text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							Manage system users and assign roles
 						</CardDescription>
 					</div>
-					<Button>
+					<Button className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90">
 						<Plus className="mr-2 h-4 w-4" />
 						Add User
 					</Button>
 				</div>
 			</CardHeader>
-			<CardContent>
-				<div className="overflow-x-auto rounded-lg border">
+			<CardContent className="px-0 pb-6">
+				<div className="mx-6 overflow-x-auto rounded-xl border">
 					<Table>
 						<TableHeader>
-							<TableRow>
-								<TableHead>Name</TableHead>
-								<TableHead>Email</TableHead>
-								<TableHead>Role</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+							<TableRow className="hover:bg-transparent">
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Name
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Email
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Role
+								</TableHead>
+								<TableHead
+									className="px-6 text-right"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Actions
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{users.map((user) => {
 								const primaryRole = getPrimaryRole(user.roles);
 								return (
-									<TableRow key={user.id}>
-										<TableCell className="font-medium">
+									<TableRow
+										key={user.id}
+										className="transition-colors hover:bg-muted/50"
+									>
+										<TableCell className="px-6 font-medium">
 											{user.displayName}
 										</TableCell>
-										<TableCell>{user.email}</TableCell>
-										<TableCell>
+										<TableCell className="px-6">{user.email}</TableCell>
+										<TableCell className="px-6">
 											<Badge variant="outline">
 												{primaryRole.replace("_", " ").toUpperCase()}
 											</Badge>
 										</TableCell>
-										<TableCell className="text-right">
+										<TableCell className="px-6 text-right">
 											<div className="flex justify-end gap-1">
-												<Button variant="ghost" size="icon">
+												<Button variant="ghost" size="icon" className="rounded-lg">
 													<Edit className="h-4 w-4" />
 												</Button>
-												<Button variant="ghost" size="icon">
+												<Button variant="ghost" size="icon" className="rounded-lg">
 													<Trash2 className="h-4 w-4 text-red-600" />
 												</Button>
 											</div>
@@ -763,57 +929,99 @@ function IntegrationStatusCard() {
 
 	return (
 		<div className="grid gap-6 md:grid-cols-2">
-			<Card>
+			<Card className="dashboard-card">
 				<CardHeader>
-					<CardTitle>NetSuite Connection</CardTitle>
-					<CardDescription>Integration connection status</CardDescription>
+					<CardTitle
+						className="text-xl"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						NetSuite Connection
+					</CardTitle>
+					<CardDescription
+						className="text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
+						Integration connection status
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex items-center justify-between">
-						<span className="text-sm">Connection Status</span>
+						<span
+							className="text-sm"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Connection Status
+						</span>
 						<Badge
 							variant="outline"
-							className="bg-green-500/10 text-green-600 border-green-500/20"
+							className="bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-950/30 dark:border-green-500/30"
 						>
 							Connected
 						</Badge>
 					</div>
 					<div className="flex items-center justify-between">
-						<span className="text-sm">Last Test</span>
+						<span
+							className="text-sm"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Last Test
+						</span>
 						<span className="text-sm text-muted-foreground">
 							{new Date().toLocaleString()}
 						</span>
 					</div>
-					<Button variant="outline" className="w-full">
+					<Button variant="outline" className="w-full rounded-lg">
 						Test Connection
 					</Button>
 				</CardContent>
 			</Card>
-			<Card>
+			<Card className="dashboard-card">
 				<CardHeader>
-					<CardTitle>Sync Schedules</CardTitle>
-					<CardDescription>Configure automated sync schedules</CardDescription>
+					<CardTitle
+						className="text-xl"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						Sync Schedules
+					</CardTitle>
+					<CardDescription
+						className="text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
+						Configure automated sync schedules
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
-						<Label>TO Pull Schedule</Label>
+						<Label style={{ fontFamily: "var(--dashboard-body)" }}>
+							TO Pull Schedule
+						</Label>
 						<Input
 							type="time"
 							value={syncSchedule}
 							onChange={(e) => setSyncSchedule(e.target.value)}
+							className="rounded-lg border-muted-foreground/20"
 						/>
 						<p className="text-xs text-muted-foreground">
 							Daily TO pull from NetSuite (12pm default)
 						</p>
 					</div>
 					<div className="space-y-2">
-						<Label>Stock Sync Schedule</Label>
-						<Input type="time" value="12:00" disabled />
+						<Label style={{ fontFamily: "var(--dashboard-body)" }}>
+							Stock Sync Schedule
+						</Label>
+						<Input
+							type="time"
+							value="12:00"
+							disabled
+							className="rounded-lg border-muted-foreground/20"
+						/>
 						<p className="text-xs text-muted-foreground">
 							Daily stock sync to NetSuite
 						</p>
 					</div>
-					<Button className="w-full">Save Schedule</Button>
+					<Button className="w-full rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+						Save Schedule
+					</Button>
 				</CardContent>
 			</Card>
 		</div>
