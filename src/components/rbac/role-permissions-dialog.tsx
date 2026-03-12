@@ -346,7 +346,25 @@ function PermissionModuleCard({
 				>
 					{permissionTypes.map((type) => {
 						const permission = permissionMap.get(type);
-						if (!permission) return null;
+
+						// Permission type not configured in DB — non-interactive placeholder
+						if (!permission) {
+							return (
+								<div
+									key={type}
+									className="flex flex-col items-center justify-center p-3 rounded-lg border bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 cursor-default opacity-40"
+									aria-label={`${type} permission for ${moduleData.module}: not configured`}
+									title="This permission type is not configured for this module"
+								>
+									<div className="w-6 h-6 rounded-full flex items-center justify-center mb-1 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+										<X className="h-4 w-4" aria-hidden="true" />
+									</div>
+									<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+										{type}
+									</span>
+								</div>
+							);
+						}
 
 						// Use local state in edit mode, otherwise use original value
 						const hasPermission = isEditMode
@@ -367,15 +385,15 @@ function PermissionModuleCard({
 								className={`
                   flex flex-col items-center justify-center p-3 rounded-lg border transition-all
                   ${
-										hasPermission
-											? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-											: "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800"
-									}
+									hasPermission
+										? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+										: "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800"
+								}
                   ${
-										isInteractive
-											? "cursor-pointer hover:ring-2 hover:ring-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-											: "cursor-default"
-									}
+									isInteractive
+										? "cursor-pointer hover:ring-2 hover:ring-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+										: "cursor-default"
+								}
                   ${isSaving ? "opacity-50" : ""}
                 `}
 								aria-pressed={hasPermission}

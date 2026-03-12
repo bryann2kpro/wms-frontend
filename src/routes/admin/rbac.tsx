@@ -138,7 +138,7 @@ function RbacComponent() {
 		refetch: refetchModules,
 	} = useQuery({
 		queryKey: ["rbac-modules", modulesQueryParams],
-		queryFn: () => fetchModules(modulesQueryParams, logout),
+		queryFn: () => fetchModules(modulesQueryParams),
 		staleTime: 30_000,
 		retry: 2,
 	});
@@ -153,7 +153,7 @@ function RbacComponent() {
 		refetch: refetchRoles,
 	} = useQuery({
 		queryKey: ["rbac-roles", rolesQueryParams],
-		queryFn: () => fetchRoles(rolesQueryParams, logout),
+		queryFn: () => fetchRoles(rolesQueryParams),
 		staleTime: 30_000,
 		retry: 2,
 	});
@@ -168,7 +168,7 @@ function RbacComponent() {
 		refetch: refetchUserRoles,
 	} = useQuery({
 		queryKey: ["rbac-user-roles", userRolesQueryParams],
-		queryFn: () => fetchUserRoles(userRolesQueryParams, logout),
+		queryFn: () => fetchUserRoles(userRolesQueryParams),
 		staleTime: 30_000,
 		retry: 2,
 	});
@@ -240,7 +240,7 @@ function RbacComponent() {
 
 	// Update role mutation
 	const updateRoleMutation = useMutation({
-		mutationFn: (input: UpdateRoleInput) => updateRole(input, logout),
+		mutationFn: (input: UpdateRoleInput) => updateRole(input),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["rbac-roles"] });
 			setIsEditRoleDialogOpen(false);
@@ -251,7 +251,7 @@ function RbacComponent() {
 	// Update role permissions mutation
 	const updateRolePermissionsMutation = useMutation({
 		mutationFn: (input: UpdateRolePermissionsInput) =>
-			updateRolePermissions(input, logout),
+			updateRolePermissions(input),
 		onSuccess: () => {
 			// Invalidate role permissions query to refetch with updated data
 			queryClient.invalidateQueries({
