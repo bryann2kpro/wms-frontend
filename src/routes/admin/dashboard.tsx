@@ -23,7 +23,6 @@ import {
 	ArrowRightLeft,
 	Truck,
 	AlertCircle,
-	TrendingUp,
 	Clock,
 	FileText,
 } from "lucide-react";
@@ -71,17 +70,24 @@ function DashboardComponent() {
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
-			completed: "bg-green-500/10 text-green-600 border-green-500/20",
-			delivered: "bg-green-500/10 text-green-600 border-green-500/20",
-			pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-			scheduled: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-			in_transit: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-			cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+			// GRN statuses
+			DRAFT: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+			SUBMITTED: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+			APPROVED: "bg-green-500/10 text-green-600 border-green-500/20",
+			SENT: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+			FAILED: "bg-red-500/10 text-red-600 border-red-500/20",
+			// PO statuses
+			NEW: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+			ACCEPTED: "bg-green-500/10 text-green-600 border-green-500/20",
+			REJECTED: "bg-red-500/10 text-red-600 border-red-500/20",
+			DO_CREATED: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+			SHIPPED: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+			CANCELLED: "bg-red-500/10 text-red-600 border-red-500/20",
+			// DO statuses
 			CREATED: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-			PICKING: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-			PACKED: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-			DISPATCHED: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-			DELIVERED_CONFIRMED: "bg-green-500/10 text-green-600 border-green-500/20",
+			PACKING: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+			SHIPPED: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+			DELIVERED: "bg-green-500/10 text-green-600 border-green-500/20",
 		};
 		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
 	};
@@ -95,7 +101,7 @@ function DashboardComponent() {
 
 	const scheduledDeliveries = deliveries.filter(
 		(d) =>
-			d.status === "CREATED" || d.status === "PICKING" || d.status === "PACKED",
+			d.status === "CREATED" || d.status === "PACKING",
 	);
 
 	return (
@@ -315,103 +321,6 @@ function DashboardComponent() {
 										</TableCell>
 									</TableRow>
 								))}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
-
-				{/* Branch GRN - ES Branch Received SMEE's Stock */}
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<div>
-							<CardTitle>Branch GRN</CardTitle>
-							<CardDescription>ES branch received SMEE's stock</CardDescription>
-						</div>
-						<Button variant="outline" size="sm" asChild>
-							<Link to="/">View All</Link>
-						</Button>
-					</CardHeader>
-					<CardContent className="relative">
-						<TableLoadingShadow active={loading} />
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>GRN Number</TableHead>
-									<TableHead>Branch</TableHead>
-									<TableHead className="text-right">Status</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								<TableRow>
-									<TableCell className="font-medium">BGRN-2024-001</TableCell>
-									<TableCell className="text-muted-foreground">
-										ES Kuala Lumpur
-									</TableCell>
-									<TableCell className="text-right">
-										<Badge
-											variant="outline"
-											className="bg-green-500/10 text-green-600 border-green-500/20"
-										>
-											Completed
-										</Badge>
-									</TableCell>
-								</TableRow>
-								<TableRow>
-									<TableCell className="font-medium">BGRN-2024-002</TableCell>
-									<TableCell className="text-muted-foreground">
-										ES Penang
-									</TableCell>
-									<TableCell className="text-right">
-										<Badge
-											variant="outline"
-											className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-										>
-											Pending
-										</Badge>
-									</TableCell>
-								</TableRow>
-								<TableRow>
-									<TableCell className="font-medium">BGRN-2024-003</TableCell>
-									<TableCell className="text-muted-foreground">
-										ES Johor Bahru
-									</TableCell>
-									<TableCell className="text-right">
-										<Badge
-											variant="outline"
-											className="bg-green-500/10 text-green-600 border-green-500/20"
-										>
-											Completed
-										</Badge>
-									</TableCell>
-								</TableRow>
-								<TableRow>
-									<TableCell className="font-medium">BGRN-2024-004</TableCell>
-									<TableCell className="text-muted-foreground">
-										ES Kuching
-									</TableCell>
-									<TableCell className="text-right">
-										<Badge
-											variant="outline"
-											className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-										>
-											Pending
-										</Badge>
-									</TableCell>
-								</TableRow>
-								<TableRow>
-									<TableCell className="font-medium">BGRN-2024-005</TableCell>
-									<TableCell className="text-muted-foreground">
-										ES Kota Kinabalu
-									</TableCell>
-									<TableCell className="text-right">
-										<Badge
-											variant="outline"
-											className="bg-green-500/10 text-green-600 border-green-500/20"
-										>
-											Completed
-										</Badge>
-									</TableCell>
-								</TableRow>
 							</TableBody>
 						</Table>
 					</CardContent>

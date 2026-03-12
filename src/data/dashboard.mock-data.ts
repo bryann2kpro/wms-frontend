@@ -32,7 +32,7 @@ export interface GRN {
 	id: string;
 	grnNumber: string;
 	supplier: string;
-	status: "completed" | "pending" | "cancelled";
+	status: "DRAFT" | "SUBMITTED" | "APPROVED" | "SENT" | "FAILED";
 	createdAt: Date;
 	totalAmount: number;
 }
@@ -43,12 +43,12 @@ export interface TransferOrder {
 	fromLocation: string;
 	toLocation: string;
 	status:
-		| "preparing"
-		| "in-transit"
-		| "to-ship"
-		| "cancel"
-		| "return"
-		| "other";
+		| "NEW"
+		| "ACCEPTED"
+		| "REJECTED"
+		| "DO_CREATED"
+		| "SHIPPED"
+		| "CANCELLED";
 	createdAt: Date;
 	itemCount: number;
 }
@@ -59,11 +59,9 @@ export interface Delivery {
 	customerName: string;
 	status:
 		| "CREATED"
-		| "PICKING"
-		| "PACKED"
-		| "DISPATCHED"
-		| "DELIVERED_CONFIRMED"
-		| "CANCELLED";
+		| "PACKING"
+		| "SHIPPED"
+		| "DELIVERED";
 	scheduledDate: Date;
 	deliveryDate?: Date;
 	totalAmount: number;
@@ -104,7 +102,7 @@ export const mockGRNs: GRN[] = [
 		id: "1",
 		grnNumber: "GRN-2024-001",
 		supplier: "ABC Supplies Sdn Bhd",
-		status: "completed",
+		status: "APPROVED",
 		createdAt: new Date("2024-01-15"),
 		totalAmount: 12500.0,
 	},
@@ -112,7 +110,7 @@ export const mockGRNs: GRN[] = [
 		id: "2",
 		grnNumber: "GRN-2024-002",
 		supplier: "XYZ Trading Co",
-		status: "pending",
+		status: "SUBMITTED",
 		createdAt: new Date("2024-01-16"),
 		totalAmount: 8750.0,
 	},
@@ -120,7 +118,7 @@ export const mockGRNs: GRN[] = [
 		id: "3",
 		grnNumber: "GRN-2024-003",
 		supplier: "Global Imports Ltd",
-		status: "completed",
+		status: "APPROVED",
 		createdAt: new Date("2024-01-17"),
 		totalAmount: 15200.0,
 	},
@@ -128,7 +126,7 @@ export const mockGRNs: GRN[] = [
 		id: "4",
 		grnNumber: "GRN-2024-004",
 		supplier: "ABC Supplies Sdn Bhd",
-		status: "pending",
+		status: "SUBMITTED",
 		createdAt: new Date("2024-01-18"),
 		totalAmount: 9800.0,
 	},
@@ -136,7 +134,7 @@ export const mockGRNs: GRN[] = [
 		id: "5",
 		grnNumber: "GRN-2024-005",
 		supplier: "Premium Distributors",
-		status: "completed",
+		status: "APPROVED",
 		createdAt: new Date("2024-01-19"),
 		totalAmount: 11200.0,
 	},
@@ -144,7 +142,7 @@ export const mockGRNs: GRN[] = [
 		id: "6",
 		grnNumber: "GRN-2024-006",
 		supplier: "XYZ Trading Co",
-		status: "pending",
+		status: "SUBMITTED",
 		createdAt: new Date("2024-01-20"),
 		totalAmount: 6500.0,
 	},
@@ -152,7 +150,7 @@ export const mockGRNs: GRN[] = [
 		id: "7",
 		grnNumber: "GRN-2024-007",
 		supplier: "Global Imports Ltd",
-		status: "completed",
+		status: "APPROVED",
 		createdAt: new Date("2024-01-21"),
 		totalAmount: 18900.0,
 	},
@@ -164,7 +162,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-001",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse B",
-		status: "in-transit",
+		status: "SHIPPED",
 		createdAt: new Date("2024-01-15"),
 		itemCount: 45,
 	},
@@ -173,7 +171,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-002",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse C",
-		status: "preparing",
+		status: "NEW",
 		createdAt: new Date("2024-01-16"),
 		itemCount: 32,
 	},
@@ -182,7 +180,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-003",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse D",
-		status: "to-ship",
+		status: "DO_CREATED",
 		createdAt: new Date("2024-01-17"),
 		itemCount: 28,
 	},
@@ -191,7 +189,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-004",
 		fromLocation: "Warehouse C",
 		toLocation: "Warehouse A",
-		status: "in-transit",
+		status: "SHIPPED",
 		createdAt: new Date("2024-01-18"),
 		itemCount: 56,
 	},
@@ -200,7 +198,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-005",
 		fromLocation: "Warehouse D",
 		toLocation: "Warehouse B",
-		status: "preparing",
+		status: "NEW",
 		createdAt: new Date("2024-01-19"),
 		itemCount: 19,
 	},
@@ -209,7 +207,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-006",
 		fromLocation: "Warehouse A",
 		toLocation: "Warehouse C",
-		status: "in-transit",
+		status: "SHIPPED",
 		createdAt: new Date("2024-01-20"),
 		itemCount: 67,
 	},
@@ -218,7 +216,7 @@ export const mockTransferOrders: TransferOrder[] = [
 		transferOrderNumber: "PO-2024-007",
 		fromLocation: "Warehouse B",
 		toLocation: "Warehouse D",
-		status: "to-ship",
+		status: "DO_CREATED",
 		createdAt: new Date("2024-01-21"),
 		itemCount: 41,
 	},
@@ -237,7 +235,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "2",
 		deliveryNumber: "DEL-2024-002",
 		customerName: "Retail Plus Malaysia",
-		status: "PICKING",
+		status: "PACKING",
 		scheduledDate: new Date("2024-01-26"),
 		totalAmount: 12200.0,
 	},
@@ -245,7 +243,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "3",
 		deliveryNumber: "DEL-2024-003",
 		customerName: "Global Trading Co",
-		status: "DELIVERED_CONFIRMED",
+		status: "DELIVERED",
 		scheduledDate: new Date("2024-01-20"),
 		deliveryDate: new Date("2024-01-20"),
 		totalAmount: 9800.0,
@@ -254,7 +252,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "4",
 		deliveryNumber: "DEL-2024-004",
 		customerName: "Premium Retailers",
-		status: "PACKED",
+		status: "PACKING",
 		scheduledDate: new Date("2024-01-27"),
 		totalAmount: 15600.0,
 	},
@@ -262,7 +260,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "5",
 		deliveryNumber: "DEL-2024-005",
 		customerName: "City Distributors",
-		status: "DISPATCHED",
+		status: "SHIPPED",
 		scheduledDate: new Date("2024-01-22"),
 		totalAmount: 11200.0,
 	},
@@ -278,7 +276,7 @@ export const mockDeliveries: Delivery[] = [
 		id: "7",
 		deliveryNumber: "DEL-2024-007",
 		customerName: "Retail Plus Malaysia",
-		status: "DELIVERED_CONFIRMED",
+		status: "DELIVERED",
 		scheduledDate: new Date("2024-01-19"),
 		deliveryDate: new Date("2024-01-19"),
 		totalAmount: 13400.0,
