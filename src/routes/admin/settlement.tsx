@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -34,6 +35,9 @@ import { usePermissions } from "@/lib/permissions";
 import { getDOs, type DeliveryOrder, type DOStatus } from "@/data/do.mock-data";
 
 export const Route = createFileRoute("/admin/settlement")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Settlement"]);
+	},
 	component: SettlementComponent,
 });
 

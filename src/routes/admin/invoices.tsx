@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -73,6 +74,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/invoices")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Invoice"]);
+	},
 	component: InvoicesComponent,
 });
 
@@ -84,10 +88,9 @@ const invoiceStatuses: InvoiceStatusFilter[] = [
 ];
 
 const createInvoiceSchema = z.object({
-	invoiceNumber: z
-		.string(),
-		// .min(1, "Invoice number is required"),
-		// .regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
+	invoiceNumber: z.string(),
+	// .min(1, "Invoice number is required"),
+	// .regex(/^INV-20\d{2}-[A-Z0-9]+$/, "Use format like INV-2024-001"),
 	doNumber: z.string().min(1, "DO Number is required"),
 	doId: z.string().min(1, "DO ID is required"),
 	toNumber: z.string().min(1, "PO Number is required"),
@@ -106,7 +109,12 @@ function InvoicesComponent() {
 	const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>("ALL");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [invoiceItems, setInvoiceItems] = useState<
-		Array<{ sku: string; description: string; quantity: number; unitPrice: number }>
+		Array<{
+			sku: string;
+			description: string;
+			quantity: number;
+			unitPrice: number;
+		}>
 	>([]);
 	const [itemSearch, setItemSearch] = useState("");
 	const [itemDescription, setItemDescription] = useState("");
@@ -189,7 +197,9 @@ function InvoicesComponent() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Proforma Invoices</h1>
+					<h1 className="text-3xl font-bold tracking-tight">
+						Proforma Invoices
+					</h1>
 					<p className="text-muted-foreground">
 						Manage proforma invoices and export proforma invoices.
 					</p>
@@ -268,7 +278,9 @@ function InvoicesComponent() {
 																			aria-invalid={isInvalid}
 																		/>
 																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
+																			<FieldError
+																				errors={field.state.meta.errors}
+																			/>
 																		)}
 																	</Field>
 																);
@@ -282,7 +294,10 @@ function InvoicesComponent() {
 																	!field.state.meta.isValid;
 																return (
 																	<Field data-invalid={isInvalid}>
-																		<FieldLabel htmlFor={field.name} className="flex items-center gap-2">
+																		<FieldLabel
+																			htmlFor={field.name}
+																			className="flex items-center gap-2"
+																		>
 																			<Calendar className="h-4 w-4 text-muted-foreground" />
 																			Issued Date
 																		</FieldLabel>
@@ -297,7 +312,9 @@ function InvoicesComponent() {
 																			aria-invalid={isInvalid}
 																		/>
 																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
+																			<FieldError
+																				errors={field.state.meta.errors}
+																			/>
 																		)}
 																	</Field>
 																);
@@ -328,7 +345,9 @@ function InvoicesComponent() {
 																			aria-invalid={isInvalid}
 																		/>
 																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
+																			<FieldError
+																				errors={field.state.meta.errors}
+																			/>
 																		)}
 																	</Field>
 																);
@@ -356,7 +375,9 @@ function InvoicesComponent() {
 																			aria-invalid={isInvalid}
 																		/>
 																		{isInvalid && (
-																			<FieldError errors={field.state.meta.errors} />
+																			<FieldError
+																				errors={field.state.meta.errors}
+																			/>
 																		)}
 																	</Field>
 																);
@@ -419,7 +440,9 @@ function InvoicesComponent() {
 																		aria-invalid={isInvalid}
 																	/>
 																	{isInvalid && (
-																		<FieldError errors={field.state.meta.errors} />
+																		<FieldError
+																			errors={field.state.meta.errors}
+																		/>
 																	)}
 																</Field>
 															);
@@ -464,7 +487,9 @@ function InvoicesComponent() {
 											<CardContent className="space-y-4">
 												<div className="grid gap-4 sm:grid-cols-4">
 													<div className="sm:col-span-1">
-														<Label className="text-xs text-muted-foreground mb-1.5 block">SKU</Label>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">
+															SKU
+														</Label>
 														<Input
 															placeholder="SKU-001"
 															value={itemSearch}
@@ -472,32 +497,44 @@ function InvoicesComponent() {
 														/>
 													</div>
 													<div className="sm:col-span-1">
-														<Label className="text-xs text-muted-foreground mb-1.5 block">Description</Label>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">
+															Description
+														</Label>
 														<Input
 															placeholder="Product description"
 															value={itemDescription}
-															onChange={(e) => setItemDescription(e.target.value)}
+															onChange={(e) =>
+																setItemDescription(e.target.value)
+															}
 														/>
 													</div>
 													<div>
-														<Label className="text-xs text-muted-foreground mb-1.5 block">Qty</Label>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">
+															Qty
+														</Label>
 														<Input
 															type="number"
 															min="1"
 															placeholder="1"
 															value={itemQuantity}
-															onChange={(e) => setItemQuantity(Number(e.target.value))}
+															onChange={(e) =>
+																setItemQuantity(Number(e.target.value))
+															}
 														/>
 													</div>
 													<div>
-														<Label className="text-xs text-muted-foreground mb-1.5 block">Unit Price</Label>
+														<Label className="text-xs text-muted-foreground mb-1.5 block">
+															Unit Price
+														</Label>
 														<Input
 															type="number"
 															min="0"
 															step="0.01"
 															placeholder="0.00"
 															value={itemUnitPrice}
-															onChange={(e) => setItemUnitPrice(Number(e.target.value))}
+															onChange={(e) =>
+																setItemUnitPrice(Number(e.target.value))
+															}
 														/>
 													</div>
 												</div>
@@ -505,7 +542,12 @@ function InvoicesComponent() {
 													type="button"
 													variant="outline"
 													onClick={() => {
-														if (itemSearch.trim() && itemDescription.trim() && itemQuantity > 0 && itemUnitPrice >= 0) {
+														if (
+															itemSearch.trim() &&
+															itemDescription.trim() &&
+															itemQuantity > 0 &&
+															itemUnitPrice >= 0
+														) {
 															setInvoiceItems([
 																...invoiceItems,
 																{
@@ -521,7 +563,11 @@ function InvoicesComponent() {
 															setItemUnitPrice(0);
 														}
 													}}
-													disabled={!itemSearch.trim() || !itemDescription.trim() || itemQuantity <= 0}
+													disabled={
+														!itemSearch.trim() ||
+														!itemDescription.trim() ||
+														itemQuantity <= 0
+													}
 													className="w-full"
 												>
 													<Plus className="mr-2 h-4 w-4" />
@@ -534,9 +580,15 @@ function InvoicesComponent() {
 															<TableRow>
 																<TableHead>SKU</TableHead>
 																<TableHead>Description</TableHead>
-																<TableHead className="text-right">Qty</TableHead>
-																<TableHead className="text-right">Unit Price</TableHead>
-																<TableHead className="text-right">Total</TableHead>
+																<TableHead className="text-right">
+																	Qty
+																</TableHead>
+																<TableHead className="text-right">
+																	Unit Price
+																</TableHead>
+																<TableHead className="text-right">
+																	Total
+																</TableHead>
 																<TableHead className="w-[60px]" />
 															</TableRow>
 														</TableHeader>
@@ -549,8 +601,13 @@ function InvoicesComponent() {
 																	>
 																		<div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
 																			<Package className="h-8 w-8 opacity-50" />
-																			<p className="text-sm">No items added yet</p>
-																			<p className="text-xs">Fill in the fields above and click Add Item</p>
+																			<p className="text-sm">
+																				No items added yet
+																			</p>
+																			<p className="text-xs">
+																				Fill in the fields above and click Add
+																				Item
+																			</p>
 																		</div>
 																	</TableCell>
 																</TableRow>
@@ -571,7 +628,10 @@ function InvoicesComponent() {
 																				${item.unitPrice.toFixed(2)}
 																			</TableCell>
 																			<TableCell className="text-right font-medium">
-																				${(item.quantity * item.unitPrice).toFixed(2)}
+																				$
+																				{(
+																					item.quantity * item.unitPrice
+																				).toFixed(2)}
 																			</TableCell>
 																			<TableCell>
 																				<Button
@@ -593,29 +653,59 @@ function InvoicesComponent() {
 																		</TableRow>
 																	))}
 																	<TableRow className="bg-muted/50">
-																		<TableCell colSpan={4} className="text-right font-medium">
+																		<TableCell
+																			colSpan={4}
+																			className="text-right font-medium"
+																		>
 																			Subtotal
 																		</TableCell>
 																		<TableCell className="text-right font-medium">
-																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
+																			{formatCurrency(
+																				invoiceItems.reduce(
+																					(sum, item) =>
+																						sum +
+																						item.quantity * item.unitPrice,
+																					0,
+																				),
+																			)}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
 																	<TableRow className="bg-muted/50">
-																		<TableCell colSpan={4} className="text-right font-medium">
+																		<TableCell
+																			colSpan={4}
+																			className="text-right font-medium"
+																		>
 																			Tax (10%)
 																		</TableCell>
 																		<TableCell className="text-right font-medium">
-																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1)}
+																			{formatCurrency(
+																				invoiceItems.reduce(
+																					(sum, item) =>
+																						sum +
+																						item.quantity * item.unitPrice,
+																					0,
+																				) * 0.1,
+																			)}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
 																	<TableRow className="bg-primary/5">
-																		<TableCell colSpan={4} className="text-right font-semibold">
+																		<TableCell
+																			colSpan={4}
+																			className="text-right font-semibold"
+																		>
 																			Total
 																		</TableCell>
 																		<TableCell className="text-right font-semibold text-primary">
-																			{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1)}
+																			{formatCurrency(
+																				invoiceItems.reduce(
+																					(sum, item) =>
+																						sum +
+																						item.quantity * item.unitPrice,
+																					0,
+																				) * 1.1,
+																			)}
 																		</TableCell>
 																		<TableCell />
 																	</TableRow>
@@ -640,7 +730,10 @@ function InvoicesComponent() {
 													name="notes"
 													children={(field) => (
 														<Field>
-															<FieldLabel htmlFor={field.name} className="sr-only">
+															<FieldLabel
+																htmlFor={field.name}
+																className="sr-only"
+															>
 																Notes
 															</FieldLabel>
 															<Textarea
@@ -648,7 +741,9 @@ function InvoicesComponent() {
 																value={field.state.value}
 																placeholder="Enter any additional notes or comments..."
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																className="min-h-[100px] resize-none"
 															/>
 														</Field>
@@ -669,25 +764,49 @@ function InvoicesComponent() {
 												<div className="space-y-2">
 													<div className="flex justify-between text-sm">
 														<span className="text-muted-foreground">Items</span>
-														<span className="font-medium">{invoiceItems.length}</span>
-													</div>
-													<div className="flex justify-between text-sm">
-														<span className="text-muted-foreground">Subtotal</span>
 														<span className="font-medium">
-															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0))}
+															{invoiceItems.length}
 														</span>
 													</div>
 													<div className="flex justify-between text-sm">
-														<span className="text-muted-foreground">Tax (10%)</span>
+														<span className="text-muted-foreground">
+															Subtotal
+														</span>
 														<span className="font-medium">
-															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 0.1)}
+															{formatCurrency(
+																invoiceItems.reduce(
+																	(sum, item) =>
+																		sum + item.quantity * item.unitPrice,
+																	0,
+																),
+															)}
+														</span>
+													</div>
+													<div className="flex justify-between text-sm">
+														<span className="text-muted-foreground">
+															Tax (10%)
+														</span>
+														<span className="font-medium">
+															{formatCurrency(
+																invoiceItems.reduce(
+																	(sum, item) =>
+																		sum + item.quantity * item.unitPrice,
+																	0,
+																) * 0.1,
+															)}
 														</span>
 													</div>
 													<Separator />
 													<div className="flex justify-between">
 														<span className="font-semibold">Total</span>
 														<span className="font-semibold text-primary text-lg">
-															{formatCurrency(invoiceItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) * 1.1)}
+															{formatCurrency(
+																invoiceItems.reduce(
+																	(sum, item) =>
+																		sum + item.quantity * item.unitPrice,
+																	0,
+																) * 1.1,
+															)}
 														</span>
 													</div>
 												</div>
@@ -716,7 +835,11 @@ function InvoicesComponent() {
 												</Button>
 												<Button
 													type="submit"
-													disabled={isSubmitting || !canSubmit || invoiceItems.length === 0}
+													disabled={
+														isSubmitting ||
+														!canSubmit ||
+														invoiceItems.length === 0
+													}
 													className="min-w-[140px]"
 												>
 													{isSubmitting ? (
@@ -793,7 +916,9 @@ function InvoicesComponent() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<CardTitle>Proforma Invoices List</CardTitle>
-							<CardDescription>View and manage all proforma invoices</CardDescription>
+							<CardDescription>
+								View and manage all proforma invoices
+							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 							<div className="relative">

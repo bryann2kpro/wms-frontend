@@ -4,6 +4,7 @@ import {
 	useNavigate,
 	useParams,
 } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -55,6 +56,7 @@ import {
 	AlertTriangle,
 	ChevronLeft,
 	Printer,
+	Zap,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
@@ -68,6 +70,9 @@ import {
 } from "@/data/do.mock-data";
 
 export const Route = createFileRoute("/admin/do-detail")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Delivery Order"]);
+	},
 	component: DODetailComponent,
 });
 
@@ -230,6 +235,27 @@ function DODetailComponent() {
 						</p>
 					</CardContent>
 				</Card>
+				{do_.isEmergency && (
+					<Card className="md:col-span-3 border-amber-500/30 bg-amber-500/5">
+						<CardHeader className="pb-2">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<Zap className="h-4 w-4 text-amber-600" aria-hidden />
+								Delivery type
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Badge
+								variant="outline"
+								className="bg-amber-500/10 text-amber-700 border-amber-500/30"
+							>
+								Emergency delivery
+							</Badge>
+							<p className="text-xs text-muted-foreground mt-2">
+								This order was assigned to the next delivery day regardless of cutoff time.
+							</p>
+						</CardContent>
+					</Card>
+				)}
 			</div>
 
 			{/* Items Table */}

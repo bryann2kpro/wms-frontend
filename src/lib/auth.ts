@@ -1,4 +1,8 @@
-export type WMSRole = "store_keeper" | "logistic" | "supervisor" | "Super Admin";
+export type WMSRole =
+	| "store_keeper"
+	| "logistic"
+	| "supervisor"
+	| "Super Admin";
 
 // Legacy role mapping for backward compatibility
 export type LegacyRole = "admin" | "finance" | "warehouse" | "user";
@@ -30,10 +34,14 @@ export function mapLegacyRole(legacyRole: LegacyRole): WMSRole {
 // Helper to get primary role from roles array
 export function getPrimaryRole(roles: string[]): WMSRole {
 	if (!roles || roles.length === 0) return "store_keeper";
-	
+
 	const primaryRole = roles[0].toLowerCase();
-	
-	if (primaryRole.includes("supervisor") || primaryRole.includes("admin") || primaryRole.includes("management")) {
+
+	if (
+		primaryRole.includes("supervisor") ||
+		primaryRole.includes("admin") ||
+		primaryRole.includes("management")
+	) {
 		return "supervisor";
 	}
 	if (primaryRole.includes("logistic") || primaryRole.includes("finance")) {
@@ -41,4 +49,3 @@ export function getPrimaryRole(roles: string[]): WMSRole {
 	}
 	return "store_keeper";
 }
-

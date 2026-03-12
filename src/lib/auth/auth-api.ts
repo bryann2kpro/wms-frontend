@@ -4,34 +4,34 @@ import { saveAuthTokens, clearAuthTokens } from "./auth-storage";
 
 // API Response types
 export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
+	success: boolean;
+	message: string;
+	data: T;
 }
 
 // Login types
 export interface LoginRequest {
-  username: string;
-  password: string;
+	username: string;
+	password: string;
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiredAt: number;
+	accessToken: string;
+	refreshToken: string;
+	expiredAt: number;
 }
 
 // Profile types
 export interface ProfileResponse {
-  id: string;
-  email: string;
-  displayName: string;
-  contactNo: string;
-  isActive: boolean;
-  roles: string[];
-  readPermission: string[];
-  createPermission: string[];
-  updatePermission: string[];
+	id: string;
+	email: string;
+	displayName: string;
+	contactNo: string;
+	isActive: boolean;
+	roles: string[];
+	readPermission: string[];
+	createPermission: string[];
+	updatePermission: string[];
 }
 
 /**
@@ -39,21 +39,21 @@ export interface ProfileResponse {
  * POST /auth/login
  */
 export async function login(
-  credentials: LoginRequest
+	credentials: LoginRequest,
 ): Promise<ApiResponse<LoginResponse>> {
-  const client = getPublicClient();
-  const response = await client.post<ApiResponse<LoginResponse>>(
-    "/auth/login",
-    credentials
-  );
+	const client = getPublicClient();
+	const response = await client.post<ApiResponse<LoginResponse>>(
+		"/auth/login",
+		credentials,
+	);
 
-  // Save tokens on successful login
-  if (response.data.success && response.data.data) {
-    const { accessToken, refreshToken, expiredAt } = response.data.data;
-    saveAuthTokens(accessToken, refreshToken, expiredAt);
-  }
+	// Save tokens on successful login
+	if (response.data.success && response.data.data) {
+		const { accessToken, refreshToken, expiredAt } = response.data.data;
+		saveAuthTokens(accessToken, refreshToken, expiredAt);
+	}
 
-  return response.data;
+	return response.data;
 }
 
 /**
@@ -62,24 +62,50 @@ export async function login(
  * Note: This requires authentication, so use getClient instead of getPublicClient
  */
 export async function fetchProfile(
-  accessToken: string
+	accessToken: string,
 ): Promise<ApiResponse<ProfileResponse>> {
-  const client = getPublicClient();
-  const response = await client.get<ApiResponse<ProfileResponse>>(
-    "/auth/profile",
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+	const client = getPublicClient();
+	const response = await client.get<ApiResponse<ProfileResponse>>(
+		"/auth/profile",
+		{
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		},
+	);
 
-  return response.data;
+	return response.data;
 }
 
 /**
  * Logout - clear all auth tokens
  */
 export function logout(): void {
-  clearAuthTokens();
+	clearAuthTokens();
+}
+
+/**
+ * Request a password reset email
+ * POST /auth/forgot-password
+ */
+export async function requestPasswordReset(email: string): Promise<ApiResponse<null>> {
+	const client = getPublicClient();
+	const response = await client.post<ApiResponse<null>>('/auth/forgot-password', { email });
+	return response.data;
+}
+
+/**
+ * Reset password using a token from the reset email
+ * POST /auth/reset-password
+ */
+export async function resetPassword(
+	token: string,
+	password: string,
+): Promise<ApiResponse<null>> {
+	const client = getPublicClient();
+	const response = await client.post<ApiResponse<null>>('/auth/reset-password', {
+		token,
+		password,
+	});
+	return response.data;
 }

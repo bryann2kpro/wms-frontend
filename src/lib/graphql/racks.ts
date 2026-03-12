@@ -3,7 +3,7 @@ import type {
 	Rack,
 	RackPaginatedResponse,
 	CreateRackInput,
-	UpdateRackInput
+	UpdateRackInput,
 } from "./types";
 
 export const RACK_FRAGMENT = gql`

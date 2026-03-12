@@ -46,7 +46,7 @@ export interface UpdateUserInput {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Mock users database - matching the API response structure
-let users: User[] = [
+const users: User[] = [
 	{
 		id: "1",
 		email: "admin@smee.com.my",

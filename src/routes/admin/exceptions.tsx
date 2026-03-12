@@ -1,13 +1,14 @@
 import { useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@apollo/client/react";
 import {
-	SKUS_QUERY,
-	type SkusQueryData,
-	type SkusQueryVariables,
-} from "@/lib/graphql/skus";
-import type { Skus } from "@/lib/graphql/types";
+	STOCK_COUNTS_QUERY,
+	type StockCount,
+	type StockCountsQueryData,
+	type StockCountsQueryVariables,
+} from "@/lib/graphql/stock-count";
 import {
 	Card,
 	CardContent,
@@ -57,6 +58,9 @@ import {
 } from "@/data/exceptions.mock-data";
 
 export const Route = createFileRoute("/admin/exceptions")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Exception"]);
+	},
 	component: ExceptionsComponent,
 });
 
@@ -73,38 +77,47 @@ const exceptionTypes: Array<ExceptionType | "ALL"> = [
 	"DAMAGE",
 ];
 
-function skuToException(sku: Skus): Exception {
-	const carton = sku.skuQuantity ?? 0;
-	const loss = sku.lossQuantity ?? 0;
-	const date = sku.skuExpiryDate
+/** Exception row with server-provided diff for display */
+type ExceptionRow = Exception & {
+	qtyDifference: number;
+	lossQtyDifference: number;
+	reservedQty: number;
+};
+
+function stockCountToException(sc: StockCount): ExceptionRow {
+	const date = sc.skuExpiryDate
 		? (() => {
-				const raw = sku.skuExpiryDate;
-				const ms = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
+				const raw = sc.skuExpiryDate;
+				const ms =
+					typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
 				const d = new Date(ms);
-				return Number.isNaN(d.getTime()) ? new Date(sku.createdAt ?? Date.now()) : d;
+				return Number.isNaN(d.getTime()) ? new Date() : d;
 			})()
-		: new Date(sku.createdAt ?? Date.now());
+		: new Date();
 	return {
-		id: sku.skuId,
+		id: sc.skuId,
 		doNumber: "-",
 		doId: "-",
-		itemId: sku.skuId,
-		sku: sku.skuCode,
-		description: sku.skuDescription ?? "-",
+		itemId: sc.skuId,
+		sku: sc.skuCode,
+		description: sc.skuDescription ?? "-",
 		type: "SHORTAGE",
-		quantity: carton + loss,
+		quantity: sc.onHandQty + sc.lossQty,
 		reason: "-",
-		openingQtyDozen: carton,
-		openingQtyLoss: loss,
+		openingQtyDozen: sc.openingQty,
+		openingQtyLoss: sc.openingLossQty,
 		stockCountDate: date,
-		closedQtyDozen: carton,
-		closedQtyLoss: loss,
+		closedQtyDozen: sc.onHandQty,
+		closedQtyLoss: sc.lossQty,
 		action: undefined,
 		isApproved: false,
 		reportedBy: "-",
 		reportedByName: "-",
 		reportedAt: date,
 		status: "pending",
+		qtyDifference: sc.qtyDifference,
+		lossQtyDifference: sc.lossQtyDifference,
+		reservedQty: sc.reservedQty,
 	};
 }
 
@@ -157,40 +170,40 @@ function ExceptionsComponent() {
 		setRowApprovals((prev) => ({ ...prev, [id]: true }));
 	}, []);
 
-	const handleCloseAction = useCallback(
-		(exc: Exception) => {
-			// Demo: Replace closed qty with opening qty
-			setClosedQuantities((prev) => ({
-				...prev,
-				[exc.id]: {
-					dozen: exc.openingQtyDozen,
-					loss: exc.openingQtyLoss,
-				},
-			}));
-		},
-		[],
-	);
+	const handleCloseAction = useCallback((exc: Exception) => {
+		// Demo: Replace closed qty with opening qty
+		setClosedQuantities((prev) => ({
+			...prev,
+			[exc.id]: {
+				dozen: exc.openingQtyDozen,
+				loss: exc.openingQtyLoss,
+			},
+		}));
+	}, []);
 
-	const { data: skusData, loading: isLoading } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, { variables: {} });
+	const { data: stockCountsData, loading: isLoading } = useQuery<
+		StockCountsQueryData,
+		StockCountsQueryVariables
+	>(STOCK_COUNTS_QUERY, { variables: {} });
 
-	const allSkus: Skus[] = skusData?.skus?.query ?? [];
+	const allStockCounts: StockCount[] =
+		stockCountsData?.stockCounts?.query ?? [];
 
 	const { data, exceptions, totalPages } = useMemo(() => {
 		const filtered = searchTerm.trim()
-			? allSkus.filter(
+			? allStockCounts.filter(
 					(s) =>
 						s.skuCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
 						(s.skuDescription ?? "")
 							.toLowerCase()
 							.includes(searchTerm.toLowerCase()),
 				)
-			: allSkus;
+			: allStockCounts;
 		const total = filtered.length;
 		const start = (page - 1) * pageSize;
-		const items = filtered.slice(start, start + pageSize).map(skuToException);
+		const items = filtered
+			.slice(start, start + pageSize)
+			.map(stockCountToException);
 		const summary = {
 			byStatus: { pending: total, approved: 0, rejected: 0 },
 			byType: { SHORTAGE: total, DAMAGE: 0 },
@@ -207,7 +220,7 @@ function ExceptionsComponent() {
 			exceptions: items,
 			totalPages: Math.max(1, Math.ceil(total / pageSize)),
 		};
-	}, [allSkus, page, pageSize, searchTerm]);
+	}, [allStockCounts, page, pageSize, searchTerm]);
 
 	const approveMutation = useMutation({
 		mutationFn: (id: string) =>
@@ -374,18 +387,25 @@ function ExceptionsComponent() {
 									<TableHead className="text-center">
 										Opening Qty
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
 									<TableHead>Stock Count Date</TableHead>
 									<TableHead className="text-center">
 										Qty
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
+									<TableHead className="text-center">Reserved Qty</TableHead>
 									<TableHead className="text-center">
 										Diff
 										<br />
-										<span className="text-xs font-normal">({unitName}/Loss)</span>
+										<span className="text-xs font-normal">
+											({unitName}/Loss)
+										</span>
 									</TableHead>
 									<TableHead>Stock Count</TableHead>
 									<TableHead>Reason</TableHead>
@@ -397,7 +417,7 @@ function ExceptionsComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading inventory...
@@ -406,7 +426,7 @@ function ExceptionsComponent() {
 								) : exceptions.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No inventory found.
@@ -414,43 +434,43 @@ function ExceptionsComponent() {
 									</TableRow>
 								) : (
 									exceptions.map((exc, index) => {
-										const selectedAction = rowActions[exc.id] ?? exc.action;
+										const row = exc as ExceptionRow;
+										const selectedAction = rowActions[row.id] ?? row.action;
 										const isManualKeyIn = selectedAction === "manual_key_in";
-										const baseClosed = closedQuantities[exc.id] ?? {
-											dozen: exc.closedQtyDozen,
-											loss: exc.closedQtyLoss,
+										const baseClosed = closedQuantities[row.id] ?? {
+											dozen: row.closedQtyDozen,
+											loss: row.closedQtyLoss,
 										};
 										const closedDozen =
-											isManualKeyIn && rowManualAmounts[exc.id] != null
-												? rowManualAmounts[exc.id].dozen
+											isManualKeyIn && rowManualAmounts[row.id] != null
+												? rowManualAmounts[row.id].dozen
 												: baseClosed.dozen;
 										const closedLoss =
-											isManualKeyIn && rowManualAmounts[exc.id] != null
-												? rowManualAmounts[exc.id].loss
+											isManualKeyIn && rowManualAmounts[row.id] != null
+												? rowManualAmounts[row.id].loss
 												: baseClosed.loss;
-										const diffDozen = exc.openingQtyDozen - closedDozen;
-										const diffLoss = exc.openingQtyLoss - closedLoss;
-										const isApproved =
-											rowApprovals[exc.id] ?? exc.isApproved;
+										const diffDozen = row.qtyDifference;
+										const diffLoss = row.lossQtyDifference;
+										const isApproved = rowApprovals[row.id] ?? row.isApproved;
 										const displayDozen =
-											rowManualAmounts[exc.id]?.dozen ?? baseClosed.dozen;
+											rowManualAmounts[row.id]?.dozen ?? baseClosed.dozen;
 										const displayLoss =
-											rowManualAmounts[exc.id]?.loss ?? baseClosed.loss;
+											rowManualAmounts[row.id]?.loss ?? baseClosed.loss;
 
 										return (
-											<TableRow key={exc.id}>
+											<TableRow key={row.id}>
 												<TableCell className="font-medium">
 													{(page - 1) * pageSize + index + 1}
 												</TableCell>
-												<TableCell>{exc.sku}</TableCell>
+												<TableCell>{row.sku}</TableCell>
 												<TableCell className="max-w-[200px] truncate">
-													{exc.description}
+													{row.description}
 												</TableCell>
 												<TableCell className="text-center">
-													{exc.openingQtyDozen} / {exc.openingQtyLoss}
+													{row.openingQtyDozen} / {row.openingQtyLoss}
 												</TableCell>
 												<TableCell>
-													{exc.stockCountDate.toLocaleDateString("en-MY")}
+													{row.stockCountDate.toLocaleDateString("en-MY")}
 												</TableCell>
 												<TableCell className="text-center">
 													{isManualKeyIn ? (
@@ -459,11 +479,11 @@ function ExceptionsComponent() {
 																type="number"
 																min={0}
 																className="h-8 w-16 text-center"
-																placeholder={String(exc.closedQtyDozen)}
+																placeholder={String(row.closedQtyDozen)}
 																value={displayDozen}
 																onChange={(e) => {
 																	const v = e.target.value;
-																	handleManualAmountChange(exc.id, {
+																	handleManualAmountChange(row.id, {
 																		dozen: v === "" ? 0 : Number(v),
 																		loss: displayLoss,
 																	});
@@ -474,11 +494,11 @@ function ExceptionsComponent() {
 																type="number"
 																min={0}
 																className="h-8 w-16 text-center"
-																placeholder={String(exc.closedQtyLoss)}
+																placeholder={String(row.closedQtyLoss)}
 																value={displayLoss}
 																onChange={(e) => {
 																	const v = e.target.value;
-																	handleManualAmountChange(exc.id, {
+																	handleManualAmountChange(row.id, {
 																		dozen: displayDozen,
 																		loss: v === "" ? 0 : Number(v),
 																	});
@@ -488,6 +508,9 @@ function ExceptionsComponent() {
 													) : (
 														`${closedDozen} / ${closedLoss}`
 													)}
+												</TableCell>
+												<TableCell className="text-center">
+													{row.reservedQty}
 												</TableCell>
 												<TableCell className="text-center">
 													<span
@@ -509,7 +532,7 @@ function ExceptionsComponent() {
 															value={selectedAction || ""}
 															onValueChange={(value) =>
 																handleActionChange(
-																	exc.id,
+																	row.id,
 																	value as StockCountAction,
 																)
 															}
@@ -531,7 +554,7 @@ function ExceptionsComponent() {
 														</Select>
 													</div>
 												</TableCell>
-												<TableCell>{exc.reason}</TableCell>
+												<TableCell>{row.reason}</TableCell>
 												<TableCell className="text-center">
 													{isApproved ? (
 														<Badge
@@ -544,7 +567,7 @@ function ExceptionsComponent() {
 														<Button
 															variant="outline"
 															size="sm"
-															onClick={() => handleApprovalClick(exc.id)}
+															onClick={() => handleApprovalClick(row.id)}
 															disabled={!selectedAction}
 														>
 															Approve
@@ -555,7 +578,7 @@ function ExceptionsComponent() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => handleCloseAction(exc)}
+														onClick={() => handleCloseAction(row)}
 														disabled={!isApproved}
 													>
 														Close

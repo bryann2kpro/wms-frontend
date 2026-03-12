@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
@@ -28,6 +29,7 @@ import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
+import { Route as AdminForbiddenRouteImport } from './routes/admin/forbidden'
 import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
 import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
 import { Route as AdminEsDoRouteImport } from './routes/admin/es-do'
@@ -48,6 +50,11 @@ import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -141,6 +148,11 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
 const AdminGrnRoute = AdminGrnRouteImport.update({
   id: '/grn',
   path: '/grn',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminForbiddenRoute = AdminForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminExceptionsRoute = AdminExceptionsRouteImport.update({
@@ -244,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -252,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -277,13 +291,14 @@ export interface FileRoutesByFullPath {
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -292,6 +307,7 @@ export interface FileRoutesByTo {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -325,6 +341,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -333,6 +350,7 @@ export interface FileRoutesById {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -367,6 +385,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -375,6 +394,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -400,13 +420,14 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr'
+    | '/demo/start/ssr/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -415,6 +436,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -447,6 +469,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -455,6 +478,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -488,6 +512,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   DemoApolloClientRoute: typeof DemoApolloClientRoute
   DemoI18nRoute: typeof DemoI18nRoute
   DemoStoreRoute: typeof DemoStoreRoute
@@ -506,6 +531,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -639,6 +671,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGrnRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/forbidden': {
+      id: '/admin/forbidden'
+      path: '/forbidden'
+      fullPath: '/admin/forbidden'
+      preLoaderRoute: typeof AdminForbiddenRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/exceptions': {
       id: '/admin/exceptions'
       path: '/exceptions'
@@ -747,7 +786,7 @@ declare module '@tanstack/react-router' {
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
-      fullPath: '/demo/start/ssr'
+      fullPath: '/demo/start/ssr/'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -796,6 +835,7 @@ interface AdminRouteRouteChildren {
   AdminEsDoRoute: typeof AdminEsDoRoute
   AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
   AdminExceptionsRoute: typeof AdminExceptionsRoute
+  AdminForbiddenRoute: typeof AdminForbiddenRoute
   AdminGrnRoute: typeof AdminGrnRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
@@ -818,6 +858,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminEsDoRoute: AdminEsDoRoute,
   AdminExceptionDetailRoute: AdminExceptionDetailRoute,
   AdminExceptionsRoute: AdminExceptionsRoute,
+  AdminForbiddenRoute: AdminForbiddenRoute,
   AdminGrnRoute: AdminGrnRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
@@ -840,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   DemoApolloClientRoute: DemoApolloClientRoute,
   DemoI18nRoute: DemoI18nRoute,
   DemoStoreRoute: DemoStoreRoute,

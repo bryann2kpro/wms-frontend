@@ -10,13 +10,7 @@ export type DOStatus =
 	| "DELIVERED_CONFIRMED"
 	| "CANCELLED";
 
-const regions = [
-	"Klang Valley",
-	"Perlis",
-	"North",
-	"South",
-	"East Coast",
-]
+const regions = ["Klang Valley", "Perlis", "North", "South", "East Coast"];
 
 export type ExceptionType = "SHORTAGE" | "DAMAGE";
 
@@ -68,6 +62,8 @@ export interface DeliveryOrder {
 	outlet: string;
 	outletAddress?: string;
 	status: DOStatus;
+	/** When true, order was created as emergency (bypassed cutoff for next delivery day). */
+	isEmergency?: boolean;
 	assignedTo?: string; // Store Keeper or Logistic user ID
 	createdAt: Date;
 	scheduledDeliveryDate: Date;
@@ -104,7 +100,7 @@ export interface DOListResult {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate mock DOs
-let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
+const doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 	const statuses: DOStatus[] = [
 		"CREATED",
 		"PICKING",
@@ -193,6 +189,7 @@ let doList: DeliveryOrder[] = Array.from({ length: 30 }, (_, i) => {
 		doNumber: `DO-2024-${String(i + 1).padStart(4, "0")}`,
 		toNumber: `PO-2024-${String(i + 1).padStart(4, "0")}`,
 		region: regions[i % regions.length],
+		isEmergency: i % 5 === 0,
 		outlet: faker.company.name(),
 		outletAddress: faker.location.streetAddress(),
 		status,

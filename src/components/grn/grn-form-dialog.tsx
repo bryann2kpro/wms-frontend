@@ -23,26 +23,17 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import {
 	Field,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
+import { Badge } from "@/components/ui/badge";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
@@ -56,7 +47,7 @@ import {
 	Send,
 	Trash2,
 	Clock,
-	Warehouse,
+	CalendarDays,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -65,23 +56,51 @@ import {
 	DELETE_GRN_MUTATION,
 	UI_STATUS_TO_GQL,
 } from "@/lib/graphql/grns";
+import {
+	CREATE_RACK_MUTATION,
+	type CreateRackMutationData,
+} from "@/lib/graphql/racks";
 import type { GRNStatus } from "@/data/grn.mock-data";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 /** Get a user-facing message from Apollo or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
-		const first = (err as { graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }> })
-			.graphQLErrors?.[0];
-		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR") return "Internal Server Error";
+		const first = (
+			err as {
+				graphQLErrors?: Array<{
+					message?: string;
+					extensions?: { code?: string };
+				}>;
+			}
+		).graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
 		const gql = first?.message;
-		if (gql) return toUserFriendlyMessage(gql, "Something went wrong. Please try again.");
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Something went wrong. Please try again.",
+			);
 	}
-	if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
-		return toUserFriendlyMessage((err as Error).message, "Something went wrong. Please try again.");
+	if (
+		err &&
+		typeof err === "object" &&
+		"message" in err &&
+		typeof (err as Error).message === "string"
+	)
+		return toUserFriendlyMessage(
+			(err as Error).message,
+			"Something went wrong. Please try again.",
+		);
 	if (err instanceof Error)
-		return toUserFriendlyMessage(err.message, "Something went wrong. Please try again.");
+		return toUserFriendlyMessage(
+			err.message,
+			"Something went wrong. Please try again.",
+		);
 	return "Something went wrong. Please try again.";
 }
 
@@ -94,6 +113,10 @@ export type GRNLineItemForm = {
 	loss: number;
 	uom: string;
 	unitPrice: number;
+	/** Expiry date (YYYY-MM-DD). Optional. */
+	expiryDate: string;
+	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
+	rackIds: string[];
 };
 
 function toDatetimeLocal(value: string | null | undefined): string {
@@ -111,7 +134,111 @@ function normalizeFieldErrors(
 	errors: unknown[],
 ): Array<{ message?: string } | undefined> {
 	return errors.map((e) =>
-		typeof e === "string" ? { message: e } : (e as { message?: string } | undefined),
+		typeof e === "string"
+			? { message: e }
+			: (e as { message?: string } | undefined),
+	);
+}
+
+function CreateRackDialog({
+	open,
+	onOpenChange,
+	onSubmit,
+	loading,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSubmit: (v: {
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}) => void;
+	loading: boolean;
+}) {
+	const [rackRow, setRackRow] = useState("");
+	const [rackColumn, setRackColumn] = useState("");
+	const [rackLevel, setRackLevel] = useState("");
+	useEffect(() => {
+		if (open) {
+			setRackRow("");
+			setRackColumn("");
+			setRackLevel("");
+		}
+	}, [open]);
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50 pb-4">
+					<DialogTitle
+						className="text-lg font-semibold"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						Create rack
+					</DialogTitle>
+					<DialogDescription
+						className="text-sm text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
+						Add a new rack location (row, column, level).
+					</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-4 py-4">
+					<div className="grid gap-2">
+						<Label htmlFor="rack-row" style={{ fontFamily: "var(--dashboard-body)" }}>Row</Label>
+						<Input
+							id="rack-row"
+							value={rackRow}
+							onChange={(e) => setRackRow(e.target.value)}
+							placeholder="e.g. A, B, 1"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="rack-column" style={{ fontFamily: "var(--dashboard-body)" }}>Column</Label>
+						<Input
+							id="rack-column"
+							value={rackColumn}
+							onChange={(e) => setRackColumn(e.target.value)}
+							placeholder="e.g. 01, 02"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="rack-level" style={{ fontFamily: "var(--dashboard-body)" }}>Level</Label>
+						<Input
+							id="rack-level"
+							value={rackLevel}
+							onChange={(e) => setRackLevel(e.target.value)}
+							placeholder="e.g. 01, 02"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" className="rounded-lg" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						disabled={
+							!rackRow.trim() ||
+							!rackColumn.trim() ||
+							!rackLevel.trim() ||
+							loading
+						}
+						onClick={() =>
+							onSubmit({
+								rackRow: rackRow.trim(),
+								rackColumn: rackColumn.trim(),
+								rackLevel: rackLevel.trim(),
+							})
+						}
+					>
+						{loading ? "Creating..." : "Create"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
@@ -122,6 +249,8 @@ function GRNLineRow({
 	onItemsChange,
 	skuOptions,
 	stockUnits,
+	racks,
+	onOpenCreateRack,
 }: {
 	item: GRNLineItemForm;
 	index: number;
@@ -129,7 +258,15 @@ function GRNLineRow({
 	onItemsChange: (newItems: GRNLineItemForm[]) => void;
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
+	racks: Array<{
+		rackId: string;
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}>;
+	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
+	const rackIds = item.rackIds ?? [];
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -143,127 +280,219 @@ function GRNLineRow({
 		};
 	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
-	/** UOM options for this line item only: derived from the SKU selected at this index */
-	const lineItemUomOptions = useMemo(() => {
-		if (!item.skuCode?.trim()) return [];
+	const uomLabel = useMemo(() => {
+		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
-		if (!sku?.skuUom) return [];
+		if (!sku?.skuUom) return null;
 		const unit = stockUnits.find(
 			(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
 		);
-		return unit ? [unit] : [];
+		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
 
 	return (
-		<TableRow key={`line-${index}-${item.skuCode || "new"}`}>
-			<TableCell>
-				<SkuCombobox
-					value={skuValue}
-					onChange={(v: SkuLineValue) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							skuCode: v.skuCode ?? "",
-							description: v.description ?? "",
-							uom: v.uom ?? "",
-						};
-						onItemsChange(newItems);
-					}}
-					usedSkuCodes={items
-						.filter((_, i) => i !== index)
-						.map((it) => it.skuCode)
-						.filter(Boolean)}
-					placeholder="Search or select SKU..."
-					className="min-w-[200px]"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					value={item.description}
-					onChange={(e) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							description: e.target.value,
-						};
-						onItemsChange(newItems);
-					}}
-					placeholder="Description"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="number"
-					min={0}
-					value={item.carton}
-					onChange={(e) => {
-						const newItems = [...items];
-						const v = Number(e.target.value);
-						newItems[index] = {
-							...newItems[index],
-							carton: Number.isFinite(v) && v >= 0 ? v : 0,
-						};
-						onItemsChange(newItems);
-					}}
-					className="w-20"
-					placeholder="0"
-				/>
-			</TableCell>
-			<TableCell>
-				<Input
-					type="number"
-					min={0}
-					value={item.loss}
-					onChange={(e) => {
-						const newItems = [...items];
-						const v = Number(e.target.value);
-						newItems[index] = {
-							...newItems[index],
-							loss: Number.isFinite(v) && v >= 0 ? v : 0,
-						};
-						onItemsChange(newItems);
-					}}
-					className="w-20"
-					placeholder="0"
-				/>
-			</TableCell>
-			<TableCell>
-				<Select
-					value={item.uom}
-					onValueChange={(value) => {
-						const newItems = [...items];
-						newItems[index] = {
-							...newItems[index],
-							uom: value,
-						};
-						onItemsChange(newItems);
-					}}
-					disabled
-				>
-					<SelectTrigger className="w-[120px]" disabled>
-						<SelectValue placeholder="UOM" />
-					</SelectTrigger>
-					<SelectContent>
-						{lineItemUomOptions.map((unit) => (
-							<SelectItem key={unit.stockUnitId} value={unit.unitCode}>
-								{unit.unitCode}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</TableCell>
-			<TableCell className="text-right">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
-					className="text-destructive hover:text-destructive"
-				>
-					<XCircle className="h-4 w-4" />
-				</Button>
-			</TableCell>
-		</TableRow>
+		<Card className="border-border/60 rounded-xl">
+			<CardHeader className="pb-3 pt-4 px-4">
+				<div className="flex items-center justify-between">
+					<span className="text-sm font-medium text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+						Item {index + 1}
+					</span>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
+						className="h-7 w-7 p-0 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+						aria-label="Remove item"
+					>
+						<XCircle className="h-4 w-4" />
+					</Button>
+				</div>
+			</CardHeader>
+			<CardContent className="px-4 pb-4 space-y-3">
+				{/* Row 1: SKU combobox + UOM badge */}
+				<div className="flex items-center gap-3">
+					<div className="flex-1">
+						<SkuCombobox
+							value={skuValue}
+							onChange={(v: SkuLineValue) => {
+								const newItems = [...items];
+								newItems[index] = {
+									...newItems[index],
+									skuCode: v.skuCode ?? "",
+									description: v.description ?? "",
+									uom: v.uom ?? "",
+								};
+								onItemsChange(newItems);
+							}}
+							usedSkuCodes={items
+								.filter((_, i) => i !== index)
+								.map((it) => it.skuCode)
+								.filter(Boolean)}
+							placeholder="Search or select SKU..."
+						/>
+					</div>
+					{uomLabel && (
+						<Badge variant="secondary" className="shrink-0 text-xs font-medium">
+							{uomLabel}
+						</Badge>
+					)}
+				</div>
+
+				{/* Row 2: Carton, Loss, Expiry date */}
+				<div className="grid grid-cols-3 gap-3">
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
+							Carton
+						</label>
+						<Input
+							type="number"
+							min={0}
+							value={item.carton}
+							onChange={(e) => {
+								const newItems = [...items];
+								const v = Number(e.target.value);
+								newItems[index] = {
+									...newItems[index],
+									carton: Number.isFinite(v) && v >= 0 ? v : 0,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="0"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
+							Loss
+						</label>
+						<Input
+							type="number"
+							min={0}
+							value={item.loss}
+							onChange={(e) => {
+								const newItems = [...items];
+								const v = Number(e.target.value);
+								newItems[index] = {
+									...newItems[index],
+									loss: Number.isFinite(v) && v >= 0 ? v : 0,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="0"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+					<div className="space-y-1">
+						<label className="text-xs text-muted-foreground font-medium flex items-center gap-1" style={{ fontFamily: "var(--dashboard-body)" }}>
+							<CalendarDays className="h-3 w-3" />
+							Expiry date
+						</label>
+						<Input
+							type="date"
+							value={item.expiryDate ?? ""}
+							onChange={(e) => {
+								const newItems = [...items];
+								newItems[index] = {
+									...newItems[index],
+									expiryDate: e.target.value,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="YYYY-MM-DD"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+				</div>
+
+				{/* Row 3: Racks */}
+				<div className="space-y-1">
+					<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
+						Racks *
+					</label>
+					<div className="flex flex-wrap items-center gap-1.5">
+						{rackIds.map((rid) => {
+							const r = racks.find((x) => x.rackId === rid);
+							const label = r
+								? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+								: rid;
+							return (
+								<Badge
+									key={rid}
+									variant="secondary"
+									className="gap-1 pr-1 font-normal"
+								>
+									{label}
+									<button
+										type="button"
+										onClick={() => {
+											const newItems = [...items];
+											newItems[index] = {
+												...newItems[index],
+												rackIds: rackIds.filter((id) => id !== rid),
+											};
+											onItemsChange(newItems);
+										}}
+										className="rounded-full p-0.5 hover:bg-muted"
+										aria-label={`Remove rack ${label}`}
+									>
+										<XCircle className="h-3 w-3" />
+									</button>
+								</Badge>
+							);
+						})}
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="h-7 gap-1 rounded-lg"
+								>
+									<Plus className="h-3.5 w-3.5" />
+									Add rack
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-56 p-2 rounded-xl" align="start">
+								<div className="flex flex-col gap-1">
+									{racks
+										.filter((r) => !rackIds.includes(r.rackId))
+										.map((r) => (
+											<Button
+												key={r.rackId}
+												type="button"
+												variant="ghost"
+												size="sm"
+												className="justify-start font-normal rounded-lg"
+												onClick={() => {
+													const newItems = [...items];
+													newItems[index] = {
+														...newItems[index],
+														rackIds: [...rackIds, r.rackId],
+													};
+													onItemsChange(newItems);
+												}}
+											>
+												{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+											</Button>
+										))}
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="justify-start gap-1 text-muted-foreground rounded-lg"
+										onClick={() => onOpenCreateRack?.(index)}
+									>
+										<Plus className="h-3.5 w-3.5" />
+										Create new rack
+									</Button>
+								</div>
+							</PopoverContent>
+						</Popover>
+					</div>
+				</div>
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -288,7 +517,18 @@ export type GrnFormDialogProps = {
 	skuOptions: Skus[];
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	/** Warehouses for warehouse dropdown (create & edit) */
-	warehouses: Array<{ warehouseId: string; warehouseCode?: string | null; warehouseName: string }>;
+	warehouses: Array<{
+		warehouseId: string;
+		warehouseCode?: string | null;
+		warehouseName: string;
+	}>;
+	/** Racks for rack dropdown per line item (create & edit) */
+	racks: Array<{
+		rackId: string;
+		rackRow: string;
+		rackColumn: string;
+		rackLevel: string;
+	}>;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -299,6 +539,10 @@ export type GrnFormDialogProps = {
 	canCreate?: boolean;
 	/** Called after a new SKU is created so parent can refetch SKU list */
 	onSkusRefetch?: () => void | Promise<void>;
+	/** Called after a new warehouse is created so parent can refetch warehouse list */
+	onWarehouseCreated?: () => void | Promise<void>;
+	/** Called after a new rack is created so parent can refetch rack list */
+	onRackCreated?: () => void | Promise<void>;
 };
 
 export function GrnFormDialog({
@@ -309,14 +553,22 @@ export function GrnFormDialog({
 	skuOptions,
 	stockUnits,
 	warehouses,
+	racks,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
 	canCreate = true,
 	onSkusRefetch: _onSkusRefetch,
+	onWarehouseCreated,
+	onRackCreated,
 }: GrnFormDialogProps) {
+	const { user } = useCurrentUser();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
+	const [createRackOpen, setCreateRackOpen] = useState(false);
+	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<
+		number | null
+	>(null);
 
 	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
 		onCompleted: () => {
@@ -325,15 +577,37 @@ export function GrnFormDialog({
 		},
 	});
 
-	const [deleteGRN, { loading: deleteLoading }] = useMutation(DELETE_GRN_MUTATION, {
-		onError: (err) => {
-			toast.error(getErrorMessage(err));
+	const [deleteGRN, { loading: deleteLoading }] = useMutation(
+		DELETE_GRN_MUTATION,
+		{
+			onError: (err) => {
+				toast.error(getErrorMessage(err));
+			},
+			onCompleted: () => {
+				onSuccess?.();
+				onOpenChange(false);
+			},
 		},
-		onCompleted: () => {
-			onSuccess?.();
-			onOpenChange(false);
-		},
-	});
+	);
+
+	const createdBy = user?.id ?? "";
+	const updateItemsWithRackRef = useRef<
+		((lineIndex: number, rackId: string) => void) | null
+	>(null);
+	const [createRack, { loading: createRackLoading }] =
+		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
+			onError: (err) => toast.error(getErrorMessage(err)),
+			onCompleted: (data) => {
+				const rack = data?.createRack;
+				if (rack && createRackForLineIndex != null) {
+					updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
+					onRackCreated?.();
+					setCreateRackOpen(false);
+					setCreateRackForLineIndex(null);
+					toast.success("Rack created.");
+				}
+			},
+		});
 
 	const form = useForm({
 		defaultValues: {
@@ -348,24 +622,35 @@ export function GrnFormDialog({
 		validators: {
 			onSubmit: ({ value }) => {
 				const fields: Partial<Record<string, string>> = {};
-				if (!value.grnNumber?.trim()) fields.grnNumber = "GRN Number is required";
-				if (!value.poReference?.trim()) fields.poReference = "PO Reference is required";
-				if (!value.supplierDO?.trim()) fields.supplierDO = "Supplier DO is required";
-				if (!value.receivedDate?.trim()) fields.receivedDate = "Received Date/Time is required";
+				if (!value.grnNumber?.trim())
+					fields.grnNumber = "GRN Number is required";
+				if (!value.poReference?.trim())
+					fields.poReference = "PO Reference is required";
+				if (!value.supplierDO?.trim())
+					fields.supplierDO = "Supplier DO is required";
+				if (!value.receivedDate?.trim())
+					fields.receivedDate = "Received Date/Time is required";
 				const items = value.items ?? [];
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
 				} else {
-					const invalidItem = items.find(
+					const invalidQty = items.find(
 						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
 					);
-					if (invalidItem) {
+					if (invalidQty) {
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
+					} else {
+						const missingRack = items.find((i) => !(i.rackIds ?? []).length);
+						if (missingRack) {
+							fields.items = "Each line item must have at least one rack.";
+						}
 					}
 				}
 				if (Object.keys(fields).length > 0) {
-					toast.error("Please enter all mandatory fields and ensure line item quantities are valid.");
+					toast.error(
+						"Please enter all mandatory fields and ensure line item quantities are valid.",
+					);
 					return { fields };
 				}
 				return undefined;
@@ -388,6 +673,8 @@ export function GrnFormDialog({
 						loss: i.loss,
 						uom: i.uom,
 						unitPrice: i.unitPrice,
+						expiryDate: i.expiryDate ?? "",
+						rackIds: i.rackIds ?? [],
 					})),
 				};
 				try {
@@ -402,10 +689,11 @@ export function GrnFormDialog({
 			}
 			// Edit mode
 			if (!grn?.id) return;
-			const parsedDate = value.receivedDate ? new Date(value.receivedDate) : null;
+			const parsedDate = value.receivedDate
+				? new Date(value.receivedDate)
+				: null;
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
-				const warehouseIdForItems = value.warehouseId?.trim() || undefined;
 				await updateGRN({
 					variables: {
 						id: grn.id,
@@ -418,18 +706,26 @@ export function GrnFormDialog({
 							receivedAt: parsedDate?.toISOString() ?? undefined,
 							status: UI_STATUS_TO_GQL[status],
 							notes: value.notes || undefined,
+							warehouseId: value.warehouseId?.trim() || undefined,
 							items: (value.items ?? []).map((i) => {
 								const uomId = i.uom
-									? stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom
+									? (stockUnits.find((u) => u.unitCode === i.uom)
+											?.stockUnitId ?? i.uom)
 									: undefined;
+								const rackIds = (i.rackIds ?? []).filter((id) =>
+									(id ?? "").trim(),
+								);
 								return {
-									skuId: skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ?? undefined,
+									skuId:
+										skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
+										undefined,
 									skuCode: i.skuCode,
 									skuDescription: i.description ?? undefined,
 									qty: String(i.carton),
 									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
-									warehouseId: warehouseIdForItems,
+									expiryDate: (i.expiryDate ?? "").trim() || undefined,
+									...(rackIds.length > 0 && { rackIds }),
 								};
 							}),
 						},
@@ -448,9 +744,13 @@ export function GrnFormDialog({
 				const sku = skuOptions.find((s) => s.skuCode === it.skuCode);
 				const uomUnit = sku
 					? stockUnits.find(
-						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom
-					)
+							(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
+						)
 					: undefined;
+				const rack = it.rack;
+				const rackIds =
+					(it as { rackIds?: string[] }).rackIds ?? (rack ? [rack.rackId] : []);
+				const expiryDate = (it as { expiryDate?: string }).expiryDate ?? "";
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -458,12 +758,14 @@ export function GrnFormDialog({
 					loss: it.lossQuantity ?? 0,
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
+					expiryDate,
+					rackIds,
 				};
 			});
 			form.reset({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
-				supplierDO: (grn.supplierDeliveryNo ?? grn.supplierDeliveryId) ?? "",
+				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
 				receivedDate: toDatetimeLocal(grn.receivedAt),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
@@ -489,6 +791,16 @@ export function GrnFormDialog({
 
 	const handleSubmitForApproval = () => {
 		if (!grn?.id || grn.status !== "Draft") return;
+		const items = form.state.values.items ?? [];
+		const missingRack = items.find(
+			(i: { rackIds?: string[] }) => !(i.rackIds ?? []).length,
+		);
+		if (missingRack) {
+			toast.error(
+				"Each line item must have at least one rack before submitting for approval.",
+			);
+			return;
+		}
 		updateGRN({
 			variables: {
 				id: grn.id,
@@ -499,7 +811,11 @@ export function GrnFormDialog({
 
 	const handleDelete = () => {
 		if (!grn?.id) return;
-		if (!window.confirm("Delete this GRN and all its items? This cannot be undone."))
+		if (
+			!window.confirm(
+				"Delete this GRN and all its items? This cannot be undone.",
+			)
+		)
 			return;
 		deleteGRN({ variables: { id: grn.id } });
 	};
@@ -512,15 +828,23 @@ export function GrnFormDialog({
 
 	const dialogContent = (
 		<DialogContent
-			className="max-h-[90vh] overflow-y-auto"
+			className="max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border bg-background shadow-xl"
 			style={{ maxWidth: "min(95vw, 1400px)" }}
 		>
-			<DialogHeader className="pb-4">
-				<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
+			<DialogHeader className="pb-4 border-b bg-muted/50">
+				<DialogTitle
+					className="text-2xl font-semibold flex items-center gap-2"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<Package className="h-5 w-5 text-primary" />
 					{title}
 				</DialogTitle>
-				<DialogDescription className="text-base">{description}</DialogDescription>
+				<DialogDescription
+					className="text-base text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
+					{description}
+				</DialogDescription>
 			</DialogHeader>
 			<Separator />
 			{(isCreate || grn) && (
@@ -535,7 +859,10 @@ export function GrnFormDialog({
 						<div className="lg:col-span-2 space-y-6">
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<FileText className="h-4 w-4 text-muted-foreground" />
 										Basic Information
 									</CardTitle>
@@ -548,18 +875,27 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>GRN Number</FieldLabel>
+															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
+																GRN Number
+															</FieldLabel>
 															<Input
 																id={field.name}
 																value={field.state.value}
 																placeholder="GRN-2024-001"
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																required
 																aria-invalid={isInvalid}
+																className="rounded-lg border-muted-foreground/20"
 															/>
 															{isInvalid && (
-																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+																<FieldError
+																	errors={normalizeFieldErrors(
+																		field.state.meta.errors,
+																	)}
+																/>
 															)}
 														</Field>
 													);
@@ -570,18 +906,27 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>PO Reference</FieldLabel>
+															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
+																PO Reference
+															</FieldLabel>
 															<Input
 																id={field.name}
 																value={field.state.value}
 																placeholder="PO-2024-001"
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																required
 																aria-invalid={isInvalid}
+																className="rounded-lg border-muted-foreground/20"
 															/>
 															{isInvalid && (
-																<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+																<FieldError
+																	errors={normalizeFieldErrors(
+																		field.state.meta.errors,
+																	)}
+																/>
 															)}
 														</Field>
 													);
@@ -593,18 +938,27 @@ export function GrnFormDialog({
 												const isInvalid = field.state.meta.errors.length > 0;
 												return (
 													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name}>Supplier DO</FieldLabel>
+														<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
+															Supplier DO
+														</FieldLabel>
 														<Input
 															id={field.name}
 															value={field.state.value}
 															placeholder="DO-2024-001"
 															onBlur={field.handleBlur}
 															required
-															onChange={(e) => field.handleChange(e.target.value)}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
 															aria-invalid={isInvalid}
+															className="rounded-lg border-muted-foreground/20"
 														/>
 														{isInvalid && (
-															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+															<FieldError
+																errors={normalizeFieldErrors(
+																	field.state.meta.errors,
+																)}
+															/>
 														)}
 													</Field>
 												);
@@ -618,6 +972,7 @@ export function GrnFormDialog({
 														<FieldLabel
 															htmlFor={field.name}
 															className="flex items-center gap-2"
+															style={{ fontFamily: "var(--dashboard-body)" }}
 														>
 															<Calendar className="h-4 w-4 text-muted-foreground" />
 															Received Date/Time
@@ -627,46 +982,23 @@ export function GrnFormDialog({
 															type="datetime-local"
 															value={field.state.value}
 															onBlur={field.handleBlur}
-															onChange={(e) => field.handleChange(e.target.value)}
+															onChange={(e) =>
+																field.handleChange(e.target.value)
+															}
 															required
 															aria-invalid={isInvalid}
+															className="rounded-lg border-muted-foreground/20"
 														/>
 														{isInvalid && (
-															<FieldError errors={normalizeFieldErrors(field.state.meta.errors)} />
+															<FieldError
+																errors={normalizeFieldErrors(
+																	field.state.meta.errors,
+																)}
+															/>
 														)}
 													</Field>
 												);
 											}}
-										</form.Field>
-										<form.Field name="warehouseId">
-											{(field) => (
-												<Field>
-													<FieldLabel
-														htmlFor={field.name}
-														className="flex items-center gap-2"
-													>
-														<Warehouse className="h-4 w-4 text-muted-foreground" />
-														Warehouse
-													</FieldLabel>
-													<Select
-														value={field.state.value || "none"}
-														onValueChange={(v) => field.handleChange(v === "none" ? "" : v)}
-													>
-														<SelectTrigger id={field.name}>
-															<SelectValue placeholder="Select warehouse (optional)" />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="none">— None —</SelectItem>
-															{warehouses.map((w: { warehouseId: string; warehouseCode?: string | null; warehouseName: string }) => (
-																<SelectItem key={w.warehouseId} value={w.warehouseId}>
-																	{w.warehouseName}
-																	{w.warehouseCode ? ` (${w.warehouseCode})` : ""}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												</Field>
-											)}
 										</form.Field>
 									</FieldGroup>
 								</CardContent>
@@ -676,22 +1008,30 @@ export function GrnFormDialog({
 								<CardHeader className="pb-3">
 									<div className="flex items-center justify-between gap-4">
 										<div>
-											<CardTitle className="text-base font-semibold flex items-center gap-2">
+											<CardTitle
+												className="text-base font-semibold flex items-center gap-2"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
 												<Package className="h-4 w-4 text-muted-foreground" />
 												Line Items
 											</CardTitle>
-											<CardDescription className="text-xs mt-1">
+											<CardDescription
+												className="text-xs mt-1 text-muted-foreground"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
 												Add line items and fill in the details below
 											</CardDescription>
 										</div>
 										<form.Field name="items">
 											{(field) => {
-												const items = (field.state.value ?? []) as GRNLineItemForm[];
+												const items = (field.state.value ??
+													[]) as GRNLineItemForm[];
 												return (
 													<Button
 														type="button"
 														variant="default"
 														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 														onClick={() => {
 															field.handleChange([
 																...items,
@@ -702,6 +1042,8 @@ export function GrnFormDialog({
 																	unitPrice: 0,
 																	carton: 1,
 																	loss: 0,
+																	expiryDate: "",
+																	rackIds: [],
 																},
 															]);
 														}}
@@ -717,66 +1059,93 @@ export function GrnFormDialog({
 								<CardContent>
 									<form.Field name="items">
 										{(field) => {
-											const items = (field.state.value ?? []) as GRNLineItemForm[];
+											const items = (field.state.value ??
+												[]) as GRNLineItemForm[];
+											updateItemsWithRackRef.current = (lineIndex, rackId) => {
+												const current = (field.state.value ??
+													[]) as GRNLineItemForm[];
+												if (current[lineIndex] == null) return;
+												const next = [...current];
+												const existing = next[lineIndex].rackIds ?? [];
+												if (existing.includes(rackId)) return;
+												next[lineIndex] = {
+													...next[lineIndex],
+													rackIds: [...existing, rackId],
+												};
+												field.handleChange(next);
+											};
 											return (
 												<>
-												<div className="rounded-lg border">
-													<Table>
-														<TableHeader>
-															<TableRow>
-																<TableHead>SKU</TableHead>
-																<TableHead>Description</TableHead>
-																<TableHead>Carton</TableHead>
-																<TableHead>Loss</TableHead>
-																<TableHead>UOM</TableHead>
-																<TableHead className="text-right w-[80px]">
-																	Actions
-																</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{items.length === 0 ? (
-																<TableRow>
-																	<TableCell
-																		colSpan={6}
-																		className="h-40 text-center"
-																	>
-																		<div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
-																			<div className="rounded-full bg-muted p-3">
-																				<Package className="h-10 w-10 opacity-60" />
-																			</div>
-																			<div>
-																				<p className="text-sm font-medium">No line items yet</p>
-																				<p className="text-xs mt-1">
-																					Click &quot;Add Line Item&quot; above to add your first
-																					item, then fill in the table
-																				</p>
-																			</div>
-																		</div>
-																	</TableCell>
-																</TableRow>
-															) : (
-																items.map((item, index) => (
-																	<GRNLineRow
-																		key={`line-${index}-${item.skuCode || "new"}`}
-																		item={item}
-																		index={index}
-																		items={items}
-																		onItemsChange={field.handleChange}
-																		skuOptions={skuOptions}
-																		stockUnits={stockUnits}
-																	/>
-																))
-															)}
-														</TableBody>
-													</Table>
-												</div>
-												{field.state.meta.errors.length > 0 && (
-													<p className="text-sm text-destructive mt-2">
-														{field.state.meta.errors.map((e) => (typeof e === "string" ? e : (e as unknown as { message?: string }).message)).filter(Boolean).join(" ")}
-													</p>
-												)}
-											</>
+													{items.length === 0 ? (
+														<div className="flex h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-muted-foreground">
+															<div className="rounded-full bg-muted p-3">
+																<Package className="h-10 w-10 opacity-60" />
+															</div>
+															<div className="text-center">
+																<p className="text-sm font-medium">
+																	No line items yet
+																</p>
+																<p className="text-xs mt-1">
+																	Click &quot;Add Line Item&quot; above to get
+																	started
+																</p>
+															</div>
+														</div>
+													) : (
+														<div className="flex flex-col gap-3">
+															{items.map((item, index) => (
+																<GRNLineRow
+																	key={`line-${index}-${item.skuCode || "new"}`}
+																	item={item}
+																	index={index}
+																	items={items}
+																	onItemsChange={field.handleChange}
+																	skuOptions={skuOptions}
+																	stockUnits={stockUnits}
+																	racks={racks}
+																	onOpenCreateRack={(lineIndex) => {
+																		setCreateRackForLineIndex(lineIndex);
+																		setCreateRackOpen(true);
+																	}}
+																/>
+															))}
+														</div>
+													)}
+													{field.state.meta.errors.length > 0 && (
+														<p className="text-sm text-destructive mt-2">
+															{field.state.meta.errors
+																.map((e) =>
+																	typeof e === "string"
+																		? e
+																		: (e as unknown as { message?: string })
+																				.message,
+																)
+																.filter(Boolean)
+																.join(" ")}
+														</p>
+													)}
+													<CreateRackDialog
+														open={createRackOpen}
+														onOpenChange={(open) => {
+															setCreateRackOpen(open);
+															if (!open) setCreateRackForLineIndex(null);
+														}}
+														onSubmit={(values) =>
+															createRack({
+																variables: {
+																	input: {
+																		rackRow: values.rackRow,
+																		rackColumn: values.rackColumn,
+																		rackLevel: values.rackLevel,
+																		createdBy,
+																		updatedBy: createdBy,
+																	},
+																},
+															})
+														}
+														loading={createRackLoading}
+													/>
+												</>
 											);
 										}}
 									</form.Field>
@@ -785,11 +1154,14 @@ export function GrnFormDialog({
 
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<Upload className="h-4 w-4 text-muted-foreground" />
 										Proof Upload
 									</CardTitle>
-									<CardDescription className="text-xs">
+									<CardDescription className="text-xs text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
 										Upload supporting documents (max 5 files)
 									</CardDescription>
 								</CardHeader>
@@ -805,7 +1177,10 @@ export function GrnFormDialog({
 
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<FileText className="h-4 w-4 text-muted-foreground" />
 										Additional Notes
 									</CardTitle>
@@ -823,7 +1198,7 @@ export function GrnFormDialog({
 													placeholder="Enter any additional notes or comments..."
 													onBlur={field.handleBlur}
 													onChange={(e) => field.handleChange(e.target.value)}
-													className="min-h-[100px] resize-none"
+													className="min-h-[100px] resize-none rounded-lg border-muted-foreground/20"
 												/>
 											</Field>
 										)}
@@ -833,14 +1208,17 @@ export function GrnFormDialog({
 						</div>
 					</div>
 
-					<form.Subscribe selector={(state) => [state.isSubmitting, state.canSubmit]}>
+					<form.Subscribe
+						selector={(state) => [state.isSubmitting, state.canSubmit]}
+					>
 						{([isSubmitting, canSubmit]) => (
 							<>
 								<Separator className="mt-6" />
-								<DialogFooter className="pt-4 flex-wrap gap-2">
+								<DialogFooter className="pt-4 flex-wrap gap-2 border-t bg-muted/20">
 									<Button
 										type="button"
 										variant="outline"
+										className="rounded-lg"
 										onClick={() => handleOpenChange(false)}
 										disabled={isSubmitting || deleteLoading}
 									>
@@ -851,6 +1229,7 @@ export function GrnFormDialog({
 											<Button
 												type="button"
 												variant="outline"
+												className="rounded-lg"
 												onClick={() => {
 													createIntentRef.current = "draft";
 													form.handleSubmit();
@@ -862,7 +1241,7 @@ export function GrnFormDialog({
 											<Button
 												type="button"
 												disabled={isSubmitting || !canSubmit}
-												className="min-w-[140px]"
+												className="min-w-[140px] rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 												onClick={() => {
 													createIntentRef.current = "submit";
 													form.handleSubmit();
@@ -889,7 +1268,7 @@ export function GrnFormDialog({
 													<Button
 														type="button"
 														variant="outline"
-														className="text-destructive hover:text-destructive"
+														className="rounded-lg text-destructive hover:text-destructive"
 														onClick={handleDelete}
 														disabled={isSubmitting || deleteLoading}
 													>
@@ -899,6 +1278,7 @@ export function GrnFormDialog({
 													<Button
 														type="button"
 														variant="outline"
+														className="rounded-lg"
 														onClick={handleSubmitForApproval}
 														disabled={isSubmitting || deleteLoading}
 													>
@@ -909,6 +1289,7 @@ export function GrnFormDialog({
 											)}
 											<Button
 												type="submit"
+												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 												disabled={isSubmitting || deleteLoading}
 											>
 												{isSubmitting ? "Saving..." : "Save changes"}

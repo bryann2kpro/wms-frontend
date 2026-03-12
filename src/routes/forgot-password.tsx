@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { requestPasswordReset } from "@/lib/auth/auth-api";
+import axios from "axios";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { Mail, Loader2, AlertCircle, Package, ArrowLeft, CircleCheck } from "lucide-react";
+import {
+	Mail,
+	Loader2,
+	AlertCircle,
+	Package,
+	ArrowLeft,
+	CircleCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Field,
@@ -23,7 +32,8 @@ export const Route = createFileRoute("/forgot-password")({
 			{ title: "Reset password — SME Ederan WMS" },
 			{
 				name: "description",
-				content: "Request a password reset link for your SME Ederan WMS account.",
+				content:
+					"Request a password reset link for your SME Ederan WMS account.",
 			},
 		],
 	}),
@@ -47,12 +57,18 @@ function RouteComponent() {
 		onSubmit: async ({ value }) => {
 			setError("");
 			try {
-				// TODO: wire up password reset API call
-				// await requestPasswordReset({ email: value.email });
+				await requestPasswordReset(value.email);
 				setSubmittedEmail(value.email);
 				setSubmitted(true);
 			} catch (err) {
-				setError("Something went wrong. Please try again.");
+				if (axios.isAxiosError(err)) {
+					const message =
+						(err.response?.data as { message?: string })?.message ||
+						"Something went wrong. Please try again.";
+					setError(message);
+				} else {
+					setError("Something went wrong. Please try again.");
+				}
 			}
 		},
 	});
@@ -136,13 +152,16 @@ function RouteComponent() {
 									<CircleCheck className="mt-px h-4 w-4 shrink-0 text-foreground" />
 									<p className="text-[13px] text-foreground leading-snug">
 										A reset link was sent to{" "}
-										<span className="font-medium">{submittedEmail}</span>.
-										Check your inbox and spam folder.
+										<span className="font-medium">{submittedEmail}</span>. Check
+										your inbox and spam folder.
 									</p>
 								</div>
 
 								<Link to="/login">
-									<Button variant="outline" className="w-full h-10 text-sm font-medium mt-2">
+									<Button
+										variant="outline"
+										className="w-full h-10 text-sm font-medium mt-2"
+									>
 										<ArrowLeft className="h-4 w-4" />
 										Back to sign in
 									</Button>
@@ -174,8 +193,7 @@ function RouteComponent() {
 										<form.Field name="email">
 											{(field) => {
 												const isInvalid =
-													field.state.meta.isDirty &&
-													!field.state.meta.isValid;
+													field.state.meta.isDirty && !field.state.meta.isValid;
 												const errorId = `${field.name}-error`;
 												return (
 													<Field data-invalid={isInvalid}>

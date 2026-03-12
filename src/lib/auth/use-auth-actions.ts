@@ -25,7 +25,7 @@ export function useAuthActions() {
 
 			return response;
 		},
-		[authLogin, queryClient]
+		[authLogin, queryClient],
 	);
 
 	/**

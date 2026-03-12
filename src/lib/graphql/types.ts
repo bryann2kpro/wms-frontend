@@ -321,6 +321,23 @@ export interface GrnAuditUser {
 	displayName: string;
 }
 
+/** Warehouse at GRN root level */
+export interface GrnWarehouse {
+	warehouseId: string;
+	warehouseName: string;
+	warehouseCode: string | null;
+	warehouseAddress: string | null;
+	updatedBy: string | null;
+}
+
+/** Rack on a GRN line item */
+export interface GrnRack {
+	rackId: string;
+	rackLevel: number | string;
+	rackRow: string;
+	rackColumn: string;
+}
+
 export interface Grn {
 	id: string;
 	grnNo: string;
@@ -339,7 +356,9 @@ export interface Grn {
 	createdByUser: GrnAuditUser | null;
 	updatedByUser: GrnAuditUser | null;
 	items: GrnItem[];
+	warehouse: GrnWarehouse | null;
 }
+
 export interface GrnItem {
 	id: string;
 	grnId: string;
@@ -351,22 +370,28 @@ export interface GrnItem {
 	/** Quantity lost */
 	lossQty?: string | null;
 	remarks: string | null;
-	warehouseId: string | null;
-	warehouseName: string | null;
-	warehouseAddress: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
 	updatedBy: string | null;
+	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
+	rack: GrnRack | null;
+	/** Legacy: some backends still return warehouse on item */
+	warehouseId?: string | null;
+	warehouseName?: string | null;
+	warehouseAddress?: string | null;
 }
 export interface CreateGrnItemInput {
 	skuId?: string | null;
-	/** Quantity in cartons */
 	qty: string;
-	/** Quantity lost */
 	lossQty?: string | null;
 	remarks?: string | null;
-	warehouseId?: string | null;
+	/** @deprecated Prefer rackIds. Single rack for legacy backends. */
+	rackId?: string | null;
+	/** Rack IDs for this line item (backend accepts string[]). */
+	rackIds?: string[] | null;
+	/** Expiry date (ISO date string YYYY-MM-DD). */
+	expiryDate?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -381,7 +406,7 @@ export interface CreateGrnInput {
 	receivedAt?: string | null;
 	notes?: string | null;
 	proofUrl?: string | null;
-	/** Initial status: Draft or Submitted (if omitted backend may default) */
+	warehouseId?: string | null;
 	status?: string | null;
 	createdBy?: string | null;
 	updatedBy?: string | null;
@@ -391,10 +416,16 @@ export interface CreateGrnInput {
 export interface GrnFilterInput {
 	id?: string | null;
 	grnNo?: string | null;
+	/** Search across GRN number, PO reference, and Supplier DO. */
+	search?: string | null;
 	status?: string | null;
 	page?: number | null;
 	pageSize?: number | null;
 	pageNumber?: number | null;
+	/** Sort field: GRN_NO, UPDATED_AT, CREATED_AT, STATUS, RECEIVED_AT */
+	sortBy?: string | null;
+	/** Sort direction: ASC or DESC */
+	sortOrder?: string | null;
 }
 
 export interface GrnPaginatedResponse {
@@ -408,13 +439,14 @@ export interface UpdateGrnInput {
 	supplierDeliveryId?: string | null;
 	supplierDeliveryNo?: string | null;
 	poNo?: string | null;
-	status?: string | null;
 	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
+	warehouseId?: string | null;
+	status?: string | null;
 	approvedBy?: string | null;
 	approvedAt?: string | null;
 	updatedBy?: string | null;
-	notes?: string | null;
-	proofUrl?: string | null;
 	items?: CreateGrnItemInput[] | null;
 }
 
@@ -439,7 +471,14 @@ export interface GrnItemForList {
 	/** Quantity lost */
 	lossQuantity: number;
 	receivedQuantity: number;
+	/** Display: warehouse name or rack (e.g. "A-01-2") */
 	location?: string;
+	rack?: {
+		rackId: string;
+		rackLevel: number | string;
+		rackRow: string;
+		rackColumn: string;
+	} | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */
@@ -451,6 +490,7 @@ export interface GrnDetailForList {
 	supplierDeliveryNo: string | null;
 	poNo: string | null;
 	warehouseId: string | null;
+	warehouse?: GrnWarehouse | null;
 	status: GrnStatusUI;
 	receivedAt: string | null;
 	createdAt: string;
@@ -470,4 +510,153 @@ export interface GrnListResult {
 	page: number;
 	pageSize: number;
 	total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Delivery Orders (Outbound)
+// ---------------------------------------------------------------------------
+
+export interface DeliveryOrder {
+	id: string;
+	doNo: string;
+	poNo: string;
+	status: string;
+	isEmergency: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+}
+
+export interface DeliveryOrderPaginatedResponse {
+	query: DeliveryOrder[];
+	pagination: Pagination;
+}
+
+export interface DeliveryOrderFilterInput {
+	id?: string | null;
+	doNo?: string | null;
+	toId?: string | null;
+	status?: string | null;
+	isEmergency?: boolean | null;
+	createdBy?: string | null;
+	createdAtFrom?: string | null;
+	createdAtTo?: string | null;
+	page?: number | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+}
+
+export interface CreateDeliveryOrderItemInputGql {
+	skuId?: string | null;
+	skuCode?: string | null;
+	qtyRequired: number | string;
+}
+
+export interface CreateDeliveryOrderInputGql {
+	purchaseOrderNo: string;
+	deliveryOrderNo: string;
+	outletId: string;
+	orderCreatedAt?: string | null;
+	items: CreateDeliveryOrderItemInputGql[];
+}
+
+// ---------------------------------------------------------------------------
+// Delivery Order Items (Work Queue)
+// ---------------------------------------------------------------------------
+
+export interface DeliveryOrderItemWithDetails {
+	id: string;
+	purchaseOrderId: string;
+	purchaseOrderNo: string;
+	skuId: string;
+	qtyRequired: string;
+	qtyPicked: string | null;
+	qtyPacked: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string | null;
+	skuCode: string | null;
+	skuDescription: string | null;
+	doNo: string | null;
+	doStatus: string | null;
+	onHandQty: string | null;
+	lossQty: string | null;
+	reservedQty: string | null;
+}
+
+export interface DeliveryOrderItemWithDetailsPaginatedResponse {
+	query: DeliveryOrderItemWithDetails[];
+	pagination: Pagination;
+}
+
+export interface DeliveryOrderItemFilterInput {
+	id?: string | null;
+	purchaseOrderNo?: string | null;
+	doNo?: string | null;
+	doStatus?: string | null;
+	search?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Purchase Orders (Transfer Orders / TOs from NetSuite)
+// ---------------------------------------------------------------------------
+
+export interface PurchaseOrderOutlet {
+	outletId: string;
+	outletName: string;
+	outletCode: string;
+	regionId: string | null;
+	regionName: string | null;
+	regionCode: string | null;
+	region?: PurchaseOrderRegion | null;
+}
+
+export interface PurchaseOrderRegion {
+	regionId: string;
+	regionName: string;
+	regionCode: string;
+}
+
+export interface PurchaseOrder {
+	id: string;
+	purchaseOrderNo: string;
+	outlet?: PurchaseOrderOutlet | null;
+	deliveryOrder?: DeliveryOrder | null;
+	status: string;
+	scheduledDeliveryDate?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy?: string | null;
+	updatedBy?: string | null;
+	createdByUser?: { id: string; displayName: string; email: string } | null;
+	updatedByUser?: { id: string; displayName: string; email: string } | null;
+	items?: Array<{
+		id: string;
+		skuCode: string;
+		skuDescription: string;
+		qtyRequired: string;
+	}> | null;
+}
+
+export interface PurchaseOrderPaginatedResponse {
+	query: PurchaseOrder[];
+	pagination: Pagination;
+}
+
+export interface PurchaseOrderFilterInput {
+	id?: string | string[] | null;
+	purchaseOrderNo?: string | null;
+	outletId?: string | string[] | null;
+	status?: string | string[] | null;
+	requestedDeliveryDateFrom?: string | null;
+	requestedDeliveryDateTo?: string | null;
+	scheduledDeliveryDateFrom?: string | null;
+	scheduledDeliveryDateTo?: string | null;
+	createdAtFrom?: string | null;
+	createdAtTo?: string | null;
+	page?: number | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
 }

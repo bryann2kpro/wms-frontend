@@ -1,114 +1,136 @@
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
-import { getAccessToken, getRefreshToken, saveAccessToken, saveRefreshToken } from "@/lib/auth/auth-storage";
+import axios, {
+	type AxiosError,
+	type AxiosInstance,
+	type InternalAxiosRequestConfig,
+} from "axios";
+import {
+	getAccessToken,
+	getRefreshToken,
+	saveAccessToken,
+	saveRefreshToken,
+	clearAuthTokens,
+} from "@/lib/auth/auth-storage";
 import { env } from "@/env";
+import { toast } from "sonner";
 
 let browserClient: AxiosInstance | null = null;
 
-function createClient(onRefreshFail: () => void): AxiosInstance {
-  const instance = axios.create({
-    baseURL: `${env.VITE_API_URL}/v1`,
-    headers: { "Content-Type": "application/json" },
-  });
+function handleAuthFailure(): void {
+	clearAuthTokens();
+	toast.warning("Session expired", { description: "Logging you out…" });
+	window.location.href = "/login";
+}
 
-  let isRefreshing = false;
-  let failedQueue: Array<{ resolve: (value?: any) => void; reject: (err: any) => void }> = [];
+function createClient(): AxiosInstance {
+	const instance = axios.create({
+		baseURL: `${env.VITE_API_URL}/v1`,
+		headers: { "Content-Type": "application/json" },
+	});
 
-  const processQueue = (error: any, token: string | null = null) => {
-    failedQueue.forEach((prom) => {
-      if (error) prom.reject(error);
-      else prom.resolve(token);
-    });
-    failedQueue = [];
-  };
+	let isRefreshing = false;
+	let failedQueue: Array<{
+		resolve: (value?: any) => void;
+		reject: (err: any) => void;
+	}> = [];
 
-  instance.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-      const token = getAccessToken();
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
+	const processQueue = (error: any, token: string | null = null) => {
+		failedQueue.forEach((prom) => {
+			if (error) prom.reject(error);
+			else prom.resolve(token);
+		});
+		failedQueue = [];
+	};
 
-  instance.interceptors.response.use(
-    (response) => response,
-    async (error: AxiosError) => {
-      const originalRequest: any = error.config;
+	instance.interceptors.request.use(
+		(config: InternalAxiosRequestConfig) => {
+			const token = getAccessToken();
+			if (token && config.headers) {
+				config.headers.Authorization = `Bearer ${token}`;
+			}
+			return config;
+		},
+		(error) => Promise.reject(error),
+	);
 
-      // Don't try to refresh the refresh endpoint itself
-      if (originalRequest?.url?.includes("/auth/refresh-token")) {
-        return Promise.reject(error);
-      }
+	instance.interceptors.response.use(
+		(response) => response,
+		async (error: AxiosError) => {
+			const originalRequest: any = error.config;
 
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        if (isRefreshing) {
-          originalRequest._retry = true;
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then((token) => {
-            if (!originalRequest.headers) originalRequest.headers = {};
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return instance(originalRequest);
-          });
-        }
+			// Don't try to refresh the refresh endpoint itself
+			if (originalRequest?.url?.includes("/auth/refresh-token")) {
+				return Promise.reject(error);
+			}
 
-        originalRequest._retry = true;
-        isRefreshing = true;
+			if (error.response?.status === 401 && !originalRequest._retry) {
+				if (isRefreshing) {
+					originalRequest._retry = true;
+					return new Promise((resolve, reject) => {
+						failedQueue.push({ resolve, reject });
+					}).then((token) => {
+						if (!originalRequest.headers) originalRequest.headers = {};
+						originalRequest.headers.Authorization = `Bearer ${token}`;
+						return instance(originalRequest);
+					});
+				}
 
-        try {
-          const refreshToken = getRefreshToken();
-          if (!refreshToken) throw new Error("No refresh token");
+				originalRequest._retry = true;
+				isRefreshing = true;
 
-          const { data } = await axios.post(`${env.VITE_API_URL}/v1/auth/refresh-token`, { refreshToken });
+				try {
+					const refreshToken = getRefreshToken();
+					if (!refreshToken) throw new Error("No refresh token");
 
-          const newAccessToken = data.accessToken;
-          saveAccessToken(newAccessToken);
-          if (data.refreshToken) saveRefreshToken(data.refreshToken);
+					const { data } = await axios.post(
+						`${env.VITE_API_URL}/v1/auth/refresh-token`,
+						{ refreshToken },
+					);
 
-          processQueue(null, newAccessToken);
+					const newAccessToken = data.accessToken;
+					saveAccessToken(newAccessToken);
+					if (data.refreshToken) saveRefreshToken(data.refreshToken);
 
-          if (!originalRequest.headers) originalRequest.headers = {};
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return instance(originalRequest);
-        } catch (err) {
-          processQueue(err, null);
-          onRefreshFail();
-          return Promise.reject(err);
-        } finally {
-          isRefreshing = false;
-        }
-      }
+					processQueue(null, newAccessToken);
 
-      return Promise.reject(error);
-    }
-  );
+					if (!originalRequest.headers) originalRequest.headers = {};
+					originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+					return instance(originalRequest);
+				} catch (err) {
+					processQueue(err, null);
+					handleAuthFailure();
+					return Promise.reject(err);
+				} finally {
+					isRefreshing = false;
+				}
+			}
 
-  return instance;
+			return Promise.reject(error);
+		},
+	);
+
+	return instance;
 }
 
 // Public accessor for the singleton client
-export function getClient(onRefreshFail: () => void): AxiosInstance {
-  if (!browserClient) {
-    browserClient = createClient(onRefreshFail);
-  }
-  return browserClient;
+export function getClient(): AxiosInstance {
+	if (!browserClient) {
+		browserClient = createClient();
+	}
+	return browserClient;
 }
 
 let publicClient: AxiosInstance | null = null;
 
 function createPublicClient(): AxiosInstance {
-  return axios.create({
-    baseURL: `${env.VITE_API_URL}/v1`,
-    headers: { "Content-Type": "application/json" },
-  });
+	return axios.create({
+		baseURL: `${env.VITE_API_URL}/v1`,
+		headers: { "Content-Type": "application/json" },
+	});
 }
 
 export function getPublicClient(): AxiosInstance {
-  if (!publicClient) {
-    publicClient = createPublicClient();
-  }
-  return publicClient;
+	if (!publicClient) {
+		publicClient = createPublicClient();
+	}
+	return publicClient;
 }
-

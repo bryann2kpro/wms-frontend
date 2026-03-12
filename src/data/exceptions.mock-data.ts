@@ -68,11 +68,11 @@ export interface ExceptionListResult {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Generate mock exceptions
-let exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
+const exceptions: Exception[] = Array.from({ length: 20 }, (_, i) => {
 	const statuses: ExceptionStatus[] = ["pending", "approved", "rejected"];
 	const status = statuses[i % statuses.length];
 	const type: ExceptionType = i % 2 === 0 ? "SHORTAGE" : "DAMAGE";
-	const reason = 'Item damaged during delivery';
+	const reason = "Item damaged during delivery";
 	// Generate random quantities for stock reconciliation
 	const openingQtyDozen = faker.number.int({ min: 10, max: 100 });
 	const openingQtyLoss = faker.number.int({ min: 0, max: 5 });

@@ -9,7 +9,7 @@ import {
 } from "@apollo/client-integration-tanstack-start";
 import { HttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
-import { getAccessToken } from "@/lib/auth/auth-storage";
+import { getAccessToken, hasValidTokens } from "@/lib/auth/auth-storage";
 import { env } from "@/env";
 
 import { deLocalizeUrl, localizeUrl } from "./paraglide/runtime";
@@ -39,7 +39,7 @@ export const getRouter = () => {
 			new HttpLink({
 				uri: graphqlUri,
 				headers: { "Content-Type": "application/json" },
-			})
+			}),
 		),
 	});
 
@@ -51,6 +51,7 @@ export const getRouter = () => {
 			...routerWithApolloClient.defaultContext,
 
 			...rqContext,
+			isAuthenticated: () => hasValidTokens(),
 		},
 
 		// Paraglide URL rewrite docs: https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide#rewrite-url

@@ -162,10 +162,8 @@ export async function getGRNs(filters: GRNListFilters): Promise<GRNListResult> {
 		filtered = filtered.filter((grn) => {
 			return (
 				grn.grnNumber.toLowerCase().includes(term) ||
-				(grn.poReference &&
-					grn.poReference.toLowerCase().includes(term)) ||
-				(grn.supplierDO &&
-					grn.supplierDO.toLowerCase().includes(term))
+				(grn.poReference && grn.poReference.toLowerCase().includes(term)) ||
+				(grn.supplierDO && grn.supplierDO.toLowerCase().includes(term))
 			);
 		});
 	}

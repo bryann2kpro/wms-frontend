@@ -11,7 +11,7 @@ export function AdminLayout() {
 				<Header />
 				<main className="w-full h-full overflow-y-auto">
 					<Outlet />
-                    <div className="mt-10 p-5"></div>
+					<div className="mt-10 p-5"></div>
 				</main>
 			</div>
 			<GlobalLoadingShadow />

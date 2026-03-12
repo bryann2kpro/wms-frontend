@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import request from 'graphql-request';
+import request from "graphql-request";
 import { env } from "@/env";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
 	SKUS_AND_UOM_QUERY,
@@ -32,11 +31,21 @@ import {
 } from "@/lib/graphql/skus";
 import { useForm } from "@tanstack/react-form";
 import z from "zod";
-import { Field as UiField, FieldError, FieldGroup, FieldLabel } from "../ui/field";
+import {
+	Field as UiField,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "../ui/field";
 import { toast } from "sonner";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { Skus } from "@/lib/graphql/types";
-
+import {
+	Select,
+	SelectTrigger,
+	SelectValue,
+	SelectContent,
+	SelectItem,
+} from "../ui/select";
+import type { Skus } from "@/lib/graphql/types";
 
 const createSkuSchema = z.object({
 	skuCode: z.string().min(1, "Code is required"),
@@ -84,13 +93,20 @@ export function SkuCombobox({
 	const queryClient = useQueryClient();
 
 	const { data, isLoading: loading } = useQuery({
-		queryKey: ['skus'],
+		queryKey: ["skus"],
 		queryFn: () => {
-
 			const headers = new Headers();
-			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
+			headers.set(
+				"Authorization",
+				`Bearer ${localStorage.getItem("access_token")}`,
+			);
 
-			return request(env.VITE_GRAPHQL_ENDPOINT, SKUS_AND_UOM_QUERY, {}, headers)
+			return request(
+				env.VITE_GRAPHQL_ENDPOINT,
+				SKUS_AND_UOM_QUERY,
+				{},
+				headers,
+			);
 		},
 	});
 
@@ -99,11 +115,18 @@ export function SkuCombobox({
 
 	function getErrorMessage(err: unknown): string {
 		if (err && typeof err === "object" && "response" in err) {
-			const res = (err as { response?: { errors?: Array<{ message?: string }> } }).response;
+			const res = (
+				err as { response?: { errors?: Array<{ message?: string }> } }
+			).response;
 			const msg = res?.errors?.[0]?.message;
 			if (msg) return msg;
 		}
-		if (err && typeof err === "object" && "message" in err && typeof (err as Error).message === "string")
+		if (
+			err &&
+			typeof err === "object" &&
+			"message" in err &&
+			typeof (err as Error).message === "string"
+		)
 			return (err as Error).message;
 		if (err instanceof Error) return err.message;
 		return String(err ?? "Failed to create SKU");
@@ -112,18 +135,21 @@ export function SkuCombobox({
 	const createSku = useMutation({
 		mutationFn: (input: CreateSkuInput & { isActive: boolean }) => {
 			const headers = new Headers();
-			headers.set('Authorization', `Bearer ${localStorage.getItem('access_token')}`);
+			headers.set(
+				"Authorization",
+				`Bearer ${localStorage.getItem("access_token")}`,
+			);
 
 			return request(
 				env.VITE_GRAPHQL_ENDPOINT,
 				CREATE_SKU_MUTATION,
 				{ input },
-				headers
+				headers,
 			);
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['skus'] });
-			toast.success('SKU created successfully');
+			queryClient.invalidateQueries({ queryKey: ["skus"] });
+			toast.success("SKU created successfully");
 			setCreateOpen(false);
 			form.reset();
 		},
@@ -148,17 +174,16 @@ export function SkuCombobox({
 				isActive: true,
 			});
 		},
-	})
+	});
 
 	const filtered = useMemo(() => {
 		// Exclude SKUs already used in other rows, but always include the current selection so it still displays
-		const available =
-			usedSkuCodes?.length ?
-				skus.filter(
+		const available = usedSkuCodes?.length
+			? skus.filter(
 					(s: Skus) =>
 						!usedSkuCodes.includes(s.skuCode) || s.skuCode === value?.skuCode,
 				)
-				: skus;
+			: skus;
 		if (!search.trim()) return available;
 		const q = search.toLowerCase();
 		return available.filter(
@@ -195,68 +220,76 @@ export function SkuCombobox({
 						variant="outline"
 						role="combobox"
 						aria-expanded={open}
-						className="w-full justify-between font-normal"
+						className="h-8 w-full justify-between gap-1 font-normal text-sm"
 					>
-						<span className="truncate">
+						<span className="truncate text-left">
 							{displayLabel ?? placeholder}
 						</span>
-						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+						<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-					<div className="flex flex-col">
-						<div className="border-b p-2">
+				<PopoverContent
+					className="min-w-[280px] w-[var(--radix-popover-trigger-width)] max-w-[360px] p-0 shadow-md"
+					align="start"
+				>
+					<div className="flex flex-col rounded-md">
+						<div className="border-b bg-muted/30 px-2 py-1.5">
 							<Input
 								placeholder="Search SKU..."
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
-								className="h-8"
+								className="h-7 border-0 bg-background text-sm focus-visible:ring-2"
 								autoFocus
 							/>
 						</div>
-						<ScrollArea className="max-h-[280px]">
+						<div className="h-[240px] overflow-y-auto overscroll-contain">
 							{loading ? (
-								<div className="py-6 text-center text-sm text-muted-foreground">
+								<div className="py-6 text-center text-xs text-muted-foreground">
 									Loading SKUs...
 								</div>
 							) : filtered.length === 0 ? (
-								<div className="py-6 text-center text-sm text-muted-foreground">
+								<div className="py-6 text-center text-xs text-muted-foreground">
 									{search.trim()
 										? "No SKUs match your search."
 										: "No SKUs in the system."}
 								</div>
 							) : (
-								<ul className="p-1">
+								<ul className="py-1 px-1">
 									{filtered.map((sku: Skus) => (
 										<li key={sku.skuId}>
 											<button
 												type="button"
+												title={[sku.skuCode, sku.skuDescription]
+													.filter(Boolean)
+													.join(" – ")}
 												className={cn(
-													"flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent",
+													"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
 													value?.skuId === sku.skuId && "bg-accent",
 												)}
 												onClick={() => handleSelect(sku as unknown as Sku)}
 											>
 												{value?.skuId === sku.skuId ? (
-													<Check className="h-4 w-4 shrink-0" />
+													<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
 												) : (
-													<span className="w-4" />
+													<span className="mt-0.5 w-3.5 shrink-0" />
 												)}
-												<span className="truncate font-medium">
-													{sku.skuCode}
-												</span>
-												{sku.skuDescription && (
-													<span className="truncate text-muted-foreground">
-														– {sku.skuDescription}
-													</span>
-												)}
+												<div className="min-w-0 flex-1 overflow-hidden">
+													<div className="text-sm font-semibold text-foreground">
+														{sku.skuCode}
+													</div>
+													{sku.skuDescription && (
+														<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+															{sku.skuDescription}
+														</div>
+													)}
+												</div>
 											</button>
 										</li>
 									))}
 								</ul>
 							)}
-						</ScrollArea>
-						<div className="border-t p-1">
+						</div>
+						<div className="border-t bg-muted/20 px-2 py-1">
 							<form
 								id="create-sku-form"
 								onSubmit={(e) => {
@@ -271,9 +304,9 @@ export function SkuCombobox({
 											type="button"
 											variant="ghost"
 											size="sm"
-											className="w-full justify-start gap-2"
+											className="h-7 w-full justify-start gap-1.5 rounded px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
 										>
-											<Plus className="h-4 w-4" />
+											<Plus className="h-3.5 w-3.5 shrink-0" />
 											Create new SKU
 										</Button>
 									</DialogTrigger>
@@ -285,7 +318,6 @@ export function SkuCombobox({
 												selection in line items.
 											</DialogDescription>
 										</DialogHeader>
-
 
 										<FieldGroup>
 											<div className="grid gap-4 py-4">
@@ -300,10 +332,14 @@ export function SkuCombobox({
 																form="create-sku-form"
 																value={field.state.value}
 																onBlur={field.handleBlur}
-																onChange={(e) => field.handleChange(e.target.value)}
+																onChange={(e) =>
+																	field.handleChange(e.target.value)
+																}
 																placeholder="e.g. SKU-001"
 															/>
-															{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
+															{field.state.meta.isTouched && (
+																<FieldError errors={field.state.meta.errors} />
+															)}
 														</UiField>
 													)}
 												/>
@@ -311,7 +347,9 @@ export function SkuCombobox({
 													name="skuDescription"
 													children={(field) => (
 														<UiField className="grid gap-2">
-															<FieldLabel htmlFor="skuDescription">Description</FieldLabel>
+															<FieldLabel htmlFor="skuDescription">
+																Description
+															</FieldLabel>
 															<Input
 																id={field.name}
 																name={field.name}
@@ -323,7 +361,9 @@ export function SkuCombobox({
 																}
 																placeholder="Product description"
 															/>
-															{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
+															{field.state.meta.isTouched && (
+																<FieldError errors={field.state.meta.errors} />
+															)}
 														</UiField>
 													)}
 												/>
@@ -332,17 +372,25 @@ export function SkuCombobox({
 														name="skuQuantity"
 														children={(field) => (
 															<UiField className="grid gap-2">
-																<FieldLabel htmlFor={field.name}>Quantity</FieldLabel>
+																<FieldLabel htmlFor={field.name}>
+																	Quantity
+																</FieldLabel>
 																<Input
 																	id={field.name}
 																	name={field.name}
 																	form="create-sku-form"
 																	value={field.state.value}
 																	onBlur={field.handleBlur}
-																	onChange={(e) => field.handleChange(Number(e.target.value))}
+																	onChange={(e) =>
+																		field.handleChange(Number(e.target.value))
+																	}
 																	placeholder="0"
 																/>
-																{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
+																{field.state.meta.isTouched && (
+																	<FieldError
+																		errors={field.state.meta.errors}
+																	/>
+																)}
 															</UiField>
 														)}
 													/>
@@ -385,11 +433,15 @@ export function SkuCombobox({
 															children={(field) => {
 																return (
 																	<UiField className="grid gap-2">
-																		<FieldLabel htmlFor={field.name}>UOM</FieldLabel>
+																		<FieldLabel htmlFor={field.name}>
+																			UOM
+																		</FieldLabel>
 																		<Select
 																			name={field.name}
 																			value={field.state.value}
-																			onValueChange={(value) => field.handleChange(value)}
+																			onValueChange={(value) =>
+																				field.handleChange(value)
+																			}
 																			disabled // Remove this if we want to allow selection of UOM
 																			defaultValue={uoms[0]?.stockUnitId}
 																		>
@@ -398,20 +450,28 @@ export function SkuCombobox({
 																			</SelectTrigger>
 																			<SelectContent>
 																				{uoms.map((uom: StockUnit) => (
-																					<SelectItem key={`${uom.stockUnitId}-${uom.unitCode}`} value={uom.stockUnitId}>{uom.unitCode}</SelectItem>
+																					<SelectItem
+																						key={`${uom.stockUnitId}-${uom.unitCode}`}
+																						value={uom.stockUnitId}
+																					>
+																						{uom.unitCode}
+																					</SelectItem>
 																				))}
 																			</SelectContent>
 																		</Select>
-																		{field.state.meta.isTouched && <FieldError errors={field.state.meta.errors} />}
+																		{field.state.meta.isTouched && (
+																			<FieldError
+																				errors={field.state.meta.errors}
+																			/>
+																		)}
 																	</UiField>
-																)
+																);
 															}}
 														/>
 													</div>
 												</div>
 											</div>
 										</FieldGroup>
-
 
 										<DialogFooter>
 											<Button

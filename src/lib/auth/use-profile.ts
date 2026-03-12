@@ -15,8 +15,9 @@ export const profileQueryKey = ["auth", "profile"] as const;
 
 /**
  * Fetch user profile from API
+ * Exported so it can be used in router beforeLoad via queryClient.ensureQueryData
  */
-async function fetchProfile(): Promise<User> {
+export async function fetchProfileFn(): Promise<User> {
 	const accessToken = getAccessToken();
 	if (!accessToken) {
 		throw new Error("No access token available");
@@ -43,7 +44,7 @@ async function fetchProfile(): Promise<User> {
 export function useProfile() {
 	return useQuery({
 		queryKey: profileQueryKey,
-		queryFn: fetchProfile,
+		queryFn: fetchProfileFn,
 		// Only fetch if we have valid tokens
 		enabled: hasValidTokens(),
 		// Keep stale data while refetching

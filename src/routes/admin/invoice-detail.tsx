@@ -3,6 +3,7 @@ import {
 	useNavigate,
 	useParams,
 } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -32,6 +33,9 @@ import {
 } from "@/data/invoices.mock-data";
 
 export const Route = createFileRoute("/admin/invoice-detail")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Invoice"]);
+	},
 	component: InvoiceDetailComponent,
 });
 

@@ -1,12 +1,16 @@
-import { Link, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+	Link,
+	useLocation,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useAuthActions } from "@/lib/auth/use-auth-actions";
-import { allNavigationItems, NavLinkSchemaType } from "@/constants/links";
+import { allNavigationItems, type NavLinkSchemaType } from "@/constants/links";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LogOut } from "lucide-react";
-
 
 export function Sidebar() {
 	const location = useLocation();
@@ -14,7 +18,7 @@ export function Sidebar() {
 	const { user } = useCurrentUser();
 	const { logout } = useAuthActions();
 	const searchParams = useSearch({
-		from: "/admin"
+		from: "/admin",
 	});
 
 	const handleLogout = () => {
@@ -25,9 +29,12 @@ export function Sidebar() {
 	// Filter navigation based on permissions
 	const accessControl = (link: NavLinkSchemaType) => {
 		if (!user?.readPermission) return false;
-		
-		return link.allowedPermission.some(permission => 
-			permission === '*' || user.readPermission.includes(permission) || user.createPermission?.includes(permission)
+
+		return link.allowedPermission.some(
+			(permission) =>
+				permission === "*" ||
+				user.readPermission.includes(permission) ||
+				user.createPermission?.includes(permission),
 		);
 	};
 

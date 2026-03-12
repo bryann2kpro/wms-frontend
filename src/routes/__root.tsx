@@ -23,6 +23,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 interface MyRouterContext extends ApolloClientIntegration.RouterContext {
 	queryClient: QueryClient;
+	isAuthenticated: () => boolean;
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
@@ -68,9 +69,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<AuthProvider>
-					<SidebarProvider defaultOpen={true}>
-						{children}
-					</SidebarProvider>
+					<SidebarProvider defaultOpen={true}>{children}</SidebarProvider>
 				</AuthProvider>
 				<TanStackDevtools
 					config={{
