@@ -9,8 +9,10 @@ import {
 } from "@apollo/client-integration-tanstack-start";
 import { HttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
-import { getAccessToken, hasValidTokens } from "@/lib/auth/auth-storage";
+import { onError } from "@apollo/client/link/error";
+import { getAccessToken, hasValidTokens, clearAuthTokens } from "@/lib/auth/auth-storage";
 import { env } from "@/env";
+import { toast } from "sonner";
 
 import { deLocalizeUrl, localizeUrl } from "./paraglide/runtime";
 
@@ -19,6 +21,30 @@ import { routeTree } from "./routeTree.gen";
 
 const graphqlUri =
 	env.VITE_GRAPHQL_ENDPOINT ?? `${env.VITE_API_URL.replace(/\/$/, "")}/graphql`;
+
+// Mirrors the handleAuthFailure pattern in axios-v1.ts
+function handleGqlAuthFailure(): void {
+	if (typeof window === "undefined") return; // SSR guard
+	clearAuthTokens();
+	toast.warning("Session expired", { description: "Logging you out…" });
+	window.location.href = "/login";
+}
+
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+	// GraphQL-level auth error (HTTP 200 but UNAUTHENTICATED in body)
+	if (graphQLErrors?.some((e) => e.extensions?.code === "UNAUTHENTICATED")) {
+		handleGqlAuthFailure();
+		return;
+	}
+	// Network-level 401 (server rejected the request outright)
+	if (
+		networkError &&
+		"statusCode" in networkError &&
+		networkError.statusCode === 401
+	) {
+		handleGqlAuthFailure();
+	}
+});
 
 const authLink = setContext((_, { headers }) => {
 	const token = getAccessToken();
@@ -35,11 +61,13 @@ export const getRouter = () => {
 	// Configure Apollo Client
 	const apolloClient = new ApolloClient({
 		cache: new InMemoryCache(),
-		link: authLink.concat(
-			new HttpLink({
-				uri: graphqlUri,
-				headers: { "Content-Type": "application/json" },
-			}),
+		link: errorLink.concat(
+			authLink.concat(
+				new HttpLink({
+					uri: graphqlUri,
+					headers: { "Content-Type": "application/json" },
+				}),
+			),
 		),
 	});
 

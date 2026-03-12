@@ -2,7 +2,6 @@ import {
 	createContext,
 	useContext,
 	useState,
-	useEffect,
 	useCallback,
 	type ReactNode,
 } from "react";
@@ -24,12 +23,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-	// Check auth status on mount
-	useEffect(() => {
-		setIsAuthenticated(hasValidTokens());
-	}, []);
+	// Lazy initializer: reads localStorage synchronously on the client so the
+	// initial state is already correct, avoiding a one-frame "unauthenticated"
+	// flash on hydration. Returns false on the server (no localStorage there).
+	const [isAuthenticated, setIsAuthenticated] = useState(() =>
+		typeof window !== "undefined" ? hasValidTokens() : false,
+	);
 
 	const setAuthenticated = useCallback((value: boolean) => {
 		setIsAuthenticated(value);
