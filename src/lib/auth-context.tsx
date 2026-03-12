@@ -5,7 +5,7 @@ import {
 	useCallback,
 	type ReactNode,
 } from "react";
-import { hasValidTokens, clearAuthTokens } from "./auth/auth-storage";
+import { hasValidTokens, clearAuthTokens, getAccessToken } from "./auth/auth-storage";
 import {
 	login as apiLogin,
 	type LoginRequest,
@@ -13,8 +13,29 @@ import {
 	type ApiResponse,
 } from "./auth/auth-api";
 
+// Helper function to decode JWT and extract payload
+function decodeJWT(token: string): any {
+	try {
+		const parts = token.split('.');
+		if (parts.length !== 3) return null;
+		const decoded = JSON.parse(atob(parts[1]));
+		return decoded;
+	} catch {
+		return null;
+	}
+}
+
+// Helper function to get organizationId from token
+function getOrganizationIdFromToken(): string | null {
+	const token = getAccessToken();
+	if (!token) return null;
+	const payload = decodeJWT(token);
+	return payload?.organizationId || null;
+}
+
 interface AuthContextType {
 	isAuthenticated: boolean;
+	organizationId: string | null;
 	setAuthenticated: (value: boolean) => void;
 	login: (credentials: LoginRequest) => Promise<ApiResponse<LoginResponse>>;
 	logout: () => void;
@@ -30,8 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		typeof window !== "undefined" ? hasValidTokens() : false,
 	);
 
+	const [organizationId, setOrganizationId] = useState<string | null>(() =>
+		typeof window !== "undefined" ? getOrganizationIdFromToken() : null,
+	);
+
 	const setAuthenticated = useCallback((value: boolean) => {
 		setIsAuthenticated(value);
+		if (!value) {
+			setOrganizationId(null);
+		} else {
+			// Re-read organizationId from token
+			setOrganizationId(getOrganizationIdFromToken());
+		}
 	}, []);
 
 	const login = useCallback(async (credentials: LoginRequest) => {
@@ -43,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 		// Tokens are saved by apiLogin
 		setIsAuthenticated(true);
+		setOrganizationId(getOrganizationIdFromToken());
 
 		return loginResponse;
 	}, []);
@@ -52,12 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		clearAuthTokens();
 		// Update state
 		setIsAuthenticated(false);
+		setOrganizationId(null);
 	}, []);
 
 	return (
 		<AuthContext.Provider
 			value={{
 				isAuthenticated,
+				organizationId,
 				setAuthenticated,
 				login,
 				logout,
