@@ -1,4 +1,5 @@
 import { Bell, Search, LogOut, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthActions } from "@/lib/auth/use-auth-actions";
@@ -20,6 +21,7 @@ export function Header() {
 	const { user } = useCurrentUser();
 
 	const handleLogout = () => {
+		toast.success("Logged out successfully");
 		logout();
 		navigate({ to: "/login" });
 	};

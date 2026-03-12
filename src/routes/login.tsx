@@ -31,6 +31,7 @@ import {
 	InputGroupInput,
 } from "@/components/ui/input-group";
 import axios from "axios";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
 	beforeLoad: async ({ context }) => {
@@ -77,6 +78,9 @@ function RouteComponent() {
 				await login({
 					username: value.email,
 					password: value.password,
+				});
+				toast.success("Welcome back!", {
+					description: "You have signed in successfully.",
 				});
 				navigate({ to: "/admin/dashboard" });
 			} catch (err) {
