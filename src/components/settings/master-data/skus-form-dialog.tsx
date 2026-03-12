@@ -250,10 +250,10 @@ export function SkusFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				{step === 1 ? (
 					<SkusFormStep1
@@ -289,33 +289,20 @@ export function SkusFormDialog({
 				)}
 				{initial && (
 					<div className="flex items-center justify-between border-t pt-4">
-						<Label htmlFor="sku-active">Active Status</Label>
-						<Switch
-							id="sku-active"
-							checked={isActive}
-							onCheckedChange={setIsActive}
-						/>
+						<Label htmlFor="sku-active" style={{ fontFamily: '"Figtree", sans-serif' }}>Active Status</Label>
+						<Switch id="sku-active" checked={isActive} onCheckedChange={setIsActive} />
 					</div>
 				)}
-				<DialogFooter>
-					<Button variant="outline" onClick={() => handleOpenChange(false)}>
-						Cancel
-					</Button>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
 					{step === 1 ? (
-						<Button
-							onClick={handleNext}
-							className={
-								!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : ""
-							}
-						>
+						<Button onClick={handleNext} className={`rounded-lg ${!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : "bg-amber-600 text-white hover:bg-amber-700"}`}>
 							Next
 						</Button>
 					) : (
 						<>
-							<Button variant="outline" onClick={() => setStep(1)}>
-								Back
-							</Button>
-							<Button onClick={handleSubmit} disabled={loading}>
+							<Button variant="outline" onClick={() => setStep(1)} className="rounded-lg">Back</Button>
+							<Button onClick={handleSubmit} disabled={loading} className="rounded-lg bg-amber-600 text-white hover:bg-amber-700">
 								{loading ? "Saving..." : "Save"}
 							</Button>
 						</>

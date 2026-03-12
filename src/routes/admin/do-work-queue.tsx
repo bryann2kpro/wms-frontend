@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,9 @@ const PAGE_DESCRIPTION =
 	"Stock movement and inventory management for supplier delivery orders.";
 
 export const Route = createFileRoute("/admin/do-work-queue")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Supplier Delivery"]);
+	},
 	component: DOWorkQueueComponent,
 });
 

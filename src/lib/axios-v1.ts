@@ -8,12 +8,20 @@ import {
 	getRefreshToken,
 	saveAccessToken,
 	saveRefreshToken,
+	clearAuthTokens,
 } from "@/lib/auth/auth-storage";
 import { env } from "@/env";
+import { toast } from "sonner";
 
 let browserClient: AxiosInstance | null = null;
 
-function createClient(onRefreshFail: () => void): AxiosInstance {
+function handleAuthFailure(): void {
+	clearAuthTokens();
+	toast.warning("Session expired", { description: "Logging you out…" });
+	window.location.href = "/login";
+}
+
+function createClient(): AxiosInstance {
 	const instance = axios.create({
 		baseURL: `${env.VITE_API_URL}/v1`,
 		headers: { "Content-Type": "application/json" },
@@ -89,7 +97,7 @@ function createClient(onRefreshFail: () => void): AxiosInstance {
 					return instance(originalRequest);
 				} catch (err) {
 					processQueue(err, null);
-					onRefreshFail();
+					handleAuthFailure();
 					return Promise.reject(err);
 				} finally {
 					isRefreshing = false;
@@ -104,9 +112,9 @@ function createClient(onRefreshFail: () => void): AxiosInstance {
 }
 
 // Public accessor for the singleton client
-export function getClient(onRefreshFail: () => void): AxiosInstance {
+export function getClient(): AxiosInstance {
 	if (!browserClient) {
-		browserClient = createClient(onRefreshFail);
+		browserClient = createClient();
 	}
 	return browserClient;
 }

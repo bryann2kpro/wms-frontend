@@ -35,22 +35,34 @@ export function ConfirmDeleteDialog({
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Delete</DialogTitle>
-					<DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						Delete
+					</DialogTitle>
+					<DialogDescription
+						style={{ fontFamily: '"Figtree", sans-serif' }}
+					>
 						Are you sure you want to delete &quot;{itemName}&quot;? This action
 						cannot be undone.
 					</DialogDescription>
 				</DialogHeader>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						className="rounded-lg"
+					>
 						Cancel
 					</Button>
 					<Button
 						variant="destructive"
 						disabled={loading}
 						onClick={() => onConfirm()}
+						className="rounded-lg"
 					>
 						{loading ? "Deleting..." : "Delete"}
 					</Button>

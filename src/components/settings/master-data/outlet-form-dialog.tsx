@@ -67,37 +67,24 @@ export function OutletFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="outlet-code">Code</Label>
-						<Input
-							id="outlet-code"
-							value={outletCode}
-							onChange={(e) => setOutletCode(e.target.value)}
-							placeholder="e.g. OUT001"
-						/>
+						<Label htmlFor="outlet-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
+						<Input id="outlet-code" value={outletCode} onChange={(e) => setOutletCode(e.target.value)} placeholder="e.g. OUT001" className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="outlet-name">Name</Label>
-						<Input
-							id="outlet-name"
-							value={outletName}
-							onChange={(e) => setOutletName(e.target.value)}
-							placeholder="Outlet name"
-						/>
+						<Label htmlFor="outlet-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
+						<Input id="outlet-name" value={outletName} onChange={(e) => setOutletName(e.target.value)} placeholder="Outlet name" className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="grid gap-2">
-						<Label>Region (optional)</Label>
-						<Select
-							value={regionId || "none"}
-							onValueChange={(v) => setRegionId(v === "none" ? "" : v)}
-						>
-							<SelectTrigger>
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>Region (optional)</Label>
+						<Select value={regionId || "none"} onValueChange={(v) => setRegionId(v === "none" ? "" : v)}>
+							<SelectTrigger className="rounded-lg border-muted-foreground/20">
 								<SelectValue placeholder="Unassigned" />
 							</SelectTrigger>
 							<SelectContent>
@@ -111,19 +98,12 @@ export function OutletFormDialog({
 						</Select>
 					</div>
 				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => handleOpenChange(false)}>
-						Cancel
-					</Button>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
 					<Button
 						disabled={!outletName.trim() || !outletCode.trim() || loading}
-						onClick={() =>
-							onSubmit({
-								outletName: outletName.trim(),
-								outletCode: outletCode.trim(),
-								regionId: regionId || undefined,
-							})
-						}
+						onClick={() => onSubmit({ outletName: outletName.trim(), outletCode: outletCode.trim(), regionId: regionId || undefined })}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 					>
 						{loading ? "Saving..." : "Save"}
 					</Button>

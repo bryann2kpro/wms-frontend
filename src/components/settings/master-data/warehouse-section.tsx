@@ -85,12 +85,14 @@ export function WarehouseSection() {
 	const canEdit = !!user?.id;
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Warehouses</CardTitle>
-						<CardDescription>
+						<CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>
+							Warehouses
+						</CardTitle>
+						<CardDescription className="text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
 							Manage warehouse locations and addresses
 						</CardDescription>
 					</div>
@@ -100,17 +102,15 @@ export function WarehouseSection() {
 							<Input
 								placeholder="Search by name..."
 								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setPage(1);
-								}}
-								className="pl-9 w-48"
+								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
 						<Button
 							onClick={() => setIsCreateOpen(true)}
 							disabled={!canEdit}
 							title={!canEdit ? "Sign in to create" : undefined}
+							className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
 						>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Warehouse
@@ -118,71 +118,40 @@ export function WarehouseSection() {
 					</div>
 				</div>
 			</CardHeader>
-			<CardContent className="relative">
+			<CardContent className="relative px-0 pb-6">
 				<GlobalLoadingShadow />
-				<div className="overflow-x-auto rounded-lg border">
+				<div className="mx-6 overflow-x-auto rounded-xl border">
 					<Table>
 						<TableHeader>
-							<TableRow>
-								<TableHead>Code</TableHead>
-								<TableHead>Name</TableHead>
-								<TableHead>Address</TableHead>
-								<TableHead>Created By</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+							<TableRow className="hover:bg-transparent">
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Address</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Created By</TableHead>
+								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{loading ? (
 								<TableRow>
-									<TableCell
-										colSpan={5}
-										className="h-24 text-center text-muted-foreground"
-									>
-										Loading...
-									</TableCell>
+									<TableCell colSpan={5} className="h-24 px-6 text-center text-muted-foreground">Loading...</TableCell>
 								</TableRow>
 							) : list.length === 0 ? (
 								<TableRow>
-									<TableCell
-										colSpan={5}
-										className="h-24 text-center text-muted-foreground"
-									>
-										No warehouses found.
-									</TableCell>
+									<TableCell colSpan={5} className="h-24 px-6 text-center text-muted-foreground">No warehouses found.</TableCell>
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.warehouseId}>
-										<TableCell className="font-mono text-sm">
-											{row.warehouseCode || "-"}
-										</TableCell>
-										<TableCell className="font-medium">
-											{row.warehouseName}
-										</TableCell>
-										<TableCell className="max-w-xs truncate">
-											{row.warehouseAddress || "-"}
-										</TableCell>
-										<TableCell>
-											{row.createdByUser
-												? row.createdByUser.displayName
-												: row.createdBy}
-										</TableCell>
-										<TableCell className="text-right">
-											<Button
-												variant="ghost"
-												size="icon"
-												onClick={() => setEditing(row)}
-												aria-label={`Edit warehouse ${row.warehouseName}`}
-											>
+									<TableRow key={row.warehouseId} className="transition-colors hover:bg-muted/50">
+										<TableCell className="px-6 font-mono text-sm">{row.warehouseCode || "-"}</TableCell>
+										<TableCell className="px-6 font-medium">{row.warehouseName}</TableCell>
+										<TableCell className="max-w-xs truncate px-6">{row.warehouseAddress || "-"}</TableCell>
+										<TableCell className="px-6">{row.createdByUser ? row.createdByUser.displayName : row.createdBy}</TableCell>
+										<TableCell className="px-6 text-right">
+											<Button variant="ghost" size="icon" onClick={() => setEditing(row)} aria-label={`Edit warehouse ${row.warehouseName}`} className="rounded-lg">
 												<Edit className="h-4 w-4" />
 											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="text-destructive"
-												onClick={() => setDeleting(row)}
-												aria-label={`Delete warehouse ${row.warehouseName}`}
-											>
+											<Button variant="ghost" size="icon" className="text-destructive rounded-lg" onClick={() => setDeleting(row)} aria-label={`Delete warehouse ${row.warehouseName}`}>
 												<Trash2 className="h-4 w-4" />
 											</Button>
 										</TableCell>
@@ -193,27 +162,13 @@ export function WarehouseSection() {
 					</Table>
 				</div>
 				{pagination && totalPages > 1 && (
-					<div className="mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground">
-							Page {currentPage} of {totalPages} ({pagination.totalCount} total)
+					<div className="mx-6 mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={!pagination.hasPrevPage}
-								onClick={() => setPage((p) => Math.max(1, p - 1))}
-							>
-								Previous
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={!pagination.hasNextPage}
-								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-							>
-								Next
-							</Button>
+							<Button variant="outline" size="sm" disabled={!pagination.hasPrevPage} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg">Previous</Button>
+							<Button variant="outline" size="sm" disabled={!pagination.hasNextPage} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg">Next</Button>
 						</div>
 					</div>
 				)}

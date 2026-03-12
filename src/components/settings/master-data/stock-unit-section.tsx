@@ -90,123 +90,62 @@ export function StockUnitSection() {
 	const createdBy = user?.id ?? "";
 
 	return (
-		<Card>
+		<Card className="dashboard-card">
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Stock Units (UOM)</CardTitle>
-						<CardDescription>
+						<CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>Stock Units (UOM)</CardTitle>
+						<CardDescription className="text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
 							Units of measurement for inventory
 						</CardDescription>
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								placeholder="Search by name..."
-								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setPage(1);
-								}}
-								className="pl-9 w-48"
-							/>
+							<Input placeholder="Search by name..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9 w-48 rounded-lg border-muted-foreground/20" />
 						</div>
-						<Button
-							onClick={() => setIsCreateOpen(true)}
-							disabled={!createdBy}
-							title={!createdBy ? "Sign in to create" : undefined}
-						>
+						<Button onClick={() => setIsCreateOpen(true)} disabled={!createdBy} title={!createdBy ? "Sign in to create" : undefined} className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90">
 							<Plus className="mr-2 h-4 w-4" />
 							Add Stock Unit
 						</Button>
 					</div>
 				</div>
 			</CardHeader>
-			<CardContent className="relative">
+			<CardContent className="relative px-0 pb-6">
 				<GlobalLoadingShadow />
-				<div className="overflow-x-auto rounded-lg border">
+				<div className="mx-6 overflow-x-auto rounded-xl border">
 					<Table>
 						<TableHeader>
-							<TableRow>
-								<TableHead>Code</TableHead>
-								<TableHead>Name</TableHead>
-								<TableHead>Active</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+							<TableRow className="hover:bg-transparent">
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
+								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Active</TableHead>
+								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{loading ? (
 								<TableRow>
-									<TableCell
-										colSpan={4}
-										className="h-24 text-center text-muted-foreground"
-									>
-										Loading...
-									</TableCell>
+									<TableCell colSpan={4} className="h-24 px-6 text-center text-muted-foreground">Loading...</TableCell>
 								</TableRow>
 							) : list.length === 0 ? (
 								<TableRow>
-									<TableCell
-										colSpan={4}
-										className="h-24 text-center text-muted-foreground"
-									>
-										No stock units found.
-									</TableCell>
+									<TableCell colSpan={4} className="h-24 px-6 text-center text-muted-foreground">No stock units found.</TableCell>
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.stockUnitId}>
-										<TableCell className="font-mono text-sm">
-											{row.unitCode}
-										</TableCell>
-										<TableCell className="font-medium">
-											{row.unitName}
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant="outline"
-												className={
-													row.isActive
-														? "bg-green-500/10 text-green-600 border-green-500/20"
-														: "bg-muted text-muted-foreground"
-												}
-											>
+									<TableRow key={row.stockUnitId} className="transition-colors hover:bg-muted/50">
+										<TableCell className="px-6 font-mono text-sm">{row.unitCode}</TableCell>
+										<TableCell className="px-6 font-medium">{row.unitName}</TableCell>
+										<TableCell className="px-6">
+											<Badge variant="outline" className={row.isActive ? "bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-950/30 dark:border-green-500/30" : "bg-muted text-muted-foreground"}>
 												{row.isActive ? "Active" : "Inactive"}
 											</Badge>
 										</TableCell>
-										<TableCell className="text-right">
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() =>
-													toggleActive({
-														variables: {
-															id: row.stockUnitId,
-															isActive: !row.isActive,
-															updatedBy: createdBy,
-														},
-													})
-												}
-												title={row.isActive ? "Deactivate" : "Activate"}
-											>
-												{row.isActive ? "Deactivate" : "Activate"}
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												onClick={() => setEditing(row)}
-											>
-												<Edit className="h-4 w-4" />
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="text-destructive"
-												onClick={() => setDeleting(row)}
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
+										<TableCell className="px-6 text-right">
+											<Button variant="ghost" size="sm" onClick={() => toggleActive({ variables: { id: row.stockUnitId, isActive: !row.isActive, updatedBy: createdBy } })} title={row.isActive ? "Deactivate" : "Activate"} className="rounded-lg">{row.isActive ? "Deactivate" : "Activate"}</Button>
+											<Button variant="ghost" size="icon" onClick={() => setEditing(row)} className="rounded-lg"><Edit className="h-4 w-4" /></Button>
+											<Button variant="ghost" size="icon" className="text-destructive rounded-lg" onClick={() => setDeleting(row)}><Trash2 className="h-4 w-4" /></Button>
 										</TableCell>
 									</TableRow>
 								))
@@ -215,27 +154,13 @@ export function StockUnitSection() {
 					</Table>
 				</div>
 				{pagination && totalPages > 1 && (
-					<div className="mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground">
-							Page {currentPage} of {totalPages} ({pagination.totalCount} total)
+					<div className="mx-6 mt-4 flex items-center justify-between">
+						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={!pagination.hasPrevPage}
-								onClick={() => setPage((p) => Math.max(1, p - 1))}
-							>
-								Previous
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={!pagination.hasNextPage}
-								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-							>
-								Next
-							</Button>
+							<Button variant="outline" size="sm" disabled={!pagination.hasPrevPage} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg">Previous</Button>
+							<Button variant="outline" size="sm" disabled={!pagination.hasNextPage} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg">Next</Button>
 						</div>
 					</div>
 				)}

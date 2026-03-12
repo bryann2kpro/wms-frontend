@@ -32,7 +32,6 @@ import {
 	CheckCircle,
 	Calendar,
 	Clock,
-	Loader2,
 	PackageOpen,
 	AlertCircle,
 	ChevronRight,
@@ -63,6 +62,7 @@ interface OutboundListCardProps {
 	isAdvanceStepPending?: boolean;
 	advancingDeliveryOrderId?: string | null;
 	hasAcceptPermission?: boolean;
+	cardClassName?: string;
 }
 
 export function OutboundListCard({
@@ -72,6 +72,7 @@ export function OutboundListCard({
 	isAdvanceStepPending,
 	advancingDeliveryOrderId,
 	hasAcceptPermission,
+	cardClassName,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
@@ -106,7 +107,11 @@ export function OutboundListCard({
 			: null;
 
 	return (
-		<Card role="region" aria-labelledby="purchase-order-title">
+		<Card
+			role="region"
+			aria-labelledby="purchase-order-title"
+			className={cardClassName}
+		>
 			<CardHeader>
 				<div className="flex flex-col gap-4">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -114,10 +119,14 @@ export function OutboundListCard({
 							<CardTitle
 								id="purchase-order-title"
 								className="text-xl font-semibold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
 							>
 								Delivery Order List
 							</CardTitle>
-							<CardDescription className="text-sm text-muted-foreground">
+							<CardDescription
+								className="text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
 								{weekRangeLabel
 									? `This week: ${weekRangeLabel}`
 									: "View and manage all purchase orders"}
@@ -134,7 +143,7 @@ export function OutboundListCard({
 									placeholder="Search purchase orders..."
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
-									className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									className="pl-9 sm:w-64 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									aria-label="Search purchase orders by PO number, outlet, or region"
 								/>
 							</div>
@@ -145,7 +154,7 @@ export function OutboundListCard({
 								}
 							>
 								<SelectTrigger
-									className="sm:w-48 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									className="sm:w-48 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									aria-label="Filter by status"
 								>
 									<SelectValue placeholder="Filter by status" />
@@ -164,7 +173,7 @@ export function OutboundListCard({
 								</SelectContent>
 							</Select>
 							<div
-								className="flex items-center gap-2 rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-1.5"
+								className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30 px-3 py-1.5"
 								title="Testing mode: show all scheduled dates, not just today"
 							>
 								<FlaskConical className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
@@ -187,7 +196,7 @@ export function OutboundListCard({
 						<Button
 							variant={activeTab === "current-week" ? "default" : "ghost"}
 							onClick={() => setActiveTab("current-week")}
-							className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							role="tab"
 							aria-selected={activeTab === "current-week"}
 							aria-controls="purchase-order-table"
@@ -198,7 +207,7 @@ export function OutboundListCard({
 						<Button
 							variant={activeTab === "past-weeks" ? "default" : "ghost"}
 							onClick={() => setActiveTab("past-weeks")}
-							className="rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							role="tab"
 							aria-selected={activeTab === "past-weeks"}
 							aria-controls="purchase-order-table"
@@ -210,23 +219,23 @@ export function OutboundListCard({
 				</div>
 			</CardHeader>
 			<CardContent
-				className="relative"
+				className="relative px-0 pb-6"
 				role="tabpanel"
 				id="purchase-order-table"
 				aria-labelledby="purchase-order-title"
 			>
 				<GlobalLoadingShadow />
-				<div className="overflow-x-auto rounded-lg border">
+				<div className="overflow-x-auto rounded-lg border mx-6">
 					<Table aria-label="Purchase orders list">
 						<TableHeader>
-							<TableRow>
-								<TableHead scope="col">PO Number</TableHead>
-								<TableHead scope="col">Outlet</TableHead>
-								<TableHead scope="col">Region</TableHead>
-								<TableHead scope="col">PO Status</TableHead>
-								<TableHead scope="col">DO Status</TableHead>
-								<TableHead scope="col">NetSuite (API)</TableHead>
-								<TableHead scope="col" className="text-right">
+							<TableRow className="hover:bg-transparent">
+								<TableHead scope="col" className="px-6">PO Number</TableHead>
+								<TableHead scope="col" className="px-6">Outlet</TableHead>
+								<TableHead scope="col" className="px-6">Region</TableHead>
+								<TableHead scope="col" className="px-6">PO Status</TableHead>
+								<TableHead scope="col" className="px-6">DO Status</TableHead>
+								<TableHead scope="col" className="px-6">NetSuite (API)</TableHead>
+								<TableHead scope="col" className="px-6 text-right">
 									Actions
 								</TableHead>
 							</TableRow>
@@ -237,7 +246,7 @@ export function OutboundListCard({
 									<TableRow aria-hidden="true">
 										<TableCell
 											colSpan={7}
-											className="sr-only"
+											className="sr-only px-6"
 											role="status"
 											aria-live="polite"
 										>
@@ -246,25 +255,25 @@ export function OutboundListCard({
 									</TableRow>
 									{Array.from({ length: 8 }).map((_, i) => (
 										<TableRow key={i}>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-24" />
 											</TableCell>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-32" />
 											</TableCell>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-20" />
 											</TableCell>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-16" />
 											</TableCell>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-20" />
 											</TableCell>
-											<TableCell>
+											<TableCell className="px-6">
 												<Skeleton className="h-5 w-12" />
 											</TableCell>
-											<TableCell className="text-right">
+											<TableCell className="px-6 text-right">
 												<Skeleton className="h-8 w-20 ml-auto" />
 											</TableCell>
 										</TableRow>
@@ -274,7 +283,7 @@ export function OutboundListCard({
 								<TableRow>
 									<TableCell
 										colSpan={7}
-										className="py-12 text-center"
+										className="px-6 py-12 text-center"
 										role="alert"
 										aria-live="assertive"
 									>
@@ -298,8 +307,8 @@ export function OutboundListCard({
 											<Button
 												variant="outline"
 												size="sm"
+												className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 												onClick={() => refetch()}
-												className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 											>
 												Try again
 											</Button>
@@ -310,7 +319,7 @@ export function OutboundListCard({
 								<TableRow>
 									<TableCell
 										colSpan={7}
-										className="py-12 text-center"
+										className="px-6 py-12 text-center"
 										role="status"
 									>
 										<div className="flex flex-col items-center gap-3">
@@ -344,11 +353,11 @@ export function OutboundListCard({
 									return [
 										<TableRow
 											key={dateKey}
-											className="bg-muted/50 hover:bg-muted/50 border-l-4 border-l-primary/30"
+											className="hover:bg-transparent bg-muted/50 border-l-4 border-l-primary/30"
 										>
 											<TableCell
 												colSpan={7}
-												className="font-semibold text-foreground py-3"
+												className="px-6 font-semibold text-foreground py-3"
 											>
 												{headerLabel}
 												{datePurchaseOrders.length > 0 && (
@@ -367,7 +376,7 @@ export function OutboundListCard({
 													<TableRow key={`${dateKey}-empty`}>
 														<TableCell
 															colSpan={7}
-															className="py-4 text-center text-sm text-muted-foreground italic"
+															className="px-6 py-4 text-center text-sm text-muted-foreground italic"
 														>
 															No orders for this day
 														</TableCell>
@@ -376,12 +385,15 @@ export function OutboundListCard({
 											: []),
 										...datePurchaseOrders.map((purchaseOrder) => {
 											return (
-												<TableRow key={purchaseOrder.id}>
-													<TableCell className="font-medium">
+												<TableRow
+													key={purchaseOrder.id}
+													className="transition-colors hover:bg-muted/50"
+												>
+													<TableCell className="px-6 font-medium">
 														{purchaseOrder.purchaseOrderNumber}
 													</TableCell>
-													<TableCell>{purchaseOrder.toLocation}</TableCell>
-													<TableCell>
+													<TableCell className="px-6">{purchaseOrder.toLocation}</TableCell>
+													<TableCell className="px-6">
 														{purchaseOrder.regionName ? (
 															<div className="flex flex-col">
 																<span>
@@ -395,7 +407,7 @@ export function OutboundListCard({
 															"—"
 														)}
 													</TableCell>
-													<TableCell>
+													<TableCell className="px-6">
 														<Badge
 															variant="outline"
 															className={getStatusColor(purchaseOrder.status)}
@@ -403,7 +415,7 @@ export function OutboundListCard({
 															{formatStatus(purchaseOrder.status)}
 														</Badge>
 													</TableCell>
-													<TableCell>
+													<TableCell className="px-6">
 														{purchaseOrder.deliveryOrder ? (
 															<div className="flex items-center gap-2">
 																<Badge
@@ -423,6 +435,7 @@ export function OutboundListCard({
 																		<Button
 																			variant="outline"
 																			size="sm"
+																			className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 																			onClick={() =>
 																				onAdvanceStep(purchaseOrder)
 																			}
@@ -431,7 +444,6 @@ export function OutboundListCard({
 																				advancingDeliveryOrderId ===
 																					purchaseOrder.deliveryOrder?.id
 																			}
-																			className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 																			aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
 																		>
 																			{isAdvanceStepPending &&
@@ -447,7 +459,7 @@ export function OutboundListCard({
 															<span className="text-muted-foreground text-sm">—</span>
 														)}
 													</TableCell>
-													<TableCell>
+													<TableCell className="px-6">
 														<Badge
 															variant="outline"
 															className={getNetSuiteStatusColor(
@@ -457,7 +469,7 @@ export function OutboundListCard({
 															{purchaseOrder.netsuiteStatus || "N/A"}
 														</Badge>
 													</TableCell>
-													<TableCell className="text-right">
+													<TableCell className="px-6 text-right">
 														<div
 															className="flex justify-end gap-1"
 															role="group"

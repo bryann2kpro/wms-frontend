@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import {
 	useQuery as useApolloQuery,
 	useMutation as useApolloMutation,
@@ -74,6 +75,9 @@ import {
 } from "@/lib/graphql/user-management";
 
 export const Route = createFileRoute("/admin/user-management")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["User"]);
+	},
 	component: UserManagementComponent,
 });
 
@@ -191,12 +195,15 @@ function HelpStepImage({
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
-			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
-				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
-					<ImageOff className="h-6 w-6" />
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+				<span className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+					<ImageOff className="h-7 w-7" />
 				</span>
-				<span>
-					Add screenshot: public/help/user-management/step-{stepNumber}.png
+				<span className="text-sm text-muted-foreground">
+					Add screenshot:{" "}
+					<code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+						public/help/user-management/step-{stepNumber}.png
+					</code>
 				</span>
 			</div>
 		);
@@ -354,176 +361,250 @@ function UserManagementComponent() {
 		updateUserMutation({ variables: { id: selectedUser.id, input } });
 	};
 
+	useEffect(() => {
+		if (!isHelpOpen) return;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === "ArrowRight")
+				setHelpStep((s) =>
+					Math.min(s + 1, USER_MANAGEMENT_HELP_STEPS.length - 1),
+				);
+			if (e.key === "ArrowLeft") setHelpStep((s) => Math.max(s - 1, 0));
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [isHelpOpen]);
+
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-					<p className="text-muted-foreground">Manage users and assign roles</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Open help"
-						onClick={() => {
-							setIsHelpOpen(true);
-							setHelpStep(0);
-						}}
+		<div className="user-management-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<div className="container relative mx-auto space-y-6 p-6">
+				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
+						<h1
+							className="text-3xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							User Management
+						</h1>
+						<p
+							className="mt-1 text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Manage users and assign roles
+						</p>
+					</div>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="icon"
+							aria-label="Open help"
+							className="rounded-lg"
+							onClick={() => {
+								setIsHelpOpen(true);
+								setHelpStep(0);
+							}}
+						>
+							<HelpCircle className="h-4 w-4" />
+						</Button>
+						<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+							<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+								<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+									<div className="flex items-center gap-3">
+										<div
+											className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{helpStep + 1}
+										</div>
+										<div>
+											<DialogTitle
+												className="text-lg"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												User Management help
+											</DialogTitle>
+											<DialogDescription
+												className="mt-0.5"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
+												Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
+											</DialogDescription>
+										</div>
+									</div>
+								</DialogHeader>
+								<div className="space-y-5 px-6 py-5">
+									<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
+										<HelpStepImage
+											src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
+											stepNumber={helpStep + 1}
+										/>
+									</div>
+									<div className="rounded-xl border bg-card p-4">
+										<h3
+											className="mb-2 text-sm font-semibold text-foreground"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
+										</h3>
+										<p
+											className="text-sm text-muted-foreground leading-relaxed"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
+										</p>
+									</div>
+									<div className="flex items-center justify-between gap-4 pt-1">
+										<div
+											className="flex gap-1.5"
+											role="tablist"
+											aria-label="Help steps"
+										>
+											{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
+												<button
+													type="button"
+													key={i}
+													role="tab"
+													aria-selected={i === helpStep}
+													aria-label={`Step ${i + 1}: ${USER_MANAGEMENT_HELP_STEPS[i].title}`}
+													onClick={() => setHelpStep(i)}
+													className={`h-2 rounded-full transition-all duration-200 ${
+														i === helpStep
+															? "w-6 bg-amber-600"
+															: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
+													}`}
+												/>
+											))}
+										</div>
+										<div className="flex gap-2">
+											{helpStep > 0 ? (
+												<Button
+													variant="outline"
+													size="sm"
+													className="rounded-lg"
+													onClick={() => setHelpStep((s) => s - 1)}
+												>
+													<ChevronLeft className="mr-0.5 h-4 w-4" />
+													Previous
+												</Button>
+											) : null}
+											{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
+												<Button
+													size="sm"
+													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+													onClick={() => setHelpStep((s) => s + 1)}
+												>
+													Next
+													<ChevronRight className="ml-0.5 h-4 w-4" />
+												</Button>
+											) : (
+												<Button
+													size="sm"
+													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+													onClick={() => setIsHelpOpen(false)}
+												>
+													Got it
+												</Button>
+											)}
+										</div>
+									</div>
+								</div>
+							</DialogContent>
+						</Dialog>
+						<Button
+							className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+							onClick={() => setIsCreateDialogOpen(true)}
+						>
+							<UserPlus className="mr-2 h-4 w-4" />
+							Create User
+						</Button>
+					</div>
+				</header>
+
+				{summary && (
+					<div
+						className="grid gap-4 md:grid-cols-4"
+						role="region"
+						aria-label="User summary by role"
 					>
-						<HelpCircle className="h-4 w-4" />
-					</Button>
-					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent className="sm:max-w-lg">
-							<DialogHeader>
-								<DialogTitle>User Management help</DialogTitle>
-								<DialogDescription>
-									Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
-								</DialogDescription>
-							</DialogHeader>
-							<div className="space-y-4">
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
-									<HelpStepImage
-										src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
-										stepNumber={helpStep + 1}
+						{[
+							{ key: "supervisor", label: "Supervisors", value: summary.byRole.supervisor ?? 0 },
+							{ key: "logistic", label: "Logistic", value: summary.byRole.logistic ?? 0 },
+							{ key: "store_keeper", label: "Store Keepers", value: summary.byRole.store_keeper ?? 0 },
+							{ key: "total", label: "Total Users", value: summary.total },
+						].map((item, i) => (
+							<Card
+								key={item.key}
+								className={`dashboard-card transition-colors hover:bg-muted/30 ${i === 0 ? "border-l-4 border-l-[var(--dashboard-accent)]" : ""}`}
+								style={{ animationDelay: `${i * 60}ms` }}
+							>
+								<CardHeader className="pb-2">
+									<CardTitle
+										className="text-sm font-medium"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										{item.label}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div
+										className="text-2xl font-bold tabular-nums"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
+										{item.value}
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				)}
+
+				<Card className="dashboard-card">
+					<CardHeader>
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle
+									className="text-xl"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									User List
+								</CardTitle>
+								<CardDescription
+									className="text-muted-foreground"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									View and manage all users
+								</CardDescription>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+									<Input
+										placeholder="Search by name or email..."
+										value={searchTerm}
+										onChange={(e) => {
+											setSearchTerm(e.target.value);
+											setPage(1);
+										}}
+										className="pl-9 sm:w-64 rounded-lg border-muted-foreground/20"
+										aria-label="Search users by name or email"
 									/>
 								</div>
-								<div>
-									<h3 className="text-sm font-semibold text-foreground mb-1">
-										{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
-									</h3>
-									<p className="text-sm text-muted-foreground leading-relaxed">
-										{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
-									</p>
-								</div>
-								<div className="flex items-center justify-between gap-4 pt-2">
-									<div className="flex gap-1">
-										{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
-											<button
-												type="button"
-												key={i}
-												onClick={() => setHelpStep(i)}
-												aria-label={`Go to step ${i + 1}`}
-												className={`h-2 rounded-full transition-colors ${
-													i === helpStep
-														? "w-6 bg-primary"
-														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-												}`}
-											/>
-										))}
-									</div>
-									<div className="flex gap-2">
-										{helpStep > 0 ? (
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => setHelpStep((s) => s - 1)}
-											>
-												<ChevronLeft className="h-4 w-4 mr-0.5" />
-												Previous
-											</Button>
-										) : null}
-										{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
-											<Button
-												size="sm"
-												onClick={() => setHelpStep((s) => s + 1)}
-											>
-												Next
-												<ChevronRight className="h-4 w-4 ml-0.5" />
-											</Button>
-										) : (
-											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
-												Got it
-											</Button>
-										)}
-									</div>
-								</div>
-							</div>
-						</DialogContent>
-					</Dialog>
-					<Button onClick={() => setIsCreateDialogOpen(true)}>
-						<UserPlus className="h-4 w-4 mr-2" />
-						Create User
-					</Button>
-				</div>
-			</div>
-
-			{summary && (
-				<div className="grid gap-4 md:grid-cols-4">
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Supervisors</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byRole.supervisor ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Logistic</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byRole.logistic ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">
-								Store Keepers
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byRole.store_keeper ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Total Users</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">{summary.total}</div>
-						</CardContent>
-					</Card>
-				</div>
-			)}
-
-			<Card>
-				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle>User List</CardTitle>
-							<CardDescription>View and manage all users</CardDescription>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-								<Input
-									placeholder="Search by name or email..."
-									value={searchTerm}
-									onChange={(e) => {
-										setSearchTerm(e.target.value);
+								<Select
+									value={roleFilterId}
+									onValueChange={(value) => {
+										setRoleFilterId(value);
 										setPage(1);
 									}}
-									className="pl-9 sm:w-64"
-									aria-label="Search users by name or email"
-								/>
-							</div>
-							<Select
-								value={roleFilterId}
-								onValueChange={(value) => {
-									setRoleFilterId(value);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-40" aria-label="Filter by role">
-									<SelectValue placeholder="Filter by role" />
-								</SelectTrigger>
+								>
+									<SelectTrigger
+										className="sm:w-40 rounded-lg border-muted-foreground/20"
+										aria-label="Filter by role"
+									>
+										<SelectValue placeholder="Filter by role" />
+									</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="ALL">All Roles</SelectItem>
 									{displayRolesList.map((r) => (
@@ -541,7 +622,7 @@ function UserManagementComponent() {
 								}}
 							>
 								<SelectTrigger
-									className="sm:w-36"
+									className="sm:w-36 rounded-lg border-muted-foreground/20"
 									aria-label="Filter by status"
 								>
 									<SelectValue placeholder="Status" />
@@ -564,7 +645,10 @@ function UserManagementComponent() {
 										setPage(1);
 									}}
 								>
-									<SelectTrigger className="sm:w-36" aria-label="Sort by field">
+									<SelectTrigger
+										className="sm:w-36 rounded-lg border-muted-foreground/20"
+										aria-label="Sort by field"
+									>
 										<SelectValue placeholder="Sort by" />
 									</SelectTrigger>
 									<SelectContent>
@@ -583,7 +667,7 @@ function UserManagementComponent() {
 									}}
 								>
 									<SelectTrigger
-										className="sm:w-36"
+										className="sm:w-36 rounded-lg border-muted-foreground/20"
 										aria-label="Sort direction"
 									>
 										<SelectValue placeholder="Order" />
@@ -600,155 +684,170 @@ function UserManagementComponent() {
 						</div>
 					</div>
 				</CardHeader>
-				<CardContent className="relative">
-					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Email</TableHead>
-									<TableHead>Role</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{isLoading ? (
-									<TableRow>
-										<TableCell
-											colSpan={4}
-											className="h-24 text-center text-muted-foreground"
-										>
-											Loading users...
-										</TableCell>
+					<CardContent className="relative px-0 pb-6">
+						<GlobalLoadingShadow />
+						<div className="overflow-x-auto rounded-lg border mx-6">
+							<Table>
+								<TableHeader>
+									<TableRow className="hover:bg-transparent">
+										<TableHead className="px-6">Name</TableHead>
+										<TableHead className="px-6">Email</TableHead>
+										<TableHead className="px-6">Role</TableHead>
+										<TableHead className="px-6 text-right">Actions</TableHead>
 									</TableRow>
-								) : users.length === 0 ? (
-									<TableRow>
-										<TableCell
-											colSpan={4}
-											className="h-24 text-center text-muted-foreground"
-										>
-											No users found.
-										</TableCell>
-									</TableRow>
-								) : (
-									// user from GraphQL: id, displayName, email, isActive, roles: { roleId, roleName }[]
-									users.map((user) => {
-										const primaryRole = roleNameToWMSRole(
-											user.roles[0]?.roleName,
-										);
-										return (
-											<TableRow key={user.id}>
-												<TableCell className="font-medium">
-													{user.displayName}
-												</TableCell>
-												<TableCell className="text-muted-foreground">
-													{user.email}
-												</TableCell>
-												<TableCell>
-													<Badge
-														variant="outline"
-														className={roleColors[primaryRole] ?? "bg-muted"}
-													>
-														{roleLabels[primaryRole] ??
-															user.roles[0]?.roleName ??
-															primaryRole}
-													</Badge>
-												</TableCell>
-												<TableCell className="text-right">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() =>
-															handleEditRole({
-																id: user.id,
-																displayName: user.displayName,
-																email: user.email,
-																roles: user.roles,
-															})
-														}
-													>
-														<Edit className="h-4 w-4" />
-													</Button>
-												</TableCell>
-											</TableRow>
-										);
-									})
-								)}
-							</TableBody>
-						</Table>
-					</div>
-
-					{pagination && (
-						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-							<div>
-								Showing{" "}
-								<span className="font-medium">
-									{(pagination.currentPage - 1) * pageSize + 1}
-								</span>{" "}
-								-{" "}
-								<span className="font-medium">
-									{Math.min(
-										pagination.currentPage * pageSize,
-										pagination.totalCount,
+								</TableHeader>
+								<TableBody>
+									{isLoading ? (
+										<TableRow>
+											<TableCell
+												colSpan={4}
+												className="h-24 px-6 text-center text-muted-foreground"
+											>
+												Loading users...
+											</TableCell>
+										</TableRow>
+									) : users.length === 0 ? (
+										<TableRow>
+											<TableCell
+												colSpan={4}
+												className="h-24 px-6 text-center text-muted-foreground"
+											>
+												No users found.
+											</TableCell>
+										</TableRow>
+									) : (
+										users.map((user) => {
+											const primaryRole = roleNameToWMSRole(
+												user.roles[0]?.roleName,
+											);
+											return (
+												<TableRow
+													key={user.id}
+													className="transition-colors hover:bg-muted/50"
+												>
+													<TableCell className="px-6 font-medium">
+															{user.displayName}
+													</TableCell>
+													<TableCell className="px-6 text-muted-foreground">
+														{user.email}
+													</TableCell>
+													<TableCell className="px-6">
+														<Badge
+															variant="outline"
+															className={roleColors[primaryRole] ?? "bg-muted"}
+														>
+															{roleLabels[primaryRole] ??
+																user.roles[0]?.roleName ??
+																primaryRole}
+														</Badge>
+													</TableCell>
+													<TableCell className="px-6 text-right">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() =>
+																handleEditRole({
+																	id: user.id,
+																	displayName: user.displayName,
+																	email: user.email,
+																	roles: user.roles,
+																})
+															}
+														>
+															<Edit className="h-4 w-4" />
+														</Button>
+													</TableCell>
+												</TableRow>
+											);
+										})
 									)}
-								</span>{" "}
-								of <span className="font-medium">{pagination.totalCount}</span>{" "}
-								users
-							</div>
-							<div className="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="icon"
-									disabled={page === 1}
-									onClick={() => setPage((p) => Math.max(1, p - 1))}
-								>
-									<ChevronLeft className="h-4 w-4" />
-								</Button>
-								<span>
-									Page {page} of {totalPages}
-								</span>
-								<Button
-									variant="outline"
-									size="icon"
-									disabled={page === totalPages}
-									onClick={() =>
-										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
-									}
-								>
-									<ChevronRight className="h-4 w-4" />
-								</Button>
-							</div>
+								</TableBody>
+							</Table>
 						</div>
-					)}
-				</CardContent>
-			</Card>
 
-			{/* Create User Dialog */}
-			<CreateUserDialog
-				open={isCreateDialogOpen}
-				onOpenChange={setIsCreateDialogOpen}
-				roles={displayRolesList}
-				onSubmit={(input) => {
-					createUserMutation({ variables: { input } });
-				}}
-				isSubmitting={createLoading}
-			/>
+						{pagination && (
+							<div
+								className="mt-4 flex items-center justify-between px-6 text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								<div>
+									Showing{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{(pagination.currentPage - 1) * pageSize + 1}
+									</span>{" "}
+									-{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{Math.min(
+											pagination.currentPage * pageSize,
+											pagination.totalCount,
+										)}
+									</span>{" "}
+									of{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{pagination.totalCount}
+									</span>{" "}
+									users
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="icon"
+										className="rounded-lg h-8 w-8"
+										disabled={page === 1}
+										onClick={() => setPage((p) => Math.max(1, p - 1))}
+									>
+										<ChevronLeft className="h-4 w-4" />
+									</Button>
+									<span>
+										Page{" "}
+										<span className="font-semibold tabular-nums text-foreground">
+											{page}
+										</span>{" "}
+										of {totalPages}
+									</span>
+									<Button
+										variant="outline"
+										size="icon"
+										className="rounded-lg h-8 w-8"
+										disabled={page === totalPages}
+										onClick={() =>
+											setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
+										}
+									>
+										<ChevronRight className="h-4 w-4" />
+									</Button>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Create User Dialog */}
+				<CreateUserDialog
+					open={isCreateDialogOpen}
+					onOpenChange={setIsCreateDialogOpen}
+					roles={displayRolesList}
+					onSubmit={(input) => {
+						createUserMutation({ variables: { input } });
+					}}
+					isSubmitting={createLoading}
+				/>
 
 			{/* Edit User Dialog */}
-			<EditUserDialog
-				open={isEditRoleDialogOpen}
-				onOpenChange={(open) => {
-					setIsEditRoleDialogOpen(open);
-					if (!open) {
-						setSelectedUser(null);
-					}
-				}}
-				user={selectedUser}
-				roles={displayRolesList}
-				onConfirm={handleConfirmUserUpdate}
-				isSubmitting={updateLoading}
-			/>
+				<EditUserDialog
+					open={isEditRoleDialogOpen}
+					onOpenChange={(open) => {
+						setIsEditRoleDialogOpen(open);
+						if (!open) {
+							setSelectedUser(null);
+						}
+					}}
+					user={selectedUser}
+					roles={displayRolesList}
+					onConfirm={handleConfirmUserUpdate}
+					isSubmitting={updateLoading}
+				/>
+			</div>
 		</div>
 	);
 }

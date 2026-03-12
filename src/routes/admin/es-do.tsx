@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,9 @@ const PAGE_DESCRIPTION =
 	"Delivery order work queue for Empire Sushi — stock movement based on DO.";
 
 export const Route = createFileRoute("/admin/es-do")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Delivery Order"]);
+	},
 	component: EmpireSushiDOComponent,
 });
 

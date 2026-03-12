@@ -167,47 +167,59 @@ function CreateRackDialog({
 	}, [open]);
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Create rack</DialogTitle>
-					<DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50 pb-4">
+					<DialogTitle
+						className="text-lg font-semibold"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						Create rack
+					</DialogTitle>
+					<DialogDescription
+						className="text-sm text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
 						Add a new rack location (row, column, level).
 					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="rack-row">Row</Label>
+						<Label htmlFor="rack-row" style={{ fontFamily: "var(--dashboard-body)" }}>Row</Label>
 						<Input
 							id="rack-row"
 							value={rackRow}
 							onChange={(e) => setRackRow(e.target.value)}
 							placeholder="e.g. A, B, 1"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="rack-column">Column</Label>
+						<Label htmlFor="rack-column" style={{ fontFamily: "var(--dashboard-body)" }}>Column</Label>
 						<Input
 							id="rack-column"
 							value={rackColumn}
 							onChange={(e) => setRackColumn(e.target.value)}
 							placeholder="e.g. 01, 02"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="rack-level">Level</Label>
+						<Label htmlFor="rack-level" style={{ fontFamily: "var(--dashboard-body)" }}>Level</Label>
 						<Input
 							id="rack-level"
 							value={rackLevel}
 							onChange={(e) => setRackLevel(e.target.value)}
 							placeholder="e.g. 01, 02"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 				</div>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Button variant="outline" className="rounded-lg" onClick={() => onOpenChange(false)}>
 						Cancel
 					</Button>
 					<Button
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 						disabled={
 							!rackRow.trim() ||
 							!rackColumn.trim() ||
@@ -279,10 +291,10 @@ function GRNLineRow({
 	}, [item.skuCode, skuOptions, stockUnits]);
 
 	return (
-		<Card className="border-border/60">
+		<Card className="border-border/60 rounded-xl">
 			<CardHeader className="pb-3 pt-4 px-4">
 				<div className="flex items-center justify-between">
-					<span className="text-sm font-medium text-muted-foreground">
+					<span className="text-sm font-medium text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
 						Item {index + 1}
 					</span>
 					<Button
@@ -290,7 +302,7 @@ function GRNLineRow({
 						variant="ghost"
 						size="sm"
 						onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
-						className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+						className="h-7 w-7 p-0 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
 						aria-label="Remove item"
 					>
 						<XCircle className="h-4 w-4" />
@@ -330,7 +342,7 @@ function GRNLineRow({
 				{/* Row 2: Carton, Loss, Expiry date */}
 				<div className="grid grid-cols-3 gap-3">
 					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium">
+						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
 							Carton
 						</label>
 						<Input
@@ -347,10 +359,11 @@ function GRNLineRow({
 								onItemsChange(newItems);
 							}}
 							placeholder="0"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium">
+						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
 							Loss
 						</label>
 						<Input
@@ -367,10 +380,11 @@ function GRNLineRow({
 								onItemsChange(newItems);
 							}}
 							placeholder="0"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+						<label className="text-xs text-muted-foreground font-medium flex items-center gap-1" style={{ fontFamily: "var(--dashboard-body)" }}>
 							<CalendarDays className="h-3 w-3" />
 							Expiry date
 						</label>
@@ -386,13 +400,14 @@ function GRNLineRow({
 								onItemsChange(newItems);
 							}}
 							placeholder="YYYY-MM-DD"
+							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
 				</div>
 
 				{/* Row 3: Racks */}
 				<div className="space-y-1">
-					<label className="text-xs text-muted-foreground font-medium">
+					<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
 						Racks *
 					</label>
 					<div className="flex flex-wrap items-center gap-1.5">
@@ -432,13 +447,13 @@ function GRNLineRow({
 									type="button"
 									variant="outline"
 									size="sm"
-									className="h-7 gap-1"
+									className="h-7 gap-1 rounded-lg"
 								>
 									<Plus className="h-3.5 w-3.5" />
 									Add rack
 								</Button>
 							</PopoverTrigger>
-							<PopoverContent className="w-56 p-2" align="start">
+							<PopoverContent className="w-56 p-2 rounded-xl" align="start">
 								<div className="flex flex-col gap-1">
 									{racks
 										.filter((r) => !rackIds.includes(r.rackId))
@@ -448,7 +463,7 @@ function GRNLineRow({
 												type="button"
 												variant="ghost"
 												size="sm"
-												className="justify-start font-normal"
+												className="justify-start font-normal rounded-lg"
 												onClick={() => {
 													const newItems = [...items];
 													newItems[index] = {
@@ -465,7 +480,7 @@ function GRNLineRow({
 										type="button"
 										variant="ghost"
 										size="sm"
-										className="justify-start gap-1 text-muted-foreground"
+										className="justify-start gap-1 text-muted-foreground rounded-lg"
 										onClick={() => onOpenCreateRack?.(index)}
 									>
 										<Plus className="h-3.5 w-3.5" />
@@ -813,15 +828,21 @@ export function GrnFormDialog({
 
 	const dialogContent = (
 		<DialogContent
-			className="max-h-[90vh] overflow-y-auto"
+			className="max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border bg-background shadow-xl"
 			style={{ maxWidth: "min(95vw, 1400px)" }}
 		>
-			<DialogHeader className="pb-4">
-				<DialogTitle className="text-2xl font-semibold flex items-center gap-2">
+			<DialogHeader className="pb-4 border-b bg-muted/50">
+				<DialogTitle
+					className="text-2xl font-semibold flex items-center gap-2"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
 					<Package className="h-5 w-5 text-primary" />
 					{title}
 				</DialogTitle>
-				<DialogDescription className="text-base">
+				<DialogDescription
+					className="text-base text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
 					{description}
 				</DialogDescription>
 			</DialogHeader>
@@ -838,7 +859,10 @@ export function GrnFormDialog({
 						<div className="lg:col-span-2 space-y-6">
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<FileText className="h-4 w-4 text-muted-foreground" />
 										Basic Information
 									</CardTitle>
@@ -851,7 +875,7 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>
+															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
 																GRN Number
 															</FieldLabel>
 															<Input
@@ -864,6 +888,7 @@ export function GrnFormDialog({
 																}
 																required
 																aria-invalid={isInvalid}
+																className="rounded-lg border-muted-foreground/20"
 															/>
 															{isInvalid && (
 																<FieldError
@@ -881,7 +906,7 @@ export function GrnFormDialog({
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name}>
+															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
 																PO Reference
 															</FieldLabel>
 															<Input
@@ -894,6 +919,7 @@ export function GrnFormDialog({
 																}
 																required
 																aria-invalid={isInvalid}
+																className="rounded-lg border-muted-foreground/20"
 															/>
 															{isInvalid && (
 																<FieldError
@@ -912,7 +938,7 @@ export function GrnFormDialog({
 												const isInvalid = field.state.meta.errors.length > 0;
 												return (
 													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name}>
+														<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
 															Supplier DO
 														</FieldLabel>
 														<Input
@@ -925,6 +951,7 @@ export function GrnFormDialog({
 																field.handleChange(e.target.value)
 															}
 															aria-invalid={isInvalid}
+															className="rounded-lg border-muted-foreground/20"
 														/>
 														{isInvalid && (
 															<FieldError
@@ -945,6 +972,7 @@ export function GrnFormDialog({
 														<FieldLabel
 															htmlFor={field.name}
 															className="flex items-center gap-2"
+															style={{ fontFamily: "var(--dashboard-body)" }}
 														>
 															<Calendar className="h-4 w-4 text-muted-foreground" />
 															Received Date/Time
@@ -959,6 +987,7 @@ export function GrnFormDialog({
 															}
 															required
 															aria-invalid={isInvalid}
+															className="rounded-lg border-muted-foreground/20"
 														/>
 														{isInvalid && (
 															<FieldError
@@ -979,11 +1008,17 @@ export function GrnFormDialog({
 								<CardHeader className="pb-3">
 									<div className="flex items-center justify-between gap-4">
 										<div>
-											<CardTitle className="text-base font-semibold flex items-center gap-2">
+											<CardTitle
+												className="text-base font-semibold flex items-center gap-2"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
 												<Package className="h-4 w-4 text-muted-foreground" />
 												Line Items
 											</CardTitle>
-											<CardDescription className="text-xs mt-1">
+											<CardDescription
+												className="text-xs mt-1 text-muted-foreground"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
 												Add line items and fill in the details below
 											</CardDescription>
 										</div>
@@ -996,6 +1031,7 @@ export function GrnFormDialog({
 														type="button"
 														variant="default"
 														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 														onClick={() => {
 															field.handleChange([
 																...items,
@@ -1118,11 +1154,14 @@ export function GrnFormDialog({
 
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<Upload className="h-4 w-4 text-muted-foreground" />
 										Proof Upload
 									</CardTitle>
-									<CardDescription className="text-xs">
+									<CardDescription className="text-xs text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
 										Upload supporting documents (max 5 files)
 									</CardDescription>
 								</CardHeader>
@@ -1138,7 +1177,10 @@ export function GrnFormDialog({
 
 							<Card>
 								<CardHeader className="pb-3">
-									<CardTitle className="text-base font-semibold flex items-center gap-2">
+									<CardTitle
+										className="text-base font-semibold flex items-center gap-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										<FileText className="h-4 w-4 text-muted-foreground" />
 										Additional Notes
 									</CardTitle>
@@ -1156,7 +1198,7 @@ export function GrnFormDialog({
 													placeholder="Enter any additional notes or comments..."
 													onBlur={field.handleBlur}
 													onChange={(e) => field.handleChange(e.target.value)}
-													className="min-h-[100px] resize-none"
+													className="min-h-[100px] resize-none rounded-lg border-muted-foreground/20"
 												/>
 											</Field>
 										)}
@@ -1172,10 +1214,11 @@ export function GrnFormDialog({
 						{([isSubmitting, canSubmit]) => (
 							<>
 								<Separator className="mt-6" />
-								<DialogFooter className="pt-4 flex-wrap gap-2">
+								<DialogFooter className="pt-4 flex-wrap gap-2 border-t bg-muted/20">
 									<Button
 										type="button"
 										variant="outline"
+										className="rounded-lg"
 										onClick={() => handleOpenChange(false)}
 										disabled={isSubmitting || deleteLoading}
 									>
@@ -1186,6 +1229,7 @@ export function GrnFormDialog({
 											<Button
 												type="button"
 												variant="outline"
+												className="rounded-lg"
 												onClick={() => {
 													createIntentRef.current = "draft";
 													form.handleSubmit();
@@ -1197,7 +1241,7 @@ export function GrnFormDialog({
 											<Button
 												type="button"
 												disabled={isSubmitting || !canSubmit}
-												className="min-w-[140px]"
+												className="min-w-[140px] rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 												onClick={() => {
 													createIntentRef.current = "submit";
 													form.handleSubmit();
@@ -1224,7 +1268,7 @@ export function GrnFormDialog({
 													<Button
 														type="button"
 														variant="outline"
-														className="text-destructive hover:text-destructive"
+														className="rounded-lg text-destructive hover:text-destructive"
 														onClick={handleDelete}
 														disabled={isSubmitting || deleteLoading}
 													>
@@ -1234,6 +1278,7 @@ export function GrnFormDialog({
 													<Button
 														type="button"
 														variant="outline"
+														className="rounded-lg"
 														onClick={handleSubmitForApproval}
 														disabled={isSubmitting || deleteLoading}
 													>
@@ -1244,6 +1289,7 @@ export function GrnFormDialog({
 											)}
 											<Button
 												type="submit"
+												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 												disabled={isSubmitting || deleteLoading}
 											>
 												{isSubmitting ? "Saving..." : "Save changes"}

@@ -42,9 +42,8 @@ function buildQueryParams(
  */
 export async function fetchModules(
 	params: ModulesQueryParams = {},
-	onRefreshFail: () => void,
 ): Promise<ModulesApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 
 	const queryString = buildQueryParams({
 		moduleId: params.moduleId,
@@ -66,13 +65,15 @@ export async function fetchModules(
  */
 export async function createModule(
 	input: CreateModuleInput,
-	onRefreshFail: () => void,
 ): Promise<ModuleApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 	const response = await client.post<ModuleApiResponse>(
 		"/rbac/modules/create",
 		input,
 	);
+	if (!response.data.success) {
+		throw new Error(response.data.message || "Failed to create module");
+	}
 	return response.data;
 }
 
@@ -82,9 +83,8 @@ export async function createModule(
  */
 export async function updateModule(
 	input: UpdateModuleInput,
-	onRefreshFail: () => void,
 ): Promise<ModuleApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 	const { moduleId, ...body } = input;
 	const response = await client.put<ModuleApiResponse>(
 		`/rbac/modules/update/${moduleId}`,
@@ -99,9 +99,8 @@ export async function updateModule(
  */
 export async function fetchRoles(
 	params: RolesQueryParams = {},
-	onRefreshFail: () => void,
 ): Promise<RolesApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 
 	const queryString = buildQueryParams({
 		roleId: params.roleId,
@@ -125,9 +124,8 @@ export async function fetchRoles(
  */
 export async function updateRole(
 	input: UpdateRoleInput,
-	onRefreshFail: () => void,
 ): Promise<RoleApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 	const { roleId, ...body } = input;
 	const response = await client.put<RoleApiResponse>(
 		`/rbac/roles/update/${roleId}`,
@@ -142,9 +140,8 @@ export async function updateRole(
  */
 export async function fetchUserRoles(
 	params: UserRolesQueryParams = {},
-	onRefreshFail: () => void,
 ): Promise<UserRolesApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 
 	const queryString = buildQueryParams({
 		userId: params.userId,
@@ -166,9 +163,8 @@ export async function fetchUserRoles(
  */
 export async function fetchRolePermissions(
 	params: RolePermissionsQueryParams,
-	onRefreshFail: () => void,
 ): Promise<RolePermissionsApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 
 	const queryString = buildQueryParams({
 		roleId: params.roleId,
@@ -191,9 +187,8 @@ export async function fetchRolePermissions(
  */
 export async function createRolePermission(
 	input: CreateRolePermissionInput,
-	onRefreshFail: () => void,
 ): Promise<RolePermissionApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 	const response = await client.post<RolePermissionApiResponse>(
 		"/rbac/role-permission/create",
 		input,
@@ -210,9 +205,8 @@ export async function createRolePermission(
  */
 export async function updateRolePermissions(
 	input: UpdateRolePermissionsInput,
-	onRefreshFail: () => void,
 ): Promise<RolePermissionsUpdateApiResponse> {
-	const client = getClient(onRefreshFail);
+	const client = getClient();
 	const { roleId, ...body } = input;
 	const response = await client.put<RolePermissionsUpdateApiResponse>(
 		`/rbac/role-permission/update/${roleId}`,

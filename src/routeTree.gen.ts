@@ -29,6 +29,7 @@ import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
+import { Route as AdminForbiddenRouteImport } from './routes/admin/forbidden'
 import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
 import { Route as AdminExceptionDetailRouteImport } from './routes/admin/exception-detail'
 import { Route as AdminEsDoRouteImport } from './routes/admin/es-do'
@@ -149,6 +150,11 @@ const AdminGrnRoute = AdminGrnRouteImport.update({
   path: '/grn',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminForbiddenRoute = AdminForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminExceptionsRoute = AdminExceptionsRouteImport.update({
   id: '/exceptions',
   path: '/exceptions',
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/admin/es-do': typeof AdminEsDoRoute
   '/admin/exception-detail': typeof AdminExceptionDetailRoute
   '/admin/exceptions': typeof AdminExceptionsRoute
+  '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/admin/es-do'
     | '/admin/exception-detail'
     | '/admin/exceptions'
+    | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
     | '/admin/invoice-detail'
@@ -659,6 +671,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGrnRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/forbidden': {
+      id: '/admin/forbidden'
+      path: '/forbidden'
+      fullPath: '/admin/forbidden'
+      preLoaderRoute: typeof AdminForbiddenRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/exceptions': {
       id: '/admin/exceptions'
       path: '/exceptions'
@@ -816,6 +835,7 @@ interface AdminRouteRouteChildren {
   AdminEsDoRoute: typeof AdminEsDoRoute
   AdminExceptionDetailRoute: typeof AdminExceptionDetailRoute
   AdminExceptionsRoute: typeof AdminExceptionsRoute
+  AdminForbiddenRoute: typeof AdminForbiddenRoute
   AdminGrnRoute: typeof AdminGrnRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
@@ -838,6 +858,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminEsDoRoute: AdminEsDoRoute,
   AdminExceptionDetailRoute: AdminExceptionDetailRoute,
   AdminExceptionsRoute: AdminExceptionsRoute,
+  AdminForbiddenRoute: AdminForbiddenRoute,
   AdminGrnRoute: AdminGrnRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,

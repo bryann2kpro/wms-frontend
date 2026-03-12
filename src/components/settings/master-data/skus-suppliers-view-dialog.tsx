@@ -37,41 +37,32 @@ export function SkusSuppliersViewDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Suppliers for {sku.skuCode}</DialogTitle>
-					<DialogDescription>
+			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>Suppliers for {sku.skuCode}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
 						View all suppliers associated with this SKU
 					</DialogDescription>
 				</DialogHeader>
 				<div className="py-4">
 					{supplierDetails.length === 0 ? (
-						<p className="text-sm text-muted-foreground text-center py-8">
+						<p className="py-8 text-center text-sm text-muted-foreground" style={{ fontFamily: '"Figtree", sans-serif' }}>
 							No suppliers associated with this SKU.
 						</p>
 					) : (
 						<div className="space-y-4">
 							{supplierDetails.map((item) => (
-								<div
-									key={item.supplierId}
-									className="border rounded-md p-4 space-y-2"
-								>
+								<div key={item.supplierId} className="space-y-2 rounded-xl border p-4">
 									<div className="flex items-center justify-between">
 										<div>
-											<div className="font-medium text-sm">
-												{item.supplierName}
-											</div>
-											<div className="text-xs text-muted-foreground">
-												Code: {item.supplierCode}
-											</div>
+											<div className="text-sm font-medium" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{item.supplierName}</div>
+											<div className="text-xs text-muted-foreground" style={{ fontFamily: '"Figtree", sans-serif' }}>Code: {item.supplierCode}</div>
 										</div>
 									</div>
 									{item.originalSkuCode && (
-										<div className="pt-2 border-t">
-											<Label className="text-xs text-muted-foreground">
-												Original SKU Code
-											</Label>
-											<div className="text-sm mt-1">{item.originalSkuCode}</div>
+										<div className="border-t pt-2">
+											<Label className="text-xs text-muted-foreground" style={{ fontFamily: '"Figtree", sans-serif' }}>Original SKU Code</Label>
+											<div className="mt-1 text-sm">{item.originalSkuCode}</div>
 										</div>
 									)}
 								</div>
@@ -79,10 +70,8 @@ export function SkusSuppliersViewDialog({
 						</div>
 					)}
 				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Close
-					</Button>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-lg">Close</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

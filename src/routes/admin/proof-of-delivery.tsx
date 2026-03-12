@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -40,6 +41,9 @@ import {
 } from "@/data/do.mock-data";
 
 export const Route = createFileRoute("/admin/proof-of-delivery")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Settlement"]);
+	},
 	component: DeliveryProofComponent,
 });
 

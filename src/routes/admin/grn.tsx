@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import {
 	useQuery,
 	useMutation as useApolloMutation,
@@ -115,10 +116,32 @@ function getGrnErrorMessage(err: unknown): string {
 }
 
 export const Route = createFileRoute("/admin/grn")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["GRN"]);
+	},
 	component: GRNRouteComponent,
 });
 
 const grnStatuses: GRNStatus[] = ["Draft", "Submitted", "Failed"];
+
+/** All statuses shown in the tab filter (matches GRNStatus + ALL). */
+const GRN_STATUS_TABS: Array<GRNStatusFilter> = [
+	"ALL",
+	"Draft",
+	"Submitted",
+	"Approved",
+	"Sent-to-ES",
+	"Failed",
+];
+
+/** All statuses for dropdown (same order as tabs, minus ALL). */
+const GRN_STATUS_OPTIONS: GRNStatus[] = [
+	"Draft",
+	"Submitted",
+	"Approved",
+	"Sent-to-ES",
+	"Failed",
+];
 
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -191,11 +214,16 @@ function HelpStepImage({
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
-			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
-				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
-					<ImageOff className="h-6 w-6" />
+			<div
+				className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
+				style={{ fontFamily: "var(--dashboard-body)" }}
+			>
+				<span className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+					<ImageOff className="h-7 w-7" />
 				</span>
-				<span>Add screenshot: public/help/grn/step-{stepNumber}.png</span>
+				<span className="text-sm text-muted-foreground">
+					Add screenshot: <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">public/help/grn/step-{stepNumber}.png</code>
+				</span>
 			</div>
 		);
 	}
@@ -477,64 +505,110 @@ function GRNRouteComponent() {
 		}
 	};
 
+	const summaryDelays = [0, 80, 160];
+
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Goods Receipt Notes (GRN)
-					</h1>
-					<p className="text-muted-foreground">
-						Manage incoming inventory and track receipts
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Open help"
-						onClick={() => {
-							setIsHelpOpen(true);
-							setHelpStep(0);
-						}}
-					>
-						<HelpCircle className="h-4 w-4" />
-					</Button>
+		<div className="grn-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[320px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/25 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<div className="container relative mx-auto px-6 py-8 space-y-8">
+				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="relative">
+						<div
+							className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-[var(--dashboard-accent)]"
+							aria-hidden
+						/>
+						<div className="pl-5">
+							<h1
+								className="text-4xl font-bold tracking-tight text-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Goods Receipt Notes (GRN)
+							</h1>
+							<p
+								className="mt-1 text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Manage incoming inventory and track receipts
+							</p>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="icon"
+							aria-label="Open help"
+							className="rounded-lg"
+							onClick={() => {
+								setIsHelpOpen(true);
+								setHelpStep(0);
+							}}
+						>
+							<HelpCircle className="h-4 w-4" />
+						</Button>
 					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent className="sm:max-w-lg">
-							<DialogHeader>
-								<DialogTitle>GRN help</DialogTitle>
-								<DialogDescription>
-									Step {helpStep + 1} of {GRN_HELP_STEPS.length}
-								</DialogDescription>
+						<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+							<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+								<div className="flex items-center gap-3">
+									<div
+										className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
+										{helpStep + 1}
+									</div>
+									<div>
+										<DialogTitle
+											className="text-lg"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											GRN help
+										</DialogTitle>
+										<DialogDescription
+											className="mt-0.5"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											Step {helpStep + 1} of {GRN_HELP_STEPS.length}
+										</DialogDescription>
+									</div>
+								</div>
 							</DialogHeader>
-							<div className="space-y-4">
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+							<div className="space-y-5 px-6 py-5">
+								<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
 									<HelpStepImage
 										src={GRN_HELP_STEPS[helpStep].image}
 										stepNumber={helpStep + 1}
 									/>
 								</div>
-								<div>
-									<h3 className="text-sm font-semibold text-foreground mb-1">
+								<div className="rounded-xl border bg-card p-4">
+									<h3
+										className="text-sm font-semibold text-foreground mb-2"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
 										{GRN_HELP_STEPS[helpStep].title}
 									</h3>
-									<p className="text-sm text-muted-foreground leading-relaxed">
+									<p
+										className="text-sm text-muted-foreground leading-relaxed"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
 										{GRN_HELP_STEPS[helpStep].description}
 									</p>
 								</div>
-								<div className="flex items-center justify-between gap-4 pt-2">
-									<div className="flex gap-1">
+								<div className="flex items-center justify-between gap-4 pt-1">
+									<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
 										{GRN_HELP_STEPS.map((_, i) => (
 											<button
 												type="button"
 												key={i}
+												role="tab"
+												aria-selected={i === helpStep}
+												aria-label={`Step ${i + 1}: ${GRN_HELP_STEPS[i].title}`}
 												onClick={() => setHelpStep(i)}
-												aria-label={`Go to step ${i + 1}`}
-												className={`h-2 rounded-full transition-colors ${
+												className={`h-2 rounded-full transition-all duration-200 ${
 													i === helpStep
-														? "w-6 bg-primary"
-														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+														? "w-6 bg-amber-600"
+														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
 												}`}
 											/>
 										))}
@@ -544,6 +618,7 @@ function GRNRouteComponent() {
 											<Button
 												variant="outline"
 												size="sm"
+												className="rounded-lg"
 												onClick={() => setHelpStep((s) => s - 1)}
 											>
 												<ChevronLeft className="h-4 w-4 mr-0.5" />
@@ -553,13 +628,18 @@ function GRNRouteComponent() {
 										{helpStep < GRN_HELP_STEPS.length - 1 ? (
 											<Button
 												size="sm"
+												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 												onClick={() => setHelpStep((s) => s + 1)}
 											>
 												Next
 												<ChevronRight className="h-4 w-4 ml-0.5" />
 											</Button>
 										) : (
-											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
+											<Button
+												size="sm"
+												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+												onClick={() => setIsHelpOpen(false)}
+											>
 												Got it
 											</Button>
 										)}
@@ -577,7 +657,7 @@ function GRNRouteComponent() {
 							stockUnits={stockUnits}
 							canCreate={hasPermission("grn:create")}
 							trigger={
-								<Button>
+								<Button className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg">
 									<Plus className="mr-2 h-4 w-4" />
 									Create GRN
 								</Button>
@@ -615,40 +695,57 @@ function GRNRouteComponent() {
 							onRackCreated={() => void refetchRacks()}
 						/>
 					)}
-				</div>
-			</div>
+					</div>
+				</header>
 
-			{summary && summary.byStatus && (
-				<div className="grid gap-3 md:grid-cols-3">
-					{grnStatuses.map((status) => (
-						<Card key={status}>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium">
-									{formatStatus(status)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">
-									{summary.byStatus[status] ?? 0}
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
+				{summary && summary.byStatus && (
+					<div className="grid gap-5 md:grid-cols-3">
+						{grnStatuses.map((status, i) => (
+							<Card
+								key={status}
+								className="dashboard-card shadow-md hover:shadow-lg"
+								style={{ animationDelay: `${summaryDelays[i]}ms` }}
+							>
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle
+										className="text-sm font-semibold"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										{formatStatus(status)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div
+										className="text-3xl font-bold tabular-nums"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
+										{summary.byStatus[status] ?? 0}
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				)}
 
-			<Card>
+				<Card className="dashboard-card shadow-md hover:shadow-lg">
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>GRN List</CardTitle>
-							<CardDescription>
+							<CardTitle
+								className="text-lg"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								GRN List
+							</CardTitle>
+							<CardDescription
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
 								View and manage all goods receipt notes
 							</CardDescription>
 						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+						<div className="flex flex-wrap items-center gap-2">
 							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
 								<Input
 									placeholder="Search GRN, PO, Supplier DO..."
 									value={searchTerm}
@@ -656,7 +753,7 @@ function GRNRouteComponent() {
 										setSearchTerm(e.target.value);
 										setPage(1);
 									}}
-									className="pl-9 sm:w-64"
+									className="pl-9 sm:w-64 rounded-lg border-muted-foreground/20"
 								/>
 							</div>
 							<Select
@@ -666,12 +763,12 @@ function GRNRouteComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-48">
+								<SelectTrigger className="sm:w-48 rounded-lg border-muted-foreground/20">
 									<SelectValue placeholder="Filter by status" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="ALL">All Status</SelectItem>
-									{grnStatuses.map((status) => (
+									{GRN_STATUS_OPTIONS.map((status) => (
 										<SelectItem key={status} value={status}>
 											{formatStatus(status)}
 										</SelectItem>
@@ -685,7 +782,7 @@ function GRNRouteComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-44">
+								<SelectTrigger className="sm:w-44 rounded-lg border-muted-foreground/20">
 									<SelectValue placeholder="Sort by" />
 								</SelectTrigger>
 								<SelectContent>
@@ -703,7 +800,7 @@ function GRNRouteComponent() {
 									setPage(1);
 								}}
 							>
-								<SelectTrigger className="sm:w-40">
+								<SelectTrigger className="sm:w-40 rounded-lg border-muted-foreground/20">
 									<SelectValue placeholder="Order" />
 								</SelectTrigger>
 								<SelectContent>
@@ -713,27 +810,45 @@ function GRNRouteComponent() {
 							</Select>
 						</div>
 					</div>
+					{/* Status tabs */}
+					<div className="flex flex-wrap gap-2 border-b pt-2">
+						{GRN_STATUS_TABS.map((value) => (
+							<Button
+								key={value}
+								variant={statusFilter === value ? "default" : "ghost"}
+								size="sm"
+								onClick={() => {
+									setStatusFilter(value);
+									setPage(1);
+								}}
+								className="rounded-lg rounded-b-none"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{value === "ALL" ? "All" : formatStatus(value)}
+							</Button>
+						))}
+					</div>
 				</CardHeader>
-				<CardContent className="relative">
+				<CardContent className="relative px-0 pb-6">
 					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
+					<div className="overflow-x-auto rounded-lg border mx-6">
 						<Table>
 							<TableHeader>
-								<TableRow>
-									<TableHead>GRN Number</TableHead>
-									<TableHead>PO Reference</TableHead>
-									<TableHead>Supplier DO</TableHead>
-									<TableHead>Received Date</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+								<TableRow className="hover:bg-transparent">
+									<TableHead className="px-6">GRN Number</TableHead>
+									<TableHead className="px-6">PO Reference</TableHead>
+									<TableHead className="px-6">Supplier DO</TableHead>
+									<TableHead className="px-6">Received Date</TableHead>
+									<TableHead className="px-6">Status</TableHead>
+									<TableHead className="text-right px-6">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={7}
-											className="h-24 text-center text-muted-foreground"
+											colSpan={6}
+											className="h-24 px-6 text-center text-muted-foreground"
 										>
 											Loading GRNs...
 										</TableCell>
@@ -741,8 +856,8 @@ function GRNRouteComponent() {
 								) : grns.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={7}
-											className="h-24 text-center text-muted-foreground"
+											colSpan={6}
+											className="h-24 px-6 text-center text-muted-foreground"
 										>
 											No GRNs found.
 										</TableCell>
@@ -760,20 +875,23 @@ function GRNRouteComponent() {
 											hasPermission("grn:send_to_es") &&
 											grn.status === "Approved";
 										return (
-											<TableRow key={grn.id}>
-												<TableCell className="font-medium">
+											<TableRow
+												key={grn.id}
+												className="transition-colors hover:bg-muted/50"
+											>
+												<TableCell className="font-medium px-6">
 													{grn.grnNo || "-"}
 												</TableCell>
-												<TableCell>{grn.poNo ?? "-"}</TableCell>
-												<TableCell>
+												<TableCell className="px-6">{grn.poNo ?? "-"}</TableCell>
+												<TableCell className="px-6">
 													{grn.supplierDeliveryNo ??
 														grn.supplierDeliveryId ??
 														"-"}
 												</TableCell>
-												<TableCell>
+												<TableCell className="px-6">
 													{formatGrnDate(grn.receivedAt) ?? "-"}
 												</TableCell>
-												<TableCell>
+												<TableCell className="px-6">
 													{grn.status ? (
 														<Badge
 															variant="outline"
@@ -787,7 +905,7 @@ function GRNRouteComponent() {
 														<span className="text-muted-foreground">-</span>
 													)}
 												</TableCell>
-												<TableCell className="text-right">
+												<TableCell className="text-right px-6">
 													<div className="flex justify-end gap-1">
 														<Button
 															variant="ghost"
@@ -843,33 +961,39 @@ function GRNRouteComponent() {
 					</div>
 
 					{data && (
-						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-							<div>
+						<div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-6 text-xs text-muted-foreground">
+							<div style={{ fontFamily: "var(--dashboard-body)" }}>
 								Showing{" "}
-								<span className="font-medium">
+								<span className="font-semibold tabular-nums text-foreground">
 									{(data.page - 1) * data.pageSize + 1}
 								</span>{" "}
-								-{" "}
-								<span className="font-medium">
+								–{" "}
+								<span className="font-semibold tabular-nums text-foreground">
 									{Math.min(data.page * data.pageSize, data.total)}
 								</span>{" "}
-								of <span className="font-medium">{data.total}</span> GRNs
+								of{" "}
+								<span className="font-semibold tabular-nums text-foreground">
+									{data.total}
+								</span>{" "}
+								GRNs
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
 									variant="outline"
 									size="icon"
+									className="rounded-lg h-8 w-8"
 									disabled={page === 1}
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
 								>
 									<ChevronLeft className="h-4 w-4" />
 								</Button>
-								<span>
+								<span className="tabular-nums min-w-[6rem] text-center">
 									Page {page} of {totalPages}
 								</span>
 								<Button
 									variant="outline"
 									size="icon"
+									className="rounded-lg h-8 w-8"
 									disabled={page === totalPages}
 									onClick={() =>
 										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
@@ -886,12 +1010,19 @@ function GRNRouteComponent() {
 			{/* View GRN Dialog */}
 			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
 				<DialogContent
-					className="max-h-[90vh] overflow-y-auto"
+					className="max-h-[90vh] overflow-y-auto rounded-xl"
 					style={{ maxWidth: "min(95vw, 1400px)" }}
 				>
 					<DialogHeader>
-						<DialogTitle>GRN Details</DialogTitle>
-						<DialogDescription>
+						<DialogTitle
+							className="text-lg"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							GRN Details
+						</DialogTitle>
+						<DialogDescription
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							View detailed information about this goods receipt note
 						</DialogDescription>
 					</DialogHeader>
@@ -1028,9 +1159,14 @@ function GRNRouteComponent() {
 
 							{/* Right Panel: Audit Trail + Integration Status */}
 							<div className="space-y-4">
-								<Card>
+								<Card className="rounded-xl border bg-muted/30">
 									<CardHeader>
-										<CardTitle className="text-sm">Audit Trail</CardTitle>
+										<CardTitle
+											className="text-sm font-semibold"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											Audit Trail
+										</CardTitle>
 									</CardHeader>
 									<CardContent className="text-xs space-y-2">
 										<div>
@@ -1107,6 +1243,7 @@ function GRNRouteComponent() {
 				}}
 				onRackCreated={() => void refetchRacks()}
 			/>
+			</div>
 		</div>
 	);
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
@@ -73,6 +74,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/invoices")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Invoice"]);
+	},
 	component: InvoicesComponent,
 });
 

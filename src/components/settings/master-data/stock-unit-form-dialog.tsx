@@ -58,53 +58,28 @@ export function StockUnitFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50">
+					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="unit-code">Code</Label>
-						<Input
-							id="unit-code"
-							value={unitCode}
-							onChange={(e) => setUnitCode(e.target.value)}
-							placeholder="e.g. EA, KG, CTN"
-						/>
+						<Label htmlFor="unit-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
+						<Input id="unit-code" value={unitCode} onChange={(e) => setUnitCode(e.target.value)} placeholder="e.g. EA, KG, CTN" className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="unit-name">Name</Label>
-						<Input
-							id="unit-name"
-							value={unitName}
-							onChange={(e) => setUnitName(e.target.value)}
-							placeholder="Unit name"
-						/>
+						<Label htmlFor="unit-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
+						<Input id="unit-name" value={unitName} onChange={(e) => setUnitName(e.target.value)} placeholder="Unit name" className="rounded-lg border-muted-foreground/20" />
 					</div>
 					<div className="flex items-center justify-between">
-						<Label htmlFor="unit-active">Active</Label>
-						<Switch
-							id="unit-active"
-							checked={isActive}
-							onCheckedChange={setIsActive}
-						/>
+						<Label htmlFor="unit-active" style={{ fontFamily: '"Figtree", sans-serif' }}>Active</Label>
+						<Switch id="unit-active" checked={isActive} onCheckedChange={setIsActive} />
 					</div>
 				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => handleOpenChange(false)}>
-						Cancel
-					</Button>
-					<Button
-						disabled={!unitName.trim() || !unitCode.trim() || loading}
-						onClick={() =>
-							onSubmit({
-								unitName: unitName.trim(),
-								unitCode: unitCode.trim(),
-								isActive,
-							})
-						}
-					>
+				<DialogFooter className="border-t bg-muted/20">
+					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
+					<Button disabled={!unitName.trim() || !unitCode.trim() || loading} onClick={() => onSubmit({ unitName: unitName.trim(), unitCode: unitCode.trim(), isActive })} className="rounded-lg bg-amber-600 text-white hover:bg-amber-700">
 						{loading ? "Saving..." : "Save"}
 					</Button>
 				</DialogFooter>
