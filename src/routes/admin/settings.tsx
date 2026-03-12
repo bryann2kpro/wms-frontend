@@ -53,6 +53,7 @@ import {
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WMSRole } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 // Zod schemas for validation
 const userProfileSchema = z.object({
@@ -198,15 +199,23 @@ function SettingsPage() {
 				)}
 
 				{/* Tabs */}
-				<div className="flex gap-2 border-b">
+				<div className="flex gap-1 border-b border-border" role="tablist" aria-label="Settings sections">
 					{tabs.map((tab) => {
 						const Icon = tab.icon;
+						const isActive = activeTab === tab.id;
 						return (
 							<Button
 								key={tab.id}
-								variant={activeTab === tab.id ? "default" : "ghost"}
+								variant="ghost"
 								onClick={() => setActiveTab(tab.id)}
-								className="rounded-lg rounded-b-none"
+								className={cn(
+									"settings-tab rounded-b-none border-b-2 border-transparent px-5 py-3 font-medium transition-colors hover:bg-muted/60",
+									isActive && "settings-tab-active bg-transparent",
+								)}
+								role="tab"
+								aria-selected={isActive}
+								aria-controls={`settings-tabpanel-${tab.id}`}
+								id={`settings-tab-${tab.id}`}
 							>
 								<Icon className="mr-2 h-4 w-4" />
 								{tab.label}
@@ -215,7 +224,12 @@ function SettingsPage() {
 					})}
 				</div>
 
-			{/* Tab Content */}
+				{/* Tab Content */}
+				<div
+					role="tabpanel"
+					id={`settings-tabpanel-${activeTab}`}
+					aria-labelledby={`settings-tab-${activeTab}`}
+				>
 			{activeTab === "profile" && (
 				<div className="grid gap-6 lg:grid-cols-2">
 					<UserProfileCard
@@ -243,6 +257,7 @@ function SettingsPage() {
 			{activeTab === "integration" && showIntegrationTab && (
 				<IntegrationStatusCard />
 			)}
+				</div>
 			</div>
 		</div>
 	);

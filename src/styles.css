@@ -293,6 +293,15 @@ code {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.settings-page .settings-tab.settings-tab-active {
+	color: var(--dashboard-accent);
+	border-bottom-color: var(--dashboard-accent);
+}
+.dark .settings-page .settings-tab.settings-tab-active {
+	color: var(--dashboard-accent-muted);
+	border-bottom-color: var(--dashboard-accent);
+}
+
 /* RBAC page: match dashboard/admin amber accent */
 .rbac-page {
 	--rbac-display: "Plus Jakarta Sans", sans-serif;
