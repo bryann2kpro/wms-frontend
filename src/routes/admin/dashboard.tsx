@@ -33,6 +33,7 @@ import {
 	mapDashboardQueryToData,
 	type DashboardQueryData,
 } from "@/lib/graphql/dashboard";
+import { formatDate, formatDateOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/dashboard")({
 	component: DashboardComponent,
@@ -143,7 +144,7 @@ function DashboardComponent() {
 						<p className="text-xs text-muted-foreground">
 							Last:{" "}
 							{stats.tosLastPullTime
-								? new Date(stats.tosLastPullTime).toLocaleTimeString()
+								? formatDate(stats.tosLastPullTime.toString())
 								: "N/A"}
 						</p>
 					</CardContent>
@@ -217,13 +218,13 @@ function DashboardComponent() {
 							<div className="flex items-center justify-between text-sm">
 								<span className="text-muted-foreground">Last PO Pull:</span>
 								<span className="font-medium">
-									{integrationHealth.lastTOPullTime.toLocaleString()}
+									{formatDate(integrationHealth.lastTOPullTime.toString())}
 								</span>
 							</div>
 							<div className="flex items-center justify-between text-sm">
 								<span className="text-muted-foreground">Last Stock Sync:</span>
 								<span className="font-medium">
-									{integrationHealth.lastStockSyncTime.toLocaleString()}
+									{formatDate(integrationHealth.lastStockSyncTime.toString())}
 								</span>
 							</div>
 							<div className="flex items-center justify-between text-sm">
@@ -406,7 +407,7 @@ function DashboardComponent() {
 										<TableCell className="text-right">
 											<div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
 												<Clock className="h-3 w-3" />
-												{delivery.scheduledDate.toLocaleDateString()}
+												{formatDateOnly(delivery.scheduledDate)}
 											</div>
 										</TableCell>
 									</TableRow>
