@@ -293,6 +293,58 @@ code {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* RBAC page: match dashboard/admin amber accent */
+.rbac-page {
+	--rbac-display: "Plus Jakarta Sans", sans-serif;
+	--rbac-body: "Figtree", sans-serif;
+	/* Reuse the same amber accent used across admin pages */
+	--rbac-accent: oklch(0.706 0.158 70.697);
+	--rbac-accent-muted: oklch(0.92 0.04 70);
+	--rbac-surface: oklch(0.988 0.002 286);
+}
+.dark .rbac-page {
+	--rbac-accent: oklch(0.75 0.15 70);
+	--rbac-accent-muted: oklch(0.28 0.04 70);
+	--rbac-surface: oklch(0.18 0.008 286);
+}
+
+@keyframes rbac-fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.rbac-page .rbac-summary-card {
+	animation: rbac-fade-up 0.45s ease-out both;
+}
+.rbac-page .rbac-summary-card [data-slot="card-content"] .text-2xl {
+	font-family: var(--rbac-display);
+}
+.rbac-page .rbac-summary-card > * {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rbac-page .rbac-summary-card:hover > * {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 25px -5px oklch(0.2 0.02 70 / 0.12), 0 4px 10px -6px oklch(0.2 0.02 70 / 0.08);
+}
+.dark .rbac-page .rbac-summary-card:hover > * {
+	box-shadow: 0 8px 25px -5px oklch(0 0 0 / 0.35), 0 4px 10px -6px oklch(0 0 0 / 0.2);
+}
+
+.rbac-page .rbac-tab.rbac-tab-active {
+	color: oklch(0.706 0.158 70.697);
+	border-bottom-color: oklch(0.706 0.158 70.697);
+}
+.dark .rbac-page .rbac-tab.rbac-tab-active {
+	color: oklch(0.75 0.15 70);
+	border-bottom-color: oklch(0.75 0.15 70);
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;
