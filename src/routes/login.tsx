@@ -35,6 +35,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
 	beforeLoad: async ({ context }) => {
+		if (typeof window === "undefined") return;
 		if (context.isAuthenticated()) {
 			throw redirect({ to: "/admin/dashboard" });
 		}

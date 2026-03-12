@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@apollo/client/react";
 import {
@@ -57,6 +58,9 @@ import {
 } from "@/data/exceptions.mock-data";
 
 export const Route = createFileRoute("/admin/exceptions")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Exception"]);
+	},
 	component: ExceptionsComponent,
 });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useForm } from "@tanstack/react-form";
 import {
 	Card,
@@ -53,6 +54,9 @@ import { REGIONS_QUERY, type RegionsQueryData } from "@/lib/graphql/regions";
 import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin/reports")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Report"]);
+	},
 	component: ReportsComponent,
 });
 

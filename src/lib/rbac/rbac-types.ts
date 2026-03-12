@@ -16,6 +16,7 @@ export interface ModulePermission {
  * Module entity representing a feature/module in the system
  */
 export interface RbacModule {
+	moduleId: string;
 	moduleName: string;
 	permission: ModulePermission[];
 	status: "active" | "inactive";

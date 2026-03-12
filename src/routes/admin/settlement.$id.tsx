@@ -3,6 +3,7 @@ import {
 	useNavigate,
 	useParams,
 } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Card,
@@ -38,6 +39,9 @@ import {
 } from "@/data/do.mock-data";
 
 export const Route = createFileRoute("/admin/settlement/$id")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Settlement"]);
+	},
 	component: SettlementDetailComponent,
 });
 

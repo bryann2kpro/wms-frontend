@@ -74,17 +74,19 @@ export function CreatePurchaseOrderDialog({
 			{trigger != null ? (
 				<DialogTrigger asChild>{trigger}</DialogTrigger>
 			) : null}
-			<DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-				<DialogHeader className="space-y-1.5 px-6 pt-6 pb-4 border-b bg-muted/30">
+			<DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="space-y-1.5 px-6 pt-6 pb-4 border-b bg-muted/50">
 					<DialogTitle
 						id="create-po-dialog-title"
 						className="text-[22px] leading-tight font-semibold"
+						style={{ fontFamily: "var(--dashboard-display)" }}
 					>
 						Create New Purchase Order
 					</DialogTitle>
 					<DialogDescription
 						id="create-po-dialog-description"
 						className="text-[13px] text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
 					>
 						Enter the purchase order number, select an outlet, and add line
 						items (stock and quantity). Delivery date is set automatically by
@@ -148,7 +150,10 @@ export function CreatePurchaseOrderDialog({
 															data-invalid={isInvalid}
 															className="space-y-2"
 														>
-															<FieldLabel htmlFor={field.name}>
+															<FieldLabel
+																htmlFor={field.name}
+																style={{ fontFamily: "var(--dashboard-body)" }}
+															>
 																Purchase Order Number
 															</FieldLabel>
 															<Input
@@ -160,7 +165,7 @@ export function CreatePurchaseOrderDialog({
 																	field.handleChange(e.target.value)
 																}
 																aria-invalid={isInvalid}
-																className="h-10 text-[13px]"
+																className="h-10 text-[13px] rounded-lg border-muted-foreground/20"
 															/>
 															{isInvalid && (
 																<FieldError errors={field.state.meta.errors} />
@@ -181,7 +186,10 @@ export function CreatePurchaseOrderDialog({
 															data-invalid={isInvalid}
 															className="space-y-2"
 														>
-															<FieldLabel htmlFor={field.name}>
+															<FieldLabel
+																htmlFor={field.name}
+																style={{ fontFamily: "var(--dashboard-body)" }}
+															>
 																Outlet
 															</FieldLabel>
 															<OutletCombobox
@@ -235,6 +243,7 @@ export function CreatePurchaseOrderDialog({
 															<FieldLabel
 																htmlFor={field.name}
 																className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+																style={{ fontFamily: "var(--dashboard-body)" }}
 															>
 																<Zap className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />
 																Emergency delivery
@@ -258,13 +267,17 @@ export function CreatePurchaseOrderDialog({
 											{(items: CreatePurchaseOrderLineItem[]) => (
 												<Field className="flex flex-col flex-1 min-h-0 px-6 pb-4">
 													<div className="flex items-center justify-between gap-2 mb-2">
-														<FieldLabel className="text-[14px] font-semibold">
+														<FieldLabel
+															className="text-[14px] font-semibold"
+															style={{ fontFamily: "var(--dashboard-display)" }}
+														>
 															Line items (Stock &amp; Amount)
 														</FieldLabel>
 														<Button
 															type="button"
 															variant="outline"
 															size="sm"
+															className="rounded-lg"
 															onClick={() => {
 																form.setFieldValue("items", [
 																	...(items ?? []),
@@ -280,13 +293,19 @@ export function CreatePurchaseOrderDialog({
 														<Table>
 															<TableHeader>
 																<TableRow className="hover:bg-transparent border-b h-12">
-																	<TableHead className="font-semibold text-[14px]">
+																	<TableHead
+																		className="font-semibold text-[14px] px-6"
+																		style={{ fontFamily: "var(--dashboard-body)" }}
+																	>
 																		Stock (SKU)
 																	</TableHead>
-																	<TableHead className="w-32 font-semibold text-[14px]">
+																	<TableHead
+																		className="w-32 font-semibold text-[14px] px-6"
+																		style={{ fontFamily: "var(--dashboard-body)" }}
+																	>
 																		Quantity
 																	</TableHead>
-																	<TableHead className="w-12" />
+																	<TableHead className="w-12 px-6" />
 																</TableRow>
 															</TableHeader>
 															<TableBody>
@@ -315,6 +334,7 @@ export function CreatePurchaseOrderDialog({
 													<FieldLabel
 														htmlFor={field.name}
 														className="text-[14px] font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
 													>
 														Notes
 													</FieldLabel>
@@ -324,7 +344,7 @@ export function CreatePurchaseOrderDialog({
 														placeholder="Enter any additional notes..."
 														onBlur={field.handleBlur}
 														onChange={(e) => field.handleChange(e.target.value)}
-														className="min-h-[72px] resize-none text-[13px]"
+														className="min-h-[72px] resize-none text-[13px] rounded-lg border-muted-foreground/20"
 													/>
 												</Field>
 											)}
@@ -343,12 +363,17 @@ export function CreatePurchaseOrderDialog({
 								<Button
 									type="button"
 									variant="outline"
+									className="rounded-lg"
 									onClick={() => onOpenChange(false)}
 									disabled={isSubmitting}
 								>
 									Cancel
 								</Button>
-								<Button type="submit" disabled={isSubmitting || !canSubmit}>
+								<Button
+									type="submit"
+									className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+									disabled={isSubmitting || !canSubmit}
+								>
 									{isSubmitting ? (
 										<>
 											<Loader2
@@ -406,8 +431,8 @@ function LineItemRow({
 	};
 
 	return (
-		<TableRow className="h-12">
-			<TableCell className="align-middle py-2 text-[13px]">
+		<TableRow className="h-12 transition-colors hover:bg-muted/50">
+			<TableCell className="align-middle py-2 px-6 text-[13px]">
 				<SkuCombobox
 					value={skuValue}
 					onChange={(v) => {
@@ -426,23 +451,24 @@ function LineItemRow({
 					}
 				/>
 			</TableCell>
-			<TableCell className="align-middle py-2">
+			<TableCell className="align-middle py-2 px-6">
 				<Input
-					type="number"
-					min={1}
-					value={item.quantity}
-					onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
-					className="h-10 w-24 text-[13px]"
-				/>
-			</TableCell>
-			<TableCell className="align-middle py-2 w-12">
+													type="number"
+													min={1}
+													value={item.quantity}
+													onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
+													className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
+												/>
+											</TableCell>
+			<TableCell className="align-middle py-2 w-12 px-6">
 				{canRemove ? (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						aria-label="Remove line"
-						onClick={() => {
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														className="rounded-lg"
+														aria-label="Remove line"
+														onClick={() => {
 							form.setFieldValue(
 								"items",
 								items.filter((_, i) => i !== index),
@@ -462,7 +488,10 @@ export function CreatePurchaseOrderDialogTrigger({
 	onOpenChange,
 	form,
 	createMutation,
-}: Omit<CreatePurchaseOrderDialogProps, "trigger">) {
+	triggerClassName,
+}: Omit<CreatePurchaseOrderDialogProps, "trigger"> & {
+	triggerClassName?: string;
+}) {
 	return (
 		<CreatePurchaseOrderDialog
 			open={open}
@@ -470,7 +499,7 @@ export function CreatePurchaseOrderDialogTrigger({
 			form={form}
 			createMutation={createMutation}
 			trigger={
-				<Button>
+				<Button className={triggerClassName}>
 					<Plus className="mr-2 h-4 w-4" />
 					Create Purchase Order
 				</Button>

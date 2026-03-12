@@ -73,6 +73,9 @@ export async function createModule(
 		"/rbac/modules/create",
 		input,
 	);
+	if (!response.data.success) {
+		throw new Error(response.data.message || "Failed to create module");
+	}
 	return response.data;
 }
 

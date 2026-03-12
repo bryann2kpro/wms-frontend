@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation as useApolloMutation } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Shield, Package, Users, Key } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -9,8 +11,6 @@ import {
 	fetchModules,
 	fetchRoles,
 	fetchUserRoles,
-	createModule,
-	updateModule,
 	updateRole,
 	updateRolePermissions,
 	type RbacModule,
@@ -23,6 +23,12 @@ import {
 	type UpdateRoleInput,
 	type UpdateRolePermissionsInput,
 } from "@/lib/rbac";
+import {
+	CREATE_MODULE_MUTATION,
+	UPDATE_MODULE_MUTATION,
+	type CreateModuleVariables,
+	type UpdateModuleVariables,
+} from "@/lib/graphql/rbac";
 import type { StatusFilter } from "@/constants/status-filter";
 import { UserRolesTable } from "@/components/rbac/user-roles-table";
 import { SummaryCard } from "@/components/rbac/summary-card";
@@ -35,6 +41,9 @@ import { CreateModuleDialog } from "@/components/rbac/create-module-dialog";
 import { EditRoleDialog } from "@/components/rbac/edit-role-dialog";
 
 export const Route = createFileRoute("/admin/rbac")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Role"]);
+	},
 	component: RbacComponent,
 });
 
@@ -164,34 +173,70 @@ function RbacComponent() {
 		retry: 2,
 	});
 
-	// Create module mutation
-	const createModuleMutation = useMutation({
-		mutationFn: (input: CreateModuleInput) => createModule(input, logout),
-		onSuccess: () => {
+	// Create module mutation (GraphQL)
+	const [createModuleGql, { loading: isCreatingModule, error: createModuleError }] = useApolloMutation<
+		unknown,
+		CreateModuleVariables
+	>(CREATE_MODULE_MUTATION, {
+		onCompleted: () => {
 			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+			setModulesPage(1);
 			setIsCreateModuleDialogOpen(false);
 		},
 	});
 
-	// Update module mutation
-	const updateModuleMutation = useMutation({
-		mutationFn: (input: UpdateModuleInput) => updateModule(input, logout),
-		onSuccess: () => {
+	// Wrap to accept the dialog's CreateModuleInput format
+	const createModuleMutation = {
+		mutate: (input: CreateModuleInput) => createModuleGql({ variables: { input } }),
+		isPending: isCreatingModule,
+		error: createModuleError ?? null,
+		isError: !!createModuleError,
+	};
+
+	// Update module mutation (GraphQL)
+	const [updateModuleGql, { loading: isUpdatingModule, error: updateModuleError }] = useApolloMutation<
+		unknown,
+		UpdateModuleVariables
+	>(UPDATE_MODULE_MUTATION, {
+		onCompleted: () => {
 			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
 			setIsEditModuleDialogOpen(false);
 			setSelectedModule(null);
 		},
 	});
 
-	// Deactivate module mutation (soft delete)
-	const deactivateModuleMutation = useMutation({
-		mutationFn: (input: UpdateModuleInput) => updateModule(input, logout),
-		onSuccess: () => {
+	// Wrap to accept the dialog's UpdateModuleInput format (moduleId → id)
+	const updateModuleMutation = {
+		mutate: (input: UpdateModuleInput) => {
+			const { moduleId, ...rest } = input;
+			return updateModuleGql({ variables: { id: moduleId, input: rest } });
+		},
+		isPending: isUpdatingModule,
+		error: updateModuleError ?? null,
+		isError: !!updateModuleError,
+	};
+
+	// Deactivate module mutation (GraphQL – reuses updateModule)
+	const [deactivateModuleGql, { loading: isDeactivatingModule, error: deactivateModuleError }] = useApolloMutation<
+		unknown,
+		UpdateModuleVariables
+	>(UPDATE_MODULE_MUTATION, {
+		onCompleted: () => {
 			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
 			setIsDeleteModuleDialogOpen(false);
 			setSelectedModule(null);
 		},
 	});
+
+	const deactivateModuleMutation = {
+		mutate: (input: UpdateModuleInput) => {
+			const { moduleId, ...rest } = input;
+			return deactivateModuleGql({ variables: { id: moduleId, input: rest } });
+		},
+		isPending: isDeactivatingModule,
+		error: deactivateModuleError ?? null,
+		isError: !!deactivateModuleError,
+	};
 
 	// Update role mutation
 	const updateRoleMutation = useMutation({

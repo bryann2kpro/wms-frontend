@@ -78,6 +78,12 @@ export function Sidebar() {
 	const accessControl = (link: NavLinkSchemaType) => {
 		if (!user?.readPermission) return false;
 
+		// Super admin sees everything
+		const isSuperAdmin = user.roles?.some(
+			(r) => r.toLowerCase() === "super admin",
+		);
+		if (isSuperAdmin) return true;
+
 		return link.allowedPermission.some(
 			(permission) =>
 				permission === "*" ||

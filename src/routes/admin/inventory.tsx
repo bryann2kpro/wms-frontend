@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useQuery } from "@tanstack/react-query";
 import {
 	Card,
@@ -31,6 +32,9 @@ import {
 import { getInventory, type InventoryItem } from "@/data/inventory.mock-data";
 
 export const Route = createFileRoute("/admin/inventory")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Inventory"]);
+	},
 	component: InventoryComponent,
 });
 

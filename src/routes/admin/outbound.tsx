@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,9 @@ const STATUS_BORDER_COLOR: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/admin/outbound")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Delivery Order"]);
+	},
 	component: OutboundRouteComponent,
 });
 
@@ -139,11 +143,16 @@ function HelpStepImage({
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return (
-			<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
-				<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80">
-					<ImageOff className="h-6 w-6" />
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+				<span className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+					<ImageOff className="h-7 w-7" />
 				</span>
-				<span>Add screenshot: public/help/outbound/step-{stepNumber}.png</span>
+				<span className="text-sm text-muted-foreground">
+					Add screenshot:{" "}
+					<code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+						public/help/outbound/step-{stepNumber}.png
+					</code>
+				</span>
 			</div>
 		);
 	}
@@ -262,221 +271,284 @@ function OutboundRouteComponent() {
 	}, [isHelpOpen]);
 
 	return (
-		<main
-			className="container mx-auto p-6 space-y-6"
-			aria-labelledby="page-title"
-			aria-describedby="page-description"
-		>
-			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1
-						id="page-title"
-						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-						tabIndex={-1}
-					>
-						Outbound Delivery Orders
-					</h1>
-					<p id="page-description" className="text-muted-foreground mt-1">
-						Manage outbound purchase orders. Create new orders or refresh from
-						NetSuite. A Delivery Order is automatically generated when an order
-						is created.
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Open help"
-						onClick={() => {
-							setIsHelpOpen(true);
-							setHelpStep(0);
-						}}
-					>
-						<HelpCircle className="h-4 w-4" />
-					</Button>
-					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent className="sm:max-w-lg">
-							<DialogHeader>
-								<DialogTitle>Outbound Delivery Orders help</DialogTitle>
-								<DialogDescription>
-									Step {helpStep + 1} of {OUTBOUND_HELP_STEPS.length}
-								</DialogDescription>
-							</DialogHeader>
-							<div className="space-y-4">
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
-									<HelpStepImage
-										src={OUTBOUND_HELP_STEPS[helpStep].image}
-										stepNumber={helpStep + 1}
-									/>
-								</div>
-								<div>
-									<h3 className="text-sm font-semibold text-foreground mb-1">
-										{OUTBOUND_HELP_STEPS[helpStep].title}
-									</h3>
-									<p className="text-sm text-muted-foreground leading-relaxed">
-										{OUTBOUND_HELP_STEPS[helpStep].description}
-									</p>
-								</div>
-								<div className="flex items-center justify-between gap-4 pt-2">
-									<div className="flex gap-1">
-										{OUTBOUND_HELP_STEPS.map((_, i) => (
-											<button
-												type="button"
-												key={i}
-												onClick={() => setHelpStep(i)}
-												aria-label={`Go to step ${i + 1}`}
-												className={`h-2 rounded-full transition-colors ${
-													i === helpStep
-														? "w-6 bg-primary"
-														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-												}`}
-											/>
-										))}
-									</div>
-									<div className="flex gap-2">
-										{helpStep > 0 ? (
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => setHelpStep((s) => s - 1)}
-											>
-												<ChevronLeft className="h-4 w-4 mr-0.5" />
-												Previous
-											</Button>
-										) : null}
-										{helpStep < OUTBOUND_HELP_STEPS.length - 1 ? (
-											<Button
-												size="sm"
-												onClick={() => setHelpStep((s) => s + 1)}
-											>
-												Next
-												<ChevronRight className="h-4 w-4 ml-0.5" />
-											</Button>
-										) : (
-											<Button size="sm" onClick={() => setIsHelpOpen(false)}>
-												Got it
-											</Button>
-										)}
-									</div>
-								</div>
-							</div>
-						</DialogContent>
-					</Dialog>
-					{hasPermission("to:refresh") && (
+		<div className="outbound-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<main
+				className="container relative mx-auto space-y-6 p-6"
+				aria-labelledby="page-title"
+				aria-describedby="page-description"
+			>
+				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
+						<h1
+							id="page-title"
+							className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+							tabIndex={-1}
+						>
+							Outbound Delivery Orders
+						</h1>
+						<p
+							id="page-description"
+							className="mt-1 text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Manage outbound purchase orders. Create new orders or refresh from
+							NetSuite. A Delivery Order is automatically generated when an
+							order is created.
+						</p>
+					</div>
+					<div className="flex items-center gap-2">
 						<Button
 							variant="outline"
+							size="icon"
+							aria-label="Open help"
+							className="rounded-lg"
 							onClick={() => {
-								queryClient.invalidateQueries({
-									queryKey: ["purchase-orders-list"],
-								});
+								setIsHelpOpen(true);
+								setHelpStep(0);
 							}}
-							aria-label="Refresh purchase orders from NetSuite"
 						>
-							<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-							Refresh from NetSuite
+							<HelpCircle className="h-4 w-4" />
 						</Button>
-					)}
-					<CreatePurchaseOrderDialogTrigger
-						open={isCreateOpen}
-						onOpenChange={setIsCreateOpen}
-						form={
-							form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]
-						}
-						createMutation={createMutation}
-					/>
-				</div>
-			</header>
-
-			<div
-				className="grid gap-4 md:grid-cols-5"
-				role="region"
-				aria-label="Purchase order summary by status"
-			>
-				{isSummaryLoading
-					? purchaseOrderStatuses.map((status) => (
-							<Card key={status}>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium">
-										{formatStatus(status)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<Skeleton className="h-8 w-12" aria-hidden />
-								</CardContent>
-							</Card>
-						))
-					: purchaseOrderStatuses.map((status) => (
-							<Card
-								key={status}
-								className={`transition-colors hover:bg-muted/30 border-l-4 ${STATUS_BORDER_COLOR[status] ?? "border-l-gray-400"}`}
-							>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium">
-										{formatStatus(status)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold tabular-nums">
-										{summary?.byStatus[status] ?? 0}
+						<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+							<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+								<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+									<div className="flex items-center gap-3">
+										<div
+											className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{helpStep + 1}
+										</div>
+										<div>
+											<DialogTitle
+												className="text-lg"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												Outbound help
+											</DialogTitle>
+											<DialogDescription
+												className="mt-0.5"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
+												Step {helpStep + 1} of {OUTBOUND_HELP_STEPS.length}
+											</DialogDescription>
+										</div>
 									</div>
-								</CardContent>
-							</Card>
-						))}
-			</div>
-
-			<OutboundListCard
-				onViewPurchaseOrder={(purchaseOrder) => {
-					setSelectedPurchaseOrder(purchaseOrder);
-					setIsViewOpen(true);
-				}}
-				onAdvanceStep={(purchaseOrder) => {
-					if (purchaseOrder.deliveryOrder?.id) {
-						advanceStepMutation.mutate(purchaseOrder.deliveryOrder.id);
-					}
-				}}
-				isAdvanceStepPending={advanceStepMutation.isPending}
-				advancingDeliveryOrderId={advanceStepMutation.variables ?? null}
-			/>
-
-			<ViewPurchaseOrderDialog
-				open={isViewOpen}
-				onOpenChange={setIsViewOpen}
-				purchaseOrder={selectedPurchaseOrder}
-				onAdvanceStep={
-					selectedPurchaseOrder?.deliveryOrder?.id
-						? () => {
-								advanceStepMutation.mutate(
-									selectedPurchaseOrder.deliveryOrder!.id,
-								);
+								</DialogHeader>
+								<div className="space-y-5 px-6 py-5">
+									<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
+										<HelpStepImage
+											src={OUTBOUND_HELP_STEPS[helpStep].image}
+											stepNumber={helpStep + 1}
+										/>
+									</div>
+									<div className="rounded-xl border bg-card p-4">
+										<h3
+											className="mb-2 text-sm font-semibold text-foreground"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{OUTBOUND_HELP_STEPS[helpStep].title}
+										</h3>
+										<p
+											className="text-sm text-muted-foreground leading-relaxed"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											{OUTBOUND_HELP_STEPS[helpStep].description}
+										</p>
+									</div>
+									<div className="flex items-center justify-between gap-4 pt-1">
+										<div
+											className="flex gap-1.5"
+											role="tablist"
+											aria-label="Help steps"
+										>
+											{OUTBOUND_HELP_STEPS.map((_, i) => (
+												<button
+													type="button"
+													key={i}
+													role="tab"
+													aria-selected={i === helpStep}
+													aria-label={`Step ${i + 1}: ${OUTBOUND_HELP_STEPS[i].title}`}
+													onClick={() => setHelpStep(i)}
+													className={`h-2 rounded-full transition-all duration-200 ${
+														i === helpStep
+															? "w-6 bg-amber-600"
+															: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
+													}`}
+												/>
+											))}
+										</div>
+										<div className="flex gap-2">
+											{helpStep > 0 ? (
+												<Button
+													variant="outline"
+													size="sm"
+													className="rounded-lg"
+													onClick={() => setHelpStep((s) => s - 1)}
+												>
+													<ChevronLeft className="mr-0.5 h-4 w-4" />
+													Previous
+												</Button>
+											) : null}
+											{helpStep < OUTBOUND_HELP_STEPS.length - 1 ? (
+												<Button
+													size="sm"
+													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+													onClick={() => setHelpStep((s) => s + 1)}
+												>
+													Next
+													<ChevronRight className="ml-0.5 h-4 w-4" />
+												</Button>
+											) : (
+												<Button
+													size="sm"
+													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+													onClick={() => setIsHelpOpen(false)}
+												>
+													Got it
+												</Button>
+											)}
+										</div>
+									</div>
+								</div>
+							</DialogContent>
+						</Dialog>
+						{hasPermission("to:refresh") && (
+							<Button
+								variant="outline"
+								className="rounded-lg"
+								onClick={() => {
+									queryClient.invalidateQueries({
+										queryKey: ["purchase-orders-list"],
+									});
+								}}
+								aria-label="Refresh purchase orders from NetSuite"
+							>
+								<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+								Refresh from NetSuite
+							</Button>
+						)}
+						<CreatePurchaseOrderDialogTrigger
+							open={isCreateOpen}
+							onOpenChange={setIsCreateOpen}
+							form={
+								form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]
 							}
-						: undefined
-				}
-				isAdvanceStepPending={advanceStepMutation.isPending}
-				onEmergencyDelivery={
-					selectedPurchaseOrder
-						? () => emergencyDeliveryMutation.mutate(selectedPurchaseOrder.id)
-						: undefined
-				}
-				isEmergencyDeliveryPending={emergencyDeliveryMutation.isPending}
-			/>
+							createMutation={createMutation}
+							triggerClassName="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+						/>
+					</div>
+				</header>
 
-			<RejectPurchaseOrderDialog
-				open={isRejectDialogOpen}
-				onOpenChange={setIsRejectDialogOpen}
-				rejectReason={rejectReason}
-				onRejectReasonChange={setRejectReason}
-				onReject={() => {
-					if (selectedPurchaseOrder && rejectReason) {
-						statusMutation.mutate({
-							id: selectedPurchaseOrder.id,
-							status: "cancel",
-						});
-						setIsRejectDialogOpen(false);
-						setRejectReason("");
+				<div
+					className="grid gap-4 md:grid-cols-5"
+					role="region"
+					aria-label="Purchase order summary by status"
+				>
+					{isSummaryLoading
+						? purchaseOrderStatuses.map((status) => (
+								<Card key={status}>
+									<CardHeader className="pb-2">
+										<CardTitle
+											className="text-sm font-medium"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											{formatStatus(status)}
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<Skeleton className="h-8 w-12" aria-hidden />
+									</CardContent>
+								</Card>
+							))
+						: purchaseOrderStatuses.map((status, i) => (
+								<Card
+									key={status}
+									className={`dashboard-card border-l-4 transition-colors hover:bg-muted/30 ${i === 0 ? "border-l-[var(--dashboard-accent)]" : STATUS_BORDER_COLOR[status] ?? "border-l-gray-400"}`}
+									style={{
+										animationDelay: `${i * 60}ms`,
+									}}
+								>
+									<CardHeader className="pb-2">
+										<CardTitle
+											className="text-sm font-medium"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											{formatStatus(status)}
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div
+											className="text-2xl font-bold tabular-nums"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{summary?.byStatus[status] ?? 0}
+										</div>
+									</CardContent>
+								</Card>
+							))}
+				</div>
+
+				<OutboundListCard
+					cardClassName="dashboard-card"
+					onViewPurchaseOrder={(purchaseOrder) => {
+						setSelectedPurchaseOrder(purchaseOrder);
+						setIsViewOpen(true);
+					}}
+					onAdvanceStep={(purchaseOrder) => {
+						if (purchaseOrder.deliveryOrder?.id) {
+							advanceStepMutation.mutate(purchaseOrder.deliveryOrder.id);
+						}
+					}}
+					isAdvanceStepPending={advanceStepMutation.isPending}
+					advancingDeliveryOrderId={advanceStepMutation.variables ?? null}
+				/>
+
+				<ViewPurchaseOrderDialog
+					open={isViewOpen}
+					onOpenChange={setIsViewOpen}
+					purchaseOrder={selectedPurchaseOrder}
+					onAdvanceStep={
+						selectedPurchaseOrder?.deliveryOrder?.id
+							? () => {
+									advanceStepMutation.mutate(
+										selectedPurchaseOrder.deliveryOrder!.id,
+									);
+								}
+							: undefined
 					}
-				}}
-				isPending={statusMutation.isPending}
-			/>
-		</main>
+					isAdvanceStepPending={advanceStepMutation.isPending}
+					onEmergencyDelivery={
+						selectedPurchaseOrder
+							? () => emergencyDeliveryMutation.mutate(selectedPurchaseOrder.id)
+							: undefined
+					}
+					isEmergencyDeliveryPending={emergencyDeliveryMutation.isPending}
+				/>
+
+				<RejectPurchaseOrderDialog
+					open={isRejectDialogOpen}
+					onOpenChange={setIsRejectDialogOpen}
+					rejectReason={rejectReason}
+					onRejectReasonChange={setRejectReason}
+					onReject={() => {
+						if (selectedPurchaseOrder && rejectReason) {
+							statusMutation.mutate({
+								id: selectedPurchaseOrder.id,
+								status: "cancel",
+							});
+							setIsRejectDialogOpen(false);
+							setRejectReason("");
+						}
+					}}
+					isPending={statusMutation.isPending}
+				/>
+			</main>
+		</div>
 	);
 }

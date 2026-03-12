@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac";
 import {
 	useQuery,
 	useMutation as useApolloMutation,
@@ -115,6 +116,9 @@ function getGrnErrorMessage(err: unknown): string {
 }
 
 export const Route = createFileRoute("/admin/grn")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["GRN"]);
+	},
 	component: GRNRouteComponent,
 });
 
