@@ -53,7 +53,9 @@ import {
 	ArrowUpDown,
 	HelpCircle,
 	ImageOff,
+	Users,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import type { WMSRole } from "@/lib/auth";
 import { getPrimaryRole } from "@/lib/auth";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -374,154 +376,154 @@ function UserManagementComponent() {
 		return () => window.removeEventListener("keydown", handler);
 	}, [isHelpOpen]);
 
+	const isPageBusy = isLoading || createLoading || updateLoading;
+
 	return (
 		<div className="user-management-page min-h-screen bg-[var(--dashboard-surface)]">
 			<div
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
-			<div className="container relative mx-auto space-y-6 p-6">
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
-						<h1
-							className="text-3xl font-bold tracking-tight"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							User Management
-						</h1>
-						<p
-							className="mt-1 text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Manage users and assign roles
-						</p>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="outline"
-							size="icon"
-							aria-label="Open help"
-							className="rounded-lg"
-							onClick={() => {
-								setIsHelpOpen(true);
-								setHelpStep(0);
-							}}
-						>
-							<HelpCircle className="h-4 w-4" />
-						</Button>
-						<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-							<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
-								<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
-									<div className="flex items-center gap-3">
-										<div
-											className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
-											style={{ fontFamily: "var(--dashboard-display)" }}
-										>
-											{helpStep + 1}
-										</div>
-										<div>
-											<DialogTitle
-												className="text-lg"
+			<main
+				className="container relative mx-auto space-y-6 p-6"
+				aria-labelledby="user-management-page-title"
+				aria-describedby="user-management-page-description"
+				aria-busy={isPageBusy}
+			>
+				<AdminPageHeader
+					icon={Users}
+					title="User Management"
+					description="Manage users, roles, and account access."
+					titleId="user-management-page-title"
+					descriptionId="user-management-page-description"
+					rightSlot={
+						<div className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="icon"
+								aria-label="Open help"
+								className="rounded-lg"
+								onClick={() => {
+									setIsHelpOpen(true);
+									setHelpStep(0);
+								}}
+							>
+								<HelpCircle className="h-4 w-4" />
+							</Button>
+							<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+								<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+									<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+										<div className="flex items-center gap-3">
+											<div
+												className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
 												style={{ fontFamily: "var(--dashboard-display)" }}
 											>
-												User Management help
-											</DialogTitle>
-											<DialogDescription
-												className="mt-0.5"
+												{helpStep + 1}
+											</div>
+											<div>
+												<DialogTitle
+													className="text-lg"
+													style={{ fontFamily: "var(--dashboard-display)" }}
+												>
+													User Management help
+												</DialogTitle>
+												<DialogDescription
+													className="mt-0.5"
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
+												</DialogDescription>
+											</div>
+										</div>
+									</DialogHeader>
+									<div className="space-y-5 px-6 py-5">
+										<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
+											<HelpStepImage
+												src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
+												stepNumber={helpStep + 1}
+											/>
+										</div>
+										<div className="rounded-xl border bg-card p-4">
+											<h3
+												className="mb-2 text-sm font-semibold text-foreground"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
+											</h3>
+											<p
+												className="text-sm text-muted-foreground leading-relaxed"
 												style={{ fontFamily: "var(--dashboard-body)" }}
 											>
-												Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
-											</DialogDescription>
+												{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
+											</p>
+										</div>
+										<div className="flex items-center justify-between gap-4 pt-1">
+											<div
+												className="flex gap-1.5"
+												role="tablist"
+												aria-label="Help steps"
+											>
+												{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
+													<button
+														type="button"
+														key={i}
+														role="tab"
+														aria-selected={i === helpStep}
+														aria-label={`Step ${i + 1}: ${USER_MANAGEMENT_HELP_STEPS[i].title}`}
+														onClick={() => setHelpStep(i)}
+														className={`h-2 rounded-full transition-all duration-200 ${
+															i === helpStep
+																? "w-6 bg-amber-600"
+																: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
+														}`}
+													/>
+												))}
+											</div>
+											<div className="flex gap-2">
+												{helpStep > 0 ? (
+													<Button
+														variant="outline"
+														size="sm"
+														className="rounded-lg"
+														onClick={() => setHelpStep((s) => s - 1)}
+													>
+														<ChevronLeft className="mr-0.5 h-4 w-4" />
+														Previous
+													</Button>
+												) : null}
+												{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
+													<Button
+														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+														onClick={() => setHelpStep((s) => s + 1)}
+													>
+														Next
+														<ChevronRight className="ml-0.5 h-4 w-4" />
+													</Button>
+												) : (
+													<Button
+														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+														onClick={() => setIsHelpOpen(false)}
+													>
+														Got it
+													</Button>
+												)}
+											</div>
 										</div>
 									</div>
-								</DialogHeader>
-								<div className="space-y-5 px-6 py-5">
-									<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
-										<HelpStepImage
-											src={USER_MANAGEMENT_HELP_STEPS[helpStep].image}
-											stepNumber={helpStep + 1}
-										/>
-									</div>
-									<div className="rounded-xl border bg-card p-4">
-										<h3
-											className="mb-2 text-sm font-semibold text-foreground"
-											style={{ fontFamily: "var(--dashboard-display)" }}
-										>
-											{USER_MANAGEMENT_HELP_STEPS[helpStep].title}
-										</h3>
-										<p
-											className="text-sm text-muted-foreground leading-relaxed"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											{USER_MANAGEMENT_HELP_STEPS[helpStep].description}
-										</p>
-									</div>
-									<div className="flex items-center justify-between gap-4 pt-1">
-										<div
-											className="flex gap-1.5"
-											role="tablist"
-											aria-label="Help steps"
-										>
-											{USER_MANAGEMENT_HELP_STEPS.map((_, i) => (
-												<button
-													type="button"
-													key={i}
-													role="tab"
-													aria-selected={i === helpStep}
-													aria-label={`Step ${i + 1}: ${USER_MANAGEMENT_HELP_STEPS[i].title}`}
-													onClick={() => setHelpStep(i)}
-													className={`h-2 rounded-full transition-all duration-200 ${
-														i === helpStep
-															? "w-6 bg-amber-600"
-															: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
-													}`}
-												/>
-											))}
-										</div>
-										<div className="flex gap-2">
-											{helpStep > 0 ? (
-												<Button
-													variant="outline"
-													size="sm"
-													className="rounded-lg"
-													onClick={() => setHelpStep((s) => s - 1)}
-												>
-													<ChevronLeft className="mr-0.5 h-4 w-4" />
-													Previous
-												</Button>
-											) : null}
-											{helpStep < USER_MANAGEMENT_HELP_STEPS.length - 1 ? (
-												<Button
-													size="sm"
-													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-													onClick={() => setHelpStep((s) => s + 1)}
-												>
-													Next
-													<ChevronRight className="ml-0.5 h-4 w-4" />
-												</Button>
-											) : (
-												<Button
-													size="sm"
-													className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-													onClick={() => setIsHelpOpen(false)}
-												>
-													Got it
-												</Button>
-											)}
-										</div>
-									</div>
-								</div>
-							</DialogContent>
-						</Dialog>
-						<Button
-							className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
-							onClick={() => setIsCreateDialogOpen(true)}
-						>
-							<UserPlus className="mr-2 h-4 w-4" />
-							Create User
-						</Button>
-					</div>
-				</header>
+								</DialogContent>
+							</Dialog>
+							<Button
+								className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+								onClick={() => setIsCreateDialogOpen(true)}
+							>
+								<UserPlus className="mr-2 h-4 w-4" />
+								Create User
+							</Button>
+						</div>
+					}
+				/>
 
 				{summary && (
 					<div
@@ -847,7 +849,7 @@ function UserManagementComponent() {
 					onConfirm={handleConfirmUserUpdate}
 					isSubmitting={updateLoading}
 				/>
-			</div>
+			</main>
 		</div>
 	);
 }
