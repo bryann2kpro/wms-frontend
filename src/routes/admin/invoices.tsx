@@ -115,9 +115,14 @@ function InvoicesComponent() {
 	};
 
 	return (
-		<div className="invoices-page container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1">
+		<main
+			className="invoices-page container mx-auto p-6 space-y-6"
+			aria-labelledby="invoices-page-title"
+			aria-describedby="invoices-page-description"
+			aria-busy={loading}
+		>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div className="space-y-2">
 					<div className="flex items-center gap-2.5">
 						<div
 							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
@@ -126,15 +131,30 @@ function InvoicesComponent() {
 							<Receipt className="h-4.5 w-4.5 text-white" />
 						</div>
 						<h1
+							id="invoices-page-title"
 							className="text-2xl font-bold tracking-tight"
 							style={{ fontFamily: "var(--dashboard-display)" }}
 						>
 							Proforma Invoices
 						</h1>
 					</div>
-					<p className="text-sm text-muted-foreground pl-11.5">
-						Manage and export proforma invoices for all outlets.
-					</p>
+					<div className="pl-11.5 space-y-1.5">
+						<p
+							id="invoices-page-description"
+							className="text-sm text-muted-foreground"
+						>
+							Manage and export proforma invoices for all outlets.
+						</p>
+						<div
+							style={{
+								height: "3px",
+								width: "3rem",
+								borderRadius: "9999px",
+								background:
+									"linear-gradient(to right, var(--dashboard-accent), transparent)",
+							}}
+						/>
+					</div>
 				</div>
 			</div>
 
@@ -438,6 +458,6 @@ function InvoicesComponent() {
 					)}
 				</CardContent>
 			</Card>
-		</div>
+		</main>
 	);
 }

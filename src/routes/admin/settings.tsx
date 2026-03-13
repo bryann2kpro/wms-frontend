@@ -145,6 +145,12 @@ function SettingsPage() {
 		},
 	});
 
+	const isAnyMutationPending =
+		updateUserProfile.isPending ||
+		updateCompanySettings.isPending ||
+		updateNotifications.isPending ||
+		updatePassword.isPending;
+
 	const tabs = [
 		{ id: "profile" as const, label: "Profile", icon: User },
 		...(showMasterDataTab
@@ -169,28 +175,54 @@ function SettingsPage() {
 	}, [activeTab, showMasterDataTab, showIntegrationTab]);
 
 	return (
-		<div className="settings-page min-h-screen bg-[var(--dashboard-surface)]">
+		<main
+			className="settings-page min-h-screen bg-[var(--dashboard-surface)]"
+			aria-labelledby="settings-page-title"
+			aria-describedby="settings-page-description"
+			aria-busy={isAnyMutationPending}
+		>
 			<div
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
 			<div className="container relative mx-auto space-y-6 p-6">
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
-						<h1
-							className="text-3xl font-bold tracking-tight"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Admin / Settings
-						</h1>
-						<p
-							className="mt-1 text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Manage users, master data, and integration settings
-						</p>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+					<div className="space-y-2">
+						<div className="flex items-center gap-2.5">
+							<div
+								className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+								style={{ background: "var(--dashboard-accent)" }}
+							>
+								<Users className="h-4.5 w-4.5 text-white" />
+							</div>
+							<h1
+								id="settings-page-title"
+								className="text-2xl font-bold tracking-tight"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Admin Settings
+							</h1>
+						</div>
+						<div className="pl-11.5 space-y-1.5">
+							<p
+								id="settings-page-description"
+								className="text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Manage users, master data, and integration settings.
+							</p>
+							<div
+								style={{
+									height: "3px",
+									width: "3rem",
+									borderRadius: "9999px",
+									background:
+										"linear-gradient(to right, var(--dashboard-accent), transparent)",
+								}}
+							/>
+						</div>
 					</div>
-				</header>
+				</div>
 
 				{successMessage && (
 					<div className="rounded-xl border border-green-500/20 bg-green-500/10 text-green-600 dark:bg-green-950/30 dark:border-green-500/30 px-4 py-3">
@@ -259,7 +291,7 @@ function SettingsPage() {
 			)}
 				</div>
 			</div>
-		</div>
+		</main>
 	);
 }
 
@@ -377,7 +409,11 @@ function UserProfileCard({
 					<Button
 						type="submit"
 						disabled={isSubmitting}
-						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						className="rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
 					>
 						{isSubmitting ? (
 							<>
@@ -523,7 +559,11 @@ function CompanySettingsCard({
 					<Button
 						type="submit"
 						disabled={isSubmitting}
-						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						className="rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
 					>
 						{isSubmitting ? (
 							<>
@@ -663,7 +703,11 @@ function NotificationsCard({
 					<Button
 						type="submit"
 						disabled={isSubmitting}
-						className="w-full rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						className="w-full rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
 					>
 						{isSubmitting ? (
 							<>
@@ -814,7 +858,11 @@ function SecurityCard({
 					<Button
 						type="submit"
 						disabled={isSubmitting}
-						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						className="rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
 					>
 						{isSubmitting ? (
 							<>
@@ -874,7 +922,13 @@ function UsersRolesCard() {
 							Manage system users and assign roles
 						</CardDescription>
 					</div>
-					<Button className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90">
+					<Button
+						className="rounded-lg text-white"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
+					>
 						<Plus className="mr-2 h-4 w-4" />
 						Add User
 					</Button>
@@ -1044,7 +1098,13 @@ function IntegrationStatusCard() {
 							Daily stock sync to NetSuite
 						</p>
 					</div>
-					<Button className="w-full rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+					<Button
+						className="w-full rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
+					>
 						Save Schedule
 					</Button>
 				</CardContent>

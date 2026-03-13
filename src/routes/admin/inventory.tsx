@@ -78,21 +78,57 @@ function InventoryComponent() {
 	};
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-					<p className="text-muted-foreground">
-						View inventory levels and stock sync status
-					</p>
+		<main
+			className="inventory-page container mx-auto p-6 space-y-6"
+			aria-labelledby="inventory-page-title"
+			aria-describedby="inventory-page-description"
+			aria-busy={isLoading}
+		>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div className="space-y-2">
+					<div className="flex items-center gap-2.5">
+						<div
+							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+							style={{ background: "var(--dashboard-accent)" }}
+						>
+							<PackageSearch className="h-4.5 w-4.5 text-white" />
+						</div>
+						<h1
+							id="inventory-page-title"
+							className="text-2xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Inventory
+						</h1>
+					</div>
+					<div className="pl-11.5 space-y-1.5">
+						<p
+							id="inventory-page-description"
+							className="text-sm text-muted-foreground"
+						>
+							View inventory levels and stock sync status.
+						</p>
+						<div
+							style={{
+								height: "3px",
+								width: "3rem",
+								borderRadius: "9999px",
+								background:
+									"linear-gradient(to right, var(--dashboard-accent), transparent)",
+							}}
+						/>
+					</div>
 				</div>
 			</div>
 
 			{/* Stock Sync Status */}
 			{syncStatus && (
-				<Card className="border-blue-200 bg-blue-50/50">
+				<Card className="dashboard-card border-blue-200 bg-blue-50/50">
 					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-base">
+						<CardTitle
+							className="flex items-center gap-2 text-base"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
 							{syncStatus.status === "OK" ? (
 								<CheckCircle2 className="h-5 w-5 text-green-600" />
 							) : (
@@ -146,11 +182,13 @@ function InventoryComponent() {
 				</Card>
 			)}
 
-			<Card>
+			<Card className="dashboard-card">
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Inventory Items</CardTitle>
+							<CardTitle style={{ fontFamily: "var(--dashboard-display)" }}>
+								Inventory Items
+							</CardTitle>
 							<CardDescription>
 								View stock levels by SKU and location
 							</CardDescription>
@@ -309,6 +347,6 @@ function InventoryComponent() {
 					)}
 				</CardContent>
 			</Card>
-		</div>
+		</main>
 	);
 }

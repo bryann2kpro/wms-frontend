@@ -322,8 +322,16 @@ function RbacComponent() {
 
 	const summaryCardDelays = [0, 60, 120, 180];
 
+	const isAnyLoading =
+		isLoadingModules || isLoadingRoles || isLoadingUserRoles;
+
 	return (
-		<div className="rbac-page min-h-screen bg-[var(--rbac-surface)]">
+		<main
+			className="rbac-page min-h-screen bg-[var(--rbac-surface)]"
+			aria-labelledby="rbac-page-title"
+			aria-describedby="rbac-page-description"
+			aria-busy={isAnyLoading}
+		>
 			{/* Subtle gradient band behind header */}
 			<div
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[380px] bg-gradient-to-b from-[var(--rbac-accent-muted)]/40 via-transparent to-transparent"
@@ -331,26 +339,43 @@ function RbacComponent() {
 			/>
 			<div className="container relative mx-auto px-6 py-8 space-y-8">
 				{/* Page Header */}
-				<header className="relative">
-					<div
-						className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-[var(--rbac-accent)]"
-						aria-hidden
-					/>
-					<div className="pl-5">
-						<h1
-							className="text-3xl font-bold tracking-tight text-foreground"
-							style={{ fontFamily: "var(--rbac-display)" }}
-						>
-							Role-Based Access Control
-						</h1>
-						<p
-							className="mt-1 text-[15px] text-muted-foreground"
-							style={{ fontFamily: "var(--rbac-body)" }}
-						>
-							Manage modules, roles, and user access across the system
-						</p>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+					<div className="space-y-2">
+						<div className="flex items-center gap-2.5">
+							<div
+								className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+								style={{ background: "var(--rbac-accent)" }}
+							>
+								<Shield className="h-4.5 w-4.5 text-white" />
+							</div>
+							<h1
+								id="rbac-page-title"
+								className="text-2xl font-bold tracking-tight text-foreground"
+								style={{ fontFamily: "var(--rbac-display)" }}
+							>
+								Role-Based Access Control
+							</h1>
+						</div>
+						<div className="pl-11.5 space-y-1.5">
+							<p
+								id="rbac-page-description"
+								className="text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--rbac-body)" }}
+							>
+								Manage modules, roles, and user access across the system.
+							</p>
+							<div
+								style={{
+									height: "3px",
+									width: "3rem",
+									borderRadius: "9999px",
+									background:
+										"linear-gradient(to right, var(--rbac-accent), transparent)",
+								}}
+							/>
+						</div>
 					</div>
-				</header>
+				</div>
 
 				{/* Summary Cards */}
 				<div className="grid gap-4 md:grid-cols-4">
@@ -592,6 +617,6 @@ function RbacComponent() {
 				currentUserIdentifier={currentUserIdentifier}
 			/>
 			</div>
-		</div>
+		</main>
 	);
 }
