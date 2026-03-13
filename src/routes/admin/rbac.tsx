@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMutation as useApolloMutation } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Shield, Package, Users, Key } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { useAuth } from "@/lib/auth-context";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
@@ -339,43 +340,14 @@ function RbacComponent() {
 			/>
 			<div className="container relative mx-auto px-6 py-8 space-y-8">
 				{/* Page Header */}
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					<div className="space-y-2">
-						<div className="flex items-center gap-2.5">
-							<div
-								className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-								style={{ background: "var(--rbac-accent)" }}
-							>
-								<Shield className="h-4.5 w-4.5 text-white" />
-							</div>
-							<h1
-								id="rbac-page-title"
-								className="text-2xl font-bold tracking-tight text-foreground"
-								style={{ fontFamily: "var(--rbac-display)" }}
-							>
-								Role-Based Access Control
-							</h1>
-						</div>
-						<div className="pl-11.5 space-y-1.5">
-							<p
-								id="rbac-page-description"
-								className="text-sm text-muted-foreground"
-								style={{ fontFamily: "var(--rbac-body)" }}
-							>
-								Manage modules, roles, and user access across the system.
-							</p>
-							<div
-								style={{
-									height: "3px",
-									width: "3rem",
-									borderRadius: "9999px",
-									background:
-										"linear-gradient(to right, var(--rbac-accent), transparent)",
-								}}
-							/>
-						</div>
-					</div>
-				</div>
+				<AdminPageHeader
+					icon={Shield}
+					title="Role-Based Access Control"
+					description="Manage modules, roles, and user access across the system."
+					titleId="rbac-page-title"
+					descriptionId="rbac-page-description"
+					accentCssVar="--rbac-accent"
+				/>
 
 				{/* Summary Cards */}
 				<div className="grid gap-4 md:grid-cols-4">

@@ -29,6 +29,7 @@ import {
 	AlertCircle,
 	CheckCircle2,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { getInventory, type InventoryItem } from "@/data/inventory.mock-data";
 
 export const Route = createFileRoute("/admin/inventory")({
@@ -84,42 +85,13 @@ function InventoryComponent() {
 			aria-describedby="inventory-page-description"
 			aria-busy={isLoading}
 		>
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div className="space-y-2">
-					<div className="flex items-center gap-2.5">
-						<div
-							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-							style={{ background: "var(--dashboard-accent)" }}
-						>
-							<PackageSearch className="h-4.5 w-4.5 text-white" />
-						</div>
-						<h1
-							id="inventory-page-title"
-							className="text-2xl font-bold tracking-tight"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Inventory
-						</h1>
-					</div>
-					<div className="pl-11.5 space-y-1.5">
-						<p
-							id="inventory-page-description"
-							className="text-sm text-muted-foreground"
-						>
-							View inventory levels and stock sync status.
-						</p>
-						<div
-							style={{
-								height: "3px",
-								width: "3rem",
-								borderRadius: "9999px",
-								background:
-									"linear-gradient(to right, var(--dashboard-accent), transparent)",
-							}}
-						/>
-					</div>
-				</div>
-			</div>
+			<AdminPageHeader
+				icon={PackageSearch}
+				title="Inventory"
+				description="View inventory levels and stock sync status."
+				titleId="inventory-page-title"
+				descriptionId="inventory-page-description"
+			/>
 
 			{/* Stock Sync Status */}
 			{syncStatus && (

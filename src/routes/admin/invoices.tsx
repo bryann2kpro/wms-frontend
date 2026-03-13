@@ -37,6 +37,7 @@ import {
 	gqlStatusToUI,
 	uiStatusToGql,
 } from "@/lib/graphql/invoices";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { formatCurrency, formatDateOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/invoices")({
@@ -121,42 +122,13 @@ function InvoicesComponent() {
 			aria-describedby="invoices-page-description"
 			aria-busy={loading}
 		>
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div className="space-y-2">
-					<div className="flex items-center gap-2.5">
-						<div
-							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-							style={{ background: "var(--dashboard-accent)" }}
-						>
-							<Receipt className="h-4.5 w-4.5 text-white" />
-						</div>
-						<h1
-							id="invoices-page-title"
-							className="text-2xl font-bold tracking-tight"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Proforma Invoices
-						</h1>
-					</div>
-					<div className="pl-11.5 space-y-1.5">
-						<p
-							id="invoices-page-description"
-							className="text-sm text-muted-foreground"
-						>
-							Manage and export proforma invoices for all outlets.
-						</p>
-						<div
-							style={{
-								height: "3px",
-								width: "3rem",
-								borderRadius: "9999px",
-								background:
-									"linear-gradient(to right, var(--dashboard-accent), transparent)",
-							}}
-						/>
-					</div>
-				</div>
-			</div>
+			<AdminPageHeader
+				icon={Receipt}
+				title="Proforma Invoices"
+				description="Manage and export proforma invoices for all outlets."
+				titleId="invoices-page-title"
+				descriptionId="invoices-page-description"
+			/>
 
 			{summary && (
 				<div className="grid gap-4 md:grid-cols-4">
