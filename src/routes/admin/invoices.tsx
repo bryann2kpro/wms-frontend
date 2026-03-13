@@ -23,13 +23,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -61,7 +54,6 @@ import {
 	Building2,
 	Receipt,
 	Clock,
-	Info,
 	Send,
 	DollarSign,
 	Trash2,
@@ -1091,10 +1083,11 @@ function InvoicesComponent() {
 													{invoice.status}
 												</Badge>
 											</TableCell>
-											<TableCell className="text-right">
+											<TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
 												<Button
 													variant="ghost"
 													size="icon"
+													className="h-7 w-7 opacity-60 hover:opacity-100"
 													onClick={() =>
 														navigate({
 															to: "/admin/invoice-detail",
@@ -1102,7 +1095,7 @@ function InvoicesComponent() {
 														})
 													}
 												>
-													<Eye className="h-4 w-4" />
+													<Eye className="h-3.5 w-3.5" />
 												</Button>
 											</TableCell>
 										</TableRow>
@@ -1113,39 +1106,43 @@ function InvoicesComponent() {
 					</div>
 
 					{data && (
-						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-							<div>
+						<div className="mt-4 flex items-center justify-between">
+							<p className="text-xs text-muted-foreground">
 								Showing{" "}
-								<span className="font-medium">
+								<span className="font-medium text-foreground">
 									{(data.page - 1) * data.pageSize + 1}
 								</span>{" "}
-								-{" "}
-								<span className="font-medium">
+								–{" "}
+								<span className="font-medium text-foreground">
 									{Math.min(data.page * data.pageSize, data.total)}
 								</span>{" "}
-								of <span className="font-medium">{data.total}</span> invoices
-							</div>
-							<div className="flex items-center gap-2">
+								of{" "}
+								<span className="font-medium text-foreground">{data.total}</span>{" "}
+								invoices
+							</p>
+							<div className="flex items-center gap-1.5">
 								<Button
 									variant="outline"
 									size="icon"
+									className="h-7 w-7"
 									disabled={page === 1}
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
 								>
-									<ChevronLeft className="h-4 w-4" />
+									<ChevronLeft className="h-3.5 w-3.5" />
 								</Button>
-								<span>
-									Page {page} of {totalPages}
+								<span className="text-xs text-muted-foreground px-1">
+									{page} / {totalPages}
 								</span>
 								<Button
 									variant="outline"
 									size="icon"
+									className="h-7 w-7"
 									disabled={page === totalPages}
 									onClick={() =>
 										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
 									}
 								>
-									<ChevronRight className="h-4 w-4" />
+									<ChevronRight className="h-3.5 w-3.5" />
 								</Button>
 							</div>
 						</div>
