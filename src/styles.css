@@ -418,6 +418,71 @@ code {
 	background: oklch(0.22 0.015 70 / 0.35);
 }
 
+/* Invoice detail page: editorial/document aesthetic */
+.invoice-detail-page {
+	--invoice-detail-display: "Plus Jakarta Sans", sans-serif;
+	--invoice-detail-body: "Figtree", sans-serif;
+	--invoice-detail-accent: oklch(0.706 0.158 70.697);
+	--invoice-detail-accent-muted: oklch(0.92 0.04 70);
+	--invoice-detail-surface: oklch(0.988 0.002 286);
+	--invoice-detail-doc-border: oklch(0.88 0.01 70);
+}
+.dark .invoice-detail-page {
+	--invoice-detail-accent: oklch(0.75 0.15 70);
+	--invoice-detail-accent-muted: oklch(0.28 0.04 70);
+	--invoice-detail-surface: oklch(0.18 0.008 286);
+	--invoice-detail-doc-border: oklch(0.28 0.02 70);
+}
+
+@keyframes invoice-detail-fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.invoice-detail-page .invoice-detail-meta-card {
+	animation: invoice-detail-fade-up 0.45s ease-out both;
+}
+.invoice-detail-page .invoice-detail-meta-card:nth-child(1) { animation-delay: 0.05s; }
+.invoice-detail-page .invoice-detail-meta-card:nth-child(2) { animation-delay: 0.1s; }
+.invoice-detail-page .invoice-detail-meta-card:nth-child(3) { animation-delay: 0.15s; }
+.invoice-detail-page .invoice-detail-meta-card:nth-child(4) { animation-delay: 0.2s; }
+
+.invoice-detail-page .invoice-detail-items-card {
+	animation: invoice-detail-fade-up 0.5s ease-out 0.25s both;
+}
+.invoice-detail-page .invoice-detail-items-card {
+	transition: box-shadow 0.2s ease;
+}
+.invoice-detail-page .invoice-detail-items-card:hover {
+	box-shadow: 0 12px 28px -8px oklch(0.2 0.02 70 / 0.08), 0 4px 12px -4px oklch(0.2 0.02 70 / 0.06);
+}
+.dark .invoice-detail-page .invoice-detail-items-card:hover {
+	box-shadow: 0 12px 28px -8px oklch(0 0 0 / 0.25), 0 4px 12px -4px oklch(0 0 0 / 0.15);
+}
+
+.invoice-detail-page .invoice-detail-row {
+	transition: background 0.15s ease;
+}
+.invoice-detail-page .invoice-detail-row:hover {
+	background: oklch(0.97 0.01 70 / 0.45);
+}
+.dark .invoice-detail-page .invoice-detail-row:hover {
+	background: oklch(0.22 0.02 70 / 0.4);
+}
+
+.invoice-detail-page .invoice-detail-doc-strip {
+	border-left: 3px solid var(--invoice-detail-accent);
+}
+.dark .invoice-detail-page .invoice-detail-doc-strip {
+	border-left-color: var(--invoice-detail-accent);
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;
