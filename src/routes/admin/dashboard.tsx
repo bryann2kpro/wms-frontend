@@ -25,7 +25,9 @@ import {
 	AlertCircle,
 	Clock,
 	FileText,
+	Gauge,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import type { DashboardData } from "@/data/dashboard.mock-data";
 import {
@@ -68,6 +70,8 @@ function DashboardComponent() {
 		deliveries,
 		pendingProofCount,
 	} = data;
+
+	const displayName = user?.displayName ?? "there";
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
@@ -112,28 +116,19 @@ function DashboardComponent() {
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
-			<div className="container relative mx-auto px-6 py-8 space-y-8">
-				{/* Header */}
-				<header className="relative">
-					<div
-						className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-[var(--dashboard-accent)]"
-						aria-hidden
-					/>
-					<div className="pl-5">
-						<h1
-							className="text-4xl font-bold tracking-tight text-foreground"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Dashboard
-						</h1>
-						<p
-							className="mt-1 text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Welcome back, {user?.displayName}
-						</p>
-					</div>
-				</header>
+			<main
+				className="container relative mx-auto px-6 py-8 space-y-8"
+				aria-labelledby="dashboard-page-title"
+				aria-describedby="dashboard-page-description"
+				aria-busy={loading}
+			>
+				<AdminPageHeader
+					icon={Gauge}
+					title="Dashboard"
+					description={`Welcome back, ${displayName}. Overview of today's operations and sync health.`}
+					titleId="dashboard-page-title"
+					descriptionId="dashboard-page-description"
+				/>
 
 				{/* KPI Cards */}
 				<div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -577,7 +572,7 @@ function DashboardComponent() {
 						</CardContent>
 					</Card>
 				</div>
-			</div>
+			</main>
 		</div>
 	);
 }
