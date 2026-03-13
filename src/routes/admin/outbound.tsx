@@ -44,6 +44,7 @@ import {
 	OutboundListCard,
 	useOutboundSummary,
 } from "@/components/outbound";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
 const STATUS_BORDER_COLOR: Record<string, string> = {
 	preparing: "border-l-yellow-500",
@@ -278,30 +279,17 @@ function OutboundRouteComponent() {
 			/>
 			<main
 				className="container relative mx-auto space-y-6 p-6"
-				aria-labelledby="page-title"
-				aria-describedby="page-description"
+				aria-labelledby="outbound-page-title"
+				aria-describedby="outbound-page-description"
 			>
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
-						<h1
-							id="page-title"
-							className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-							tabIndex={-1}
-						>
-							Outbound Delivery Orders
-						</h1>
-						<p
-							id="page-description"
-							className="mt-1 text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Manage outbound purchase orders. Create new orders or refresh from
-							NetSuite. A Delivery Order is automatically generated when an
-							order is created.
-						</p>
-					</div>
-					<div className="flex items-center gap-2">
+				<AdminPageHeader
+					icon={RefreshCw}
+					title="Outbound Delivery Orders"
+					description="Manage outbound purchase orders. Create new orders or refresh from NetSuite. A Delivery Order is automatically generated when an order is created."
+					titleId="outbound-page-title"
+					descriptionId="outbound-page-description"
+					rightSlot={
+						<div className="flex items-center gap-2">
 						<Button
 							variant="outline"
 							size="icon"
@@ -418,32 +406,33 @@ function OutboundRouteComponent() {
 								</div>
 							</DialogContent>
 						</Dialog>
-						{hasPermission("to:refresh") && (
-							<Button
-								variant="outline"
-								className="rounded-lg"
-								onClick={() => {
-									queryClient.invalidateQueries({
-										queryKey: ["purchase-orders-list"],
-									});
-								}}
-								aria-label="Refresh purchase orders from NetSuite"
-							>
-								<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-								Refresh from NetSuite
-							</Button>
-						)}
-						<CreatePurchaseOrderDialogTrigger
-							open={isCreateOpen}
-							onOpenChange={setIsCreateOpen}
-							form={
-								form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]
-							}
-							createMutation={createMutation}
-							triggerClassName="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
-						/>
-					</div>
-				</header>
+							{hasPermission("to:refresh") && (
+								<Button
+									variant="outline"
+									className="rounded-lg"
+									onClick={() => {
+										queryClient.invalidateQueries({
+											queryKey: ["purchase-orders-list"],
+										});
+									}}
+									aria-label="Refresh purchase orders from NetSuite"
+								>
+									<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+									Refresh from NetSuite
+								</Button>
+							)}
+							<CreatePurchaseOrderDialogTrigger
+								open={isCreateOpen}
+								onOpenChange={setIsCreateOpen}
+								form={
+									form as ComponentProps<typeof CreatePurchaseOrderDialog>["form"]
+								}
+								createMutation={createMutation}
+								triggerClassName="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+							/>
+						</div>
+					}
+				/>
 
 				<div
 					className="grid gap-4 md:grid-cols-5"
