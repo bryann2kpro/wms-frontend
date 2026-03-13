@@ -431,6 +431,8 @@ export function OutboundListCard({
 																{onAdvanceStep &&
 																	purchaseOrder.deliveryOrder.status !==
 																		"DELIVERED" &&
+																	purchaseOrder.deliveryOrder.status !==
+																		"SHIPPED" &&
 																(isTesting || dateKey === todayKey) && (
 																		<Button
 																			variant="outline"

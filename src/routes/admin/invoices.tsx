@@ -194,14 +194,25 @@ function InvoicesComponent() {
 	};
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
+		<div className="invoices-page container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Proforma Invoices
-					</h1>
-					<p className="text-muted-foreground">
-						Manage proforma invoices and export proforma invoices.
+				<div className="space-y-1">
+					<div className="flex items-center gap-2.5">
+						<div
+							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+							style={{ background: "var(--dashboard-accent)" }}
+						>
+							<Receipt className="h-4.5 w-4.5 text-white" />
+						</div>
+						<h1
+							className="text-2xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Proforma Invoices
+						</h1>
+					</div>
+					<p className="text-sm text-muted-foreground pl-11.5">
+						Manage and export proforma invoices for all outlets.
 					</p>
 				</div>
 				<Dialog
@@ -866,144 +877,210 @@ function InvoicesComponent() {
 
 			{summary && (
 				<div className="grid gap-4 md:grid-cols-4">
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Issued</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byStatus.Issued ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Sent</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byStatus.Sent ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{summary.byStatus.Cancelled ?? 0}
-							</div>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">
-								Total Amount
+					{/* Issued */}
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-blue-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Issued
 							</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								{summary.byStatus.Issued ?? 0}
+							</div>
+							<p className="mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+								Pending delivery
+							</p>
+						</CardContent>
+					</Card>
+
+					{/* Sent */}
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-emerald-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Sent
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								{summary.byStatus.Sent ?? 0}
+							</div>
+							<p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+								Delivered to outlet
+							</p>
+						</CardContent>
+					</Card>
+
+					{/* Cancelled */}
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-red-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Cancelled
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								{summary.byStatus.Cancelled ?? 0}
+							</div>
+							<p className="mt-0.5 text-xs text-red-500 dark:text-red-400">
+								Voided invoices
+							</p>
+						</CardContent>
+					</Card>
+
+					{/* Total Value */}
+					<Card className="dashboard-card relative overflow-hidden border-[color-mix(in_oklch,var(--dashboard-accent)_30%,transparent)]">
+						<div
+							className="absolute inset-y-0 left-0 w-1 rounded-l-lg"
+							style={{ background: "var(--dashboard-accent)" }}
+						/>
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Total Value
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{
+									fontFamily: "var(--dashboard-display)",
+									color: "var(--dashboard-accent)",
+								}}
+							>
 								{formatCurrency(summary.totalAmount)}
 							</div>
+							<p className="mt-0.5 text-xs text-muted-foreground">
+								All active invoices
+							</p>
 						</CardContent>
 					</Card>
 				</div>
 			)}
 
-			<Card>
-				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle>Proforma Invoices List</CardTitle>
-							<CardDescription>
-								View and manage all proforma invoices
-							</CardDescription>
-						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<Card className="dashboard-card">
+				<CardHeader className="pb-4">
+					<div className="flex flex-col gap-4">
+						{/* Top row: title + search */}
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle
+									className="text-base font-semibold"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Proforma Invoices
+								</CardTitle>
+								<CardDescription className="text-xs mt-0.5">
+									{data
+										? `${data.total} invoice${data.total !== 1 ? "s" : ""} total`
+										: "View and manage all proforma invoices"}
+								</CardDescription>
+							</div>
 							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search invoices..."
+									placeholder="Search by invoice, DO, outlet…"
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
 										setPage(1);
 									}}
-									className="pl-9 sm:w-64"
+									className="pl-8 h-8 text-sm sm:w-72"
 								/>
 							</div>
-							<Select
-								value={statusFilter}
-								onValueChange={(value) => {
-									setStatusFilter(value as InvoiceStatusFilter);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-48">
-									<SelectValue placeholder="Filter by status" />
-								</SelectTrigger>
-								<SelectContent>
-									{invoiceStatuses.map((status) => (
-										<SelectItem key={status} value={status}>
-											{status === "ALL" ? "All Status" : status}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+						</div>
+						{/* Status pill tabs */}
+						<div className="flex items-center gap-1.5 flex-wrap">
+							{invoiceStatuses.map((status) => (
+								<button
+									key={status}
+									type="button"
+									className={`invoice-status-tab${statusFilter === status ? " active" : ""}`}
+									onClick={() => {
+										setStatusFilter(status);
+										setPage(1);
+									}}
+								>
+									{status === "ALL" ? "All" : status}
+								</button>
+							))}
 						</div>
 					</div>
 				</CardHeader>
-				<CardContent className="relative">
+				<CardContent className="relative pt-0">
 					<GlobalLoadingShadow />
 					<div className="overflow-x-auto rounded-lg border">
 						<Table>
 							<TableHeader>
-								<TableRow>
-									<TableHead>Invoice Number</TableHead>
-									<TableHead>DO Number</TableHead>
-									<TableHead>PO Number</TableHead>
-									<TableHead>Region</TableHead>
-									<TableHead>Outlet</TableHead>
-									<TableHead>Amount</TableHead>
-									<TableHead>Issued Date</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+								<TableRow className="bg-muted/40">
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice #</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">DO #</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">PO #</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Region</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Outlet</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Issued</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+									<TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
-											className="h-24 text-center text-muted-foreground"
+											colSpan={9}
+											className="h-24 text-center text-muted-foreground text-sm"
 										>
-											Loading invoices...
+											Loading invoices…
 										</TableCell>
 									</TableRow>
 								) : invoices.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
-											className="h-24 text-center text-muted-foreground"
+											colSpan={9}
+											className="h-32 text-center"
 										>
-											No invoices found.
+											<div className="flex flex-col items-center gap-2 text-muted-foreground">
+												<FileText className="h-8 w-8 opacity-30" />
+												<p className="text-sm font-medium">No invoices found</p>
+												<p className="text-xs">Try adjusting your search or filter</p>
+											</div>
 										</TableCell>
 									</TableRow>
 								) : (
 									invoices.map((invoice) => (
-										<TableRow key={invoice.id}>
-											<TableCell className="font-medium">
+										<TableRow
+											key={invoice.id}
+											className="invoice-row"
+											onClick={() =>
+												navigate({
+													to: "/admin/invoice-detail",
+													search: { id: invoice.id },
+												})
+											}
+										>
+											<TableCell className="font-semibold text-sm" style={{ fontFamily: "var(--dashboard-display)" }}>
 												{invoice.invoiceNumber}
 											</TableCell>
-											<TableCell>{invoice.doNumber}</TableCell>
-											<TableCell>{invoice.toNumber}</TableCell>
-											<TableCell>{invoice.region}</TableCell>
-											<TableCell>{invoice.outlet}</TableCell>
-											<TableCell>
+											<TableCell className="text-sm text-muted-foreground">{invoice.doNumber}</TableCell>
+											<TableCell className="text-sm text-muted-foreground">{invoice.toNumber}</TableCell>
+											<TableCell className="text-sm">{invoice.region}</TableCell>
+											<TableCell className="text-sm font-medium">{invoice.outlet}</TableCell>
+											<TableCell className="text-sm font-semibold" style={{ fontFamily: "var(--dashboard-display)" }}>
 												{formatCurrency(invoice.totalAmount)}
 											</TableCell>
-											<TableCell>
+											<TableCell className="text-sm text-muted-foreground">
 												{invoice.issuedDate.toLocaleDateString()}
 											</TableCell>
 											<TableCell>

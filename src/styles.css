@@ -354,6 +354,70 @@ code {
 	border-bottom-color: oklch(0.75 0.15 70);
 }
 
+/* Invoices page: same tokens as dashboard/grn/outbound */
+.invoices-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .invoices-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.invoices-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.invoices-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.invoices-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Invoices status pill tabs */
+.invoices-page .invoice-status-tab {
+	position: relative;
+	padding: 0.375rem 0.875rem;
+	border-radius: 9999px;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	font-family: var(--dashboard-body);
+	border: 1px solid transparent;
+	transition: all 0.15s ease;
+	cursor: pointer;
+	background: transparent;
+	color: var(--muted-foreground);
+}
+.invoices-page .invoice-status-tab:hover {
+	background: var(--muted);
+	color: var(--foreground);
+}
+.invoices-page .invoice-status-tab.active {
+	background: var(--dashboard-accent);
+	color: oklch(0.985 0 0);
+	border-color: var(--dashboard-accent);
+}
+.dark .invoices-page .invoice-status-tab.active {
+	background: var(--dashboard-accent);
+	color: oklch(0.1 0 0);
+}
+
+/* Invoice table row hover */
+.invoices-page .invoice-row {
+	transition: background 0.12s ease;
+	cursor: pointer;
+}
+.invoices-page .invoice-row:hover {
+	background: oklch(0.97 0.01 70 / 0.5);
+}
+.dark .invoices-page .invoice-row:hover {
+	background: oklch(0.22 0.015 70 / 0.35);
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;

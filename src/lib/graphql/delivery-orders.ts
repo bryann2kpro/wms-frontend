@@ -95,6 +95,27 @@ export const ADVANCE_DELIVERY_ORDER_STATUS_MUTATION = gql`
 	${DELIVERY_ORDER_FRAGMENT}
 `;
 
+export const SUBMIT_DELIVERY_PROOF_MUTATION = gql`
+	mutation SubmitDeliveryProof(
+		$doId: ID!
+		$fileUrl: String!
+		$fileName: String!
+		$fileSizeBytes: Int!
+		$mimeType: String!
+	) {
+		submitDeliveryProof(
+			doId: $doId
+			fileUrl: $fileUrl
+			fileName: $fileName
+			fileSizeBytes: $fileSizeBytes
+			mimeType: $mimeType
+		) {
+			...DeliveryOrderFields
+		}
+	}
+	${DELIVERY_ORDER_FRAGMENT}
+`;
+
 // ---------------------------------------------------------------------------
 // Delivery Order Items (Work Queue)
 // ---------------------------------------------------------------------------
@@ -219,17 +240,33 @@ export type MarkDeliveryOrderItemPickedMutationData = {
 	markDeliveryOrderItemPicked: DeliveryOrderItemWithDetails;
 };
 
+export type SubmitDeliveryProofMutationVariables = {
+	doId: string;
+	fileUrl: string;
+	fileName: string;
+	fileSizeBytes: number;
+	mimeType: string;
+};
+
+export type SubmitDeliveryProofMutationData = {
+	submitDeliveryProof: DeliveryOrder;
+};
+
 // ---------------------------------------------------------------------------
 // Mapping helpers – GraphQL DeliveryOrder -> PurchaseOrderDetail UI shape
 // ---------------------------------------------------------------------------
 
 const GQL_DO_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 	CREATED: "preparing",
+	NEW: "preparing",
+	PACKING: "preparing",
 	PICKING: "preparing",
 	PACKED: "preparing",
 	READY_FOR_COLLECTION: "to-ship",
 	COLLECTED: "in-transit",
+	SHIPPED: "in-transit",
 	DELIVERED_PENDING_PROOF: "in-transit",
+	DELIVERED: "other",
 	DELIVERED_CONFIRMED: "other",
 	CANCELLED: "cancel",
 };
