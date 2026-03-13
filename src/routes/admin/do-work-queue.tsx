@@ -28,6 +28,7 @@ import {
 } from "@/lib/graphql/delivery-orders";
 import type { DeliveryOrderItemWithDetails } from "@/lib/graphql/types";
 import { toast } from "sonner";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
 const PAGE_TITLE = "Supplier DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -139,7 +140,8 @@ function DOWorkQueueComponent() {
 		<main
 			id="main-content"
 			className="container mx-auto p-6 space-y-6"
-			aria-label={PAGE_TITLE}
+			aria-labelledby="do-work-queue-page-title"
+			aria-describedby="do-work-queue-page-description"
 		>
 			<div
 				aria-live="polite"
@@ -154,33 +156,28 @@ function DOWorkQueueComponent() {
 						: `Showing ${items.length} items.`}
 			</div>
 
-			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1
-						id="page-title"
-						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
-						tabIndex={-1}
-					>
-						{PAGE_TITLE}
-					</h1>
-					<p id="page-description" className="text-muted-foreground mt-1">
-						{PAGE_DESCRIPTION}
-					</p>
-				</div>
-				<div className="relative">
-					<Search
-						className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
-						aria-hidden
-					/>
-					<Input
-						aria-label="Search items by SKU, description, or DO number"
-						placeholder="Search items..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					/>
-				</div>
-			</header>
+			<AdminPageHeader
+				icon={Search}
+				title={PAGE_TITLE}
+				description={PAGE_DESCRIPTION}
+				titleId="do-work-queue-page-title"
+				descriptionId="do-work-queue-page-description"
+				rightSlot={
+					<div className="relative">
+						<Search
+							className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
+							aria-hidden
+						/>
+						<Input
+							aria-label="Search items by SKU, description, or DO number"
+							placeholder="Search items..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						/>
+					</div>
+				}
+			/>
 
 			{loading && (
 				<div
