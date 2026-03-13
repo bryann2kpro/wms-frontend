@@ -153,39 +153,70 @@ function RouteComponent() {
 
 	if (error) {
 		return (
-			<div className="audit-log-page min-h-screen bg-[var(--dashboard-surface)]">
+			<main
+				className="audit-log-page min-h-screen bg-[var(--dashboard-surface)]"
+				aria-busy={false}
+				aria-labelledby="audit-log-page-title"
+				aria-describedby="audit-log-page-description"
+			>
 				<div className="container mx-auto p-6">
 					<div className="rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:bg-red-950/30 dark:border-red-500/30 px-4 py-3">
 						Error loading audit logs: {error.message}
 					</div>
 				</div>
-			</div>
+			</main>
 		);
 	}
 
 	return (
-		<div className="audit-log-page min-h-screen bg-[var(--dashboard-surface)]">
+		<main
+			className="audit-log-page min-h-screen bg-[var(--dashboard-surface)]"
+			aria-labelledby="audit-log-page-title"
+			aria-describedby="audit-log-page-description"
+			aria-busy={loading}
+		>
 			<div
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
 			<div className="container relative mx-auto space-y-6 p-6">
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="border-l-4 border-[var(--dashboard-accent)] pl-4">
-						<h1
-							className="text-3xl font-bold tracking-tight"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Audit Log
-						</h1>
-						<p
-							className="mt-1 text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Track all system changes and user activity
-						</p>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+					<div className="space-y-2">
+						<div className="flex items-center gap-2.5">
+							<div
+								className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+								style={{ background: "var(--dashboard-accent)" }}
+							>
+								<Clock className="h-4.5 w-4.5 text-white" />
+							</div>
+							<h1
+								id="audit-log-page-title"
+								className="text-2xl font-bold tracking-tight"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Audit Log
+							</h1>
+						</div>
+						<div className="pl-11.5 space-y-1.5">
+							<p
+								id="audit-log-page-description"
+								className="text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Track all system changes and user activity.
+							</p>
+							<div
+								style={{
+									height: "3px",
+									width: "3rem",
+									borderRadius: "9999px",
+									background:
+										"linear-gradient(to right, var(--dashboard-accent), transparent)",
+								}}
+							/>
+						</div>
 					</div>
-				</header>
+				</div>
 
 				<Card className="dashboard-card">
 					<CardHeader>
@@ -668,6 +699,6 @@ function RouteComponent() {
 					</DialogContent>
 				</Dialog>
 			</div>
-		</div>
+		</main>
 	);
 }
