@@ -15,7 +15,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Loader2, Truck } from "lucide-react";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 import {
@@ -137,12 +137,17 @@ function DOWorkQueueComponent() {
 	const tableColSpan = 11;
 
 	return (
-		<main
-			id="main-content"
-			className="container mx-auto p-6 space-y-6"
-			aria-labelledby="do-work-queue-page-title"
-			aria-describedby="do-work-queue-page-description"
-		>
+		<div className="do-work-queue-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<main
+				id="main-content"
+				className="container relative mx-auto p-6 space-y-6"
+				aria-labelledby="do-work-queue-page-title"
+				aria-describedby="do-work-queue-page-description"
+			>
 			<div
 				aria-live="polite"
 				aria-atomic="true"
@@ -157,7 +162,7 @@ function DOWorkQueueComponent() {
 			</div>
 
 			<AdminPageHeader
-				icon={Search}
+				icon={Truck}
 				title={PAGE_TITLE}
 				description={PAGE_DESCRIPTION}
 				titleId="do-work-queue-page-title"
@@ -336,6 +341,7 @@ function DOWorkQueueComponent() {
 					</nav>
 				)}
 			</section>
-		</main>
+			</main>
+		</div>
 	);
 }
