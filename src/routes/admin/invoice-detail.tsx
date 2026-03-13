@@ -88,23 +88,37 @@ function InvoiceDetailComponent() {
 
 	if (loading && !invoice) {
 		return (
-			<div className="invoice-detail-page min-h-[60vh] flex items-center justify-center">
+			<main
+				className="invoice-detail-page min-h-[60vh] flex items-center justify-center"
+				aria-busy={true}
+				aria-labelledby="invoice-detail-page-title"
+				aria-describedby="invoice-detail-page-description"
+			>
 				<div className="flex flex-col items-center gap-3 text-muted-foreground">
 					<div
 						className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent"
 						aria-hidden
 					/>
-					<p className="text-sm" style={{ fontFamily: "var(--invoice-detail-body)" }}>
+					<p
+						id="invoice-detail-page-description"
+						className="text-sm"
+						style={{ fontFamily: "var(--invoice-detail-body)" }}
+					>
 						Loading invoice…
 					</p>
 				</div>
-			</div>
+			</main>
 		);
 	}
 
 	if (!invoice) {
 		return (
-			<div className="invoice-detail-page container mx-auto max-w-4xl px-6 py-12">
+			<main
+				className="invoice-detail-page container mx-auto max-w-4xl px-6 py-12"
+				aria-labelledby="invoice-detail-page-title"
+				aria-describedby="invoice-detail-page-description"
+				aria-busy={false}
+			>
 				<div
 					className="invoice-detail-doc-strip rounded-lg border bg-card px-6 py-10 text-center"
 					style={{ fontFamily: "var(--invoice-detail-body)" }}
@@ -123,7 +137,7 @@ function InvoiceDetailComponent() {
 						Back to invoices
 					</Button>
 				</div>
-			</div>
+			</main>
 		);
 	}
 
@@ -137,81 +151,109 @@ function InvoiceDetailComponent() {
 	};
 
 	return (
-		<div className="invoice-detail-page min-h-screen bg-background">
+		<main
+			className="invoice-detail-page min-h-screen bg-background"
+			aria-labelledby="invoice-detail-page-title"
+			aria-describedby="invoice-detail-page-description"
+			aria-busy={loading || updating}
+		>
 			<div className="container mx-auto max-w-5xl px-6 py-8">
 				{/* Document header */}
-				<header className="mb-8">
-					<div className="flex flex-wrap items-start justify-between gap-4">
-						<div className="flex min-w-0 items-start gap-4">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="shrink-0 rounded-lg"
-								onClick={() => navigate({ to: "/admin/invoices" })}
-								aria-label="Back to invoices"
-							>
-								<ChevronLeft className="h-5 w-5" />
-							</Button>
-							<div className="min-w-0">
+				<header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+					<div className="flex min-w-0 items-start gap-4">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="shrink-0 rounded-lg"
+							onClick={() => navigate({ to: "/admin/invoices" })}
+							aria-label="Back to invoices"
+						>
+							<ChevronLeft className="h-5 w-5" />
+						</Button>
+						<div className="min-w-0 space-y-2">
+							<div className="flex items-center gap-2.5">
+								<div
+									className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+									style={{ background: "var(--invoice-detail-accent)" }}
+								>
+									<FileText className="h-4.5 w-4.5 text-white" />
+								</div>
 								<h1
-									className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+									id="invoice-detail-page-title"
+									className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
 									style={{ fontFamily: "var(--invoice-detail-display)" }}
 								>
-									{invoice.invoiceNumber}
+									Invoice {invoice.invoiceNumber}
 								</h1>
+							</div>
+							<div className="pl-11.5 space-y-1.5">
 								<p
-									className="mt-1 text-sm text-muted-foreground"
+									id="invoice-detail-page-description"
+									className="text-sm text-muted-foreground"
 									style={{ fontFamily: "var(--invoice-detail-body)" }}
 								>
-									Invoice details
+									Proforma invoice details, line items, and integration logs.
 								</p>
+								<div
+									style={{
+										height: "3px",
+										width: "3rem",
+										borderRadius: "9999px",
+										background:
+											"linear-gradient(to right, var(--invoice-detail-accent), transparent)",
+									}}
+								/>
 							</div>
 						</div>
-						<div className="flex flex-wrap items-center gap-2">
+					</div>
+					<div className="flex flex-wrap items-center gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							disabled
+							title="PDF export coming soon"
+							className="gap-2"
+						>
+							<Download className="h-4 w-4" />
+							PDF
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled
+							title="Excel export coming soon"
+							className="gap-2"
+						>
+							<Download className="h-4 w-4" />
+							Excel
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled
+							title="TXT export coming soon"
+							className="gap-2"
+						>
+							<Download className="h-4 w-4" />
+							TXT
+						</Button>
+						{invoice.status === "Issued" && (
 							<Button
-								variant="outline"
 								size="sm"
-								disabled
-								title="PDF export coming soon"
-								className="gap-2"
+								className="gap-2 text-white disabled:opacity-50"
+								style={{
+									background: "var(--invoice-detail-accent)",
+									borderColor: "var(--invoice-detail-accent)",
+								}}
+								onClick={() =>
+									updateStatus({ variables: { id: invoice.id, status: "SENT" } })
+								}
+								disabled={updating}
 							>
-								<Download className="h-4 w-4" />
-								PDF
+								<Send className="h-4 w-4" />
+								Mark sent
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled
-								title="Excel export coming soon"
-								className="gap-2"
-							>
-								<Download className="h-4 w-4" />
-								Excel
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled
-								title="TXT export coming soon"
-								className="gap-2"
-							>
-								<Download className="h-4 w-4" />
-								TXT
-							</Button>
-							{invoice.status === "Issued" && (
-								<Button
-									size="sm"
-									className="gap-2 bg-[var(--invoice-detail-accent)] text-white hover:opacity-90 dark:bg-[var(--invoice-detail-accent)] dark:text-gray-950"
-									onClick={() =>
-										updateStatus({ variables: { id: invoice.id, status: "SENT" } })
-									}
-									disabled={updating}
-								>
-									<Send className="h-4 w-4" />
-									Mark sent
-								</Button>
-							)}
-						</div>
+						)}
 					</div>
 				</header>
 
@@ -429,6 +471,6 @@ function InvoiceDetailComponent() {
 					}}
 				/>
 			</div>
-		</div>
+		</main>
 	);
 }
