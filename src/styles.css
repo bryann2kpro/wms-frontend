@@ -245,6 +245,54 @@ code {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Empire Sushi DO Work Queue page: same tokens as dashboard/grn/outbound */
+.es-do-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .es-do-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.es-do-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.es-do-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.es-do-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Settlement page: same tokens as dashboard/grn/outbound */
+.settlement-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .settlement-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.settlement-page .dashboard-card {
+	animation: dashboard-fade-up 0.5s ease-out both;
+}
+.settlement-page .dashboard-card:hover {
+	transform: translateY(-2px);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.settlement-page .dashboard-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
 /* Inventory page: same tokens as dashboard/grn/outbound */
 .inventory-page {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;
