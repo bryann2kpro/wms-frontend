@@ -273,12 +273,12 @@ function ReportsComponent() {
 
 	return (
 		<main
-			className="container mx-auto p-6 space-y-6"
+			className="reports-page container mx-auto p-6 space-y-6"
 			aria-labelledby="reports-page-title"
 			aria-describedby="reports-page-description"
 			aria-busy={isGenerating}
 		>
-			{/* Visual feedback overlay when generating report */}
+			{/* Generating overlay */}
 			{isGenerating && (
 				<div
 					className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
@@ -294,117 +294,129 @@ function ReportsComponent() {
 				</div>
 			)}
 
+			{/* ── Header ── */}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1
-						id="reports-page-title"
-						className="text-3xl font-bold tracking-tight"
+				<div className="space-y-1">
+					<div className="flex items-center gap-2.5">
+						<div
+							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+							style={{ background: "var(--dashboard-accent)" }}
+						>
+							<BarChart3 className="h-4.5 w-4.5 text-white" />
+						</div>
+						<h1
+							id="reports-page-title"
+							className="text-2xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Reports &amp; Exports
+						</h1>
+					</div>
+					<p
+						id="reports-page-description"
+						className="text-sm text-muted-foreground pl-11.5"
 					>
-						Reports / Exports
-					</h1>
-					<p id="reports-page-description" className="text-muted-foreground">
-						Generate and export reports in PDF or Excel.
+						Generate and download operational reports in PDF or Excel.
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Open help for Reports"
-						onClick={() => {
-							setIsHelpOpen(true);
-							setHelpStep(0);
-						}}
-					>
-						<HelpCircle className="h-4 w-4" />
-					</Button>
-					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent
-							className="sm:max-w-lg"
-							aria-describedby="reports-help-description"
-						>
-							<DialogHeader>
-								<DialogTitle>Reports help</DialogTitle>
-								<DialogDescription id="reports-help-description">
-									Step {helpStep + 1} of {REPORTS_HELP_STEPS.length}
-								</DialogDescription>
-							</DialogHeader>
-							<div className="space-y-4">
-								<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
-									<HelpStepImage
-										src={REPORTS_HELP_STEPS[helpStep].image}
-										stepNumber={helpStep + 1}
-										alt={`Help step ${helpStep + 1}: ${REPORTS_HELP_STEPS[helpStep].title}`}
-									/>
-								</div>
-								<div>
-									<h3 className="text-sm font-semibold text-foreground mb-1">
-										{REPORTS_HELP_STEPS[helpStep].title}
-									</h3>
-									<p className="text-sm text-muted-foreground leading-relaxed">
-										{REPORTS_HELP_STEPS[helpStep].description}
-									</p>
-								</div>
-								<div className="flex items-center justify-between gap-4 pt-2">
-									<div
-										className="flex gap-1"
-										role="tablist"
-										aria-label="Help steps"
-									>
-										{REPORTS_HELP_STEPS.map((_, i) => (
-											<button
-												type="button"
-												key={i}
-												role="tab"
-												aria-selected={i === helpStep}
-												aria-label={`Go to step ${i + 1}`}
-												onClick={() => setHelpStep(i)}
-												className={`h-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-													i === helpStep
-														? "w-6 bg-primary"
-														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-												}`}
-											/>
-										))}
-									</div>
-									<div className="flex gap-2">
-										{helpStep > 0 ? (
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => setHelpStep((s) => s - 1)}
-												aria-label="Previous help step"
-											>
-												<ChevronLeft className="h-4 w-4 mr-0.5" aria-hidden />
-												Previous
-											</Button>
-										) : null}
-										{helpStep < REPORTS_HELP_STEPS.length - 1 ? (
-											<Button
-												size="sm"
-												onClick={() => setHelpStep((s) => s + 1)}
-												aria-label="Next help step"
-											>
-												Next
-												<ChevronRight className="h-4 w-4 ml-0.5" aria-hidden />
-											</Button>
-										) : (
-											<Button
-												size="sm"
-												onClick={() => setIsHelpOpen(false)}
-												aria-label="Close help"
-											>
-												Got it
-											</Button>
-										)}
-									</div>
-								</div>
-							</div>
-						</DialogContent>
-					</Dialog>
-				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="gap-1.5 self-start sm:self-auto"
+					aria-label="Open help for Reports"
+					onClick={() => {
+						setIsHelpOpen(true);
+						setHelpStep(0);
+					}}
+				>
+					<HelpCircle className="h-3.5 w-3.5" />
+					How to use
+				</Button>
 			</div>
 
+			{/* ── Help dialog ── */}
+			<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+				<DialogContent
+					className="sm:max-w-lg"
+					aria-describedby="reports-help-description"
+				>
+					<DialogHeader>
+						<DialogTitle>Reports help</DialogTitle>
+						<DialogDescription id="reports-help-description">
+							Step {helpStep + 1} of {REPORTS_HELP_STEPS.length}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+							<HelpStepImage
+								src={REPORTS_HELP_STEPS[helpStep].image}
+								stepNumber={helpStep + 1}
+								alt={`Help step ${helpStep + 1}: ${REPORTS_HELP_STEPS[helpStep].title}`}
+							/>
+						</div>
+						<div>
+							<h3 className="text-sm font-semibold text-foreground mb-1">
+								{REPORTS_HELP_STEPS[helpStep].title}
+							</h3>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								{REPORTS_HELP_STEPS[helpStep].description}
+							</p>
+						</div>
+						<div className="flex items-center justify-between gap-4 pt-2">
+							<div className="flex gap-1" role="tablist" aria-label="Help steps">
+								{REPORTS_HELP_STEPS.map((_, i) => (
+									<button
+										type="button"
+										key={i}
+										role="tab"
+										aria-selected={i === helpStep}
+										aria-label={`Go to step ${i + 1}`}
+										onClick={() => setHelpStep(i)}
+										className={`h-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+											i === helpStep
+												? "w-6 bg-primary"
+												: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+										}`}
+									/>
+								))}
+							</div>
+							<div className="flex gap-2">
+								{helpStep > 0 && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setHelpStep((s) => s - 1)}
+										aria-label="Previous help step"
+									>
+										<ChevronLeft className="h-4 w-4 mr-0.5" aria-hidden />
+										Previous
+									</Button>
+								)}
+								{helpStep < REPORTS_HELP_STEPS.length - 1 ? (
+									<Button
+										size="sm"
+										onClick={() => setHelpStep((s) => s + 1)}
+										aria-label="Next help step"
+									>
+										Next
+										<ChevronRight className="h-4 w-4 ml-0.5" aria-hidden />
+									</Button>
+								) : (
+									<Button
+										size="sm"
+										onClick={() => setIsHelpOpen(false)}
+										aria-label="Close help"
+									>
+										Got it
+									</Button>
+								)}
+							</div>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+
+			{/* ── Form ── */}
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -413,10 +425,16 @@ function ReportsComponent() {
 			>
 				<FieldGroup className="grid gap-6 lg:grid-cols-2">
 					{/* Report Types */}
-					<Card>
-						<CardHeader>
-							<CardTitle id="report-type-label">Available Reports</CardTitle>
-							<CardDescription>
+					<Card className="dashboard-card">
+						<CardHeader className="pb-4">
+							<CardTitle
+								id="report-type-label"
+								className="text-base font-semibold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Available Reports
+							</CardTitle>
+							<CardDescription className="text-xs mt-0.5">
 								Select a report type to generate
 							</CardDescription>
 						</CardHeader>
@@ -433,22 +451,34 @@ function ReportsComponent() {
 											const isSelected = field.state.value === report.value;
 											return (
 												<Field key={report.value}>
-													<Button
+													<button
 														id={report.value}
 														name={report.value}
-														value={report.value}
-														onBlur={field.handleBlur}
 														type="button"
-														variant={isSelected ? "default" : "outline"}
-														className="h-auto flex-col gap-2 p-4"
+														onBlur={field.handleBlur}
 														onClick={() => field.handleChange(report.value)}
 														aria-pressed={isSelected}
 														aria-label={`Select ${report.label}`}
 														disabled={isGenerating}
+														className={[
+															"group relative flex w-full flex-col items-center gap-2.5 rounded-xl border px-3 py-4 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+															isSelected
+																? "border-[var(--dashboard-accent)] bg-[color-mix(in_oklch,var(--dashboard-accent)_8%,transparent)] text-[var(--dashboard-accent)] shadow-sm"
+																: "border-border bg-background text-muted-foreground hover:border-[var(--dashboard-accent)]/50 hover:bg-muted/40 hover:text-foreground",
+														].join(" ")}
 													>
-														<Icon className="h-6 w-6" aria-hidden />
+														<span
+															className={[
+																"flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+																isSelected
+																	? "bg-[var(--dashboard-accent)] text-white"
+																	: "bg-muted text-muted-foreground group-hover:bg-[color-mix(in_oklch,var(--dashboard-accent)_15%,transparent)] group-hover:text-[var(--dashboard-accent)]",
+															].join(" ")}
+														>
+															<Icon className="h-4.5 w-4.5" aria-hidden />
+														</span>
 														<span>{report.label}</span>
-													</Button>
+													</button>
 												</Field>
 											);
 										})}
@@ -459,18 +489,25 @@ function ReportsComponent() {
 					</Card>
 
 					{/* Report Configuration */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Report Configuration</CardTitle>
-							<CardDescription>
-								Configure report parameters and export format
+					<Card className="dashboard-card">
+						<CardHeader className="pb-4">
+							<CardTitle
+								className="text-base font-semibold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Report Configuration
+							</CardTitle>
+							<CardDescription className="text-xs mt-0.5">
+								Configure parameters and export format
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<form.Field name="regionId">
 								{(field) => (
 									<div className="space-y-2">
-										<FieldLabel htmlFor="regionId">Region</FieldLabel>
+										<FieldLabel htmlFor="regionId" className="text-xs font-medium">
+											Region
+										</FieldLabel>
 										<Select
 											value={field.state.value || "all"}
 											onValueChange={(v) => {
@@ -481,14 +518,13 @@ function ReportsComponent() {
 										>
 											<SelectTrigger
 												id="regionId"
+												className="h-9 text-sm"
 												aria-label="Select region"
 												aria-busy={isLoadingRegions}
 											>
 												<SelectValue
 													placeholder={
-														isLoadingRegions
-															? "Loading regions…"
-															: "Select Region"
+														isLoadingRegions ? "Loading regions…" : "Select Region"
 													}
 												/>
 											</SelectTrigger>
@@ -506,55 +542,55 @@ function ReportsComponent() {
 									</div>
 								)}
 							</form.Field>
+
 							<div
 								className="space-y-2"
 								role="group"
 								aria-labelledby="date-range-label"
 							>
-								<Label id="date-range-label">Date Range</Label>
-								<div className="grid gap-2 sm:grid-cols-2">
+								<Label id="date-range-label" className="text-xs font-medium">
+									Date Range
+								</Label>
+								<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+									<span>From</span>
 									<form.Field name="dateFrom">
 										{(field) => (
-											<Field>
-												<FieldLabel htmlFor="dateFrom" className="text-xs">
-													From
-												</FieldLabel>
-												<Input
-													id="dateFrom"
-													type="date"
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													aria-label="Report date from"
-													disabled={isGenerating}
-												/>
-											</Field>
+											<Input
+												id="dateFrom"
+												type="date"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												className="h-8 w-36"
+												aria-label="Report date from"
+												disabled={isGenerating}
+											/>
 										)}
 									</form.Field>
+									<span className="text-muted-foreground/60">to</span>
 									<form.Field name="dateTo">
 										{(field) => (
-											<Field>
-												<FieldLabel htmlFor="dateTo" className="text-xs">
-													To
-												</FieldLabel>
-												<Input
-													id="dateTo"
-													type="date"
-													value={field.state.value}
-													onChange={(e) => field.handleChange(e.target.value)}
-													onBlur={field.handleBlur}
-													aria-label="Report date to"
-													disabled={isGenerating}
-												/>
-											</Field>
+											<Input
+												id="dateTo"
+												type="date"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												className="h-8 w-36"
+												aria-label="Report date to"
+												disabled={isGenerating}
+											/>
 										)}
 									</form.Field>
 								</div>
 							</div>
+
 							<form.Field name="format">
 								{(field) => (
 									<div className="space-y-2">
-										<FieldLabel htmlFor="format">Export Format</FieldLabel>
+										<FieldLabel htmlFor="format" className="text-xs font-medium">
+											Export Format
+										</FieldLabel>
 										<Select
 											value={field.state.value}
 											onValueChange={(v) => {
@@ -565,6 +601,7 @@ function ReportsComponent() {
 										>
 											<SelectTrigger
 												id="format"
+												className="h-9 text-sm"
 												aria-label="Export format (PDF or Excel)"
 											>
 												<SelectValue />
@@ -577,6 +614,7 @@ function ReportsComponent() {
 									</div>
 								)}
 							</form.Field>
+
 							<form.Subscribe
 								selector={(state) => ({
 									selectedReport: state.values.selectedReport,
@@ -596,7 +634,7 @@ function ReportsComponent() {
 											disabled={
 												!selectedReport || missingRequiredRegion || isGenerating
 											}
-											className="w-full"
+											className="w-full gap-2 mt-2"
 											aria-busy={isGenerating}
 											aria-label={
 												isGenerating
@@ -604,10 +642,8 @@ function ReportsComponent() {
 													: "Generate and download report"
 											}
 										>
-											<Download className="mr-2 h-4 w-4" aria-hidden />
-											{isGenerating
-												? "Generating…"
-												: "Generate & Download Report"}
+											<Download className="h-4 w-4" aria-hidden />
+											{isGenerating ? "Generating…" : "Generate & Download"}
 										</Button>
 									);
 								}}

@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { Pagination } from "./types";
+import type { Pagination } from "./types";
 
 export const STOCK_COUNTS_QUERY = gql`
     query StockCounts {
