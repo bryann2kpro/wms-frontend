@@ -483,6 +483,77 @@ code {
 	border-left-color: var(--invoice-detail-accent);
 }
 
+/* Reports page: same tokens as dashboard/admin, staggered card entry */
+.reports-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .reports-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.reports-page .dashboard-card {
+	animation: dashboard-fade-up 0.45s ease-out both;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.reports-page .dashboard-card:nth-child(1) { animation-delay: 0.05s; }
+.reports-page .dashboard-card:nth-child(2) { animation-delay: 0.1s; }
+
+.reports-page .report-type-btn {
+	transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.reports-page .report-type-btn:nth-child(1) { animation: dashboard-fade-up 0.4s ease-out 0.12s both; }
+.reports-page .report-type-btn:nth-child(2) { animation: dashboard-fade-up 0.4s ease-out 0.18s both; }
+.reports-page .report-type-btn:nth-child(3) { animation: dashboard-fade-up 0.4s ease-out 0.24s both; }
+.reports-page .report-type-btn:nth-child(4) { animation: dashboard-fade-up 0.4s ease-out 0.30s both; }
+.reports-page .report-type-btn:nth-child(5) { animation: dashboard-fade-up 0.4s ease-out 0.36s both; }
+
+.reports-page .report-type-btn[aria-pressed="true"] {
+	border-color: var(--dashboard-accent);
+	background: color-mix(in oklch, var(--dashboard-accent) 8%, transparent);
+	color: var(--dashboard-accent);
+	box-shadow: 0 0 0 1px color-mix(in oklch, var(--dashboard-accent) 30%, transparent);
+}
+.reports-page .report-type-btn[aria-pressed="true"] .report-icon-box {
+	background: var(--dashboard-accent);
+	color: oklch(0.985 0 0);
+}
+.reports-page .report-type-btn:not([aria-pressed="true"]):hover {
+	border-color: color-mix(in oklch, var(--dashboard-accent) 40%, transparent);
+	background: oklch(0.97 0.005 286);
+	color: var(--foreground);
+}
+.dark .reports-page .report-type-btn:not([aria-pressed="true"]):hover {
+	background: oklch(0.22 0.006 286);
+}
+.reports-page .report-type-btn:not([aria-pressed="true"]):hover .report-icon-box {
+	background: color-mix(in oklch, var(--dashboard-accent) 12%, transparent);
+	color: var(--dashboard-accent);
+}
+
+@keyframes reports-bar-wave {
+	0%, 100% { height: 8px; opacity: 0.45; }
+	50% { height: 40px; opacity: 1; }
+}
+.reports-page .reports-bar-wave {
+	animation: reports-bar-wave 1s ease-in-out infinite;
+}
+
+.reports-page .reports-header-accent {
+	height: 3px;
+	background: linear-gradient(
+		to right,
+		var(--dashboard-accent),
+		color-mix(in oklch, var(--dashboard-accent) 0%, transparent)
+	);
+	border-radius: 9999px;
+	width: 3rem;
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;

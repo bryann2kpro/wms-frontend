@@ -74,13 +74,45 @@ type ReportFormValues = {
 const reportTypes: {
 	value: ReportType;
 	label: string;
+	shortLabel: string;
 	icon: React.ComponentType<{ className?: string }>;
+	index: string;
 }[] = [
-	{ value: "GRN", label: "GRN Reports", icon: Package },
-	{ value: "DO", label: "DO Reports", icon: Truck },
-	{ value: "Inventory", label: "Inventory Reports", icon: BarChart3 },
-	{ value: "Movement", label: "Movement Reports", icon: ArrowRightLeft },
-	{ value: "InvoiceSummary", label: "Invoices Summary", icon: Receipt },
+	{
+		value: "GRN",
+		label: "GRN Reports",
+		shortLabel: "Goods Receipt",
+		icon: Package,
+		index: "01",
+	},
+	{
+		value: "DO",
+		label: "DO Reports",
+		shortLabel: "Delivery Order",
+		icon: Truck,
+		index: "02",
+	},
+	{
+		value: "Inventory",
+		label: "Inventory Reports",
+		shortLabel: "Inventory",
+		icon: BarChart3,
+		index: "03",
+	},
+	{
+		value: "Movement",
+		label: "Movement Reports",
+		shortLabel: "Movement",
+		icon: ArrowRightLeft,
+		index: "04",
+	},
+	{
+		value: "InvoiceSummary",
+		label: "Invoices Summary",
+		shortLabel: "Inv. Summary",
+		icon: Receipt,
+		index: "05",
+	},
 ];
 
 /** Base path for Reports help screenshots. Add step-1.png, step-2.png, etc. under public/help/reports/ */
@@ -284,19 +316,34 @@ function ReportsComponent() {
 					className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
 					aria-hidden="true"
 				>
-					<div className="absolute inset-0 bg-background/35 backdrop-blur-[2px]" />
-					<div className="relative rounded-lg border bg-card/90 px-4 py-3 shadow-sm flex items-center gap-3">
-						<div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-						<span className="text-sm text-muted-foreground">
-							Generating report…
-						</span>
+					<div className="absolute inset-0 bg-background/50 backdrop-blur-[3px]" />
+					<div className="relative rounded-2xl border bg-card shadow-xl px-8 py-7 flex flex-col items-center gap-5 min-w-[220px]">
+						{/* Animated bar chart */}
+						<div className="flex items-end gap-[5px] h-10" aria-hidden>
+							{[0, 1, 2, 3, 4].map((i) => (
+								<div
+									key={i}
+									className="reports-bar-wave w-[6px] rounded-full"
+									style={{
+										background: "var(--dashboard-accent)",
+										animationDelay: `${i * 0.12}s`,
+									}}
+								/>
+							))}
+						</div>
+						<div className="text-center space-y-1">
+							<p className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--dashboard-display)" }}>
+								Generating report…
+							</p>
+							<p className="text-xs text-muted-foreground">This may take a moment</p>
+						</div>
 					</div>
 				</div>
 			)}
 
 			{/* ── Header ── */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div className="space-y-2">
 					<div className="flex items-center gap-2.5">
 						<div
 							className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
@@ -312,17 +359,20 @@ function ReportsComponent() {
 							Reports &amp; Exports
 						</h1>
 					</div>
-					<p
-						id="reports-page-description"
-						className="text-sm text-muted-foreground pl-11.5"
-					>
-						Generate and download operational reports in PDF or Excel.
-					</p>
+					<div className="pl-11.5 space-y-1.5">
+						<p
+							id="reports-page-description"
+							className="text-sm text-muted-foreground"
+						>
+							Generate and download operational reports in PDF or Excel.
+						</p>
+						<div className="reports-header-accent" />
+					</div>
 				</div>
 				<Button
 					variant="outline"
 					size="sm"
-					className="gap-1.5 self-start sm:self-auto"
+					className="gap-1.5 self-start"
 					aria-label="Open help for Reports"
 					onClick={() => {
 						setIsHelpOpen(true);
@@ -340,30 +390,65 @@ function ReportsComponent() {
 					className="sm:max-w-lg"
 					aria-describedby="reports-help-description"
 				>
-					<DialogHeader>
-						<DialogTitle>Reports help</DialogTitle>
-						<DialogDescription id="reports-help-description">
+					<DialogHeader className="pb-1">
+						<div className="flex items-center gap-2.5">
+							<span
+								className="flex h-7 w-7 items-center justify-center rounded-md text-white text-xs font-bold shrink-0"
+								style={{ background: "var(--dashboard-accent)" }}
+								aria-hidden
+							>
+								<HelpCircle className="h-3.5 w-3.5" />
+							</span>
+							<DialogTitle
+								className="text-base"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Reports help
+							</DialogTitle>
+						</div>
+						<DialogDescription
+							id="reports-help-description"
+							className="sr-only"
+						>
 							Step {helpStep + 1} of {REPORTS_HELP_STEPS.length}
 						</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4">
-						<div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+
+					<div className="space-y-4 pt-1">
+						{/* Screenshot area */}
+						<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted">
 							<HelpStepImage
 								src={REPORTS_HELP_STEPS[helpStep].image}
 								stepNumber={helpStep + 1}
 								alt={`Help step ${helpStep + 1}: ${REPORTS_HELP_STEPS[helpStep].title}`}
 							/>
+							{/* Step badge overlay */}
+							<span
+								className="absolute top-2.5 left-2.5 flex h-6 min-w-[1.5rem] items-center justify-center rounded-md px-1.5 text-[10px] font-mono font-bold text-white shadow-sm"
+								style={{ background: "var(--dashboard-accent)" }}
+								aria-hidden
+							>
+								{String(helpStep + 1).padStart(2, "0")} / {REPORTS_HELP_STEPS.length}
+							</span>
 						</div>
-						<div>
-							<h3 className="text-sm font-semibold text-foreground mb-1">
+
+						{/* Step text */}
+						<div className="rounded-lg border border-border/60 bg-muted/40 px-4 py-3 space-y-1">
+							<h3
+								className="text-sm font-semibold text-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
 								{REPORTS_HELP_STEPS[helpStep].title}
 							</h3>
 							<p className="text-sm text-muted-foreground leading-relaxed">
 								{REPORTS_HELP_STEPS[helpStep].description}
 							</p>
 						</div>
-						<div className="flex items-center justify-between gap-4 pt-2">
-							<div className="flex gap-1" role="tablist" aria-label="Help steps">
+
+						{/* Navigation */}
+						<div className="flex items-center justify-between gap-4 pt-1">
+							{/* Step dots */}
+							<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
 								{REPORTS_HELP_STEPS.map((_, i) => (
 									<button
 										type="button"
@@ -372,14 +457,17 @@ function ReportsComponent() {
 										aria-selected={i === helpStep}
 										aria-label={`Go to step ${i + 1}`}
 										onClick={() => setHelpStep(i)}
-										className={`h-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+										className="h-2 rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										style={
 											i === helpStep
-												? "w-6 bg-primary"
-												: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-										}`}
+												? { width: "1.5rem", background: "var(--dashboard-accent)" }
+												: { width: "0.5rem", background: "var(--muted-foreground)", opacity: 0.3 }
+										}
 									/>
 								))}
 							</div>
+
+							{/* Prev / Next buttons */}
 							<div className="flex gap-2">
 								{helpStep > 0 && (
 									<Button
@@ -397,6 +485,8 @@ function ReportsComponent() {
 										size="sm"
 										onClick={() => setHelpStep((s) => s + 1)}
 										aria-label="Next help step"
+										className="text-white"
+										style={{ background: "var(--dashboard-accent)", borderColor: "var(--dashboard-accent)" }}
 									>
 										Next
 										<ChevronRight className="h-4 w-4 ml-0.5" aria-hidden />
@@ -406,6 +496,8 @@ function ReportsComponent() {
 										size="sm"
 										onClick={() => setIsHelpOpen(false)}
 										aria-label="Close help"
+										className="text-white"
+										style={{ background: "var(--dashboard-accent)", borderColor: "var(--dashboard-accent)" }}
 									>
 										Got it
 									</Button>
@@ -423,10 +515,10 @@ function ReportsComponent() {
 					form.handleSubmit();
 				}}
 			>
-				<FieldGroup className="grid gap-6 lg:grid-cols-2">
-					{/* Report Types */}
+				<FieldGroup className="flex flex-col gap-4">
+					{/* ── Report Type Selector ── */}
 					<Card className="dashboard-card">
-						<CardHeader className="pb-4">
+						<CardHeader className="pb-3">
 							<CardTitle
 								id="report-type-label"
 								className="text-base font-semibold"
@@ -442,7 +534,7 @@ function ReportsComponent() {
 							<form.Field name="selectedReport">
 								{(field) => (
 									<Field
-										className="grid gap-3 sm:grid-cols-2"
+										className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
 										role="group"
 										aria-labelledby="report-type-label"
 									>
@@ -460,24 +552,25 @@ function ReportsComponent() {
 														aria-pressed={isSelected}
 														aria-label={`Select ${report.label}`}
 														disabled={isGenerating}
-														className={[
-															"group relative flex w-full flex-col items-center gap-2.5 rounded-xl border px-3 py-4 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-															isSelected
-																? "border-[var(--dashboard-accent)] bg-[color-mix(in_oklch,var(--dashboard-accent)_8%,transparent)] text-[var(--dashboard-accent)] shadow-sm"
-																: "border-border bg-background text-muted-foreground hover:border-[var(--dashboard-accent)]/50 hover:bg-muted/40 hover:text-foreground",
-														].join(" ")}
+														className="report-type-btn group relative flex w-full flex-col gap-3 rounded-xl border px-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-border bg-background text-muted-foreground"
 													>
+														{/* Index label */}
 														<span
-															className={[
-																"flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
-																isSelected
-																	? "bg-[var(--dashboard-accent)] text-white"
-																	: "bg-muted text-muted-foreground group-hover:bg-[color-mix(in_oklch,var(--dashboard-accent)_15%,transparent)] group-hover:text-[var(--dashboard-accent)]",
-															].join(" ")}
+															className="text-[10px] font-mono font-semibold tracking-wider opacity-40 leading-none"
+															aria-hidden
 														>
-															<Icon className="h-4.5 w-4.5" aria-hidden />
+															{report.index}
 														</span>
-														<span>{report.label}</span>
+														{/* Icon box */}
+														<span
+															className="report-icon-box flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors"
+														>
+															<Icon className="h-5 w-5" aria-hidden />
+														</span>
+														{/* Label */}
+														<span className="text-xs font-semibold leading-tight">
+															{report.label}
+														</span>
 													</button>
 												</Field>
 											);
@@ -488,9 +581,9 @@ function ReportsComponent() {
 						</CardContent>
 					</Card>
 
-					{/* Report Configuration */}
+					{/* ── Report Configuration ── */}
 					<Card className="dashboard-card">
-						<CardHeader className="pb-4">
+						<CardHeader className="pb-3">
 							<CardTitle
 								className="text-base font-semibold"
 								style={{ fontFamily: "var(--dashboard-display)" }}
@@ -501,153 +594,204 @@ function ReportsComponent() {
 								Configure parameters and export format
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-4">
-							<form.Field name="regionId">
-								{(field) => (
-									<div className="space-y-2">
-										<FieldLabel htmlFor="regionId" className="text-xs font-medium">
-											Region
-										</FieldLabel>
-										<Select
-											value={field.state.value || "all"}
-											onValueChange={(v) => {
-												field.handleChange(v === "all" ? "" : v);
-												field.handleBlur();
-											}}
-											disabled={isLoadingRegions}
-										>
-											<SelectTrigger
-												id="regionId"
-												className="h-9 text-sm"
-												aria-label="Select region"
-												aria-busy={isLoadingRegions}
-											>
-												<SelectValue
-													placeholder={
-														isLoadingRegions ? "Loading regions…" : "Select Region"
-													}
-												/>
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="all" disabled>
-													Select Region
-												</SelectItem>
-												{regions.map((r) => (
-													<SelectItem key={r.regionId} value={r.regionId}>
-														{r.regionName}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-								)}
-							</form.Field>
-
-							<div
-								className="space-y-2"
-								role="group"
-								aria-labelledby="date-range-label"
-							>
-								<Label id="date-range-label" className="text-xs font-medium">
-									Date Range
-								</Label>
-								<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-									<span>From</span>
-									<form.Field name="dateFrom">
+						<CardContent>
+							<div className="flex flex-col gap-4">
+								{/* Fields row */}
+								<div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] lg:grid-cols-[200px_1fr_160px] gap-4 items-end">
+									{/* Region */}
+									<form.Field name="regionId">
 										{(field) => (
-											<Input
-												id="dateFrom"
-												type="date"
-												value={field.state.value}
-												onChange={(e) => field.handleChange(e.target.value)}
-												onBlur={field.handleBlur}
-												className="h-8 w-36"
-												aria-label="Report date from"
-												disabled={isGenerating}
-											/>
+											<div className="space-y-1.5">
+												<FieldLabel
+													htmlFor="regionId"
+													className="text-xs font-medium"
+												>
+													Region
+												</FieldLabel>
+												<Select
+													value={field.state.value || "all"}
+													onValueChange={(v) => {
+														field.handleChange(v === "all" ? "" : v);
+														field.handleBlur();
+													}}
+													disabled={isLoadingRegions}
+												>
+													<SelectTrigger
+														id="regionId"
+														className="h-9 text-sm"
+														aria-label="Select region"
+														aria-busy={isLoadingRegions}
+													>
+														<SelectValue
+															placeholder={
+																isLoadingRegions
+																	? "Loading regions…"
+																	: "Select Region"
+															}
+														/>
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="all" disabled>
+															Select Region
+														</SelectItem>
+														{regions.map((r) => (
+															<SelectItem key={r.regionId} value={r.regionId}>
+																{r.regionName}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</div>
 										)}
 									</form.Field>
-									<span className="text-muted-foreground/60">to</span>
-									<form.Field name="dateTo">
+
+									{/* Date Range */}
+									<div
+										className="space-y-1.5"
+										role="group"
+										aria-labelledby="date-range-label"
+									>
+										<Label
+											id="date-range-label"
+											className="text-xs font-medium block"
+										>
+											Date Range
+										</Label>
+										<div className="flex items-center gap-2">
+											<form.Field name="dateFrom">
+												{(field) => (
+													<Input
+														id="dateFrom"
+														type="date"
+														value={field.state.value}
+														onChange={(e) => field.handleChange(e.target.value)}
+														onBlur={field.handleBlur}
+														className="h-9 text-sm w-36 flex-shrink-0"
+														aria-label="Report date from"
+														disabled={isGenerating}
+													/>
+												)}
+											</form.Field>
+											<span className="text-xs text-muted-foreground/60 select-none">
+												—
+											</span>
+											<form.Field name="dateTo">
+												{(field) => (
+													<Input
+														id="dateTo"
+														type="date"
+														value={field.state.value}
+														onChange={(e) => field.handleChange(e.target.value)}
+														onBlur={field.handleBlur}
+														className="h-9 text-sm w-36 flex-shrink-0"
+														aria-label="Report date to"
+														disabled={isGenerating}
+													/>
+												)}
+											</form.Field>
+										</div>
+									</div>
+
+									{/* Format */}
+									<form.Field name="format">
 										{(field) => (
-											<Input
-												id="dateTo"
-												type="date"
-												value={field.state.value}
-												onChange={(e) => field.handleChange(e.target.value)}
-												onBlur={field.handleBlur}
-												className="h-8 w-36"
-												aria-label="Report date to"
-												disabled={isGenerating}
-											/>
+											<div className="space-y-1.5">
+												<FieldLabel
+													htmlFor="format"
+													className="text-xs font-medium"
+												>
+													Export Format
+												</FieldLabel>
+												<Select
+													value={field.state.value}
+													onValueChange={(v) => {
+														field.handleChange(v as ExportFormat);
+														field.handleBlur();
+													}}
+													disabled={isGenerating}
+												>
+													<SelectTrigger
+														id="format"
+														className="h-9 text-sm"
+														aria-label="Export format (PDF or Excel)"
+													>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="PDF">PDF</SelectItem>
+														<SelectItem value="Excel">Excel (XLSX)</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
 										)}
 									</form.Field>
 								</div>
+
+								{/* Divider */}
+								<div className="border-t border-border/60" />
+
+								{/* Submit button row */}
+								<form.Subscribe
+									selector={(state) => ({
+										selectedReport: state.values.selectedReport,
+										regionId: state.values.regionId,
+										format: state.values.format,
+									})}
+								>
+									{({ selectedReport, regionId, format }) => {
+										const needsRegion =
+											selectedReport === "Movement" ||
+											selectedReport === "InvoiceSummary";
+										const missingRequiredRegion =
+											format === "PDF" && needsRegion && !regionId?.trim();
+
+										const selectedMeta = reportTypes.find(
+											(r) => r.value === selectedReport,
+										);
+
+										return (
+											<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+												{/* Status hint */}
+												<p className="text-xs text-muted-foreground">
+													{!selectedReport ? (
+														<span>Select a report type above to continue.</span>
+													) : missingRequiredRegion ? (
+														<span className="text-amber-600 dark:text-amber-400 font-medium">
+															Region required for {selectedMeta?.label ?? "this report"} (PDF).
+														</span>
+													) : (
+														<span>
+															Ready to generate{" "}
+															<strong>{selectedMeta?.label}</strong> as{" "}
+															<strong>{format === "Excel" ? "Excel (XLSX)" : format}</strong>.
+														</span>
+													)}
+												</p>
+												<Button
+													type="submit"
+													disabled={
+														!selectedReport || missingRequiredRegion || isGenerating
+													}
+													className="gap-2 shrink-0 text-white disabled:opacity-50"
+													style={{
+														background: "var(--dashboard-accent)",
+														borderColor: "var(--dashboard-accent)",
+													}}
+													aria-busy={isGenerating}
+													aria-label={
+														isGenerating
+															? "Generating report"
+															: "Generate and download report"
+													}
+												>
+													<Download className="h-4 w-4" aria-hidden />
+													{isGenerating ? "Generating…" : "Generate & Download"}
+												</Button>
+											</div>
+										);
+									}}
+								</form.Subscribe>
 							</div>
-
-							<form.Field name="format">
-								{(field) => (
-									<div className="space-y-2">
-										<FieldLabel htmlFor="format" className="text-xs font-medium">
-											Export Format
-										</FieldLabel>
-										<Select
-											value={field.state.value}
-											onValueChange={(v) => {
-												field.handleChange(v as ExportFormat);
-												field.handleBlur();
-											}}
-											disabled={isGenerating}
-										>
-											<SelectTrigger
-												id="format"
-												className="h-9 text-sm"
-												aria-label="Export format (PDF or Excel)"
-											>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="PDF">PDF</SelectItem>
-												<SelectItem value="Excel">Excel (XLSX)</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Subscribe
-								selector={(state) => ({
-									selectedReport: state.values.selectedReport,
-									regionId: state.values.regionId,
-									format: state.values.format,
-								})}
-							>
-								{({ selectedReport, regionId, format }) => {
-									const needsRegion =
-										selectedReport === "Movement" ||
-										selectedReport === "InvoiceSummary";
-									const missingRequiredRegion =
-										format === "PDF" && needsRegion && !regionId?.trim();
-									return (
-										<Button
-											type="submit"
-											disabled={
-												!selectedReport || missingRequiredRegion || isGenerating
-											}
-											className="w-full gap-2 mt-2"
-											aria-busy={isGenerating}
-											aria-label={
-												isGenerating
-													? "Generating report"
-													: "Generate and download report"
-											}
-										>
-											<Download className="h-4 w-4" aria-hidden />
-											{isGenerating ? "Generating…" : "Generate & Download"}
-										</Button>
-									);
-								}}
-							</form.Subscribe>
 						</CardContent>
 					</Card>
 				</FieldGroup>
