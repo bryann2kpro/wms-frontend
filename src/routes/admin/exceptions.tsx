@@ -161,7 +161,7 @@ function ExceptionsComponent() {
 
 	const [updateItem] = useApolloMutation<UpdateStockCountItemData>(
 		UPDATE_STOCK_COUNT_ITEM_MUTATION,
-		{ onCompleted: () => refetchItems() }
+		{ onCompleted: () => { refetchItems(); refetchSessions(); } }
 	);
 
 	const [closeSession, { loading: closingSession }] =
