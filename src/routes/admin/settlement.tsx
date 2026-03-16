@@ -33,6 +33,7 @@ import {
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { usePermissions } from "@/lib/permissions";
 import { getDOs, type DeliveryOrder, type DOStatus } from "@/data/do.mock-data";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
 export const Route = createFileRoute("/admin/settlement")({
 	beforeLoad: async ({ context }) => {
@@ -117,17 +118,25 @@ function SettlementComponent() {
 	};
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Settlement</h1>
-					<p className="text-muted-foreground">
-						Admin verification and DO settlement
-					</p>
-				</div>
-			</div>
+		<div className="settlement-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<main
+				className="container relative mx-auto p-6 space-y-6"
+				aria-labelledby="settlement-page-title"
+				aria-describedby="settlement-page-description"
+			>
+				<AdminPageHeader
+					icon={FileText}
+					title="Settlement"
+					description="Admin verification and DO settlement."
+					titleId="settlement-page-title"
+					descriptionId="settlement-page-description"
+				/>
 
-			<Card>
+			<Card className="dashboard-card">
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
@@ -235,6 +244,7 @@ function SettlementComponent() {
 					</div>
 				</CardContent>
 			</Card>
+			</main>
 		</div>
 	);
 }

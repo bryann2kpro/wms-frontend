@@ -54,6 +54,7 @@ import {
 	HelpCircle,
 	ImageOff,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -506,6 +507,8 @@ function GRNRouteComponent() {
 	};
 
 	const summaryDelays = [0, 80, 160];
+	const isPageBusy =
+		isLoading || createLoading || statusMutation.status === "pending";
 
 	return (
 		<div className="grn-page min-h-screen bg-[var(--dashboard-surface)]">
@@ -513,190 +516,182 @@ function GRNRouteComponent() {
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[320px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/25 via-transparent to-transparent"
 				aria-hidden
 			/>
-			<div className="container relative mx-auto px-6 py-8 space-y-8">
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="relative">
-						<div
-							className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-[var(--dashboard-accent)]"
-							aria-hidden
-						/>
-						<div className="pl-5">
-							<h1
-								className="text-4xl font-bold tracking-tight text-foreground"
-								style={{ fontFamily: "var(--dashboard-display)" }}
+			<main
+				className="container relative mx-auto px-6 py-8 space-y-8"
+				aria-labelledby="grn-page-title"
+				aria-describedby="grn-page-description"
+				aria-busy={isPageBusy}
+			>
+				<AdminPageHeader
+					icon={CheckCircle}
+					title="Goods Receipt Notes (GRN)"
+					description="Manage incoming inventory and track receipts."
+					titleId="grn-page-title"
+					descriptionId="grn-page-description"
+					rightSlot={
+						<div className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="icon"
+								aria-label="Open help"
+								className="rounded-lg"
+								onClick={() => {
+									setIsHelpOpen(true);
+									setHelpStep(0);
+								}}
 							>
-								Goods Receipt Notes (GRN)
-							</h1>
-							<p
-								className="mt-1 text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Manage incoming inventory and track receipts
-							</p>
-						</div>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="outline"
-							size="icon"
-							aria-label="Open help"
-							className="rounded-lg"
-							onClick={() => {
-								setIsHelpOpen(true);
-								setHelpStep(0);
-							}}
-						>
-							<HelpCircle className="h-4 w-4" />
-						</Button>
-					<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-						<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
-							<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
-								<div className="flex items-center gap-3">
-									<div
-										className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										{helpStep + 1}
-									</div>
-									<div>
-										<DialogTitle
-											className="text-lg"
-											style={{ fontFamily: "var(--dashboard-display)" }}
-										>
-											GRN help
-										</DialogTitle>
-										<DialogDescription
-											className="mt-0.5"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											Step {helpStep + 1} of {GRN_HELP_STEPS.length}
-										</DialogDescription>
-									</div>
-								</div>
-							</DialogHeader>
-							<div className="space-y-5 px-6 py-5">
-								<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
-									<HelpStepImage
-										src={GRN_HELP_STEPS[helpStep].image}
-										stepNumber={helpStep + 1}
-									/>
-								</div>
-								<div className="rounded-xl border bg-card p-4">
-									<h3
-										className="text-sm font-semibold text-foreground mb-2"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										{GRN_HELP_STEPS[helpStep].title}
-									</h3>
-									<p
-										className="text-sm text-muted-foreground leading-relaxed"
-										style={{ fontFamily: "var(--dashboard-body)" }}
-									>
-										{GRN_HELP_STEPS[helpStep].description}
-									</p>
-								</div>
-								<div className="flex items-center justify-between gap-4 pt-1">
-									<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
-										{GRN_HELP_STEPS.map((_, i) => (
-											<button
-												type="button"
-												key={i}
-												role="tab"
-												aria-selected={i === helpStep}
-												aria-label={`Step ${i + 1}: ${GRN_HELP_STEPS[i].title}`}
-												onClick={() => setHelpStep(i)}
-												className={`h-2 rounded-full transition-all duration-200 ${
-													i === helpStep
-														? "w-6 bg-amber-600"
-														: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
-												}`}
+								<HelpCircle className="h-4 w-4" />
+							</Button>
+							<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+								<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+									<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+										<div className="flex items-center gap-3">
+											<div
+												className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												{helpStep + 1}
+											</div>
+											<div>
+												<DialogTitle
+													className="text-lg"
+													style={{ fontFamily: "var(--dashboard-display)" }}
+												>
+													GRN help
+												</DialogTitle>
+												<DialogDescription
+													className="mt-0.5"
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													Step {helpStep + 1} of {GRN_HELP_STEPS.length}
+												</DialogDescription>
+											</div>
+										</div>
+									</DialogHeader>
+									<div className="space-y-5 px-6 py-5">
+										<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
+											<HelpStepImage
+												src={GRN_HELP_STEPS[helpStep].image}
+												stepNumber={helpStep + 1}
 											/>
-										))}
+										</div>
+										<div className="rounded-xl border bg-card p-4">
+											<h3
+												className="text-sm font-semibold text-foreground mb-2"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												{GRN_HELP_STEPS[helpStep].title}
+											</h3>
+											<p
+												className="text-sm text-muted-foreground leading-relaxed"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
+												{GRN_HELP_STEPS[helpStep].description}
+											</p>
+										</div>
+										<div className="flex items-center justify-between gap-4 pt-1">
+											<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
+												{GRN_HELP_STEPS.map((_, i) => (
+													<button
+														type="button"
+														key={i}
+														role="tab"
+														aria-selected={i === helpStep}
+														aria-label={`Step ${i + 1}: ${GRN_HELP_STEPS[i].title}`}
+														onClick={() => setHelpStep(i)}
+														className={`h-2 rounded-full transition-all duration-200 ${
+															i === helpStep
+																? "w-6 bg-amber-600"
+																: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
+														}`}
+													/>
+												))}
+											</div>
+											<div className="flex gap-2">
+												{helpStep > 0 ? (
+													<Button
+														variant="outline"
+														size="sm"
+														className="rounded-lg"
+														onClick={() => setHelpStep((s) => s - 1)}
+													>
+														<ChevronLeft className="h-4 w-4 mr-0.5" />
+														Previous
+													</Button>
+												) : null}
+												{helpStep < GRN_HELP_STEPS.length - 1 ? (
+													<Button
+														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+														onClick={() => setHelpStep((s) => s + 1)}
+													>
+														Next
+														<ChevronRight className="h-4 w-4 ml-0.5" />
+													</Button>
+												) : (
+													<Button
+														size="sm"
+														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+														onClick={() => setIsHelpOpen(false)}
+													>
+														Got it
+													</Button>
+												)}
+											</div>
+										</div>
 									</div>
-									<div className="flex gap-2">
-										{helpStep > 0 ? (
-											<Button
-												variant="outline"
-												size="sm"
-												className="rounded-lg"
-												onClick={() => setHelpStep((s) => s - 1)}
-											>
-												<ChevronLeft className="h-4 w-4 mr-0.5" />
-												Previous
-											</Button>
-										) : null}
-										{helpStep < GRN_HELP_STEPS.length - 1 ? (
-											<Button
-												size="sm"
-												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-												onClick={() => setHelpStep((s) => s + 1)}
-											>
-												Next
-												<ChevronRight className="h-4 w-4 ml-0.5" />
-											</Button>
-										) : (
-											<Button
-												size="sm"
-												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-												onClick={() => setIsHelpOpen(false)}
-											>
-												Got it
-											</Button>
-										)}
-									</div>
-								</div>
-							</div>
-						</DialogContent>
-					</Dialog>
-					{hasPermission("grn:create") && (
-						<GrnFormDialog
-							mode="create"
-							open={isCreateOpen}
-							onOpenChange={setIsCreateOpen}
-							skuOptions={skuOptions}
-							stockUnits={stockUnits}
-							canCreate={hasPermission("grn:create")}
-							trigger={
-								<Button className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg">
-									<Plus className="mr-2 h-4 w-4" />
-									Create GRN
-								</Button>
-							}
-							warehouses={warehouses}
-							racks={racks}
-							onCreateSubmit={async (payload) => {
-								await createMutation.mutateAsync({
-									grnNumber: payload.grnNumber,
-									poReference: payload.poReference,
-									supplierDO: payload.supplierDO,
-									receivedDate: payload.receivedDate
-										? new Date(payload.receivedDate)
-										: new Date(),
-									notes: payload.notes || undefined,
-									warehouseId: payload.warehouseId || undefined,
-									submitIntent: payload.submitIntent,
-									items: payload.items.map((i) => ({
-										sku: i.skuCode,
-										description: i.description,
-										carton: i.carton,
-										loss: i.loss,
-										uom: i.uom,
-										unitPrice: i.unitPrice,
-										expiryDate: i.expiryDate ?? "",
-										rackIds: i.rackIds ?? [],
-									})),
-								});
-							}}
-							onSuccess={() => refetchGRNs()}
-							onSkusRefetch={() => void refetchSkus()}
-							onWarehouseCreated={async () => {
-								await refetchWarehouses();
-							}}
-							onRackCreated={() => void refetchRacks()}
-						/>
-					)}
-					</div>
-				</header>
+								</DialogContent>
+							</Dialog>
+							{hasPermission("grn:create") && (
+								<GrnFormDialog
+									mode="create"
+									open={isCreateOpen}
+									onOpenChange={setIsCreateOpen}
+									skuOptions={skuOptions}
+									stockUnits={stockUnits}
+									canCreate={hasPermission("grn:create")}
+									trigger={
+										<Button className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg">
+											<Plus className="mr-2 h-4 w-4" />
+											Create GRN
+										</Button>
+									}
+									warehouses={warehouses}
+									racks={racks}
+									onCreateSubmit={async (payload) => {
+										await createMutation.mutateAsync({
+											grnNumber: payload.grnNumber,
+											poReference: payload.poReference,
+											supplierDO: payload.supplierDO,
+											receivedDate: payload.receivedDate
+												? new Date(payload.receivedDate)
+												: new Date(),
+											notes: payload.notes || undefined,
+											warehouseId: payload.warehouseId || undefined,
+											submitIntent: payload.submitIntent,
+											items: payload.items.map((i) => ({
+												sku: i.skuCode,
+												description: i.description,
+												carton: i.carton,
+												loss: i.loss,
+												uom: i.uom,
+												unitPrice: i.unitPrice,
+												expiryDate: i.expiryDate ?? "",
+												rackIds: i.rackIds ?? [],
+											})),
+										});
+									}}
+									onSuccess={() => refetchGRNs()}
+									onSkusRefetch={() => void refetchSkus()}
+									onWarehouseCreated={async () => {
+										await refetchWarehouses();
+									}}
+									onRackCreated={() => void refetchRacks()}
+								/>
+							)}
+						</div>
+					}
+				/>
 
 				{summary && summary.byStatus && (
 					<div className="grid gap-5 md:grid-cols-3">
@@ -1243,7 +1238,7 @@ function GRNRouteComponent() {
 				}}
 				onRackCreated={() => void refetchRacks()}
 			/>
-			</div>
+			</main>
 		</div>
 	);
 }

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMutation as useApolloMutation } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Shield, Package, Users, Key } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { useAuth } from "@/lib/auth-context";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
@@ -319,83 +321,119 @@ function RbacComponent() {
 		setIsRolePermissionsDialogOpen(true);
 	};
 
+	const summaryCardDelays = [0, 60, 120, 180];
+
+	const isAnyLoading =
+		isLoadingModules || isLoadingRoles || isLoadingUserRoles;
+
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			{/* Page Header */}
-			<div>
-				<h1 className="text-3xl font-bold tracking-tight">
-					Role-Based Access Control
-				</h1>
-				<p className="text-muted-foreground">
-					Manage modules, roles, and user access across the system
-				</p>
-			</div>
-
-			{/* Summary Cards */}
-			<div className="grid gap-4 md:grid-cols-4">
-				<SummaryCard
-					title="Modules"
-					value={modulesData?.pagination?.totalCount ?? 0}
-					icon={Package}
-					isLoading={isLoadingModules}
-					description="System features"
-				/>
-				<SummaryCard
-					title="Permissions"
-					value={totalPermissions}
-					icon={Key}
-					isLoading={isLoadingModules}
-					description="Access types"
-				/>
-				<SummaryCard
-					title="Roles"
-					value={rolesData?.pagination?.totalCount ?? 0}
+		<main
+			className="rbac-page min-h-screen bg-[var(--rbac-surface)]"
+			aria-labelledby="rbac-page-title"
+			aria-describedby="rbac-page-description"
+			aria-busy={isAnyLoading}
+		>
+			{/* Subtle gradient band behind header */}
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[380px] bg-gradient-to-b from-[var(--rbac-accent-muted)]/40 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<div className="container relative mx-auto px-6 py-8 space-y-8">
+				{/* Page Header */}
+				<AdminPageHeader
 					icon={Shield}
-					isLoading={isLoadingRoles}
-					description="System roles"
+					title="Role-Based Access Control"
+					description="Manage modules, roles, and user access across the system."
+					titleId="rbac-page-title"
+					descriptionId="rbac-page-description"
+					accentCssVar="--rbac-accent"
 				/>
-				<SummaryCard
-					title="User Roles"
-					value={userRolesData?.pagination?.totalCount ?? 0}
-					icon={Users}
-					isLoading={isLoadingUserRoles}
-					description="Role assignments"
-				/>
-			</div>
 
-			{/* Tabs Navigation */}
-			<div
-				className="flex gap-2 border-b"
-				role="tablist"
-				aria-label="RBAC sections"
-			>
-				{tabs.map((tab) => {
-					const Icon = tab.icon;
-					return (
-						<Button
-							key={tab.id}
-							variant={activeTab === tab.id ? "default" : "ghost"}
-							onClick={() => !tab.disabled && setActiveTab(tab.id)}
-							className="rounded-b-none"
-							disabled={tab.disabled}
-							role="tab"
-							aria-selected={activeTab === tab.id}
-							aria-controls={`tabpanel-${tab.id}`}
-							id={`tab-${tab.id}`}
+				{/* Summary Cards */}
+				<div className="grid gap-4 md:grid-cols-4">
+					{[
+						{
+							title: "Modules",
+							value: modulesData?.pagination?.totalCount ?? 0,
+							icon: Package,
+							isLoading: isLoadingModules,
+							description: "System features",
+						},
+						{
+							title: "Permissions",
+							value: totalPermissions,
+							icon: Key,
+							isLoading: isLoadingModules,
+							description: "Access types",
+						},
+						{
+							title: "Roles",
+							value: rolesData?.pagination?.totalCount ?? 0,
+							icon: Shield,
+							isLoading: isLoadingRoles,
+							description: "System roles",
+						},
+						{
+							title: "User Roles",
+							value: userRolesData?.pagination?.totalCount ?? 0,
+							icon: Users,
+							isLoading: isLoadingUserRoles,
+							description: "Role assignments",
+						},
+					].map((card, i) => (
+						<div
+							key={card.title}
+							className="rbac-summary-card"
+							style={{ animationDelay: `${summaryCardDelays[i]}ms` }}
 						>
-							<Icon className="mr-2 h-4 w-4" aria-hidden="true" />
-							{tab.label}
-						</Button>
-					);
-				})}
-			</div>
+							<SummaryCard
+								title={card.title}
+								value={card.value}
+								icon={card.icon}
+								isLoading={card.isLoading}
+								description={card.description}
+							/>
+						</div>
+					))}
+				</div>
 
-			{/* Tab Content */}
-			<div
-				role="tabpanel"
-				id={`tabpanel-${activeTab}`}
-				aria-labelledby={`tab-${activeTab}`}
-			>
+				{/* Tabs Navigation */}
+				<div
+					className="flex gap-1 border-b border-border"
+					role="tablist"
+					aria-label="RBAC sections"
+				>
+					{tabs.map((tab) => {
+						const Icon = tab.icon;
+						const isActive = activeTab === tab.id;
+						return (
+							<Button
+								key={tab.id}
+								variant="ghost"
+								onClick={() => !tab.disabled && setActiveTab(tab.id)}
+								className={cn(
+									"rbac-tab rounded-b-none border-b-2 border-transparent px-5 py-3 font-medium transition-colors hover:bg-muted/60",
+									isActive && "rbac-tab-active bg-transparent",
+								)}
+								disabled={tab.disabled}
+								role="tab"
+								aria-selected={isActive}
+								aria-controls={`tabpanel-${tab.id}`}
+								id={`tab-${tab.id}`}
+							>
+								<Icon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+								{tab.label}
+							</Button>
+						);
+					})}
+				</div>
+
+				{/* Tab Content */}
+				<div
+					role="tabpanel"
+					id={`tabpanel-${activeTab}`}
+					aria-labelledby={`tab-${activeTab}`}
+				>
 				{activeTab === "modules" && (
 					<ModulesTable
 						modules={filteredModules}
@@ -472,9 +510,9 @@ function RbacComponent() {
 						onRetry={() => refetchUserRoles()}
 					/>
 				)}
-			</div>
+				</div>
 
-			{/* Create Module Dialog */}
+				{/* Create Module Dialog */}
 			<CreateModuleDialog
 				open={isCreateModuleDialogOpen}
 				onOpenChange={setIsCreateModuleDialogOpen}
@@ -550,6 +588,7 @@ function RbacComponent() {
 				saveError={updateRolePermissionsMutation.error}
 				currentUserIdentifier={currentUserIdentifier}
 			/>
-		</div>
+			</div>
+		</main>
 	);
 }

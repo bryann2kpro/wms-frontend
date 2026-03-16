@@ -151,7 +151,8 @@ export function ViewPurchaseOrderDialog({
 												)}
 											</Badge>
 											{onAdvanceStep &&
-												purchaseOrder.deliveryOrder.status !== "DELIVERED" && (
+												purchaseOrder.deliveryOrder.status !== "DELIVERED" &&
+												purchaseOrder.deliveryOrder.status !== "SHIPPED" && (
 													<Button
 														variant="outline"
 														size="sm"

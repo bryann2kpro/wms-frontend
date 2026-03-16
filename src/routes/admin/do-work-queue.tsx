@@ -15,7 +15,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Loader2, Truck } from "lucide-react";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 import {
@@ -28,6 +28,7 @@ import {
 } from "@/lib/graphql/delivery-orders";
 import type { DeliveryOrderItemWithDetails } from "@/lib/graphql/types";
 import { toast } from "sonner";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
 const PAGE_TITLE = "Supplier DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -136,11 +137,17 @@ function DOWorkQueueComponent() {
 	const tableColSpan = 11;
 
 	return (
-		<main
-			id="main-content"
-			className="container mx-auto p-6 space-y-6"
-			aria-label={PAGE_TITLE}
-		>
+		<div className="do-work-queue-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
+			<main
+				id="main-content"
+				className="container relative mx-auto p-6 space-y-6"
+				aria-labelledby="do-work-queue-page-title"
+				aria-describedby="do-work-queue-page-description"
+			>
 			<div
 				aria-live="polite"
 				aria-atomic="true"
@@ -154,33 +161,28 @@ function DOWorkQueueComponent() {
 						: `Showing ${items.length} items.`}
 			</div>
 
-			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1
-						id="page-title"
-						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
-						tabIndex={-1}
-					>
-						{PAGE_TITLE}
-					</h1>
-					<p id="page-description" className="text-muted-foreground mt-1">
-						{PAGE_DESCRIPTION}
-					</p>
-				</div>
-				<div className="relative">
-					<Search
-						className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
-						aria-hidden
-					/>
-					<Input
-						aria-label="Search items by SKU, description, or DO number"
-						placeholder="Search items..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					/>
-				</div>
-			</header>
+			<AdminPageHeader
+				icon={Truck}
+				title={PAGE_TITLE}
+				description={PAGE_DESCRIPTION}
+				titleId="do-work-queue-page-title"
+				descriptionId="do-work-queue-page-description"
+				rightSlot={
+					<div className="relative">
+						<Search
+							className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
+							aria-hidden
+						/>
+						<Input
+							aria-label="Search items by SKU, description, or DO number"
+							placeholder="Search items..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						/>
+					</div>
+				}
+			/>
 
 			{loading && (
 				<div
@@ -339,6 +341,7 @@ function DOWorkQueueComponent() {
 					</nav>
 				)}
 			</section>
-		</main>
+			</main>
+		</div>
 	);
 }

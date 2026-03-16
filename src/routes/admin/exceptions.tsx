@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
@@ -261,123 +261,195 @@ function ExceptionsComponent() {
 	};
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
+		<div className="exceptions-page container mx-auto p-6 space-y-6">
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-					<p className="text-muted-foreground">
-						Manage shortage and damage reports
+				<div className="space-y-1">
+					<div className="flex items-center gap-2.5">
+						<div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0 bg-amber-500">
+							<PackageSearch className="h-4.5 w-4.5 text-white" />
+						</div>
+						<h1
+							className="text-2xl font-bold tracking-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Stock Count Exceptions
+						</h1>
+					</div>
+					<p className="text-sm text-muted-foreground pl-11.5">
+						Review and resolve discrepancies from the latest stock count run.
 					</p>
 				</div>
 			</div>
 
 			{summary && (
 				<div className="grid gap-4 md:grid-cols-4">
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Pending</CardTitle>
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-amber-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Pending
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
 								{summary.byStatus.pending ?? 0}
 							</div>
+							<p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+								Need decision
+							</p>
 						</CardContent>
 					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Approved</CardTitle>
+
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-emerald-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Approved
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
 								{summary.byStatus.approved ?? 0}
 							</div>
+							<p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+								Flowed to inventory
+							</p>
 						</CardContent>
 					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Rejected</CardTitle>
+
+					<Card className="dashboard-card relative overflow-hidden">
+						<div className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-red-500" />
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Rejected
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
 								{summary.byStatus.rejected ?? 0}
 							</div>
+							<p className="mt-0.5 text-xs text-red-500 dark:text-red-400">
+								Sent back to outlet
+							</p>
 						</CardContent>
 					</Card>
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Total</CardTitle>
+
+					<Card className="dashboard-card relative overflow-hidden border-[color-mix(in_oklch,var(--dashboard-accent)_30%,transparent)]">
+						<div
+							className="absolute inset-y-0 left-0 w-1 rounded-l-lg"
+							style={{ background: "var(--dashboard-accent)" }}
+						/>
+						<CardHeader className="pb-2 pl-5">
+							<CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+								Total Exceptions
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">{summary.total}</div>
+						<CardContent className="pl-5">
+							<div
+								className="text-2xl font-bold"
+								style={{
+									fontFamily: "var(--dashboard-display)",
+									color: "var(--dashboard-accent)",
+								}}
+							>
+								{summary.total}
+							</div>
+							<p className="mt-0.5 text-xs text-muted-foreground">
+								Across all counted SKUs
+							</p>
 						</CardContent>
 					</Card>
 				</div>
 			)}
 
-			<Card>
-				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle>Inventory List</CardTitle>
-							<CardDescription>
-								View and manage all inventory reports
-							</CardDescription>
-						</div>
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<Card className="dashboard-card">
+				<CardHeader className="pb-4">
+					<div className="flex flex-col gap-4">
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle
+									className="text-base font-semibold"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Exception Queue
+								</CardTitle>
+								<CardDescription className="text-xs mt-0.5">
+									{data
+										? `${data.total} line${data.total !== 1 ? "s" : ""} with discrepancies`
+										: "Filter, inspect and close out inventory discrepancies in a single pass."}
+								</CardDescription>
+							</div>
 							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search inventory..."
+									placeholder="Search by SKU or description…"
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
 										setPage(1);
 									}}
-									className="pl-9 sm:w-64"
+									className="pl-8 h-8 text-sm sm:w-72"
 								/>
 							</div>
-							<Select
-								value={statusFilter}
-								onValueChange={(value) => {
-									setStatusFilter(value as ExceptionStatusFilter);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-48">
-									<SelectValue placeholder="Filter by status" />
-								</SelectTrigger>
-								<SelectContent>
-									{exceptionStatuses.map((status) => (
-										<SelectItem key={status} value={status}>
-											{formatStatus(status)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Select
-								value={typeFilter}
-								onValueChange={(value) => {
-									setTypeFilter(value as ExceptionType | "ALL");
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-48">
-									<SelectValue placeholder="Filter by type" />
-								</SelectTrigger>
-								<SelectContent>
-									{exceptionTypes.map((type) => (
-										<SelectItem key={type} value={type}>
-											{type === "ALL" ? "All Types" : type}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+						</div>
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<span>Status:</span>
+								<Select
+									value={statusFilter}
+									onValueChange={(value) => {
+										setStatusFilter(value as ExceptionStatusFilter);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-8 w-40 text-xs">
+										<SelectValue placeholder="Filter by status" />
+									</SelectTrigger>
+									<SelectContent>
+										{exceptionStatuses.map((status) => (
+											<SelectItem key={status} value={status}>
+												{formatStatus(status)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<span>Type:</span>
+								<Select
+									value={typeFilter}
+									onValueChange={(value) => {
+										setTypeFilter(value as ExceptionType | "ALL");
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-8 w-40 text-xs">
+										<SelectValue placeholder="Filter by type" />
+									</SelectTrigger>
+									<SelectContent>
+										{exceptionTypes.map((type) => (
+											<SelectItem key={type} value={type}>
+												{type === "ALL" ? "All types" : type}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 					</div>
 				</CardHeader>
-				<CardContent className="relative">
+				<CardContent className="relative pt-0">
 					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
+					<div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur">
 						<Table>
 							<TableHeader>
 								<TableRow>
@@ -458,7 +530,10 @@ function ExceptionsComponent() {
 											rowManualAmounts[row.id]?.loss ?? baseClosed.loss;
 
 										return (
-											<TableRow key={row.id}>
+											<TableRow
+												key={row.id}
+												className="group border-b border-slate-100/80 bg-white/40 transition-colors last:border-0 hover:bg-sky-50/60"
+											>
 												<TableCell className="font-medium">
 													{(page - 1) * pageSize + index + 1}
 												</TableCell>
@@ -510,20 +585,28 @@ function ExceptionsComponent() {
 													)}
 												</TableCell>
 												<TableCell className="text-center">
-													{row.reservedQty}
+													<span className="inline-flex min-w-[3rem] items-center justify-center rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+														{row.reservedQty}
+													</span>
 												</TableCell>
 												<TableCell className="text-center">
 													<span
-														className={
+														className={[
+															"inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1",
 															diffDozen !== 0 || diffLoss !== 0
 																? diffDozen > 0 || diffLoss > 0
-																	? "text-red-600 font-medium"
-																	: "text-green-600 font-medium"
-																: ""
-														}
+																	? "bg-rose-50 text-rose-700 ring-rose-200"
+																	: "bg-emerald-50 text-emerald-700 ring-emerald-200"
+																: "bg-slate-50 text-slate-500 ring-slate-200",
+														].join(" ")}
 													>
-														{diffDozen > 0 ? `-${diffDozen}` : diffDozen} /{" "}
-														{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
+														<span className="tabular-nums">
+															{diffDozen > 0 ? `-${diffDozen}` : diffDozen}
+														</span>
+														<span className="mx-1 text-slate-400">/</span>
+														<span className="tabular-nums">
+															{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
+														</span>
 													</span>
 												</TableCell>
 												<TableCell>
@@ -537,7 +620,7 @@ function ExceptionsComponent() {
 																)
 															}
 														>
-															<SelectTrigger className="w-[160px]">
+															<SelectTrigger className="w-[160px] rounded-full border-slate-200 bg-white/80 text-xs">
 																<SelectValue placeholder="Select..." />
 															</SelectTrigger>
 															<SelectContent>

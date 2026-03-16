@@ -15,9 +15,10 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Loader2, Truck } from "lucide-react";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
+import { AdminPageHeader } from "@/components/admin-page-header";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -132,10 +133,16 @@ function EmpireSushiDOComponent() {
 	const tableColSpan = 11;
 
 	return (
+		<div className="es-do-page min-h-screen bg-[var(--dashboard-surface)]">
+			<div
+				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+				aria-hidden
+			/>
 		<main
 			id="main-content"
-			className="container mx-auto p-6 space-y-6"
-			aria-label={PAGE_TITLE}
+			className="container relative mx-auto p-6 space-y-6"
+			aria-labelledby="es-do-page-title"
+			aria-describedby="es-do-page-description"
 		>
 			<div
 				aria-live="polite"
@@ -150,36 +157,31 @@ function EmpireSushiDOComponent() {
 						: `Showing ${paginatedItems.length} items.`}
 			</div>
 
-			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1
-						id="page-title"
-						className="text-3xl font-bold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
-						tabIndex={-1}
-					>
-						{PAGE_TITLE}
-					</h1>
-					<p id="page-description" className="text-muted-foreground mt-1">
-						{PAGE_DESCRIPTION}
-					</p>
-				</div>
-				<div className="relative">
-					<Search
-						className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
-						aria-hidden
-					/>
-					<Input
-						aria-label="Search items by SKU, description, or DO number"
-						placeholder="Search items..."
-						value={searchTerm}
-						onChange={(e) => {
-							setSearchTerm(e.target.value);
-							setPage(1);
-						}}
-						className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					/>
-				</div>
-			</header>
+			<AdminPageHeader
+				icon={Truck}
+				title={PAGE_TITLE}
+				description={PAGE_DESCRIPTION}
+				titleId="es-do-page-title"
+				descriptionId="es-do-page-description"
+				rightSlot={
+					<div className="relative">
+						<Search
+							className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
+							aria-hidden
+						/>
+						<Input
+							aria-label="Search items by SKU, description, or DO number"
+							placeholder="Search items..."
+							value={searchTerm}
+							onChange={(e) => {
+								setSearchTerm(e.target.value);
+								setPage(1);
+							}}
+							className="pl-9 sm:w-64 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						/>
+					</div>
+				}
+			/>
 
 			{isLoading && (
 				<div
@@ -333,5 +335,6 @@ function EmpireSushiDOComponent() {
 				)}
 			</section>
 		</main>
+		</div>
 	);
 }

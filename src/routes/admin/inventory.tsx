@@ -29,6 +29,7 @@ import {
 	AlertCircle,
 	CheckCircle2,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { getInventory, type InventoryItem } from "@/data/inventory.mock-data";
 
 export const Route = createFileRoute("/admin/inventory")({
@@ -78,21 +79,28 @@ function InventoryComponent() {
 	};
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-					<p className="text-muted-foreground">
-						View inventory levels and stock sync status
-					</p>
-				</div>
-			</div>
+		<main
+			className="inventory-page container mx-auto p-6 space-y-6"
+			aria-labelledby="inventory-page-title"
+			aria-describedby="inventory-page-description"
+			aria-busy={isLoading}
+		>
+			<AdminPageHeader
+				icon={PackageSearch}
+				title="Inventory"
+				description="View inventory levels and stock sync status."
+				titleId="inventory-page-title"
+				descriptionId="inventory-page-description"
+			/>
 
 			{/* Stock Sync Status */}
 			{syncStatus && (
-				<Card className="border-blue-200 bg-blue-50/50">
+				<Card className="dashboard-card border-blue-200 bg-blue-50/50">
 					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-base">
+						<CardTitle
+							className="flex items-center gap-2 text-base"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
 							{syncStatus.status === "OK" ? (
 								<CheckCircle2 className="h-5 w-5 text-green-600" />
 							) : (
@@ -146,11 +154,13 @@ function InventoryComponent() {
 				</Card>
 			)}
 
-			<Card>
+			<Card className="dashboard-card">
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<CardTitle>Inventory Items</CardTitle>
+							<CardTitle style={{ fontFamily: "var(--dashboard-display)" }}>
+								Inventory Items
+							</CardTitle>
 							<CardDescription>
 								View stock levels by SKU and location
 							</CardDescription>
@@ -309,6 +319,6 @@ function InventoryComponent() {
 					)}
 				</CardContent>
 			</Card>
-		</div>
+		</main>
 	);
 }
