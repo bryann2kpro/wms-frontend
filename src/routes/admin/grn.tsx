@@ -170,7 +170,7 @@ const GRN_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-2.png`,
 		description: (
 			<>
-				Search by <strong>GRN number</strong>, <strong>PO reference</strong>, or{" "}
+				Search by <strong>GRN number</strong>, <strong>End User PO</strong>, or{" "}
 				<strong>Supplier DO</strong> (debounced). Filter by{" "}
 				<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
 				<strong>Order</strong>. Pagination is at the bottom.
@@ -483,7 +483,7 @@ function GRNRouteComponent() {
 			.replace("_", " ")
 			.replace(/\b\w/g, (l) => l.toUpperCase());
 
-	/** Parse API date (numeric timestamp or ISO string) and format for display. */
+	/** Parse API date (numeric timestamp or ISO string) and format for display (Malaysian DD/MM/YYYY). */
 	const formatGrnDate = (v: string | null | undefined): string | null => {
 		if (v == null || v === "") return null;
 		const ms = Number(v);
@@ -491,7 +491,11 @@ function GRNRouteComponent() {
 			!isNaN(ms) && String(ms) === String(v).trim()
 				? new Date(ms)
 				: new Date(v);
-		return isNaN(date.getTime()) ? null : date.toLocaleString();
+		if (isNaN(date.getTime())) return null;
+		const day = String(date.getDate()).padStart(2, "0");
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const year = date.getFullYear();
+		return `${day}/${month}/${year}`;
 	};
 
 	const handleViewGRN = (grn: GrnDetailForList) => {
@@ -831,7 +835,7 @@ function GRNRouteComponent() {
 							<TableHeader>
 								<TableRow className="hover:bg-transparent">
 									<TableHead className="px-6">GRN Number</TableHead>
-									<TableHead className="px-6">PO Reference</TableHead>
+									<TableHead className="px-6">End User PO</TableHead>
 									<TableHead className="px-6">Supplier DO</TableHead>
 									<TableHead className="px-6">Received Date</TableHead>
 									<TableHead className="px-6">Status</TableHead>
@@ -1037,7 +1041,7 @@ function GRNRouteComponent() {
 											</div>
 											<div>
 												<Label className="text-xs text-muted-foreground">
-													PO Reference
+													End User PO
 												</Label>
 												<p className="text-sm font-medium">
 													{selectedGRN.poNo || "-"}
