@@ -280,6 +280,7 @@ export interface Skus {
 	skuExpiryDate: string;
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
+	pickingStrategy: string;
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -295,6 +296,7 @@ export interface createSkusInput {
 	skuExpiryDate: string;
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
+	pickingStrategy?: string;
 	isActive?: boolean;
 }
 
@@ -307,6 +309,7 @@ export interface UpdateSkusInput {
 	skuExpiryDate?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
+	pickingStrategy?: string;
 	isActive?: boolean;
 }
 
@@ -565,6 +568,19 @@ export interface CreateDeliveryOrderInputGql {
 // Delivery Order Items (Work Queue)
 // ---------------------------------------------------------------------------
 
+export interface DoItemAllocation {
+	id: string;
+	doItemId: string;
+	grnItemId: string;
+	grnNo: string | null;
+	rackId: string | null;
+	/** Rack location display (e.g. row-column-level) */
+	rackName: string | null;
+	expiryDate: string | null;
+	qtyAllocated: string;
+	priorityFlag: boolean;
+}
+
 export interface DeliveryOrderItemWithDetails {
 	id: string;
 	purchaseOrderId: string;
@@ -579,11 +595,13 @@ export interface DeliveryOrderItemWithDetails {
 	updatedBy: string | null;
 	skuCode: string | null;
 	skuDescription: string | null;
+	doId: string | null;
 	doNo: string | null;
 	doStatus: string | null;
 	onHandQty: string | null;
 	lossQty: string | null;
 	reservedQty: string | null;
+	allocations: DoItemAllocation[];
 }
 
 export interface DeliveryOrderItemWithDetailsPaginatedResponse {

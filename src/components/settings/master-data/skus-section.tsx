@@ -514,6 +514,7 @@ export function SkusSection() {
 								skuQuantity: Number(values.skuQuantity),
 								skuExpiryDate: expiryDate,
 								skuUom: values.skuUom,
+								pickingStrategy: values.pickingStrategy,
 								skuSuppliers:
 									values.skuSuppliers?.map((s) => ({
 										supplierId: s.supplierId,
@@ -543,6 +544,7 @@ export function SkusSection() {
 						lossQuantity: editing.lossQuantity ?? 0,
 						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
+						pickingStrategy: editing.pickingStrategy ?? 'FIFO',
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 					}}
@@ -564,6 +566,7 @@ export function SkusSection() {
 									lossQuantity: Number(values.lossQuantity ?? 0),
 									skuExpiryDate: expiryDate,
 									skuUom: values.skuUom,
+									pickingStrategy: values.pickingStrategy,
 									skuSuppliers:
 										values.skuSuppliers?.map((s) => ({
 											supplierId: s.supplierId,

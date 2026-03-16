@@ -141,8 +141,8 @@ const REPORTS_HELP_STEPS: Array<{
 			<>
 				<strong>GRN</strong>, <strong>DO</strong>, <strong>Inventory</strong>,{" "}
 				<strong>Movement</strong>, and <strong>Invoices Summary</strong>.
-				Movement and Invoices Summary (PDF) require a region; others can use
-				optional filters.
+				Movement and Invoices Summary (PDF) require a region and date range;
+				others can use optional filters.
 			</>
 		),
 	},
@@ -240,13 +240,17 @@ function ReportsComponent() {
 					toast.error("Region is required for this report.");
 					return;
 				}
+				if (!dateFrom?.trim() || !dateTo?.trim()) {
+					toast.error("Date range (From and To) is required for this report.");
+					return;
+				}
 				const reportType =
 					selectedReport === "Movement" ? "MOVEMENT_REPORT" : "INVOICE_SUMMARY";
 				const input: GenerateReportMutationVariables["input"] = {
 					type: reportType,
 					regionId: regionId.trim(),
-					...(dateFrom && { dateFrom }),
-					...(dateTo && { dateTo }),
+					dateFrom: dateFrom.trim(),
+					dateTo: dateTo.trim(),
 					saveToS3: true,
 				};
 				try {
@@ -735,15 +739,23 @@ function ReportsComponent() {
 									selector={(state) => ({
 										selectedReport: state.values.selectedReport,
 										regionId: state.values.regionId,
+										dateFrom: state.values.dateFrom,
+										dateTo: state.values.dateTo,
 										format: state.values.format,
 									})}
 								>
-									{({ selectedReport, regionId, format }) => {
-										const needsRegion =
+									{({ selectedReport, regionId, dateFrom, dateTo, format }) => {
+										const needsRegionAndDateRange =
 											selectedReport === "Movement" ||
 											selectedReport === "InvoiceSummary";
 										const missingRequiredRegion =
-											format === "PDF" && needsRegion && !regionId?.trim();
+											format === "PDF" && needsRegionAndDateRange && !regionId?.trim();
+										const missingRequiredDateRange =
+											format === "PDF" &&
+											needsRegionAndDateRange &&
+											(!dateFrom?.trim() || !dateTo?.trim());
+										const missingRequired =
+											missingRequiredRegion || missingRequiredDateRange;
 
 										const selectedMeta = reportTypes.find(
 											(r) => r.value === selectedReport,
@@ -759,6 +771,10 @@ function ReportsComponent() {
 														<span className="text-amber-600 dark:text-amber-400 font-medium">
 															Region required for {selectedMeta?.label ?? "this report"} (PDF).
 														</span>
+													) : missingRequiredDateRange ? (
+														<span className="text-amber-600 dark:text-amber-400 font-medium">
+															Date range (From and To) required for {selectedMeta?.label ?? "this report"} (PDF).
+														</span>
 													) : (
 														<span>
 															Ready to generate{" "}
@@ -770,7 +786,7 @@ function ReportsComponent() {
 												<Button
 													type="submit"
 													disabled={
-														!selectedReport || missingRequiredRegion || isGenerating
+														!selectedReport || missingRequired || isGenerating
 													}
 													className="gap-2 shrink-0 text-white disabled:opacity-50"
 													style={{
