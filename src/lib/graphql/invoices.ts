@@ -143,10 +143,13 @@ export interface InvoicesPaginatedResponseGQL {
 
 export type InvoicesQueryVariables = {
 	filter?: {
-		status?: string | string[];
+		status?: string;
+		statuses?: string[];
 		search?: string;
 		invoiceNo?: string;
 		doId?: string;
+		dateIssuedFrom?: string;
+		dateIssuedTo?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;
