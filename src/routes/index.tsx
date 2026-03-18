@@ -1,11 +1,12 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-	beforeLoad: async ({ context }) => {
-		// Skip during SSR — localStorage is unavailable server-side
-		if (typeof window === "undefined") return;
-		throw redirect({
-			to: context.isAuthenticated() ? "/admin/dashboard" : "/login",
-		});
+	component: () => {
+		const { isAuthenticated } = useAuth();
+		if (isAuthenticated) {
+			return <Navigate to="/admin/dashboard" />;
+		}
+		return <Navigate to="/login" />;
 	},
 });
