@@ -155,6 +155,13 @@ export const DELETE_GRN_MUTATION = gql`
 	}
 `;
 
+/** Get next GRN number for today (or an optional date) */
+export const NEXT_GRN_NUMBER_QUERY = gql`
+	query NextGrnNumber($date: String) {
+		nextGrnNumber(date: $date)
+	}
+`;
+
 // ---------------------------------------------------------------------------
 // Query / mutation types (from types.ts)
 // ---------------------------------------------------------------------------
@@ -190,6 +197,14 @@ export type DeleteGrnMutationVariables = {
 
 export type DeleteGrnMutationData = {
 	deleteGrn: boolean;
+};
+
+export type NextGrnNumberQueryVariables = {
+	date?: string | null;
+};
+
+export type NextGrnNumberQueryData = {
+	nextGrnNumber: string;
 };
 
 // ---------------------------------------------------------------------------

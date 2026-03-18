@@ -135,11 +135,23 @@ export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
 		updatedBy
 		skuCode
 		skuDescription
+		doId
 		doNo
 		doStatus
 		onHandQty
 		lossQty
 		reservedQty
+		allocations {
+			id
+			doItemId
+			grnItemId
+			grnNo
+			rackId
+			rackName
+			expiryDate
+			qtyAllocated
+			priorityFlag
+		}
 	}
 `;
 
@@ -173,6 +185,15 @@ export const DELIVERY_ORDER_ITEMS_QUERY = gql`
 export const MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION = gql`
 	mutation MarkDeliveryOrderItemPicked($id: ID!, $qtyPicked: String!) {
 		markDeliveryOrderItemPicked(id: $id, qtyPicked: $qtyPicked) {
+			...DeliveryOrderItemWithDetailsFields
+		}
+	}
+	${DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT}
+`;
+
+export const ALLOCATE_PICK_LIST_MUTATION = gql`
+	mutation AllocatePickList($deliveryOrderId: ID!) {
+		allocatePickList(deliveryOrderId: $deliveryOrderId) {
 			...DeliveryOrderItemWithDetailsFields
 		}
 	}
@@ -238,6 +259,14 @@ export type MarkDeliveryOrderItemPickedMutationVariables = {
 
 export type MarkDeliveryOrderItemPickedMutationData = {
 	markDeliveryOrderItemPicked: DeliveryOrderItemWithDetails;
+};
+
+export type AllocatePickListMutationVariables = {
+	deliveryOrderId: string;
+};
+
+export type AllocatePickListMutationData = {
+	allocatePickList: DeliveryOrderItemWithDetails[];
 };
 
 export type SubmitDeliveryProofMutationVariables = {

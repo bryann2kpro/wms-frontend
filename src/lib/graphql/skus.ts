@@ -18,6 +18,11 @@ export const SKUS_QUERY = gql`
 				lossQuantity
 				skuExpiryDate
 				skuUom
+				pickingStrategy
+				skuSuppliers {
+					supplierId
+					originalSkuCode
+				}
 				isActive
 			}
 		}
@@ -58,6 +63,7 @@ export const SKUS_FRAGMENT = gql`
 			originalSkuCode
 		}
 		skuUom
+		pickingStrategy
 		isActive
 		createdAt
 		updatedAt

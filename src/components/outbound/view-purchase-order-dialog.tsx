@@ -150,20 +150,25 @@ export function ViewPurchaseOrderDialog({
 													purchaseOrder.deliveryOrder.status,
 												)}
 											</Badge>
-											{onAdvanceStep &&
-												purchaseOrder.deliveryOrder.status !== "DELIVERED" &&
-												purchaseOrder.deliveryOrder.status !== "SHIPPED" && (
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={onAdvanceStep}
-														disabled={isAdvanceStepPending}
-														aria-label="Mark delivery order to next step"
-													>
-														{isAdvanceStepPending ? "Updating…" : "Next step"}
-														<ChevronRight className="ml-1 h-4 w-4" />
-													</Button>
-												)}
+											{purchaseOrder.deliveryOrder.status === "NEW" ||
+											purchaseOrder.deliveryOrder.status === "CREATED" ||
+											purchaseOrder.deliveryOrder.status === "PICKING" ? (
+												<span className="text-xs text-muted-foreground italic">
+													Awaiting picking
+												</span>
+											) : onAdvanceStep &&
+												purchaseOrder.deliveryOrder.status === "PACKING" ? (
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={onAdvanceStep}
+													disabled={isAdvanceStepPending}
+													aria-label="Mark delivery order to next step"
+												>
+													{isAdvanceStepPending ? "Updating…" : "Next step"}
+													<ChevronRight className="ml-1 h-4 w-4" />
+												</Button>
+											) : null}
 										</div>
 									</div>
 								)}

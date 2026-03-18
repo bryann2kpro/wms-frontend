@@ -428,34 +428,37 @@ export function OutboundListCard({
 																		purchaseOrder.deliveryOrder.status,
 																	)}
 																</Badge>
-																{onAdvanceStep &&
-																	purchaseOrder.deliveryOrder.status !==
-																		"DELIVERED" &&
-																	purchaseOrder.deliveryOrder.status !==
-																		"SHIPPED" &&
-																(isTesting || dateKey === todayKey) && (
-																		<Button
-																			variant="outline"
-																			size="sm"
-																			className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																			onClick={() =>
-																				onAdvanceStep(purchaseOrder)
-																			}
-																			disabled={
-																				isAdvanceStepPending &&
-																				advancingDeliveryOrderId ===
-																					purchaseOrder.deliveryOrder?.id
-																			}
-																			aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
-																		>
-																			{isAdvanceStepPending &&
+																{purchaseOrder.deliveryOrder.status === "NEW" ||
+																purchaseOrder.deliveryOrder.status === "CREATED" ||
+																purchaseOrder.deliveryOrder.status === "PICKING" ? (
+																	<span className="text-xs text-muted-foreground italic">
+																		Awaiting picking
+																	</span>
+																) : onAdvanceStep &&
+																	purchaseOrder.deliveryOrder.status === "PACKING" &&
+																	(isTesting || dateKey === todayKey) ? (
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+																		onClick={() =>
+																			onAdvanceStep(purchaseOrder)
+																		}
+																		disabled={
+																			isAdvanceStepPending &&
 																			advancingDeliveryOrderId ===
 																				purchaseOrder.deliveryOrder?.id
-																				? "Updating…"
-																				: "Next step"}
-																			<ChevronRight className="ml-1 h-4 w-4" />
-																		</Button>
-																	)}
+																		}
+																		aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
+																	>
+																		{isAdvanceStepPending &&
+																		advancingDeliveryOrderId ===
+																			purchaseOrder.deliveryOrder?.id
+																			? "Updating…"
+																			: "Next step"}
+																		<ChevronRight className="ml-1 h-4 w-4" />
+																	</Button>
+																) : null}
 															</div>
 														) : (
 															<span className="text-muted-foreground text-sm">—</span>

@@ -156,13 +156,13 @@ function CreateRackDialog({
 	loading: boolean;
 }) {
 	const [rackRow, setRackRow] = useState("");
-	const [rackColumn, setRackColumn] = useState("");
 	const [rackLevel, setRackLevel] = useState("");
+	const [rackColumn, setRackColumn] = useState("");
 	useEffect(() => {
 		if (open) {
 			setRackRow("");
-			setRackColumn("");
 			setRackLevel("");
+			setRackColumn("");
 		}
 	}, [open]);
 	return (
@@ -179,7 +179,7 @@ function CreateRackDialog({
 						className="text-sm text-muted-foreground"
 						style={{ fontFamily: "var(--dashboard-body)" }}
 					>
-						Add a new rack location (row, column, level).
+						Add a new rack location (row, level, column).
 					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
@@ -194,21 +194,21 @@ function CreateRackDialog({
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="rack-column" style={{ fontFamily: "var(--dashboard-body)" }}>Column</Label>
-						<Input
-							id="rack-column"
-							value={rackColumn}
-							onChange={(e) => setRackColumn(e.target.value)}
-							placeholder="e.g. 01, 02"
-							className="rounded-lg border-muted-foreground/20"
-						/>
-					</div>
-					<div className="grid gap-2">
 						<Label htmlFor="rack-level" style={{ fontFamily: "var(--dashboard-body)" }}>Level</Label>
 						<Input
 							id="rack-level"
 							value={rackLevel}
 							onChange={(e) => setRackLevel(e.target.value)}
+							placeholder="e.g. 01, 02"
+							className="rounded-lg border-muted-foreground/20"
+						/>
+					</div>
+					<div className="grid gap-2">
+						<Label htmlFor="rack-column" style={{ fontFamily: "var(--dashboard-body)" }}>Column</Label>
+						<Input
+							id="rack-column"
+							value={rackColumn}
+							onChange={(e) => setRackColumn(e.target.value)}
 							placeholder="e.g. 01, 02"
 							className="rounded-lg border-muted-foreground/20"
 						/>
@@ -622,8 +622,6 @@ export function GrnFormDialog({
 		validators: {
 			onSubmit: ({ value }) => {
 				const fields: Partial<Record<string, string>> = {};
-				if (!value.grnNumber?.trim())
-					fields.grnNumber = "GRN Number is required";
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
 				if (!value.supplierDO?.trim())
@@ -660,7 +658,7 @@ export function GrnFormDialog({
 			if (mode === "create") {
 				const payload: GrnCreateSubmitPayload = {
 					grnNumber: value.grnNumber,
-					poReference: value.poReference,
+					poReference: value.poReference ?? "",
 					supplierDO: value.supplierDO,
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
@@ -870,45 +868,14 @@ export function GrnFormDialog({
 								<CardContent className="space-y-4">
 									<FieldGroup>
 										<div className="grid gap-4 sm:grid-cols-2">
-											<form.Field name="grnNumber">
-												{(field) => {
-													const isInvalid = field.state.meta.errors.length > 0;
-													return (
-														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
-																GRN Number
-															</FieldLabel>
-															<Input
-																id={field.name}
-																value={field.state.value}
-																placeholder="GRN-2024-001"
-																onBlur={field.handleBlur}
-																onChange={(e) =>
-																	field.handleChange(e.target.value)
-																}
-																required
-																aria-invalid={isInvalid}
-																className="rounded-lg border-muted-foreground/20"
-															/>
-															{isInvalid && (
-																<FieldError
-																	errors={normalizeFieldErrors(
-																		field.state.meta.errors,
-																	)}
-																/>
-															)}
-														</Field>
-													);
-												}}
-											</form.Field>
 											<form.Field name="poReference">
 												{(field) => {
 													const isInvalid = field.state.meta.errors.length > 0;
 													return (
 														<Field data-invalid={isInvalid}>
 															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
-																PO Reference
-															</FieldLabel>
+															End User PO
+														</FieldLabel>
 															<Input
 																id={field.name}
 																value={field.state.value}
@@ -939,7 +906,7 @@ export function GrnFormDialog({
 												return (
 													<Field data-invalid={isInvalid}>
 														<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
-															Supplier DO
+															Supplier DO <span className="text-destructive">*</span>
 														</FieldLabel>
 														<Input
 															id={field.name}

@@ -21,6 +21,7 @@ export interface SkusFormValues {
 	lossQuantity?: number;
 	skuExpiryDate: string;
 	skuUom: string;
+	pickingStrategy: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	isActive?: boolean;
 }
@@ -33,6 +34,7 @@ export interface SkusFormInitial {
 	lossQuantity?: number;
 	skuExpiryDate: string;
 	skuUom: string;
+	pickingStrategy?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
 	isActive?: boolean;
 }
@@ -106,6 +108,9 @@ export function SkusFormDialog({
 		parseDate(initial?.skuExpiryDate),
 	);
 	const [skuUom, setSkuUom] = useState(initial?.skuUom ?? "");
+	const [pickingStrategy, setPickingStrategy] = useState(
+		initial?.pickingStrategy ?? "FIFO",
+	);
 	const [skuSuppliers, setSkuSuppliers] = useState<
 		Array<{ supplierId: string; originalSkuCode: string | null }>
 	>(initial?.skuSuppliers ?? []);
@@ -130,6 +135,7 @@ export function SkusFormDialog({
 			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
+			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
 			setSkuSuppliers(initial?.skuSuppliers ?? []);
 			setIsActive(initial?.isActive ?? true);
 			setStep(1);
@@ -147,6 +153,7 @@ export function SkusFormDialog({
 			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
 			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
 			setSkuUom(initial?.skuUom ?? "");
+			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
 			setSkuSuppliers(initial?.skuSuppliers ?? []);
 			setIsActive(initial?.isActive ?? true);
 			setStep(1);
@@ -243,6 +250,7 @@ export function SkusFormDialog({
 			lossQuantity: Math.max(0, Number(lossQuantity) || 0),
 			skuExpiryDate: expiryDateString,
 			skuUom,
+			pickingStrategy,
 			skuSuppliers,
 			isActive,
 		});
@@ -271,6 +279,8 @@ export function SkusFormDialog({
 						setSkuExpiryDate={setSkuExpiryDate}
 						skuUom={skuUom}
 						setSkuUom={setSkuUom}
+						pickingStrategy={pickingStrategy}
+						setPickingStrategy={setPickingStrategy}
 						stockUnits={stockUnits}
 						errors={errors}
 						setErrors={setErrors}

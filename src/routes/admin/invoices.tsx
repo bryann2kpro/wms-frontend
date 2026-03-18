@@ -77,9 +77,13 @@ function InvoicesComponent() {
 			variables: {
 				filter: {
 					...(debouncedSearch ? { search: debouncedSearch } : {}),
-					...(statusFilter !== "ALL"
-						? { status: uiStatusToGql(statusFilter) }
-						: {}),
+					...(() => {
+						const gqlStatus = uiStatusToGql(statusFilter);
+						if (!gqlStatus || statusFilter === "ALL") return {};
+						return Array.isArray(gqlStatus)
+							? { statuses: gqlStatus }
+							: { status: gqlStatus };
+					})(),
 					...(issuedFrom ? { dateIssuedFrom: issuedFrom } : {}),
 					...(issuedTo ? { dateIssuedTo: issuedTo } : {}),
 				},
