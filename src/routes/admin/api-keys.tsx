@@ -85,16 +85,13 @@ function SummaryCard({
 	icon: React.ComponentType<{ className?: string }>;
 	label: string;
 	value: number | string;
-	accent: string;
+	accent?: string;
 }) {
 	return (
-		<div
-			className="rounded-xl border bg-card p-5 flex items-center gap-4"
-			style={{ borderColor: "var(--border)" }}
-		>
+		<div className="dashboard-card rounded-xl border bg-card p-5 flex items-center gap-4">
 			<div
 				className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-				style={{ background: accent }}
+				style={{ background: accent ?? "var(--dashboard-accent)" }}
 			>
 				<Icon className="h-5 w-5 text-white" />
 			</div>
@@ -104,7 +101,7 @@ function SummaryCard({
 				</p>
 				<p
 					className="text-2xl font-bold mt-0.5"
-					style={{ fontFamily: "var(--apikeys-display)" }}
+					style={{ fontFamily: "var(--dashboard-display)" }}
 				>
 					{value}
 				</p>
@@ -129,13 +126,13 @@ function KeyRow({
 						className="h-2 w-2 rounded-full shrink-0"
 						style={{
 							background: apiKey.isActive
-								? "var(--apikeys-accent)"
+								? "var(--dashboard-accent)"
 								: "var(--muted-foreground)",
 						}}
 					/>
 					<span
 						className="font-medium text-sm"
-						style={{ fontFamily: "var(--apikeys-display)" }}
+						style={{ fontFamily: "var(--dashboard-display)" }}
 					>
 						{apiKey.name}
 					</span>
@@ -147,8 +144,8 @@ function KeyRow({
 				<span
 					className="font-mono text-xs px-2 py-1 rounded-md"
 					style={{
-						background: "var(--apikeys-accent-muted)",
-						color: "var(--apikeys-accent)",
+						background: "var(--dashboard-accent-muted)",
+						color: "var(--dashboard-accent)",
 					}}
 				>
 					{apiKey.keyPrefix}••••••••
@@ -162,9 +159,9 @@ function KeyRow({
 						variant="outline"
 						className="text-xs font-medium gap-1"
 						style={{
-							borderColor: "var(--apikeys-accent)",
-							color: "var(--apikeys-accent)",
-							background: "var(--apikeys-accent-muted)",
+							borderColor: "var(--dashboard-accent)",
+							color: "var(--dashboard-accent)",
+							background: "var(--dashboard-accent-muted)",
 						}}
 					>
 						<span className="h-1.5 w-1.5 rounded-full bg-current inline-block" />
@@ -264,11 +261,11 @@ function GenerateKeyDialog({
 				<DialogHeader>
 					<DialogTitle
 						className="flex items-center gap-2"
-						style={{ fontFamily: "var(--apikeys-display)" }}
+						style={{ fontFamily: "var(--dashboard-display)" }}
 					>
 						<div
 							className="h-7 w-7 rounded-md flex items-center justify-center shrink-0"
-							style={{ background: "var(--apikeys-accent)" }}
+							style={{ background: "var(--dashboard-accent)" }}
 						>
 							<KeyRound className="h-3.5 w-3.5 text-white" />
 						</div>
@@ -285,7 +282,7 @@ function GenerateKeyDialog({
 					<div className="space-y-1.5">
 						<label
 							className="text-sm font-medium"
-							style={{ fontFamily: "var(--apikeys-display)" }}
+							style={{ fontFamily: "var(--dashboard-display)" }}
 						>
 							Key name <span className="text-destructive">*</span>
 						</label>
@@ -304,7 +301,7 @@ function GenerateKeyDialog({
 					<div className="space-y-1.5">
 						<label
 							className="text-sm font-medium"
-							style={{ fontFamily: "var(--apikeys-display)" }}
+							style={{ fontFamily: "var(--dashboard-display)" }}
 						>
 							Expiry date{" "}
 							<span className="text-muted-foreground font-normal">
@@ -333,10 +330,7 @@ function GenerateKeyDialog({
 						<Button
 							type="submit"
 							disabled={!name.trim() || mutation.isPending}
-							style={{
-								background: "var(--apikeys-accent)",
-								color: "white",
-							}}
+							style={{ background: "var(--dashboard-accent)", color: "white" }}
 						>
 							{mutation.isPending ? "Generating…" : "Generate Key"}
 						</Button>
@@ -371,7 +365,7 @@ function RawKeyRevealDialog({
 		});
 	}
 
-	const display = visible ? rawKey ?? "" : "•".repeat(64);
+	const display = visible ? (rawKey ?? "") : "•".repeat(64);
 
 	return (
 		<Dialog open={!!rawKey} onOpenChange={() => onClose()}>
@@ -391,7 +385,7 @@ function RawKeyRevealDialog({
 				</div>
 
 				<DialogHeader className="mt-1">
-					<DialogTitle style={{ fontFamily: "var(--apikeys-display)" }}>
+					<DialogTitle style={{ fontFamily: "var(--dashboard-display)" }}>
 						API Key: {keyName}
 					</DialogTitle>
 					<DialogDescription>
@@ -407,9 +401,9 @@ function RawKeyRevealDialog({
 					<div
 						className="relative rounded-lg border p-3.5 font-mono text-sm break-all leading-relaxed"
 						style={{
-							background: "var(--apikeys-accent-muted)",
-							borderColor: "var(--apikeys-accent)",
-							color: "var(--apikeys-accent)",
+							background: "var(--dashboard-accent-muted)",
+							borderColor: "var(--dashboard-accent)",
+							color: "var(--dashboard-accent)",
 							minHeight: "4rem",
 						}}
 					>
@@ -447,10 +441,7 @@ function RawKeyRevealDialog({
 					<Button
 						className="w-full gap-2"
 						onClick={copyKey}
-						style={{
-							background: "var(--apikeys-accent)",
-							color: "white",
-						}}
+						style={{ background: "var(--dashboard-accent)", color: "white" }}
 					>
 						{copied ? (
 							<>
@@ -510,7 +501,7 @@ function RevokeDialog({
 				<DialogHeader>
 					<DialogTitle
 						className="flex items-center gap-2"
-						style={{ fontFamily: "var(--apikeys-display)" }}
+						style={{ fontFamily: "var(--dashboard-display)" }}
 					>
 						<div className="h-7 w-7 rounded-md flex items-center justify-center shrink-0 bg-destructive/10">
 							<Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -555,16 +546,16 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
 		<div className="flex flex-col items-center justify-center py-20 text-center">
 			<div
 				className="h-16 w-16 rounded-2xl flex items-center justify-center mb-5"
-				style={{ background: "var(--apikeys-accent-muted)" }}
+				style={{ background: "var(--dashboard-accent-muted)" }}
 			>
 				<KeyRound
 					className="h-8 w-8"
-					style={{ color: "var(--apikeys-accent)" }}
+					style={{ color: "var(--dashboard-accent)" }}
 				/>
 			</div>
 			<h3
 				className="text-lg font-semibold mb-1.5"
-				style={{ fontFamily: "var(--apikeys-display)" }}
+				style={{ fontFamily: "var(--dashboard-display)" }}
 			>
 				No API keys yet
 			</h3>
@@ -575,7 +566,7 @@ function EmptyState({ onGenerate }: { onGenerate: () => void }) {
 			<Button
 				onClick={onGenerate}
 				className="gap-2"
-				style={{ background: "var(--apikeys-accent)", color: "white" }}
+				style={{ background: "var(--dashboard-accent)", color: "white" }}
 			>
 				<Plus className="h-4 w-4" />
 				Generate First Key
@@ -613,156 +604,150 @@ function ApiKeysPage() {
 
 	return (
 		<>
-			{/* Per-page design tokens */}
-			<style>{`
-        .api-keys-page {
-          --apikeys-accent: oklch(0.57 0.17 196);
-          --apikeys-accent-muted: oklch(0.57 0.17 196 / 0.10);
-          --apikeys-display: "Plus Jakarta Sans", sans-serif;
-          --apikeys-body: "Figtree", sans-serif;
-        }
-      `}</style>
-
 			<main
-				className="api-keys-page flex-1 space-y-6 p-6 md:p-8"
+				className="api-keys-page min-h-screen bg-[var(--dashboard-surface)]"
 				aria-labelledby="apikeys-title"
 				aria-describedby="apikeys-desc"
 			>
-				{/* Header */}
-				<AdminPageHeader
-					icon={KeyRound}
-					title="API Keys"
-					description="Manage access tokens for third-party integrations. Keys are hashed — the raw value is shown only once on creation."
-					titleId="apikeys-title"
-					descriptionId="apikeys-desc"
-					accentCssVar="--apikeys-accent"
-					rightSlot={
-						<Button
-							onClick={() => setIsGenerateOpen(true)}
-							className="gap-2 h-9"
-							style={{ background: "var(--apikeys-accent)", color: "white" }}
-						>
-							<Plus className="h-4 w-4" />
-							Generate Key
-						</Button>
-					}
+				{/* Subtle gradient band — matches other admin pages */}
+				<div
+					className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
+					aria-hidden
 				/>
 
-				{/* Summary cards */}
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-					<SummaryCard
+				<div className="relative container mx-auto px-6 py-8 space-y-8">
+					{/* Header */}
+					<AdminPageHeader
 						icon={KeyRound}
-						label="Total Keys"
-						value={keys.length}
-						accent="var(--apikeys-accent)"
+						title="API Keys"
+						description="Manage access tokens for third-party integrations. Keys are hashed — the raw value is shown only once on creation."
+						titleId="apikeys-title"
+						descriptionId="apikeys-desc"
+						accentCssVar="--dashboard-accent"
+						rightSlot={
+							<Button
+								onClick={() => setIsGenerateOpen(true)}
+								className="gap-2 h-9"
+								style={{ background: "var(--dashboard-accent)", color: "white" }}
+							>
+								<Plus className="h-4 w-4" />
+								Generate Key
+							</Button>
+						}
 					/>
-					<SummaryCard
-						icon={Activity}
-						label="Active Keys"
-						value={activeKeys.length}
-						accent="oklch(0.55 0.15 145)"
-					/>
-					<SummaryCard
-						icon={Clock}
-						label="Last Used"
-						value={timeAgo(lastUsed?.lastUsedAt ?? null)}
-						accent="oklch(0.60 0.15 55)"
-					/>
-				</div>
 
-				{/* Table card */}
-				<div className="rounded-xl border bg-card overflow-hidden">
-					{/* Card header */}
-					<div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
-						<h2
-							className="text-sm font-semibold"
-							style={{ fontFamily: "var(--apikeys-display)" }}
-						>
-							All Keys
-						</h2>
-						<span className="text-xs text-muted-foreground">
-							{keys.length} key{keys.length !== 1 ? "s" : ""}
-						</span>
+					{/* Summary cards */}
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<SummaryCard
+							icon={KeyRound}
+							label="Total Keys"
+							value={keys.length}
+						/>
+						<SummaryCard
+							icon={Activity}
+							label="Active Keys"
+							value={activeKeys.length}
+							accent="oklch(0.55 0.15 145)"
+						/>
+						<SummaryCard
+							icon={Clock}
+							label="Last Used"
+							value={timeAgo(lastUsed?.lastUsedAt ?? null)}
+							accent="oklch(0.60 0.15 55)"
+						/>
 					</div>
 
-					{/* Content */}
-					{isLoading ? (
-						<div className="flex items-center justify-center py-16 text-sm text-muted-foreground gap-2">
-							<div
-								className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin"
-								style={{ borderColor: "var(--apikeys-accent)" }}
-							/>
-							Loading keys…
+					{/* Table card */}
+					<div className="rounded-xl border bg-card overflow-hidden">
+						<div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+							<h2
+								className="text-sm font-semibold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								All Keys
+							</h2>
+							<span className="text-xs text-muted-foreground">
+								{keys.length} key{keys.length !== 1 ? "s" : ""}
+							</span>
 						</div>
-					) : isError ? (
-						<div className="flex items-center justify-center py-16 text-sm text-destructive">
-							Failed to load API keys. Please refresh.
-						</div>
-					) : keys.length === 0 ? (
-						<EmptyState onGenerate={() => setIsGenerateOpen(true)} />
-					) : (
-						<div className="overflow-x-auto">
-							<table className="w-full text-left">
-								<thead>
-									<tr className="border-b border-border/50">
-										{[
-											"Name",
-											"Key Prefix",
-											"Status",
-											"Last Used",
-											"Expires",
-											"Created",
-											"",
-										].map((h) => (
-											<th
-												key={h}
-												className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide"
-											>
-												{h}
-											</th>
-										))}
-									</tr>
-								</thead>
-								<tbody>
-									{keys.map((key) => (
-										<KeyRow
-											key={key.id}
-											apiKey={key}
-											onRevoke={setKeyToRevoke}
-										/>
-									))}
-								</tbody>
-							</table>
-						</div>
-					)}
-				</div>
 
-				{/* Usage hint */}
-				<div
-					className="rounded-lg border px-5 py-4"
-					style={{
-						borderColor: "var(--apikeys-accent)",
-						background: "var(--apikeys-accent-muted)",
-					}}
-				>
-					<p
-						className="text-xs font-medium mb-1"
-						style={{ color: "var(--apikeys-accent)" }}
+						{isLoading ? (
+							<div className="flex items-center justify-center py-16 text-sm text-muted-foreground gap-2">
+								<div
+									className="h-4 w-4 rounded-full border-2 border-t-transparent animate-spin"
+									style={{ borderColor: "var(--dashboard-accent)" }}
+								/>
+								Loading keys…
+							</div>
+						) : isError ? (
+							<div className="flex items-center justify-center py-16 text-sm text-destructive">
+								Failed to load API keys. Please refresh.
+							</div>
+						) : keys.length === 0 ? (
+							<EmptyState onGenerate={() => setIsGenerateOpen(true)} />
+						) : (
+							<div className="overflow-x-auto">
+								<table className="w-full text-left">
+									<thead>
+										<tr className="border-b border-border/50">
+											{[
+												"Name",
+												"Key Prefix",
+												"Status",
+												"Last Used",
+												"Expires",
+												"Created",
+												"",
+											].map((h) => (
+												<th
+													key={h}
+													className="px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+												>
+													{h}
+												</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{keys.map((key) => (
+											<KeyRow
+												key={key.id}
+												apiKey={key}
+												onRevoke={setKeyToRevoke}
+											/>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
+					</div>
+
+					{/* Usage hint */}
+					<div
+						className="rounded-lg border px-5 py-4"
+						style={{
+							borderColor:
+								"color-mix(in oklch, var(--dashboard-accent) 25%, transparent)",
+							background:
+								"color-mix(in oklch, var(--dashboard-accent) 4%, white)",
+						}}
 					>
-						How to use
-					</p>
-					<p className="text-xs text-muted-foreground">
-						Pass the key as a request header:{" "}
-						<code
-							className="font-mono px-1.5 py-0.5 rounded text-xs"
-							style={{
-								background: "var(--apikeys-accent)",
-								color: "white",
-							}}
+						<p
+							className="text-xs font-medium mb-1"
+							style={{ color: "var(--dashboard-accent)" }}
 						>
-							x-api-key: &lt;your-key&gt;
-						</code>
-					</p>
+							How to use
+						</p>
+						<p className="text-xs text-muted-foreground">
+							Pass the key as a request header:{" "}
+							<code
+								className="font-mono px-1.5 py-0.5 rounded text-xs text-white"
+								style={{ background: "var(--dashboard-accent)" }}
+							>
+								x-api-key: &lt;your-key&gt;
+							</code>
+						</p>
+					</div>
 				</div>
 			</main>
 
