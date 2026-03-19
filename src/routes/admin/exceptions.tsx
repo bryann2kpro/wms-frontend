@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation as useApolloMutation, useQuery as useApolloQuery } from "@apollo/client/react";
@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
 	Table,
@@ -62,7 +61,6 @@ import {
 	ImageOff,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
 	STOCK_COUNT_SESSIONS_QUERY,
@@ -195,7 +193,6 @@ export const Route = createFileRoute("/admin/exceptions")({
 });
 
 function ExceptionsComponent() {
-	const { user } = useCurrentUser();
 	const unitName = useStockUnitName();
 
 	// ─── Help dialog state ────────────────────────────────────────
@@ -226,15 +223,22 @@ function ExceptionsComponent() {
 		refetch: refetchSessions,
 	} = useApolloQuery<StockCountSessionsQueryData>(STOCK_COUNT_SESSIONS_QUERY, {
 		variables: { pageSize: 100, pageNumber: 1 },
-		onCompleted(data) {
-			if (!selectedSessionId && data.stockCountSessions.query.length > 0) {
-				setSelectedSessionId(data.stockCountSessions.query[0].id);
-			}
-		},
 	});
 
-	const sessions: StockCountSession[] = sessionsData?.stockCountSessions?.query ?? [];
+	const sessions = (sessionsData?.stockCountSessions?.query ?? []) as StockCountSession[];
 	const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+
+	// Keep selected session in sync even when Apollo serves cached data
+	// without running the onCompleted callback.
+	useEffect(() => {
+		if (sessions.length === 0) {
+			if (selectedSessionId !== null) setSelectedSessionId(null);
+			return;
+		}
+		if (!selectedSessionId || !sessions.some((session) => session.id === selectedSessionId)) {
+			setSelectedSessionId(sessions[0].id);
+		}
+	}, [sessions, selectedSessionId]);
 
 	const {
 		data: itemsData,
