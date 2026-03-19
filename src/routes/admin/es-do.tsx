@@ -117,6 +117,7 @@ const TABLE_COLS = 9;
 
 function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
+	const trimmedSearchTerm = searchTerm.trim();
 	// Optimistic picked state — items checked in this session before API confirms
 	const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(
 		new Set(),
@@ -149,7 +150,14 @@ function EmpireSushiDOComponent() {
 	} = useQuery<DeliveryOrderItemsQueryData, DeliveryOrderItemsQueryVariables>(
 		DELIVERY_ORDER_ITEMS_QUERY,
 		{
-			variables: { pageSize: 200, pageNumber: 1 },
+			variables: {
+				pageSize: 200,
+				pageNumber: 1,
+				filter: {
+					doStatuses: Array.from(ACTIVE_DO_STATUSES),
+					search: trimmedSearchTerm || undefined,
+				},
+			},
 			fetchPolicy: "cache-and-network",
 			notifyOnNetworkStatusChange: true,
 		},
@@ -175,22 +183,10 @@ function EmpireSushiDOComponent() {
 		[data],
 	);
 
-	/** Items grouped by DO, filtered to active statuses and search term. */
+	/** Items grouped by DO (filtering is done by GraphQL query). */
 	const groups = useMemo<DOGroup[]>(() => {
-		const filtered = allItems.filter((item) => {
-			if (!ACTIVE_DO_STATUSES.has(item.doStatus ?? "")) return false;
-			if (!searchTerm) return true;
-			const term = searchTerm.toLowerCase();
-			return (
-				item.skuCode?.toLowerCase().includes(term) ||
-				item.skuDescription?.toLowerCase().includes(term) ||
-				item.doNo?.toLowerCase().includes(term) ||
-				item.purchaseOrderNo?.toLowerCase().includes(term)
-			);
-		});
-
 		const grouped = new Map<string, DOGroup>();
-		for (const item of filtered) {
+		for (const item of allItems) {
 			const key = item.doId ?? "no-do";
 			if (!grouped.has(key)) {
 				grouped.set(key, {
@@ -203,7 +199,7 @@ function EmpireSushiDOComponent() {
 			grouped.get(key)!.items.push(item);
 		}
 		return Array.from(grouped.values());
-	}, [allItems, searchTerm]);
+	}, [allItems]);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
