@@ -12,6 +12,7 @@ import {
 	Users,
 	Settings,
 	Shield,
+	KeyRound,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -183,6 +184,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/audit-log",
 		icon: FileText,
 		allowedPermission: ["Audit Log"],
+		variant: "default",
+		group: "administration",
+	},
+	{
+		key: "sidebar-api-keys",
+		title: "API Keys",
+		href: "/admin/api-keys",
+		icon: KeyRound,
+		allowedPermission: ["Role"],
 		variant: "default",
 		group: "administration",
 	},

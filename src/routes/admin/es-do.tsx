@@ -32,13 +32,14 @@ import {
 	type AllocatePickListMutationData,
 } from "@/lib/graphql/delivery-orders";
 import type { DeliveryOrderItemWithDetails, DoItemAllocation } from "@/lib/graphql/types";
+import { formatDate } from "@/lib/utils";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
 	"Delivery order work queue for Empire Sushi — stock movement based on DO.";
 
 /** Only show DOs in these statuses on the work queue. */
-const ACTIVE_DO_STATUSES = new Set(["CREATED", "NEW", "PICKING"]);
+const ACTIVE_DO_STATUSES = new Set(["CREATED", "NEW", "PICKING", "PACKING"]);
 
 export const Route = createFileRoute("/admin/es-do")({
 	beforeLoad: async ({ context }) => {
@@ -54,18 +55,6 @@ function formatQty(qty: string | number | null | undefined): string {
 	return Number.isInteger(num) ? String(num) : num.toFixed(2);
 }
 
-function formatDate(iso: string | null | undefined): string {
-	if (!iso) return "—";
-	try {
-		return new Date(iso).toLocaleDateString("en-MY", {
-			day: "2-digit",
-			month: "short",
-			year: "numeric",
-		});
-	} catch {
-		return iso;
-	}
-}
 
 function getStatusBadgeVariant(
 	status: string | null | undefined,
@@ -76,6 +65,8 @@ function getStatusBadgeVariant(
 			return "secondary";
 		case "PICKING":
 			return "default";
+		case "PACKING":
+			return "outline";
 		case "PACKED":
 		case "READY_FOR_COLLECTION":
 		case "COLLECTED":
@@ -126,6 +117,7 @@ const TABLE_COLS = 9;
 
 function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
+	const trimmedSearchTerm = searchTerm.trim();
 	// Optimistic picked state — items checked in this session before API confirms
 	const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(
 		new Set(),
@@ -133,6 +125,8 @@ function EmpireSushiDOComponent() {
 	const [processingItems, setProcessingItems] = useState<Set<string>>(
 		new Set(),
 	);
+	const [advancingDOs, setAdvancingDOs] = useState<Set<string>>(new Set());
+	const [bulkPickingDOs, setBulkPickingDOs] = useState<Set<string>>(new Set());
 
 	// Refs avoid stale closures in async handlers
 	const optimisticPickedRef = useRef<Set<string>>(new Set());
@@ -156,7 +150,14 @@ function EmpireSushiDOComponent() {
 	} = useQuery<DeliveryOrderItemsQueryData, DeliveryOrderItemsQueryVariables>(
 		DELIVERY_ORDER_ITEMS_QUERY,
 		{
-			variables: { pageSize: 200, pageNumber: 1 },
+			variables: {
+				pageSize: 200,
+				pageNumber: 1,
+				filter: {
+					doStatuses: Array.from(ACTIVE_DO_STATUSES),
+					search: trimmedSearchTerm || undefined,
+				},
+			},
 			fetchPolicy: "cache-and-network",
 			notifyOnNetworkStatusChange: true,
 		},
@@ -182,22 +183,10 @@ function EmpireSushiDOComponent() {
 		[data],
 	);
 
-	/** Items grouped by DO, filtered to active statuses and search term. */
+	/** Items grouped by DO (filtering is done by GraphQL query). */
 	const groups = useMemo<DOGroup[]>(() => {
-		const filtered = allItems.filter((item) => {
-			if (!ACTIVE_DO_STATUSES.has(item.doStatus ?? "")) return false;
-			if (!searchTerm) return true;
-			const term = searchTerm.toLowerCase();
-			return (
-				item.skuCode?.toLowerCase().includes(term) ||
-				item.skuDescription?.toLowerCase().includes(term) ||
-				item.doNo?.toLowerCase().includes(term) ||
-				item.purchaseOrderNo?.toLowerCase().includes(term)
-			);
-		});
-
 		const grouped = new Map<string, DOGroup>();
-		for (const item of filtered) {
+		for (const item of allItems) {
 			const key = item.doId ?? "no-do";
 			if (!grouped.has(key)) {
 				grouped.set(key, {
@@ -210,7 +199,7 @@ function EmpireSushiDOComponent() {
 			grouped.get(key)!.items.push(item);
 		}
 		return Array.from(grouped.values());
-	}, [allItems, searchTerm]);
+	}, [allItems]);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -239,23 +228,37 @@ function EmpireSushiDOComponent() {
 						(Number(i.qtyPicked ?? 0) > 0 ||
 							optimisticPickedRef.current.has(i.id)),
 				);
-				if (!anyAlreadyPicked && !allocatedDOs.current.has(doId)) {
+
+				// Check now (before any awaits) whether this is the last item to pick
+				const allDOItemsPicked = doItems.every(
+					(i) =>
+						Number(i.qtyPicked ?? 0) > 0 || optimisticPickedRef.current.has(i.id),
+				);
+
+				const isFirstPick = !anyAlreadyPicked && !allocatedDOs.current.has(doId);
+				if (isFirstPick) {
 					allocatedDOs.current.add(doId);
-					allocatePickListMutation({ variables: { deliveryOrderId: doId } })
-						.then(() => refetch())
-						.catch(() => {
+					if (allDOItemsPicked) {
+						// Single-item DO: must await so DO is in PICKING before we advance to PACKING
+						try {
+							await allocatePickListMutation({ variables: { deliveryOrderId: doId } });
+						} catch {
 							/* non-fatal — allocation guidance only */
-						});
+						}
+					} else {
+						// Multi-item DO: fire-and-forget is safe, last pick is not this one
+						allocatePickListMutation({ variables: { deliveryOrderId: doId } })
+							.then(() => refetch())
+							.catch(() => {
+								/* non-fatal — allocation guidance only */
+							});
+					}
 				}
 
 				// Mark this item as picked (qty = qty required)
 				await markPicked({ variables: { id: itemId, qtyPicked: qtyRequired } });
 
 				// Auto-advance DO to PACKING when all items are picked
-				const allDOItemsPicked = doItems.every(
-					(i) =>
-						Number(i.qtyPicked ?? 0) > 0 || optimisticPickedRef.current.has(i.id),
-				);
 				if (allDOItemsPicked && !advancedDOs.current.has(doId)) {
 					advancedDOs.current.add(doId);
 					await advanceStatus({ variables: { id: doId } });
@@ -281,6 +284,93 @@ function EmpireSushiDOComponent() {
 			allocatePickListMutation,
 			refetch,
 		],
+	);
+
+	const handleBulkPickAll = useCallback(
+		async (group: DOGroup) => {
+			const { doId } = group;
+			if (bulkPickingDOs.has(doId)) return;
+			setBulkPickingDOs((prev) => new Set(prev).add(doId));
+
+			const unpickedItems = group.items.filter((i) => !isItemPicked(i));
+
+			// Optimistic: mark all unpicked items immediately
+			for (const item of unpickedItems) {
+				optimisticPickedRef.current.add(item.id);
+			}
+			setOptimisticPicked(new Set(optimisticPickedRef.current));
+
+			try {
+				// 1. allocatePickList first (await) — ensures DO is in PICKING before advancing
+				if (!allocatedDOs.current.has(doId)) {
+					allocatedDOs.current.add(doId);
+					try {
+						await allocatePickListMutation({
+							variables: { deliveryOrderId: doId },
+						});
+					} catch {
+						/* non-fatal — allocation guidance only */
+					}
+				}
+
+				// 2. Mark all unpicked items as picked in parallel
+				if (unpickedItems.length > 0) {
+					await Promise.all(
+						unpickedItems.map((item) =>
+							markPicked({
+								variables: { id: item.id, qtyPicked: item.qtyRequired },
+							}),
+						),
+					);
+				}
+
+				// 3. Advance DO to PACKING (PICKING → PACKING)
+				if (!advancedDOs.current.has(doId)) {
+					advancedDOs.current.add(doId);
+					await advanceStatus({ variables: { id: doId } });
+				}
+
+				await refetch();
+			} catch {
+				// Rollback optimistic state on error
+				for (const item of unpickedItems) {
+					optimisticPickedRef.current.delete(item.id);
+				}
+				setOptimisticPicked(new Set(optimisticPickedRef.current));
+			} finally {
+				setBulkPickingDOs((prev) => {
+					const next = new Set(prev);
+					next.delete(doId);
+					return next;
+				});
+			}
+		},
+		[
+			bulkPickingDOs,
+			isItemPicked,
+			allocatePickListMutation,
+			markPicked,
+			advanceStatus,
+			refetch,
+		],
+	);
+
+	const handleAdvanceToShipped = useCallback(
+		async (doId: string) => {
+			if (advancingDOs.has(doId)) return;
+			setAdvancingDOs((prev) => new Set(prev).add(doId));
+			try {
+				await advanceStatus({ variables: { id: doId } });
+				await refetch();
+			} finally {
+				setAdvancingDOs((prev) => {
+					const next = new Set(prev);
+					next.delete(doId);
+					return next;
+				});
+			}
+		},
+		[advancingDOs, advanceStatus, refetch],
 	);
 
 	return (
@@ -434,10 +524,39 @@ function EmpireSushiDOComponent() {
 														>
 															{pickedCount}/{totalCount} picked
 														</span>
-														{allPicked && (
+														{allPicked && group.doStatus !== "PACKING" && (
 															<span className="text-xs text-green-600 font-medium">
 																· Advancing to Packing…
 															</span>
+														)}
+														{(group.doStatus === "NEW" ||
+															group.doStatus === "CREATED") && (
+															<Button
+																size="sm"
+																variant="secondary"
+																onClick={() => handleBulkPickAll(group)}
+																disabled={bulkPickingDOs.has(group.doId)}
+																className="ml-auto text-xs h-7"
+															>
+																{bulkPickingDOs.has(group.doId) ? (
+																	<Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden />
+																) : null}
+																Mark all as Picked
+															</Button>
+														)}
+														{group.doStatus === "PACKING" && (
+															<Button
+																size="sm"
+																variant="default"
+																onClick={() => handleAdvanceToShipped(group.doId)}
+																disabled={advancingDOs.has(group.doId)}
+																className="ml-auto text-xs h-7"
+															>
+																{advancingDOs.has(group.doId) ? (
+																	<Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden />
+																) : null}
+																Mark as Shipped
+															</Button>
 														)}
 													</div>
 												</TableCell>

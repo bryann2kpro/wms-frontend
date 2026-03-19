@@ -614,6 +614,7 @@ export interface DeliveryOrderItemFilterInput {
 	purchaseOrderNo?: string | null;
 	doNo?: string | null;
 	doStatus?: string | null;
+	doStatuses?: string[] | null;
 	search?: string | null;
 }
 

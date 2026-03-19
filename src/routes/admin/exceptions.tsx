@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation as useApolloMutation, useQuery as useApolloQuery } from "@apollo/client/react";
@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
 	Table,
@@ -58,9 +57,10 @@ import {
 	Minus,
 	ShieldCheck,
 	ClipboardList,
+	HelpCircle,
+	ImageOff,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import {
 	STOCK_COUNT_SESSIONS_QUERY,
@@ -83,6 +83,108 @@ const ACTION_LABELS: Record<string, string> = {
 	manual_key_in: "Manual Key-In",
 };
 
+const EXCEPTIONS_HELP_STEPS: Array<{
+	title: string;
+	description: ReactNode;
+	image: string;
+}> = [
+	{
+		title: "What this page does",
+		image: "/help/exceptions/step-1.png",
+		description: (
+			<>
+				This page manages <strong>Stock Count Sessions</strong> — periodic inventory
+				audits that compare physical counts against system records. Discrepancies are
+				surfaced here as exceptions to be reviewed and resolved before the session is
+				closed.
+			</>
+		),
+	},
+	{
+		title: "Create a stock count session",
+		image: "/help/exceptions/step-2.png",
+		description: (
+			<>
+				Click <strong>New Stock Count</strong> to start a session. A snapshot of all
+				current inventory balances is captured automatically. Give the session a
+				descriptive name (e.g. "March 2026 Stock Count") so it's easy to identify
+				later.
+			</>
+		),
+	},
+	{
+		title: "Review discrepancies in the Stock Count tab",
+		image: "/help/exceptions/step-3.png",
+		description: (
+			<>
+				The <strong>Stock Count</strong> tab lists every SKU with a discrepancy
+				between the opening balance and the on-hand count. For each line, choose an
+				action: <strong>Tally to Opening</strong>,{" "}
+				<strong>Tally to Stock Count</strong>, or{" "}
+				<strong>Manual Key-In</strong> to enter a custom quantity.
+			</>
+		),
+	},
+	{
+		title: "Approve exceptions in the Approval tab",
+		image: "/help/exceptions/step-4.png",
+		description: (
+			<>
+				Switch to the <strong>Approval</strong> tab to sign off on each resolved
+				line. Items must have an action selected before they can be approved. The
+				amber badge on the tab shows how many items still need approval.
+			</>
+		),
+	},
+	{
+		title: "Close the session",
+		image: "/help/exceptions/step-5.png",
+		description: (
+			<>
+				Once all items are approved, the <strong>Close Session</strong> button
+				becomes available. Closing is irreversible — it finalises all approved lines
+				and locks the session from further editing. Closed sessions remain visible in
+				the dropdown for reference.
+			</>
+		),
+	},
+];
+
+function HelpStepImage({
+	src,
+	stepNumber,
+	alt,
+}: {
+	src: string;
+	stepNumber: number;
+	alt?: string;
+}) {
+	const [failed, setFailed] = useState(false);
+	if (failed) {
+		return (
+			<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+				<span className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+					<ImageOff className="h-7 w-7" />
+				</span>
+				<span className="text-sm text-muted-foreground">
+					Add screenshot:{" "}
+					<code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+						public/help/exceptions/step-{stepNumber}.png
+					</code>
+				</span>
+			</div>
+		);
+	}
+	return (
+		<img
+			src={src}
+			alt={alt ?? ""}
+			className="h-full w-full object-contain object-top"
+			onError={() => setFailed(true)}
+		/>
+	);
+}
+
 export const Route = createFileRoute("/admin/exceptions")({
 	beforeLoad: async ({ context }) => {
 		await requirePermission(context.queryClient, ["Exception"]);
@@ -91,8 +193,11 @@ export const Route = createFileRoute("/admin/exceptions")({
 });
 
 function ExceptionsComponent() {
-	const { user } = useCurrentUser();
 	const unitName = useStockUnitName();
+
+	// ─── Help dialog state ────────────────────────────────────────
+	const [isHelpOpen, setIsHelpOpen] = useState(false);
+	const [helpStep, setHelpStep] = useState(0);
 
 	// ─── Session state ───────────────────────────────────────────
 	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -118,15 +223,22 @@ function ExceptionsComponent() {
 		refetch: refetchSessions,
 	} = useApolloQuery<StockCountSessionsQueryData>(STOCK_COUNT_SESSIONS_QUERY, {
 		variables: { pageSize: 100, pageNumber: 1 },
-		onCompleted(data) {
-			if (!selectedSessionId && data.stockCountSessions.query.length > 0) {
-				setSelectedSessionId(data.stockCountSessions.query[0].id);
-			}
-		},
 	});
 
-	const sessions: StockCountSession[] = sessionsData?.stockCountSessions?.query ?? [];
+	const sessions = (sessionsData?.stockCountSessions?.query ?? []) as StockCountSession[];
 	const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+
+	// Keep selected session in sync even when Apollo serves cached data
+	// without running the onCompleted callback.
+	useEffect(() => {
+		if (sessions.length === 0) {
+			if (selectedSessionId !== null) setSelectedSessionId(null);
+			return;
+		}
+		if (!selectedSessionId || !sessions.some((session) => session.id === selectedSessionId)) {
+			setSelectedSessionId(sessions[0].id);
+		}
+	}, [sessions, selectedSessionId]);
 
 	const {
 		data: itemsData,
@@ -305,6 +417,19 @@ function ExceptionsComponent() {
 								</Tooltip>
 							</TooltipProvider>
 						)}
+
+						<Button
+							variant="outline"
+							size="icon"
+							aria-label="Open help"
+							className="rounded-lg h-9 w-9"
+							onClick={() => {
+								setIsHelpOpen(true);
+								setHelpStep(0);
+							}}
+						>
+							<HelpCircle className="h-4 w-4" />
+						</Button>
 
 						<Button
 							size="sm"
@@ -981,6 +1106,107 @@ function ExceptionsComponent() {
 							)}
 						</Button>
 					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+			{/* ── Help Dialog ──────────────────────────────────────────── */}
+			<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+				<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
+					<DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/50">
+						<div className="flex items-center gap-3">
+							<div
+								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-sm font-bold text-white tabular-nums"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								{helpStep + 1}
+							</div>
+							<div>
+								<DialogTitle
+									className="text-lg"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Exceptions help
+								</DialogTitle>
+								<DialogDescription
+									className="mt-0.5"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Step {helpStep + 1} of {EXCEPTIONS_HELP_STEPS.length}
+								</DialogDescription>
+							</div>
+						</div>
+					</DialogHeader>
+					<div className="space-y-5 px-6 py-5">
+						<div className="relative aspect-video w-full overflow-hidden rounded-xl border bg-muted/50 shadow-inner">
+							<HelpStepImage
+								src={EXCEPTIONS_HELP_STEPS[helpStep].image}
+								stepNumber={helpStep + 1}
+							/>
+						</div>
+						<div className="rounded-xl border bg-card p-4">
+							<h3
+								className="mb-2 text-sm font-semibold text-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								{EXCEPTIONS_HELP_STEPS[helpStep].title}
+							</h3>
+							<p
+								className="text-sm text-muted-foreground leading-relaxed"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{EXCEPTIONS_HELP_STEPS[helpStep].description}
+							</p>
+						</div>
+						<div className="flex items-center justify-between gap-4 pt-1">
+							<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
+								{EXCEPTIONS_HELP_STEPS.map((_, i) => (
+									<button
+										type="button"
+										key={i}
+										role="tab"
+										aria-selected={i === helpStep}
+										aria-label={`Step ${i + 1}: ${EXCEPTIONS_HELP_STEPS[i].title}`}
+										onClick={() => setHelpStep(i)}
+										className={`h-2 rounded-full transition-all duration-200 ${
+											i === helpStep
+												? "w-6 bg-amber-600"
+												: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
+										}`}
+									/>
+								))}
+							</div>
+							<div className="flex gap-2">
+								{helpStep > 0 && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="rounded-lg"
+										onClick={() => setHelpStep((s) => s - 1)}
+									>
+										<ChevronLeft className="mr-0.5 h-4 w-4" />
+										Previous
+									</Button>
+								)}
+								{helpStep < EXCEPTIONS_HELP_STEPS.length - 1 ? (
+									<Button
+										size="sm"
+										className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+										onClick={() => setHelpStep((s) => s + 1)}
+									>
+										Next
+										<ChevronRight className="ml-0.5 h-4 w-4" />
+									</Button>
+								) : (
+									<Button
+										size="sm"
+										className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+										onClick={() => setIsHelpOpen(false)}
+									>
+										Got it
+									</Button>
+								)}
+							</div>
+						</div>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

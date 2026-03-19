@@ -78,7 +78,7 @@ export function OutboundListCard({
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
-	const [isTesting, setIsTesting] = useState(false);
+	// const [isTesting, setIsTesting] = useState(false);
 
 	/** Today's date key in YYYY-MM-DD format, using UTC+8 business timezone. */
 	const todayKey = useMemo(() => {
@@ -172,7 +172,7 @@ export function OutboundListCard({
 									))}
 								</SelectContent>
 							</Select>
-							<div
+							{/* <div
 								className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30 px-3 py-1.5"
 								title="Testing mode: show all scheduled dates, not just today"
 							>
@@ -185,7 +185,7 @@ export function OutboundListCard({
 									aria-label="Toggle testing mode to show all scheduled dates"
 									className="data-[state=checked]:bg-amber-500"
 								/>
-							</div>
+							</div> */}
 						</div>
 					</div>
 					<div
@@ -436,7 +436,7 @@ export function OutboundListCard({
 																	</span>
 																) : onAdvanceStep &&
 																	purchaseOrder.deliveryOrder.status === "PACKING" &&
-																	(isTesting || dateKey === todayKey) ? (
+																	(dateKey === todayKey) ? (
 																	<Button
 																		variant="outline"
 																		size="sm"

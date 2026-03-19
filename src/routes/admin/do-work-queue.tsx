@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Table,
 	TableBody,
@@ -20,14 +19,10 @@ import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
 import { type DOItem, type DOStatusFilter, getDOs } from "@/data/do.mock-data";
 import {
 	DELIVERY_ORDER_ITEMS_QUERY,
-	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
 	type DeliveryOrderItemsQueryData,
 	type DeliveryOrderItemsQueryVariables,
-	type MarkDeliveryOrderItemPickedMutationData,
-	type MarkDeliveryOrderItemPickedMutationVariables,
 } from "@/lib/graphql/delivery-orders";
 import type { DeliveryOrderItemWithDetails } from "@/lib/graphql/types";
-import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
 
 const PAGE_TITLE = "Supplier DO Work Queue";
@@ -102,39 +97,13 @@ function DOWorkQueueComponent() {
 		fetchPolicy: "cache-and-network",
 	});
 
-	const [markAsPicked, { loading: markingPicked }] = useMutation<
-		MarkDeliveryOrderItemPickedMutationData,
-		MarkDeliveryOrderItemPickedMutationVariables
-	>(MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION);
-
 	const items: DeliveryOrderItemWithDetails[] =
 		data?.deliveryOrderItems?.query ?? [];
 	const pagination = data?.deliveryOrderItems?.pagination;
 	const totalItems = pagination?.totalCount ?? 0;
 	const totalPages = pagination?.totalPages ?? 1;
 
-	const handleMarkAsPicked = async (item: DeliveryOrderItemWithDetails) => {
-		const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
-		const newQtyPicked = isPicked ? "0" : item.qtyRequired;
-
-		try {
-			await markAsPicked({
-				variables: {
-					id: item.id,
-					qtyPicked: newQtyPicked,
-				},
-			});
-			toast.success(
-				isPicked ? "Item unmarked as picked" : "Item marked as picked",
-			);
-			refetch();
-		} catch (error) {
-			console.error("Failed to mark item as picked:", error);
-			toast.error("Failed to update item. Please try again.");
-		}
-	};
-
-	const tableColSpan = 11;
+	const tableColSpan = 10;
 
 	return (
 		<div className="do-work-queue-page min-h-screen bg-[var(--dashboard-surface)]">
@@ -219,7 +188,6 @@ function DOWorkQueueComponent() {
 									<span className="text-xs font-normal">({unitName}/Loss)</span>
 								</TableHead>
 								<TableHead>Status</TableHead>
-								<TableHead className="text-center">Picked</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -243,11 +211,9 @@ function DOWorkQueueComponent() {
 								</TableRow>
 							) : (
 								items.map((item, index) => {
-									const isPicked = parseFloat(item.qtyPicked ?? "0") > 0;
 									return (
 										<TableRow
 											key={item.id}
-											className={isPicked ? "bg-muted/50" : ""}
 										>
 											<TableCell className="font-medium">
 												{(page - 1) * pageSize + index + 1}
@@ -283,14 +249,6 @@ function DOWorkQueueComponent() {
 												>
 													{item.doStatus ?? "Unknown"}
 												</Badge>
-											</TableCell>
-											<TableCell className="text-center">
-												<Checkbox
-													checked={isPicked}
-													disabled={markingPicked}
-													onCheckedChange={() => handleMarkAsPicked(item)}
-													aria-label={`Mark ${item.skuCode} as ${isPicked ? "not picked" : "picked"}`}
-												/>
 											</TableCell>
 										</TableRow>
 									);
