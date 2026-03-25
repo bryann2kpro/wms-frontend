@@ -423,6 +423,8 @@ export interface GrnFilterInput {
 	grnNo?: string | null;
 	/** Search across GRN number, PO reference, and Supplier DO. */
 	search?: string | null;
+	/** When true and status is not set, omit draft GRNs from results. */
+	excludeDraft?: boolean | null;
 	status?: string | null;
 	page?: number | null;
 	pageSize?: number | null;

@@ -59,6 +59,7 @@ import {
 	ClipboardList,
 	HelpCircle,
 	ImageOff,
+	FileText,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
@@ -68,6 +69,7 @@ import {
 	CREATE_STOCK_COUNT_SESSION_MUTATION,
 	UPDATE_STOCK_COUNT_ITEM_MUTATION,
 	CLOSE_STOCK_COUNT_SESSION_MUTATION,
+	GENERATE_STOCK_COUNT_CHECKLIST_MUTATION,
 	type StockCountSession,
 	type StockCountItem,
 	type StockCountSessionsQueryData,
@@ -75,7 +77,9 @@ import {
 	type CreateStockCountSessionData,
 	type UpdateStockCountItemData,
 	type CloseStockCountSessionData,
+	type GenerateStockCountChecklistData,
 } from "@/lib/graphql/stock-count-session";
+import { downloadPdfFromBase64 } from "@/lib/reports";
 
 const ACTION_LABELS: Record<string, string> = {
 	tally_to_opening: "Tally to Opening",
@@ -285,6 +289,14 @@ function ExceptionsComponent() {
 			},
 		});
 
+	const [generateChecklist, { loading: generatingChecklist }] =
+		useApolloMutation<GenerateStockCountChecklistData>(GENERATE_STOCK_COUNT_CHECKLIST_MUTATION, {
+			onCompleted(data) {
+				const { pdfBase64, filename } = data.generateStockCountChecklist;
+				downloadPdfFromBase64(pdfBase64, filename);
+			},
+		});
+
 	// ─── Handlers ─────────────────────────────────────────────────
 	const handleCreateSession = () => {
 		const name = newSessionName.trim();
@@ -326,6 +338,11 @@ function ExceptionsComponent() {
 	const handleCloseSession = () => {
 		if (!selectedSessionId) return;
 		closeSession({ variables: { id: selectedSessionId } });
+	};
+
+	const handlePrintChecklist = () => {
+		if (!selectedSessionId) return;
+		generateChecklist({ variables: { sessionId: selectedSessionId } });
 	};
 
 	// ─── Summary ──────────────────────────────────────────────────
@@ -430,6 +447,19 @@ function ExceptionsComponent() {
 						>
 							<HelpCircle className="h-4 w-4" />
 						</Button>
+
+						{selectedSession && isSessionOpen && (
+							<Button
+								variant="outline"
+								size="sm"
+								className="gap-1.5 text-xs h-9 border-border/60"
+								onClick={handlePrintChecklist}
+								disabled={generatingChecklist}
+							>
+								<FileText className="h-3.5 w-3.5" />
+								{generatingChecklist ? "Generating…" : "Print Checklist"}
+							</Button>
+						)}
 
 						<Button
 							size="sm"

@@ -123,12 +123,11 @@ export const Route = createFileRoute("/admin/grn")({
 	component: GRNRouteComponent,
 });
 
-const grnStatuses: GRNStatus[] = ["Draft", "Submitted", "Failed"];
+const grnStatuses: GRNStatus[] = ["Submitted", "Failed"];
 
-/** All statuses shown in the tab filter (matches GRNStatus + ALL). */
+/** All statuses shown in the tab filter (matches GRNStatus + ALL). Draft is omitted from the list UI. */
 const GRN_STATUS_TABS: Array<GRNStatusFilter> = [
 	"ALL",
-	"Draft",
 	"Submitted",
 	"Approved",
 	"Sent-to-ES",
@@ -137,7 +136,6 @@ const GRN_STATUS_TABS: Array<GRNStatusFilter> = [
 
 /** All statuses for dropdown (same order as tabs, minus ALL). */
 const GRN_STATUS_OPTIONS: GRNStatus[] = [
-	"Draft",
 	"Submitted",
 	"Approved",
 	"Sent-to-ES",
@@ -160,7 +158,7 @@ const GRN_HELP_STEPS: Array<{
 		description: (
 			<>
 				Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
-				counts by status (Draft, Submitted, Failed), and create new GRNs. Use
+				counts by status (Submitted, Failed), and create new GRNs. Use
 				this page to record incoming inventory and track receipts.
 			</>
 		),
@@ -285,6 +283,8 @@ function GRNRouteComponent() {
 				pageSize,
 				search: debouncedSearchTerm.trim() || undefined,
 				status: statusFilter === "ALL" ? undefined : statusFilter,
+				/** Draft GRNs are hidden from this page; backend excludes them when not filtering by status. */
+				excludeDraft: true,
 				sortBy: sortField,
 				sortOrder: sortDirection,
 			},
@@ -698,7 +698,7 @@ function GRNRouteComponent() {
 				/>
 
 				{summary && summary.byStatus && (
-					<div className="grid gap-5 md:grid-cols-3">
+					<div className="grid gap-5 md:grid-cols-2">
 						{grnStatuses.map((status, i) => (
 							<Card
 								key={status}
