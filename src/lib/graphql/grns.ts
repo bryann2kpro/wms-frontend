@@ -62,6 +62,7 @@ export const GRNS_QUERY = gql`
 					qty
 					lossQty
 					remarks
+					expiryDate
 					createdAt
 					updatedAt
 					createdBy
@@ -267,6 +268,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 				lossQuantity: lossNum,
 				receivedQuantity: cartonNum + lossNum,
 				location,
+				expiryDate: i.expiryDate ?? null,
 				rack: rack ?? null,
 			};
 		});

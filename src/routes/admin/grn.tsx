@@ -1121,6 +1121,7 @@ function GRNRouteComponent() {
 															<TableHead>Carton</TableHead>
 															<TableHead>Loss</TableHead>
 															<TableHead>Total</TableHead>
+															<TableHead>Expiry Date</TableHead>
 															<TableHead>Location</TableHead>
 														</TableRow>
 													</TableHeader>
@@ -1134,6 +1135,11 @@ function GRNRouteComponent() {
 																<TableCell>{item.expectedQuantity}</TableCell>
 																<TableCell>{item.lossQuantity}</TableCell>
 																<TableCell>{item.receivedQuantity}</TableCell>
+																<TableCell>
+																	{item.expiryDate
+																		? (formatGrnDate(item.expiryDate) ?? "—")
+																		: "—"}
+																</TableCell>
 																<TableCell>
 																	{item.location || "Not assigned"}
 																</TableCell>

@@ -642,6 +642,18 @@ export function GrnFormDialog({
 						const missingRack = items.find((i) => !(i.rackIds ?? []).length);
 						if (missingRack) {
 							fields.items = "Each line item must have at least one rack.";
+						} else {
+							const seen = new Set<string>();
+							const hasDuplicate = items.some((i) => {
+								const key = `${i.skuCode}::${i.expiryDate?.trim() || ""}`;
+								if (seen.has(key)) return true;
+								seen.add(key);
+								return false;
+							});
+							if (hasDuplicate) {
+								fields.items =
+									"Duplicate line items: two or more rows share the same SKU and expiry date. Use a different expiry date or merge the quantities into one row.";
+							}
 						}
 					}
 				}

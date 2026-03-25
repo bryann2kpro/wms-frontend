@@ -379,6 +379,8 @@ export interface GrnItem {
 	updatedBy: string | null;
 	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
 	rack: GrnRack | null;
+	/** Optional expiry date for this GRN item (ISO string from backend). */
+	expiryDate?: string | null;
 	/** Legacy: some backends still return warehouse on item */
 	warehouseId?: string | null;
 	warehouseName?: string | null;
@@ -476,6 +478,8 @@ export interface GrnItemForList {
 	receivedQuantity: number;
 	/** Display: warehouse name or rack (e.g. "A-01-2") */
 	location?: string;
+	/** Optional expiry date (ISO string or YYYY-MM-DD). */
+	expiryDate?: string | null;
 	rack?: {
 		rackId: string;
 		rackLevel: number | string;
