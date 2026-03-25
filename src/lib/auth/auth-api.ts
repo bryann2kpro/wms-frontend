@@ -32,6 +32,7 @@ export interface ProfileResponse {
 	readPermission: string[];
 	createPermission: string[];
 	updatePermission: string[];
+	approvePermission: string[];
 }
 
 /**

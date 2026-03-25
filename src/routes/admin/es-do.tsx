@@ -33,6 +33,7 @@ import {
 } from "@/lib/graphql/delivery-orders";
 import type { DeliveryOrderItemWithDetails, DoItemAllocation } from "@/lib/graphql/types";
 import { formatDate } from "@/lib/utils";
+import { useProfile } from "@/lib/auth/use-profile";
 
 const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
@@ -127,6 +128,11 @@ function EmpireSushiDOComponent() {
 	);
 	const [advancingDOs, setAdvancingDOs] = useState<Set<string>>(new Set());
 	const [bulkPickingDOs, setBulkPickingDOs] = useState<Set<string>>(new Set());
+
+	const { data: profile } = useProfile();
+	const canApprove =
+		profile?.roles.some((r) => r.toLowerCase() === "super admin") ||
+		(profile?.approvePermission ?? []).includes("Delivery Order");
 
 	// Refs avoid stale closures in async handlers
 	const optimisticPickedRef = useRef<Set<string>>(new Set());
@@ -535,7 +541,7 @@ function EmpireSushiDOComponent() {
 																size="sm"
 																variant="secondary"
 																onClick={() => handleBulkPickAll(group)}
-																disabled={bulkPickingDOs.has(group.doId)}
+																disabled={bulkPickingDOs.has(group.doId) || !canApprove}
 																className="ml-auto text-xs h-7"
 															>
 																{bulkPickingDOs.has(group.doId) ? (
@@ -549,7 +555,7 @@ function EmpireSushiDOComponent() {
 																size="sm"
 																variant="default"
 																onClick={() => handleAdvanceToShipped(group.doId)}
-																disabled={advancingDOs.has(group.doId)}
+																disabled={advancingDOs.has(group.doId) || !canApprove}
 																className="ml-auto text-xs h-7"
 															>
 																{advancingDOs.has(group.doId) ? (
@@ -619,7 +625,7 @@ function EmpireSushiDOComponent() {
 															) : (
 																<Checkbox
 																	checked={picked}
-																	disabled={picked || !item.doId}
+																	disabled={picked || !item.doId || !canApprove}
 																	onCheckedChange={() => handleCheckItem(item)}
 																	aria-label={`Mark ${item.skuCode ?? "item"} as picked`}
 																/>

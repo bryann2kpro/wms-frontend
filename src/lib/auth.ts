@@ -18,6 +18,7 @@ export interface User {
 	readPermission: string[];
 	createPermission: string[];
 	updatePermission: string[];
+	approvePermission: string[];
 }
 
 // Map legacy roles to new WMS roles
