@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
@@ -268,36 +268,83 @@ function AsnPickerDialog({
 }: AsnPickerDialogProps) {
 	const [selectedId, setSelectedId] = useState<string>("");
 	const selectedAsn = asns.find((a) => a.id === selectedId) ?? null;
+	const linePreview = useMemo(
+		() => selectedAsn?.lines.slice(0, 6) ?? [],
+		[selectedAsn],
+	);
+
+	useEffect(() => {
+		if (!open) setSelectedId("");
+	}, [open]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-lg">
-				<DialogHeader>
-					<DialogTitle>Select Advance Shipping Notice</DialogTitle>
-					<DialogDescription>
+			<DialogContent className="max-w-2xl rounded-2xl border border-border/80 bg-background shadow-xl">
+				<DialogHeader className="pb-0">
+					<div className="flex items-center gap-3 pb-4 border-b border-border">
+						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 shadow-sm">
+							<Send className="h-[18px] w-[18px] text-white" />
+						</div>
+						<div className="min-w-0 flex-1">
+							<DialogTitle
+								className="text-lg font-semibold leading-tight"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Select Advance Shipping Notice
+							</DialogTitle>
+							<DialogDescription
+								className="text-sm text-muted-foreground mt-0.5"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Pick a pending ASN to prefill End User PO, due date, and expected
+								line items.
+							</DialogDescription>
+						</div>
+						{selectedAsn && (
+							<Badge variant="outline" className="shrink-0 font-mono text-xs">
+								{selectedAsn.lines.length} line(s)
+							</Badge>
+						)}
+					</div>
+				</DialogHeader>
+
+				<div className="space-y-4 pt-5">
+					<p
+						className="text-sm text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
 						Choose the ASN from NetSuite that matches the delivery you are
 						receiving, then click <strong>Continue</strong>. If no ASN exists
 						for this delivery, click <strong>Skip</strong> to fill in manually.
-					</DialogDescription>
-				</DialogHeader>
-
-				<div className="py-2 space-y-4">
+					</p>
 					{loading ? (
-						<p className="text-sm text-muted-foreground">
+						<p
+							className="text-sm text-muted-foreground rounded-lg border border-dashed p-4"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							Loading pending ASNs…
 						</p>
 					) : asns.length === 0 ? (
-						<p className="text-sm text-muted-foreground">
+						<p
+							className="text-sm text-muted-foreground rounded-lg border border-dashed p-4"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							No pending advance notices found. Click <strong>Skip</strong> to
 							create a manual GRN.
 						</p>
 					) : (
 						<>
-							<Label htmlFor="asn-select">
+							<Label
+								htmlFor="asn-select"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
 								Advance Notice (PO / Entity / Due Date)
 							</Label>
 							<Select value={selectedId} onValueChange={setSelectedId}>
-								<SelectTrigger id="asn-select" className="w-full">
+								<SelectTrigger
+									id="asn-select"
+									className="w-full rounded-lg border-muted-foreground/20"
+								>
 									<SelectValue placeholder="Select an ASN…" />
 								</SelectTrigger>
 								<SelectContent>
@@ -309,32 +356,80 @@ function AsnPickerDialog({
 								</SelectContent>
 							</Select>
 							{selectedAsn && (
-								<div className="rounded-md border p-3 text-sm space-y-1">
-									<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide mb-2">
-										{selectedAsn.lines.length} item(s) expected
-									</p>
-									{selectedAsn.lines.map((l) => (
-										<div key={l.lineuniquekey} className="flex justify-between">
-											<span className="font-mono">{l.itemid}</span>
-											<span className="text-muted-foreground">
-												{l.displayname && (
-													<span className="mr-2">{l.displayname}</span>
-												)}
-												{l.quantity} {l.units}
-											</span>
+								<div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-4">
+									<div className="grid gap-2 sm:grid-cols-3">
+										<div className="rounded-lg border bg-background/70 p-2.5">
+											<p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+												End User PO
+											</p>
+											<p className="font-mono text-sm mt-0.5">
+												{selectedAsn.tranid || "-"}
+											</p>
 										</div>
-									))}
+										<div className="rounded-lg border bg-background/70 p-2.5">
+											<p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+												Entity
+											</p>
+											<p className="text-sm mt-0.5 truncate">
+												{selectedAsn.entity || "-"}
+											</p>
+										</div>
+										<div className="rounded-lg border bg-background/70 p-2.5">
+											<p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+												Due Date
+											</p>
+											<p className="font-mono text-sm mt-0.5">
+												{selectedAsn.duedate || "-"}
+											</p>
+										</div>
+									</div>
+
+									<div className="space-y-2">
+										<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+											Expected line items preview
+										</p>
+										<div className="rounded-lg border bg-background/70 divide-y">
+											{linePreview.map((l) => (
+												<div
+													key={l.lineuniquekey}
+													className="flex items-start justify-between gap-3 p-2.5 text-sm"
+												>
+													<div className="min-w-0">
+														<p className="font-mono">{l.itemid}</p>
+														{l.displayname ? (
+															<p className="text-xs text-muted-foreground truncate">
+																{l.displayname}
+															</p>
+														) : null}
+													</div>
+													<Badge
+														variant="outline"
+														className="shrink-0 font-mono text-xs"
+													>
+														{l.quantity} {l.units}
+													</Badge>
+												</div>
+											))}
+											{selectedAsn.lines.length > linePreview.length ? (
+												<p className="px-2.5 py-2 text-xs text-muted-foreground">
+													+{selectedAsn.lines.length - linePreview.length} more
+													line(s)
+												</p>
+											) : null}
+										</div>
+									</div>
 								</div>
 							)}
 						</>
 					)}
 				</div>
 
-				<DialogFooter className="gap-2">
-					<Button variant="outline" onClick={onSkip}>
+				<DialogFooter className="mt-2 gap-2 border-t border-border pt-4">
+					<Button variant="outline" onClick={onSkip} className="rounded-lg">
 						Skip — Enter manually
 					</Button>
 					<Button
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 						disabled={!selectedAsn}
 						onClick={() => {
 							if (selectedAsn) onSelect(selectedAsn);

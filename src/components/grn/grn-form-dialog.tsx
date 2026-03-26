@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
@@ -55,7 +53,7 @@ import {
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
-import { toUserFriendlyMessage } from "@/lib/utils";
+import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
 /** Get a user-facing message from Apollo or generic errors */
@@ -110,16 +108,6 @@ export type GRNLineItemForm = {
 	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
 	rackIds: string[];
 };
-
-function toDatetimeLocal(value: string | null | undefined): string {
-	if (value == null || value === "") return "";
-	const ms = Number(value);
-	const date =
-		!isNaN(ms) && String(ms) === String(value).trim()
-			? new Date(ms)
-			: new Date(value);
-	return isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
-}
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
 function normalizeFieldErrors(
@@ -583,14 +571,14 @@ export function GrnFormDialog({
 	grn = null,
 	skuOptions,
 	stockUnits,
-	warehouses,
+	warehouses: _warehouses,
 	racks,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
 	canCreate = true,
 	onSkusRefetch: _onSkusRefetch,
-	onWarehouseCreated,
+	onWarehouseCreated: _onWarehouseCreated,
 	onRackCreated,
 	initialValues,
 }: GrnFormDialogProps) {
@@ -808,25 +796,29 @@ export function GrnFormDialog({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
 				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
-				receivedDate: toDatetimeLocal(grn.receivedAt),
+				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
 				items: initialItems,
 			});
 		} else if (mode === "create") {
-			form.reset();
-			form.setFieldValue("items", []);
+			form.reset({
+				grnNumber: "",
+				poReference: initialValues?.poReference ?? "",
+				supplierDO: "",
+				receivedDate: initialValues?.receivedDate ?? "",
+				notes: "",
+				warehouseId: "",
+				items: (initialValues?.items ?? []) as GRNLineItemForm[],
+			});
 			setProofFiles([]);
 		}
-	}, [open, mode, grn?.id]);
+	}, [open, mode, grn?.id, initialValues]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			(document.activeElement as HTMLElement | null)?.blur();
 			setProofFiles([]);
-			if (mode === "create") {
-				form.setFieldValue("items", []);
-			}
 		}
 		onOpenChange(next);
 	};
