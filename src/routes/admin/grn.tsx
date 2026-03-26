@@ -919,16 +919,23 @@ function GRNRouteComponent() {
 											setAsnInitialValues({
 												poReference: asn.tranid,
 												receivedDate: asn.duedate,
-												items: asn.lines.map((l) => ({
-													skuCode: l.itemid,
-													description: l.displayname ?? "",
-													carton: l.quantity,
-													loss: 0,
-													uom: l.units,
-													unitPrice: 0,
-													expiryDate: "",
-													rackIds: [],
-												})),
+												items: asn.lines.map((l) => {
+													const unitMatch = stockUnits.find(
+														(u) =>
+															u.unitCode.toLowerCase() ===
+															l.units.toLowerCase(),
+													);
+													return {
+														skuCode: l.itemid,
+														description: l.displayname ?? "",
+														carton: l.quantity,
+														loss: 0,
+														uom: unitMatch?.stockUnitId ?? l.units,
+														unitPrice: 0,
+														expiryDate: "",
+														rackIds: [],
+													};
+												}),
 											});
 											setIsAsnPickerOpen(false);
 											setIsCreateOpen(true);

@@ -38,6 +38,7 @@ import {
 	Trash2,
 	Clock,
 	CalendarDays,
+	AlertTriangle,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -279,6 +280,11 @@ function GRNLineRow({
 		};
 	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
+	const isUnknownSku = useMemo(() => {
+		if (!item.skuCode?.trim()) return false;
+		return !skuOptions.some((s) => s.skuCode === item.skuCode);
+	}, [item.skuCode, skuOptions]);
+
 	const uomLabel = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -319,6 +325,15 @@ function GRNLineRow({
 								placeholder="Search or select SKU..."
 							/>
 						</div>
+						{isUnknownSku && (
+							<Badge
+								variant="outline"
+								className="shrink-0 text-xs h-6 gap-1 border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+							>
+								<AlertTriangle className="h-3 w-3" />
+								New
+							</Badge>
+						)}
 						{uomLabel && (
 							<Badge
 								variant="outline"
