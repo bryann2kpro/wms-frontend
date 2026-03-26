@@ -59,7 +59,7 @@ import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
-import { GrnFormDialog } from "@/components/grn/grn-form-dialog";
+import { GrnFormDialog, type GRNLineItemForm } from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import {
 	STOCK_UNITS_QUERY,
@@ -75,9 +75,12 @@ import {
 	CREATE_GRN_MUTATION,
 	CREATE_INBOUND_MUTATION,
 	UPDATE_GRN_MUTATION,
+	LIST_PENDING_ADVANCE_NOTICES_QUERY,
 	mapGrnsQueryToResult,
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
+	type ListPendingAdvanceNoticesQueryData,
+	type AdvanceNotice,
 } from "@/lib/graphql/grns";
 import type { Skus, GrnDetailForList } from "@/lib/graphql/types";
 import {
@@ -236,6 +239,105 @@ function HelpStepImage({
 	);
 }
 
+// ============================================================
+// ASN Picker Dialog — Step 1 of the 2-step Create GRN flow
+// ============================================================
+
+type AsnPickerDialogProps = {
+	open: boolean;
+	loading: boolean;
+	asns: AdvanceNotice[];
+	onSelect: (asn: AdvanceNotice) => void;
+	onSkip: () => void;
+	onOpenChange: (open: boolean) => void;
+};
+
+function AsnPickerDialog({
+	open,
+	loading,
+	asns,
+	onSelect,
+	onSkip,
+	onOpenChange,
+}: AsnPickerDialogProps) {
+	const [selectedId, setSelectedId] = useState<string>("");
+	const selectedAsn = asns.find((a) => a.id === selectedId) ?? null;
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Select Advance Shipping Notice</DialogTitle>
+					<DialogDescription>
+						Choose the ASN from NetSuite that matches the delivery you are
+						receiving, then click <strong>Continue</strong>. If no ASN exists
+						for this delivery, click <strong>Skip</strong> to fill in manually.
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="py-2 space-y-4">
+					{loading ? (
+						<p className="text-sm text-muted-foreground">Loading pending ASNs…</p>
+					) : asns.length === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							No pending advance notices found. Click <strong>Skip</strong> to
+							create a manual GRN.
+						</p>
+					) : (
+						<>
+							<Label htmlFor="asn-select">Advance Notice (PO / Entity / Due Date)</Label>
+							<Select value={selectedId} onValueChange={setSelectedId}>
+								<SelectTrigger id="asn-select" className="w-full">
+									<SelectValue placeholder="Select an ASN…" />
+								</SelectTrigger>
+								<SelectContent>
+									{asns.map((asn) => (
+										<SelectItem key={asn.id} value={asn.id}>
+											{asn.tranid} — {asn.entity} ({asn.duedate})
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{selectedAsn && (
+								<div className="rounded-md border p-3 text-sm space-y-1">
+									<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide mb-2">
+										{selectedAsn.lines.length} item(s) expected
+									</p>
+									{selectedAsn.lines.map((l) => (
+										<div key={l.lineuniquekey} className="flex justify-between">
+											<span className="font-mono">{l.itemid}</span>
+											<span className="text-muted-foreground">
+												{l.displayname && (
+													<span className="mr-2">{l.displayname}</span>
+												)}
+												{l.quantity} {l.units}
+											</span>
+										</div>
+									))}
+								</div>
+							)}
+						</>
+					)}
+				</div>
+
+				<DialogFooter className="gap-2">
+					<Button variant="outline" onClick={onSkip}>
+						Skip — Enter manually
+					</Button>
+					<Button
+						disabled={!selectedAsn}
+						onClick={() => {
+							if (selectedAsn) onSelect(selectedAsn);
+						}}
+					>
+						Continue
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { hasPermission } = usePermissions(user);
@@ -247,11 +349,25 @@ function GRNRouteComponent() {
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const debouncedSearchTerm = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [selectedGRN, setSelectedGRN] = useState<GrnDetailForList | null>(null);
+	const [isAsnPickerOpen, setIsAsnPickerOpen] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [selectedAsnId, setSelectedAsnId] = useState<string | null>(null);
+	const [asnInitialValues, setAsnInitialValues] = useState<{
+		poReference?: string;
+		receivedDate?: string;
+		items?: GRNLineItemForm[];
+	} | undefined>(undefined);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
+	const { data: pendingAsnData, loading: pendingAsnLoading } =
+		useApolloQuery<ListPendingAdvanceNoticesQueryData>(LIST_PENDING_ADVANCE_NOTICES_QUERY, {
+			skip: !isAsnPickerOpen,
+			fetchPolicy: "network-only",
+		});
+	const pendingAsns = pendingAsnData?.listPendingAdvanceNotices ?? [];
+
 	const { data: stockUnitsData } =
 		useApolloQuery<StockUnitsQueryData>(STOCK_UNITS_QUERY);
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
@@ -369,6 +485,8 @@ function GRNRouteComponent() {
 				expiryDate?: string;
 				rackIds?: string[];
 			}>;
+			/** ID of advance notice this GRN was created from. */
+			advanceNoticeId?: string | null;
 		}) => {
 			const status: GRNStatus =
 				payload.submitIntent === "submit" ? "Submitted" : "Draft";
@@ -410,7 +528,7 @@ function GRNRouteComponent() {
 					return;
 				}
 				await createInboundApollo({
-					variables: { input: { userId, ...baseInput } },
+					variables: { input: { userId, ...baseInput, advanceNoticeId: payload.advanceNoticeId ?? undefined } },
 				});
 			} else {
 				await createGRNApollo({
@@ -647,51 +765,103 @@ function GRNRouteComponent() {
 								</DialogContent>
 							</Dialog>
 							{hasPermission("grn:create") && (
-								<GrnFormDialog
-									mode="create"
-									open={isCreateOpen}
-									onOpenChange={setIsCreateOpen}
-									skuOptions={skuOptions}
-									stockUnits={stockUnits}
-									canCreate={hasPermission("grn:create")}
-									trigger={
-										<Button className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg">
-											<Plus className="mr-2 h-4 w-4" />
-											Create GRN
-										</Button>
-									}
-									warehouses={warehouses}
-									racks={racks}
-									onCreateSubmit={async (payload) => {
-										await createMutation.mutateAsync({
-											grnNumber: payload.grnNumber,
-											poReference: payload.poReference,
-											supplierDO: payload.supplierDO,
-											receivedDate: payload.receivedDate
-												? new Date(payload.receivedDate)
-												: new Date(),
-											notes: payload.notes || undefined,
-											warehouseId: payload.warehouseId || undefined,
-											submitIntent: payload.submitIntent,
-											items: payload.items.map((i) => ({
-												sku: i.skuCode,
-												description: i.description,
-												carton: i.carton,
-												loss: i.loss,
-												uom: i.uom,
-												unitPrice: i.unitPrice,
-												expiryDate: i.expiryDate ?? "",
-												rackIds: i.rackIds ?? [],
-											})),
-										});
-									}}
-									onSuccess={() => refetchGRNs()}
-									onSkusRefetch={() => void refetchSkus()}
-									onWarehouseCreated={async () => {
-										await refetchWarehouses();
-									}}
-									onRackCreated={() => void refetchRacks()}
-								/>
+								<>
+									{/* Step 1: ASN Picker */}
+									<AsnPickerDialog
+										open={isAsnPickerOpen}
+										loading={pendingAsnLoading}
+										asns={pendingAsns}
+										onSkip={() => {
+											setSelectedAsnId(null);
+											setAsnInitialValues(undefined);
+											setIsAsnPickerOpen(false);
+											setIsCreateOpen(true);
+										}}
+										onSelect={(asn) => {
+											setSelectedAsnId(asn.id);
+											setAsnInitialValues({
+												poReference: asn.tranid,
+												receivedDate: asn.duedate,
+												items: asn.lines.map((l) => ({
+													skuCode: l.itemid,
+													description: l.displayname ?? "",
+													carton: l.quantity,
+													loss: 0,
+													uom: l.units,
+													unitPrice: 0,
+													expiryDate: "",
+													rackIds: [],
+												})),
+											});
+											setIsAsnPickerOpen(false);
+											setIsCreateOpen(true);
+										}}
+										onOpenChange={(open) => {
+											if (!open) setIsAsnPickerOpen(false);
+										}}
+									/>
+									{/* Step 2: GRN Form */}
+									<GrnFormDialog
+										key={selectedAsnId ?? "manual"}
+										mode="create"
+										open={isCreateOpen}
+										onOpenChange={(open) => {
+											setIsCreateOpen(open);
+											if (!open) {
+												setSelectedAsnId(null);
+												setAsnInitialValues(undefined);
+											}
+										}}
+										skuOptions={skuOptions}
+										stockUnits={stockUnits}
+										canCreate={hasPermission("grn:create")}
+										trigger={
+											<Button
+												className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg"
+												onClick={(e) => {
+													e.preventDefault();
+													setIsAsnPickerOpen(true);
+												}}
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Create GRN
+											</Button>
+										}
+										warehouses={warehouses}
+										racks={racks}
+										initialValues={asnInitialValues}
+										onCreateSubmit={async (payload) => {
+											await createMutation.mutateAsync({
+												grnNumber: payload.grnNumber,
+												poReference: payload.poReference,
+												supplierDO: payload.supplierDO,
+												receivedDate: payload.receivedDate
+													? new Date(payload.receivedDate)
+													: new Date(),
+												notes: payload.notes || undefined,
+												warehouseId: payload.warehouseId || undefined,
+												submitIntent: payload.submitIntent,
+												advanceNoticeId: selectedAsnId ?? undefined,
+												items: payload.items.map((i) => ({
+													sku: i.skuCode,
+													description: i.description,
+													carton: i.carton,
+													loss: i.loss,
+													uom: i.uom,
+													unitPrice: i.unitPrice,
+													expiryDate: i.expiryDate ?? "",
+													rackIds: i.rackIds ?? [],
+												})),
+											});
+										}}
+										onSuccess={() => refetchGRNs()}
+										onSkusRefetch={() => void refetchSkus()}
+										onWarehouseCreated={async () => {
+											await refetchWarehouses();
+										}}
+										onRackCreated={() => void refetchRacks()}
+									/>
+								</>
 							)}
 						</div>
 					}

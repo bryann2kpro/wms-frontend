@@ -543,6 +543,12 @@ export type GrnFormDialogProps = {
 	onWarehouseCreated?: () => void | Promise<void>;
 	/** Called after a new rack is created so parent can refetch rack list */
 	onRackCreated?: () => void | Promise<void>;
+	/** Pre-fill form fields from an ASN selection (create mode only). */
+	initialValues?: {
+		poReference?: string;
+		receivedDate?: string;
+		items?: GRNLineItemForm[];
+	};
 };
 
 export function GrnFormDialog({
@@ -561,6 +567,7 @@ export function GrnFormDialog({
 	onSkusRefetch: _onSkusRefetch,
 	onWarehouseCreated,
 	onRackCreated,
+	initialValues,
 }: GrnFormDialogProps) {
 	const { user } = useCurrentUser();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
@@ -612,12 +619,12 @@ export function GrnFormDialog({
 	const form = useForm({
 		defaultValues: {
 			grnNumber: "",
-			poReference: "",
+			poReference: initialValues?.poReference ?? "",
 			supplierDO: "",
-			receivedDate: "",
+			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
 			warehouseId: "",
-			items: [] as GRNLineItemForm[],
+			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
 			onSubmit: ({ value }) => {
