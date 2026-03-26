@@ -59,7 +59,10 @@ import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
-import { GrnFormDialog, type GRNLineItemForm } from "@/components/grn/grn-form-dialog";
+import {
+	GrnFormDialog,
+	type GRNLineItemForm,
+} from "@/components/grn/grn-form-dialog";
 import { useQuery as useApolloQuery } from "@apollo/client/react";
 import {
 	STOCK_UNITS_QUERY,
@@ -161,8 +164,8 @@ const GRN_HELP_STEPS: Array<{
 		description: (
 			<>
 				Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
-				counts by status (Submitted, Failed), and create new GRNs. Use
-				this page to record incoming inventory and track receipts.
+				counts by status (Submitted, Failed), and create new GRNs. Use this page
+				to record incoming inventory and track receipts.
 			</>
 		),
 	},
@@ -224,7 +227,10 @@ function HelpStepImage({
 					<ImageOff className="h-7 w-7" />
 				</span>
 				<span className="text-sm text-muted-foreground">
-					Add screenshot: <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">public/help/grn/step-{stepNumber}.png</code>
+					Add screenshot:{" "}
+					<code className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+						public/help/grn/step-{stepNumber}.png
+					</code>
 				</span>
 			</div>
 		);
@@ -277,7 +283,9 @@ function AsnPickerDialog({
 
 				<div className="py-2 space-y-4">
 					{loading ? (
-						<p className="text-sm text-muted-foreground">Loading pending ASNs…</p>
+						<p className="text-sm text-muted-foreground">
+							Loading pending ASNs…
+						</p>
 					) : asns.length === 0 ? (
 						<p className="text-sm text-muted-foreground">
 							No pending advance notices found. Click <strong>Skip</strong> to
@@ -285,7 +293,9 @@ function AsnPickerDialog({
 						</p>
 					) : (
 						<>
-							<Label htmlFor="asn-select">Advance Notice (PO / Entity / Due Date)</Label>
+							<Label htmlFor="asn-select">
+								Advance Notice (PO / Entity / Due Date)
+							</Label>
 							<Select value={selectedId} onValueChange={setSelectedId}>
 								<SelectTrigger id="asn-select" className="w-full">
 									<SelectValue placeholder="Select an ASN…" />
@@ -352,20 +362,26 @@ function GRNRouteComponent() {
 	const [isAsnPickerOpen, setIsAsnPickerOpen] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [selectedAsnId, setSelectedAsnId] = useState<string | null>(null);
-	const [asnInitialValues, setAsnInitialValues] = useState<{
-		poReference?: string;
-		receivedDate?: string;
-		items?: GRNLineItemForm[];
-	} | undefined>(undefined);
+	const [asnInitialValues, setAsnInitialValues] = useState<
+		| {
+				poReference?: string;
+				receivedDate?: string;
+				items?: GRNLineItemForm[];
+		  }
+		| undefined
+	>(undefined);
 	const [isViewOpen, setIsViewOpen] = useState(false);
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
 	const { data: pendingAsnData, loading: pendingAsnLoading } =
-		useApolloQuery<ListPendingAdvanceNoticesQueryData>(LIST_PENDING_ADVANCE_NOTICES_QUERY, {
-			skip: !isAsnPickerOpen,
-			fetchPolicy: "network-only",
-		});
+		useApolloQuery<ListPendingAdvanceNoticesQueryData>(
+			LIST_PENDING_ADVANCE_NOTICES_QUERY,
+			{
+				skip: !isAsnPickerOpen,
+				fetchPolicy: "network-only",
+			},
+		);
 	const pendingAsns = pendingAsnData?.listPendingAdvanceNotices ?? [];
 
 	const { data: stockUnitsData } =
@@ -528,7 +544,13 @@ function GRNRouteComponent() {
 					return;
 				}
 				await createInboundApollo({
-					variables: { input: { userId, ...baseInput, advanceNoticeId: payload.advanceNoticeId ?? undefined } },
+					variables: {
+						input: {
+							userId,
+							...baseInput,
+							advanceNoticeId: payload.advanceNoticeId ?? undefined,
+						},
+					},
 				});
 			} else {
 				await createGRNApollo({
@@ -712,7 +734,11 @@ function GRNRouteComponent() {
 											</p>
 										</div>
 										<div className="flex items-center justify-between gap-4 pt-1">
-											<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
+											<div
+												className="flex gap-1.5"
+												role="tablist"
+												aria-label="Help steps"
+											>
 												{GRN_HELP_STEPS.map((_, i) => (
 													<button
 														type="button"
@@ -897,527 +923,529 @@ function GRNRouteComponent() {
 				)}
 
 				<Card className="dashboard-card shadow-md hover:shadow-lg">
-				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle
+					<CardHeader>
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle
+									className="text-lg"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									GRN List
+								</CardTitle>
+								<CardDescription
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									View and manage all goods receipt notes
+								</CardDescription>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+									<Input
+										placeholder="Search GRN, PO, Supplier DO..."
+										value={searchTerm}
+										onChange={(e) => {
+											setSearchTerm(e.target.value);
+											setPage(1);
+										}}
+										className="pl-9 sm:w-64 rounded-lg border-muted-foreground/20"
+									/>
+								</div>
+								<Select
+									value={statusFilter}
+									onValueChange={(value) => {
+										setStatusFilter(value as GRNStatusFilter);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-48 rounded-lg border-muted-foreground/20">
+										<SelectValue placeholder="Filter by status" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ALL">All Status</SelectItem>
+										{GRN_STATUS_OPTIONS.map((status) => (
+											<SelectItem key={status} value={status}>
+												{formatStatus(status)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortField}
+									onValueChange={(value) => {
+										setSortField(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-44 rounded-lg border-muted-foreground/20">
+										<SelectValue placeholder="Sort by" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="UPDATED_AT">Updated at</SelectItem>
+										<SelectItem value="CREATED_AT">Created at</SelectItem>
+										<SelectItem value="GRN_NO">GRN Number</SelectItem>
+										<SelectItem value="RECEIVED_AT">Received date</SelectItem>
+										<SelectItem value="STATUS">Status</SelectItem>
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortDirection}
+									onValueChange={(value: "ASC" | "DESC") => {
+										setSortDirection(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="sm:w-40 rounded-lg border-muted-foreground/20">
+										<SelectValue placeholder="Order" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="DESC">Newest first</SelectItem>
+										<SelectItem value="ASC">Oldest first</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+						{/* Status tabs */}
+						<div className="flex flex-wrap gap-2 border-b pt-2">
+							{GRN_STATUS_TABS.map((value) => (
+								<Button
+									key={value}
+									variant={statusFilter === value ? "default" : "ghost"}
+									size="sm"
+									onClick={() => {
+										setStatusFilter(value);
+										setPage(1);
+									}}
+									className="rounded-lg rounded-b-none"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									{value === "ALL" ? "All" : formatStatus(value)}
+								</Button>
+							))}
+						</div>
+					</CardHeader>
+					<CardContent className="relative px-0 pb-6">
+						<GlobalLoadingShadow />
+						<div className="overflow-x-auto rounded-lg border mx-6">
+							<Table>
+								<TableHeader>
+									<TableRow className="hover:bg-transparent">
+										<TableHead className="px-6">GRN Number</TableHead>
+										<TableHead className="px-6">End User PO</TableHead>
+										<TableHead className="px-6">Supplier DO</TableHead>
+										<TableHead className="px-6">Received Date</TableHead>
+										<TableHead className="px-6">Status</TableHead>
+										<TableHead className="text-right px-6">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{isLoading ? (
+										<TableRow>
+											<TableCell
+												colSpan={6}
+												className="h-24 px-6 text-center text-muted-foreground"
+											>
+												Loading GRNs...
+											</TableCell>
+										</TableRow>
+									) : grns.length === 0 ? (
+										<TableRow>
+											<TableCell
+												colSpan={6}
+												className="h-24 px-6 text-center text-muted-foreground"
+											>
+												No GRNs found.
+											</TableCell>
+										</TableRow>
+									) : (
+										grns.map((grn: GrnDetailForList) => {
+											const showEdit =
+												hasPermission("grn:edit") &&
+												grn.status &&
+												(grn.status === "Draft" || grn.status === "Submitted");
+											const showApprove =
+												hasPermission("grn:approve") &&
+												grn.status === "Submitted";
+											const showSend =
+												hasPermission("grn:send_to_es") &&
+												grn.status === "Approved";
+											return (
+												<TableRow
+													key={grn.id}
+													className="transition-colors hover:bg-muted/50"
+												>
+													<TableCell className="font-medium px-6">
+														{grn.grnNo || "-"}
+													</TableCell>
+													<TableCell className="px-6">
+														{grn.poNo ?? "-"}
+													</TableCell>
+													<TableCell className="px-6">
+														{grn.supplierDeliveryNo ??
+															grn.supplierDeliveryId ??
+															"-"}
+													</TableCell>
+													<TableCell className="px-6">
+														{formatGrnDate(grn.receivedAt) ?? "-"}
+													</TableCell>
+													<TableCell className="px-6">
+														{grn.status ? (
+															<Badge
+																variant="outline"
+																className={getStatusColor(
+																	grn.status as GRNStatus,
+																)}
+															>
+																{formatStatus(grn.status)}
+															</Badge>
+														) : (
+															<span className="text-muted-foreground">-</span>
+														)}
+													</TableCell>
+													<TableCell className="text-right px-6">
+														<div className="flex justify-end gap-1">
+															<Button
+																variant="ghost"
+																size="icon"
+																onClick={() => handleViewGRN(grn)}
+															>
+																<Eye className="h-4 w-4" />
+															</Button>
+															{showEdit && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() => {
+																		setSelectedGRN(grn);
+																		setIsEditOpen(true);
+																	}}
+																>
+																	<Edit className="h-4 w-4" />
+																</Button>
+															)}
+															{showApprove && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() =>
+																		handleUpdateStatus(grn.id, "Approved")
+																	}
+																	disabled={statusMutation.status === "pending"}
+																>
+																	<CheckCircle className="h-4 w-4 text-green-600" />
+																</Button>
+															)}
+															{showSend && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() =>
+																		handleUpdateStatus(grn.id, "Sent-to-ES")
+																	}
+																	disabled={statusMutation.status === "pending"}
+																>
+																	<Send className="h-4 w-4 text-purple-600" />
+																</Button>
+															)}
+														</div>
+													</TableCell>
+												</TableRow>
+											);
+										})
+									)}
+								</TableBody>
+							</Table>
+						</div>
+
+						{data && (
+							<div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-6 text-xs text-muted-foreground">
+								<div style={{ fontFamily: "var(--dashboard-body)" }}>
+									Showing{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{(data.page - 1) * data.pageSize + 1}
+									</span>{" "}
+									–{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{Math.min(data.page * data.pageSize, data.total)}
+									</span>{" "}
+									of{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{data.total}
+									</span>{" "}
+									GRNs
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="icon"
+										className="rounded-lg h-8 w-8"
+										disabled={page === 1}
+										onClick={() => setPage((p) => Math.max(1, p - 1))}
+									>
+										<ChevronLeft className="h-4 w-4" />
+									</Button>
+									<span className="tabular-nums min-w-[6rem] text-center">
+										Page {page} of {totalPages}
+									</span>
+									<Button
+										variant="outline"
+										size="icon"
+										className="rounded-lg h-8 w-8"
+										disabled={page === totalPages}
+										onClick={() =>
+											setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
+										}
+									>
+										<ChevronRight className="h-4 w-4" />
+									</Button>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* View GRN Dialog */}
+				<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+					<DialogContent
+						className="max-h-[90vh] overflow-y-auto rounded-xl"
+						style={{ maxWidth: "min(95vw, 1400px)" }}
+					>
+						<DialogHeader>
+							<DialogTitle
 								className="text-lg"
 								style={{ fontFamily: "var(--dashboard-display)" }}
 							>
-								GRN List
-							</CardTitle>
-							<CardDescription
+								GRN Details
+							</DialogTitle>
+							<DialogDescription
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								View and manage all goods receipt notes
-							</CardDescription>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-								<Input
-									placeholder="Search GRN, PO, Supplier DO..."
-									value={searchTerm}
-									onChange={(e) => {
-										setSearchTerm(e.target.value);
-										setPage(1);
-									}}
-									className="pl-9 sm:w-64 rounded-lg border-muted-foreground/20"
-								/>
-							</div>
-							<Select
-								value={statusFilter}
-								onValueChange={(value) => {
-									setStatusFilter(value as GRNStatusFilter);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-48 rounded-lg border-muted-foreground/20">
-									<SelectValue placeholder="Filter by status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ALL">All Status</SelectItem>
-									{GRN_STATUS_OPTIONS.map((status) => (
-										<SelectItem key={status} value={status}>
-											{formatStatus(status)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Select
-								value={sortField}
-								onValueChange={(value) => {
-									setSortField(value);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-44 rounded-lg border-muted-foreground/20">
-									<SelectValue placeholder="Sort by" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="UPDATED_AT">Updated at</SelectItem>
-									<SelectItem value="CREATED_AT">Created at</SelectItem>
-									<SelectItem value="GRN_NO">GRN Number</SelectItem>
-									<SelectItem value="RECEIVED_AT">Received date</SelectItem>
-									<SelectItem value="STATUS">Status</SelectItem>
-								</SelectContent>
-							</Select>
-							<Select
-								value={sortDirection}
-								onValueChange={(value: "ASC" | "DESC") => {
-									setSortDirection(value);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className="sm:w-40 rounded-lg border-muted-foreground/20">
-									<SelectValue placeholder="Order" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="DESC">Newest first</SelectItem>
-									<SelectItem value="ASC">Oldest first</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-					{/* Status tabs */}
-					<div className="flex flex-wrap gap-2 border-b pt-2">
-						{GRN_STATUS_TABS.map((value) => (
-							<Button
-								key={value}
-								variant={statusFilter === value ? "default" : "ghost"}
-								size="sm"
-								onClick={() => {
-									setStatusFilter(value);
-									setPage(1);
-								}}
-								className="rounded-lg rounded-b-none"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								{value === "ALL" ? "All" : formatStatus(value)}
-							</Button>
-						))}
-					</div>
-				</CardHeader>
-				<CardContent className="relative px-0 pb-6">
-					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border mx-6">
-						<Table>
-							<TableHeader>
-								<TableRow className="hover:bg-transparent">
-									<TableHead className="px-6">GRN Number</TableHead>
-									<TableHead className="px-6">End User PO</TableHead>
-									<TableHead className="px-6">Supplier DO</TableHead>
-									<TableHead className="px-6">Received Date</TableHead>
-									<TableHead className="px-6">Status</TableHead>
-									<TableHead className="text-right px-6">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{isLoading ? (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="h-24 px-6 text-center text-muted-foreground"
-										>
-											Loading GRNs...
-										</TableCell>
-									</TableRow>
-								) : grns.length === 0 ? (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="h-24 px-6 text-center text-muted-foreground"
-										>
-											No GRNs found.
-										</TableCell>
-									</TableRow>
-								) : (
-									grns.map((grn: GrnDetailForList) => {
-										const showEdit =
-											hasPermission("grn:edit") &&
-											grn.status &&
-											(grn.status === "Draft" || grn.status === "Submitted");
-										const showApprove =
-											hasPermission("grn:approve") &&
-											grn.status === "Submitted";
-										const showSend =
-											hasPermission("grn:send_to_es") &&
-											grn.status === "Approved";
-										return (
-											<TableRow
-												key={grn.id}
-												className="transition-colors hover:bg-muted/50"
-											>
-												<TableCell className="font-medium px-6">
-													{grn.grnNo || "-"}
-												</TableCell>
-												<TableCell className="px-6">{grn.poNo ?? "-"}</TableCell>
-												<TableCell className="px-6">
-													{grn.supplierDeliveryNo ??
-														grn.supplierDeliveryId ??
-														"-"}
-												</TableCell>
-												<TableCell className="px-6">
-													{formatGrnDate(grn.receivedAt) ?? "-"}
-												</TableCell>
-												<TableCell className="px-6">
-													{grn.status ? (
+								View detailed information about this goods receipt note
+							</DialogDescription>
+						</DialogHeader>
+						{selectedGRN && (
+							<div className="grid gap-6 lg:grid-cols-3">
+								<div className="lg:col-span-2 space-y-6">
+									<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
+										<div className="space-y-6">
+											<div className="grid gap-4 sm:grid-cols-2">
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														GRN Number
+													</Label>
+													<p className="text-sm font-medium">
+														{selectedGRN.grnNo}
+													</p>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														End User PO
+													</Label>
+													<p className="text-sm font-medium">
+														{selectedGRN.poNo || "-"}
+													</p>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Supplier DO
+													</Label>
+													<p className="text-sm font-medium">
+														{(selectedGRN.supplierDeliveryNo ??
+															selectedGRN.supplierDeliveryId) ||
+															"-"}
+													</p>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Received Date
+													</Label>
+													<p className="text-sm font-medium">
+														{formatGrnDate(selectedGRN.receivedAt) ?? "-"}
+													</p>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Warehouse
+													</Label>
+													<p className="text-sm font-medium">
+														{selectedGRN.warehouse?.warehouseName
+															? [
+																	selectedGRN.warehouse.warehouseName,
+																	selectedGRN.warehouse.warehouseCode,
+																]
+																	.filter(Boolean)
+																	.join(" · ") ||
+																selectedGRN.warehouse.warehouseName
+															: "-"}
+													</p>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Status
+													</Label>
+													{selectedGRN.status ? (
 														<Badge
 															variant="outline"
-															className={getStatusColor(
-																grn.status as GRNStatus,
-															)}
+															className={getStatusColor(selectedGRN.status)}
 														>
-															{formatStatus(grn.status)}
+															{formatStatus(selectedGRN.status)}
 														</Badge>
 													) : (
-														<span className="text-muted-foreground">-</span>
+														<span className="text-sm text-muted-foreground">
+															-
+														</span>
 													)}
-												</TableCell>
-												<TableCell className="text-right px-6">
-													<div className="flex justify-end gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															onClick={() => handleViewGRN(grn)}
-														>
-															<Eye className="h-4 w-4" />
-														</Button>
-														{showEdit && (
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() => {
-																	setSelectedGRN(grn);
-																	setIsEditOpen(true);
-																}}
-															>
-																<Edit className="h-4 w-4" />
-															</Button>
-														)}
-														{showApprove && (
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() =>
-																	handleUpdateStatus(grn.id, "Approved")
-																}
-																disabled={statusMutation.status === "pending"}
-															>
-																<CheckCircle className="h-4 w-4 text-green-600" />
-															</Button>
-														)}
-														{showSend && (
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() =>
-																	handleUpdateStatus(grn.id, "Sent-to-ES")
-																}
-																disabled={statusMutation.status === "pending"}
-															>
-																<Send className="h-4 w-4 text-purple-600" />
-															</Button>
-														)}
-													</div>
-												</TableCell>
-											</TableRow>
-										);
-									})
-								)}
-							</TableBody>
-						</Table>
-					</div>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Created By
+													</Label>
+													<p className="text-sm font-medium">
+														{selectedGRN.createdBy}
+													</p>
+												</div>
+											</div>
 
-					{data && (
-						<div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-6 text-xs text-muted-foreground">
-							<div style={{ fontFamily: "var(--dashboard-body)" }}>
-								Showing{" "}
-								<span className="font-semibold tabular-nums text-foreground">
-									{(data.page - 1) * data.pageSize + 1}
-								</span>{" "}
-								–{" "}
-								<span className="font-semibold tabular-nums text-foreground">
-									{Math.min(data.page * data.pageSize, data.total)}
-								</span>{" "}
-								of{" "}
-								<span className="font-semibold tabular-nums text-foreground">
-									{data.total}
-								</span>{" "}
-								GRNs
-							</div>
-							<div className="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="icon"
-									className="rounded-lg h-8 w-8"
-									disabled={page === 1}
-									onClick={() => setPage((p) => Math.max(1, p - 1))}
-								>
-									<ChevronLeft className="h-4 w-4" />
-								</Button>
-								<span className="tabular-nums min-w-[6rem] text-center">
-									Page {page} of {totalPages}
-								</span>
-								<Button
-									variant="outline"
-									size="icon"
-									className="rounded-lg h-8 w-8"
-									disabled={page === totalPages}
-									onClick={() =>
-										setPage((p) => (data ? Math.min(totalPages, p + 1) : p))
-									}
-								>
-									<ChevronRight className="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
-					)}
-				</CardContent>
-			</Card>
-
-			{/* View GRN Dialog */}
-			<Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-				<DialogContent
-					className="max-h-[90vh] overflow-y-auto rounded-xl"
-					style={{ maxWidth: "min(95vw, 1400px)" }}
-				>
-					<DialogHeader>
-						<DialogTitle
-							className="text-lg"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							GRN Details
-						</DialogTitle>
-						<DialogDescription
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							View detailed information about this goods receipt note
-						</DialogDescription>
-					</DialogHeader>
-					{selectedGRN && (
-						<div className="grid gap-6 lg:grid-cols-3">
-							<div className="lg:col-span-2 space-y-6">
-								<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-									<div className="space-y-6">
-										<div className="grid gap-4 sm:grid-cols-2">
 											<div>
-												<Label className="text-xs text-muted-foreground">
-													GRN Number
+												<Label className="mb-2 block text-sm font-medium">
+													Items
 												</Label>
-												<p className="text-sm font-medium">
-													{selectedGRN.grnNo}
-												</p>
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													End User PO
-												</Label>
-												<p className="text-sm font-medium">
-													{selectedGRN.poNo || "-"}
-												</p>
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													Supplier DO
-												</Label>
-												<p className="text-sm font-medium">
-													{(selectedGRN.supplierDeliveryNo ??
-														selectedGRN.supplierDeliveryId) ||
-														"-"}
-												</p>
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													Received Date
-												</Label>
-												<p className="text-sm font-medium">
-													{formatGrnDate(selectedGRN.receivedAt) ?? "-"}
-												</p>
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													Warehouse
-												</Label>
-												<p className="text-sm font-medium">
-													{selectedGRN.warehouse?.warehouseName
-														? [
-																selectedGRN.warehouse.warehouseName,
-																selectedGRN.warehouse.warehouseCode,
-															]
-																.filter(Boolean)
-																.join(" · ") ||
-															selectedGRN.warehouse.warehouseName
-														: "-"}
-												</p>
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													Status
-												</Label>
-												{selectedGRN.status ? (
-													<Badge
-														variant="outline"
-														className={getStatusColor(selectedGRN.status)}
-													>
-														{formatStatus(selectedGRN.status)}
-													</Badge>
-												) : (
-													<span className="text-sm text-muted-foreground">
-														-
-													</span>
-												)}
-											</div>
-											<div>
-												<Label className="text-xs text-muted-foreground">
-													Created By
-												</Label>
-												<p className="text-sm font-medium">
-													{selectedGRN.createdBy}
-												</p>
-											</div>
-										</div>
-
-										<div>
-											<Label className="mb-2 block text-sm font-medium">
-												Items
-											</Label>
-											<div className="rounded-lg border">
-												<Table>
-													<TableHeader>
-														<TableRow>
-															<TableHead>SKU</TableHead>
-															<TableHead>Description</TableHead>
-															<TableHead>Carton</TableHead>
-															<TableHead>Loss</TableHead>
-															<TableHead>Total</TableHead>
-															<TableHead>Expiry Date</TableHead>
-															<TableHead>Location</TableHead>
-														</TableRow>
-													</TableHeader>
-													<TableBody>
-														{selectedGRN.items.map((item) => (
-															<TableRow key={item.id}>
-																<TableCell className="font-medium">
-																	{item.skuCode}
-																</TableCell>
-																<TableCell>{item.skuDescription}</TableCell>
-																<TableCell>{item.expectedQuantity}</TableCell>
-																<TableCell>{item.lossQuantity}</TableCell>
-																<TableCell>{item.receivedQuantity}</TableCell>
-																<TableCell>
-																	{item.expiryDate
-																		? (formatGrnDate(item.expiryDate) ?? "—")
-																		: "—"}
-																</TableCell>
-																<TableCell>
-																	{item.location || "Not assigned"}
-																</TableCell>
+												<div className="rounded-lg border">
+													<Table>
+														<TableHeader>
+															<TableRow>
+																<TableHead>SKU</TableHead>
+																<TableHead>Description</TableHead>
+																<TableHead>Carton</TableHead>
+																<TableHead>Loss</TableHead>
+																<TableHead>Total</TableHead>
+																<TableHead>Expiry Date</TableHead>
+																<TableHead>Location</TableHead>
 															</TableRow>
-														))}
-													</TableBody>
-												</Table>
+														</TableHeader>
+														<TableBody>
+															{selectedGRN.items.map((item) => (
+																<TableRow key={item.id}>
+																	<TableCell className="font-medium">
+																		{item.skuCode}
+																	</TableCell>
+																	<TableCell>{item.skuDescription}</TableCell>
+																	<TableCell>{item.expectedQuantity}</TableCell>
+																	<TableCell>{item.lossQuantity}</TableCell>
+																	<TableCell>{item.receivedQuantity}</TableCell>
+																	<TableCell>
+																		{item.expiryDate
+																			? (formatGrnDate(item.expiryDate) ?? "—")
+																			: "—"}
+																	</TableCell>
+																	<TableCell>
+																		{item.location || "Not assigned"}
+																	</TableCell>
+																</TableRow>
+															))}
+														</TableBody>
+													</Table>
+												</div>
 											</div>
-										</div>
 
-										{selectedGRN.notes && (
+											{selectedGRN.notes && (
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Notes
+													</Label>
+													<p className="text-sm">{selectedGRN.notes}</p>
+												</div>
+											)}
+										</div>
+									</ScrollArea>
+								</div>
+
+								{/* Right Panel: Audit Trail + Integration Status */}
+								<div className="space-y-4">
+									<Card className="rounded-xl border bg-muted/30">
+										<CardHeader>
+											<CardTitle
+												className="text-sm font-semibold"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												Audit Trail
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="text-xs space-y-2">
 											<div>
-												<Label className="text-xs text-muted-foreground">
-													Notes
-												</Label>
-												<p className="text-sm">{selectedGRN.notes}</p>
+												<p className="text-muted-foreground">Created By</p>
+												<p className="font-medium">{selectedGRN.createdBy}</p>
 											</div>
-										)}
-									</div>
-								</ScrollArea>
+											<div>
+												<p className="text-muted-foreground">Created At</p>
+												<p className="font-medium">
+													{formatGrnDate(selectedGRN.createdAt) ?? "-"}
+												</p>
+											</div>
+										</CardContent>
+									</Card>
+									<IntegrationLogPanel
+										entityId={selectedGRN.id}
+										entityType="grn"
+										onRetry={(logId) => {
+											console.log("Retry log:", logId);
+										}}
+									/>
+								</div>
 							</div>
+						)}
+						<DialogFooter>
+							<Button variant="outline" onClick={() => setIsViewOpen(false)}>
+								Close
+							</Button>
+							{hasPermission("grn:approve") &&
+								selectedGRN?.status === "Submitted" && (
+									<Button
+										onClick={() => {
+											handleUpdateStatus(selectedGRN.id, "Approved");
+										}}
+										disabled={statusMutation.status === "pending"}
+									>
+										Approve
+									</Button>
+								)}
+							{hasPermission("grn:send_to_es") &&
+								selectedGRN?.status === "Approved" && (
+									<Button
+										onClick={() => {
+											handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
+										}}
+										disabled={statusMutation.status === "pending"}
+									>
+										<Send className="mr-2 h-4 w-4" />
+										Send to ES
+									</Button>
+								)}
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 
-							{/* Right Panel: Audit Trail + Integration Status */}
-							<div className="space-y-4">
-								<Card className="rounded-xl border bg-muted/30">
-									<CardHeader>
-										<CardTitle
-											className="text-sm font-semibold"
-											style={{ fontFamily: "var(--dashboard-display)" }}
-										>
-											Audit Trail
-										</CardTitle>
-									</CardHeader>
-									<CardContent className="text-xs space-y-2">
-										<div>
-											<p className="text-muted-foreground">Created By</p>
-											<p className="font-medium">{selectedGRN.createdBy}</p>
-										</div>
-										<div>
-											<p className="text-muted-foreground">Created At</p>
-											<p className="font-medium">
-												{formatGrnDate(selectedGRN.createdAt) ?? "-"}
-											</p>
-										</div>
-									</CardContent>
-								</Card>
-								<IntegrationLogPanel
-									entityId={selectedGRN.id}
-									entityType="grn"
-									onRetry={(logId) => {
-										console.log("Retry log:", logId);
-									}}
-								/>
-							</div>
-						</div>
-					)}
-					<DialogFooter>
-						<Button variant="outline" onClick={() => setIsViewOpen(false)}>
-							Close
-						</Button>
-						{hasPermission("grn:approve") &&
-							selectedGRN?.status === "Submitted" && (
-								<Button
-									onClick={() => {
-										handleUpdateStatus(selectedGRN.id, "Approved");
-									}}
-									disabled={statusMutation.status === "pending"}
-								>
-									Approve
-								</Button>
-							)}
-						{hasPermission("grn:send_to_es") &&
-							selectedGRN?.status === "Approved" && (
-								<Button
-									onClick={() => {
-										handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
-									}}
-									disabled={statusMutation.status === "pending"}
-								>
-									<Send className="mr-2 h-4 w-4" />
-									Send to ES
-								</Button>
-							)}
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			{/* Edit GRN – same form dialog as Create */}
-			<GrnFormDialog
-				mode="edit"
-				open={isEditOpen}
-				onOpenChange={setIsEditOpen}
-				grn={selectedGRN}
-				skuOptions={skuOptions}
-				stockUnits={stockUnits}
-				warehouses={warehouses}
-				racks={racks}
-				onSuccess={() => {
-					refetchGRNs();
-					setIsEditOpen(false);
-					setSelectedGRN(null);
-				}}
-				onSkusRefetch={() => void refetchSkus()}
-				onWarehouseCreated={async () => {
-					await refetchWarehouses();
-				}}
-				onRackCreated={() => void refetchRacks()}
-			/>
+				{/* Edit GRN – same form dialog as Create */}
+				<GrnFormDialog
+					mode="edit"
+					open={isEditOpen}
+					onOpenChange={setIsEditOpen}
+					grn={selectedGRN}
+					skuOptions={skuOptions}
+					stockUnits={stockUnits}
+					warehouses={warehouses}
+					racks={racks}
+					onSuccess={() => {
+						refetchGRNs();
+						setIsEditOpen(false);
+						setSelectedGRN(null);
+					}}
+					onSkusRefetch={() => void refetchSkus()}
+					onWarehouseCreated={async () => {
+						await refetchWarehouses();
+					}}
+					onRackCreated={() => void refetchRacks()}
+				/>
 			</main>
 		</div>
 	);
