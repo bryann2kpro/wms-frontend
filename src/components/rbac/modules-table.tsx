@@ -84,6 +84,14 @@ function ModulesTable({
 	onEditClick,
 	onDeleteClick,
 }: ModulesTableProps) {
+	const permissionOrder: Record<string, number> = {
+		read: 0,
+		create: 1,
+		update: 2,
+		delete: 3,
+		approve: 4,
+	};
+
 	return (
 		<Card>
 			<CardHeader>
@@ -219,7 +227,15 @@ function ModulesTable({
 										</TableCell>
 										<TableCell>
 											<div className="flex flex-wrap gap-1.5">
-												{module.permission.map((perm) => (
+												{[...module.permission]
+													.sort((a, b) => {
+														const aOrder =
+															permissionOrder[a.permissionType.toLowerCase()] ?? 99;
+														const bOrder =
+															permissionOrder[b.permissionType.toLowerCase()] ?? 99;
+														return aOrder - bOrder;
+													})
+													.map((perm) => (
 													<Badge
 														key={perm.permissionId}
 														variant="outline"
@@ -228,7 +244,7 @@ function ModulesTable({
 													>
 														{perm.permissionType}
 													</Badge>
-												))}
+													))}
 											</div>
 										</TableCell>
 										<TableCell>
