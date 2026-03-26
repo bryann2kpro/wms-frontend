@@ -855,6 +855,13 @@ export function GrnFormDialog({
 	};
 
 	const isCreate = mode === "create";
+	const isAsnPrefilledCreate =
+		isCreate &&
+		!!(
+			initialValues?.poReference?.trim() ||
+			initialValues?.receivedDate?.trim() ||
+			(initialValues?.items?.length ?? 0) > 0
+		);
 	const title = isCreate ? "Create New GRN" : "Edit GRN";
 	const description = isCreate
 		? "Enter the details for the new goods receipt note"
@@ -933,10 +940,16 @@ export function GrnFormDialog({
 														placeholder="PO-2024-001"
 														onBlur={field.handleBlur}
 														onChange={(e) => field.handleChange(e.target.value)}
+														disabled={isAsnPrefilledCreate}
 														required
 														aria-invalid={isInvalid}
 														className="rounded-lg border-muted-foreground/20 font-mono text-sm"
 													/>
+													{isAsnPrefilledCreate ? (
+														<p className="text-xs text-muted-foreground mt-1">
+															Prefilled from selected ASN.
+														</p>
+													) : null}
 													{isInvalid && (
 														<FieldError
 															errors={normalizeFieldErrors(

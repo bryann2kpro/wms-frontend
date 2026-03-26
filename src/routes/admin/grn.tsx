@@ -268,6 +268,9 @@ function AsnPickerDialog({
 }: AsnPickerDialogProps) {
 	const [selectedId, setSelectedId] = useState<string>("");
 	const selectedAsn = asns.find((a) => a.id === selectedId) ?? null;
+	const selectedAsnLabel = selectedAsn
+		? `${selectedAsn.tranid} — ${selectedAsn.entity} (${selectedAsn.duedate})`
+		: "";
 	const linePreview = useMemo(
 		() => selectedAsn?.lines.slice(0, 6) ?? [],
 		[selectedAsn],
@@ -279,7 +282,7 @@ function AsnPickerDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl rounded-2xl border border-border/80 bg-background shadow-xl">
+			<DialogContent className="w-[min(96vw,980px)] max-w-[980px] rounded-2xl border border-border/80 bg-background shadow-xl">
 				<DialogHeader className="pb-0">
 					<div className="flex items-center gap-3 pb-4 border-b border-border">
 						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 shadow-sm">
@@ -308,7 +311,7 @@ function AsnPickerDialog({
 					</div>
 				</DialogHeader>
 
-				<div className="space-y-4 pt-5">
+				<div className="space-y-4 pt-5 min-w-0">
 					<p
 						className="text-sm text-muted-foreground"
 						style={{ fontFamily: "var(--dashboard-body)" }}
@@ -343,14 +346,27 @@ function AsnPickerDialog({
 							<Select value={selectedId} onValueChange={setSelectedId}>
 								<SelectTrigger
 									id="asn-select"
-									className="w-full rounded-lg border-muted-foreground/20"
+									className="w-full min-w-0 rounded-lg border-muted-foreground/20 pr-8 text-left [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:text-left"
 								>
-									<SelectValue placeholder="Select an ASN…" />
+									<SelectValue placeholder="Select an ASN…">
+										{selectedAsnLabel}
+									</SelectValue>
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent
+									position="popper"
+									align="start"
+									className="w-[min(var(--radix-select-trigger-width),92vw)] max-w-[92vw]"
+								>
 									{asns.map((asn) => (
-										<SelectItem key={asn.id} value={asn.id}>
-											{asn.tranid} — {asn.entity} ({asn.duedate})
+										<SelectItem
+											key={asn.id}
+											value={asn.id}
+											className="max-w-full"
+											title={`${asn.tranid} — ${asn.entity} (${asn.duedate})`}
+										>
+											<span className="block min-w-0 truncate">
+												{asn.tranid} — {asn.entity} ({asn.duedate})
+											</span>
 										</SelectItem>
 									))}
 								</SelectContent>
