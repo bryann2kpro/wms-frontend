@@ -194,20 +194,24 @@ function DeliveryProofComponent() {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [justCompleted, setJustCompleted] = useState<string | null>(null);
 
-	const { data, loading: isLoading, refetch } = useApolloQuery<
-		DeliveryOrdersQueryData,
-		DeliveryOrdersQueryVariables
-	>(DELIVERY_ORDERS_QUERY, {
-		variables: {
-			filter: {
-				status: "SHIPPED",
-				...(searchTerm.trim() ? { doNo: searchTerm.trim() } : {}),
+	const {
+		data,
+		loading: isLoading,
+		refetch,
+	} = useApolloQuery<DeliveryOrdersQueryData, DeliveryOrdersQueryVariables>(
+		DELIVERY_ORDERS_QUERY,
+		{
+			variables: {
+				filter: {
+					status: "SHIPPED",
+					...(searchTerm.trim() ? { doNo: searchTerm.trim() } : {}),
+				},
+				pageSize,
+				pageNumber: page,
 			},
-			pageSize,
-			pageNumber: page,
+			fetchPolicy: "cache-and-network",
 		},
-		fetchPolicy: "cache-and-network",
-	});
+	);
 
 	const [submitDeliveryProof] = useApolloMutation<
 		SubmitDeliveryProofMutationData,
@@ -293,7 +297,9 @@ function DeliveryProofComponent() {
 			refetch();
 		} catch (err) {
 			setSubmitError(
-				err instanceof Error ? err.message : "Something went wrong. Please try again.",
+				err instanceof Error
+					? err.message
+					: "Something went wrong. Please try again.",
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -309,7 +315,6 @@ function DeliveryProofComponent() {
 			}}
 		>
 			<div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-
 				{/* ── Page Header ── */}
 				<div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 					<div className="space-y-2">
@@ -396,7 +401,8 @@ function DeliveryProofComponent() {
 									totalCount,
 								)}
 							</span>{" "}
-							of <span className="font-semibold text-slate-700">{totalCount}</span>
+							of{" "}
+							<span className="font-semibold text-slate-700">{totalCount}</span>
 						</p>
 						<div className="flex items-center gap-2">
 							<Button

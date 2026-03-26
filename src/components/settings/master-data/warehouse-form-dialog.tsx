@@ -74,8 +74,15 @@ export function WarehouseFormDialog({
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50">
-					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
-					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						{title}
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
+						{description}
+					</DialogDescription>
 				</DialogHeader>
 				<form
 					onSubmit={(e) => {
@@ -168,12 +175,23 @@ export function WarehouseFormDialog({
 					</FieldGroup>
 
 					<DialogFooter className="gap-2 border-t bg-muted/20">
-						<Button type="button" variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => handleOpenChange(false)}
+							className="rounded-lg"
+						>
 							Cancel
 						</Button>
-						<form.Subscribe selector={(state) => [state.isSubmitting, state.canSubmit]}>
+						<form.Subscribe
+							selector={(state) => [state.isSubmitting, state.canSubmit]}
+						>
 							{([isSubmitting, canSubmit]) => (
-								<Button type="submit" disabled={loading || isSubmitting || !canSubmit} className="rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+								<Button
+									type="submit"
+									disabled={loading || isSubmitting || !canSubmit}
+									className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+								>
 									{loading || isSubmitting ? "Saving..." : "Save"}
 								</Button>
 							)}

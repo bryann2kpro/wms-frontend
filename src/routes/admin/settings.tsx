@@ -231,7 +231,11 @@ function SettingsPage() {
 				)}
 
 				{/* Tabs */}
-				<div className="flex gap-1 border-b border-border" role="tablist" aria-label="Settings sections">
+				<div
+					className="flex gap-1 border-b border-border"
+					role="tablist"
+					aria-label="Settings sections"
+				>
 					{tabs.map((tab) => {
 						const Icon = tab.icon;
 						const isActive = activeTab === tab.id;
@@ -262,33 +266,33 @@ function SettingsPage() {
 					id={`settings-tabpanel-${activeTab}`}
 					aria-labelledby={`settings-tab-${activeTab}`}
 				>
-			{activeTab === "profile" && (
-				<div className="grid gap-6 lg:grid-cols-2">
-					<UserProfileCard
-						user={user}
-						onSubmit={updateUserProfile.mutateAsync}
-						isSubmitting={updateUserProfile.isPending}
-					/>
-					<SecurityCard
-						onSubmit={updatePassword.mutateAsync}
-						isSubmitting={updatePassword.isPending}
-					/>
-					<NotificationsCard
-						onSubmit={updateNotifications.mutateAsync}
-						isSubmitting={updateNotifications.isPending}
-					/>
-				</div>
-			)}
+					{activeTab === "profile" && (
+						<div className="grid gap-6 lg:grid-cols-2">
+							<UserProfileCard
+								user={user}
+								onSubmit={updateUserProfile.mutateAsync}
+								isSubmitting={updateUserProfile.isPending}
+							/>
+							<SecurityCard
+								onSubmit={updatePassword.mutateAsync}
+								isSubmitting={updatePassword.isPending}
+							/>
+							<NotificationsCard
+								onSubmit={updateNotifications.mutateAsync}
+								isSubmitting={updateNotifications.isPending}
+							/>
+						</div>
+					)}
 
-			{activeTab === "users" && <UsersRolesCard />}
+					{activeTab === "users" && <UsersRolesCard />}
 
-			{activeTab === "master-data" && showMasterDataTab && (
-				<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
-			)}
+					{activeTab === "master-data" && showMasterDataTab && (
+						<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
+					)}
 
-			{activeTab === "integration" && showIntegrationTab && (
-				<IntegrationStatusCard />
-			)}
+					{activeTab === "integration" && showIntegrationTab && (
+						<IntegrationStatusCard />
+					)}
 				</div>
 			</div>
 		</main>
@@ -984,10 +988,18 @@ function UsersRolesCard() {
 										</TableCell>
 										<TableCell className="px-6 text-right">
 											<div className="flex justify-end gap-1">
-												<Button variant="ghost" size="icon" className="rounded-lg">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="rounded-lg"
+												>
 													<Edit className="h-4 w-4" />
 												</Button>
-												<Button variant="ghost" size="icon" className="rounded-lg">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="rounded-lg"
+												>
 													<Trash2 className="h-4 w-4 text-red-600" />
 												</Button>
 											</div>

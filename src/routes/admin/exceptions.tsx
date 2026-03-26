@@ -1,16 +1,25 @@
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useEffect,
+	type ReactNode,
+} from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useMutation as useApolloMutation, useQuery as useApolloQuery } from "@apollo/client/react";
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	useMutation as useApolloMutation,
+	useQuery as useApolloQuery,
+} from "@apollo/client/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
 	Table,
 	TableBody,
@@ -36,12 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Search,
 	ChevronLeft,
@@ -97,10 +101,10 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		image: "/help/exceptions/step-1.png",
 		description: (
 			<>
-				This page manages <strong>Stock Count Sessions</strong> — periodic inventory
-				audits that compare physical counts against system records. Discrepancies are
-				surfaced here as exceptions to be reviewed and resolved before the session is
-				closed.
+				This page manages <strong>Stock Count Sessions</strong> — periodic
+				inventory audits that compare physical counts against system records.
+				Discrepancies are surfaced here as exceptions to be reviewed and
+				resolved before the session is closed.
 			</>
 		),
 	},
@@ -109,10 +113,10 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		image: "/help/exceptions/step-2.png",
 		description: (
 			<>
-				Click <strong>New Stock Count</strong> to start a session. A snapshot of all
-				current inventory balances is captured automatically. Give the session a
-				descriptive name (e.g. "March 2026 Stock Count") so it's easy to identify
-				later.
+				Click <strong>New Stock Count</strong> to start a session. A snapshot of
+				all current inventory balances is captured automatically. Give the
+				session a descriptive name (e.g. "March 2026 Stock Count") so it's easy
+				to identify later.
 			</>
 		),
 	},
@@ -122,10 +126,10 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		description: (
 			<>
 				The <strong>Stock Count</strong> tab lists every SKU with a discrepancy
-				between the opening balance and the on-hand count. For each line, choose an
-				action: <strong>Tally to Opening</strong>,{" "}
-				<strong>Tally to Stock Count</strong>, or{" "}
-				<strong>Manual Key-In</strong> to enter a custom quantity.
+				between the opening balance and the on-hand count. For each line, choose
+				an action: <strong>Tally to Opening</strong>,{" "}
+				<strong>Tally to Stock Count</strong>, or <strong>Manual Key-In</strong>{" "}
+				to enter a custom quantity.
 			</>
 		),
 	},
@@ -135,8 +139,8 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		description: (
 			<>
 				Switch to the <strong>Approval</strong> tab to sign off on each resolved
-				line. Items must have an action selected before they can be approved. The
-				amber badge on the tab shows how many items still need approval.
+				line. Items must have an action selected before they can be approved.
+				The amber badge on the tab shows how many items still need approval.
 			</>
 		),
 	},
@@ -146,9 +150,9 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		description: (
 			<>
 				Once all items are approved, the <strong>Close Session</strong> button
-				becomes available. Closing is irreversible — it finalises all approved lines
-				and locks the session from further editing. Closed sessions remain visible in
-				the dropdown for reference.
+				becomes available. Closing is irreversible — it finalises all approved
+				lines and locks the session from further editing. Closed sessions remain
+				visible in the dropdown for reference.
 			</>
 		),
 	},
@@ -204,10 +208,13 @@ function ExceptionsComponent() {
 	const [helpStep, setHelpStep] = useState(0);
 
 	// ─── Session state ───────────────────────────────────────────
-	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+		null,
+	);
 	const [isNewSessionDialogOpen, setIsNewSessionDialogOpen] = useState(false);
 	const [newSessionName, setNewSessionName] = useState("");
-	const [isCloseSessionDialogOpen, setIsCloseSessionDialogOpen] = useState(false);
+	const [isCloseSessionDialogOpen, setIsCloseSessionDialogOpen] =
+		useState(false);
 
 	// ─── Table state ──────────────────────────────────────────────
 	const [page, setPage] = useState(1);
@@ -229,8 +236,10 @@ function ExceptionsComponent() {
 		variables: { pageSize: 100, pageNumber: 1 },
 	});
 
-	const sessions = (sessionsData?.stockCountSessions?.query ?? []) as StockCountSession[];
-	const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+	const sessions = (sessionsData?.stockCountSessions?.query ??
+		[]) as StockCountSession[];
+	const selectedSession =
+		sessions.find((s) => s.id === selectedSessionId) ?? null;
 
 	// Keep selected session in sync even when Apollo serves cached data
 	// without running the onCompleted callback.
@@ -239,7 +248,10 @@ function ExceptionsComponent() {
 			if (selectedSessionId !== null) setSelectedSessionId(null);
 			return;
 		}
-		if (!selectedSessionId || !sessions.some((session) => session.id === selectedSessionId)) {
+		if (
+			!selectedSessionId ||
+			!sessions.some((session) => session.id === selectedSessionId)
+		) {
 			setSelectedSessionId(sessions[0].id);
 		}
 	}, [sessions, selectedSessionId]);
@@ -248,54 +260,73 @@ function ExceptionsComponent() {
 		data: itemsData,
 		loading: itemsLoading,
 		refetch: refetchItems,
-	} = useApolloQuery<StockCountSessionItemsQueryData>(STOCK_COUNT_SESSION_ITEMS_QUERY, {
-		variables: {
-			sessionId: selectedSessionId ?? "",
-			search: searchTerm || undefined,
-			pageSize,
-			pageNumber: page,
+	} = useApolloQuery<StockCountSessionItemsQueryData>(
+		STOCK_COUNT_SESSION_ITEMS_QUERY,
+		{
+			variables: {
+				sessionId: selectedSessionId ?? "",
+				search: searchTerm || undefined,
+				pageSize,
+				pageNumber: page,
+			},
+			skip: !selectedSessionId,
 		},
-		skip: !selectedSessionId,
-	});
+	);
 
-	const items: StockCountItem[] = itemsData?.stockCountSessionItems?.query ?? [];
-	const totalItems = itemsData?.stockCountSessionItems?.pagination?.totalCount ?? 0;
+	const items: StockCountItem[] =
+		itemsData?.stockCountSessionItems?.query ?? [];
+	const totalItems =
+		itemsData?.stockCountSessionItems?.pagination?.totalCount ?? 0;
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
 	// ─── Mutations ────────────────────────────────────────────────
 	const [createSession, { loading: creatingSession }] =
-		useApolloMutation<CreateStockCountSessionData>(CREATE_STOCK_COUNT_SESSION_MUTATION, {
-			onCompleted(data) {
-				const newId = data.createStockCountSession.id;
-				setSelectedSessionId(newId);
-				setIsNewSessionDialogOpen(false);
-				setNewSessionName("");
-				refetchSessions();
-				refetchItems();
+		useApolloMutation<CreateStockCountSessionData>(
+			CREATE_STOCK_COUNT_SESSION_MUTATION,
+			{
+				onCompleted(data) {
+					const newId = data.createStockCountSession.id;
+					setSelectedSessionId(newId);
+					setIsNewSessionDialogOpen(false);
+					setNewSessionName("");
+					refetchSessions();
+					refetchItems();
+				},
 			},
-		});
+		);
 
 	const [updateItem] = useApolloMutation<UpdateStockCountItemData>(
 		UPDATE_STOCK_COUNT_ITEM_MUTATION,
-		{ onCompleted: () => { refetchItems(); refetchSessions(); } }
+		{
+			onCompleted: () => {
+				refetchItems();
+				refetchSessions();
+			},
+		},
 	);
 
 	const [closeSession, { loading: closingSession }] =
-		useApolloMutation<CloseStockCountSessionData>(CLOSE_STOCK_COUNT_SESSION_MUTATION, {
-			onCompleted() {
-				setIsCloseSessionDialogOpen(false);
-				refetchSessions();
-				refetchItems();
+		useApolloMutation<CloseStockCountSessionData>(
+			CLOSE_STOCK_COUNT_SESSION_MUTATION,
+			{
+				onCompleted() {
+					setIsCloseSessionDialogOpen(false);
+					refetchSessions();
+					refetchItems();
+				},
 			},
-		});
+		);
 
 	const [generateChecklist, { loading: generatingChecklist }] =
-		useApolloMutation<GenerateStockCountChecklistData>(GENERATE_STOCK_COUNT_CHECKLIST_MUTATION, {
-			onCompleted(data) {
-				const { pdfBase64, filename } = data.generateStockCountChecklist;
-				downloadPdfFromBase64(pdfBase64, filename);
+		useApolloMutation<GenerateStockCountChecklistData>(
+			GENERATE_STOCK_COUNT_CHECKLIST_MUTATION,
+			{
+				onCompleted(data) {
+					const { pdfBase64, filename } = data.generateStockCountChecklist;
+					downloadPdfFromBase64(pdfBase64, filename);
+				},
 			},
-		});
+		);
 
 	// ─── Handlers ─────────────────────────────────────────────────
 	const handleCreateSession = () => {
@@ -309,7 +340,7 @@ function ExceptionsComponent() {
 			setRowActions((prev) => ({ ...prev, [itemId]: action }));
 			updateItem({ variables: { id: itemId, input: { action } } });
 		},
-		[updateItem]
+		[updateItem],
 	);
 
 	const handleManualAmountChange = useCallback(
@@ -325,14 +356,14 @@ function ExceptionsComponent() {
 				},
 			});
 		},
-		[updateItem]
+		[updateItem],
 	);
 
 	const handleApprove = useCallback(
 		(itemId: string) => {
 			updateItem({ variables: { id: itemId, input: { isApproved: true } } });
 		},
-		[updateItem]
+		[updateItem],
 	);
 
 	const handleCloseSession = () => {
@@ -363,7 +394,6 @@ function ExceptionsComponent() {
 
 	return (
 		<div className="exceptions-page container mx-auto p-6 space-y-5">
-
 			{/* ── Page Header ─────────────────────────────────────────── */}
 			<AdminPageHeader
 				icon={PackageSearch}
@@ -425,7 +455,10 @@ function ExceptionsComponent() {
 										</span>
 									</TooltipTrigger>
 									{(!summary || summary.pending > 0) && (
-										<TooltipContent side="bottom" className="text-xs max-w-[200px] text-center">
+										<TooltipContent
+											side="bottom"
+											className="text-xs max-w-[200px] text-center"
+										>
 											{summary && summary.pending > 0
 												? `${summary.pending} item${summary.pending > 1 ? "s" : ""} still pending approval`
 												: "Loading approval status…"}
@@ -492,7 +525,8 @@ function ExceptionsComponent() {
 								No stock count sessions yet
 							</p>
 							<p className="text-sm text-muted-foreground max-w-sm">
-								Create your first session to capture a snapshot of current inventory.
+								Create your first session to capture a snapshot of current
+								inventory.
 							</p>
 						</div>
 						<Button
@@ -566,8 +600,10 @@ function ExceptionsComponent() {
 						<Card
 							className="dashboard-card relative overflow-hidden"
 							style={{
-								borderColor: "color-mix(in oklch, var(--dashboard-accent) 25%, transparent)",
-								background: "color-mix(in oklch, var(--dashboard-accent) 4%, white)",
+								borderColor:
+									"color-mix(in oklch, var(--dashboard-accent) 25%, transparent)",
+								background:
+									"color-mix(in oklch, var(--dashboard-accent) 4%, white)",
 							}}
 						>
 							<div
@@ -585,7 +621,8 @@ function ExceptionsComponent() {
 									<div
 										className="flex h-6 w-6 items-center justify-center rounded-md"
 										style={{
-											background: "color-mix(in oklch, var(--dashboard-accent) 12%, transparent)",
+											background:
+												"color-mix(in oklch, var(--dashboard-accent) 12%, transparent)",
 										}}
 									>
 										<Layers
@@ -659,7 +696,9 @@ function ExceptionsComponent() {
 								</div>
 								<p className="mt-1 text-[0.7rem] font-medium text-muted-foreground uppercase tracking-wider">
 									{selectedSession?.countDate
-										? new Date(selectedSession.countDate).toLocaleDateString("en-MY")
+										? new Date(selectedSession.countDate).toLocaleDateString(
+												"en-MY",
+											)
 										: "—"}
 								</p>
 							</CardContent>
@@ -776,30 +815,51 @@ function ExceptionsComponent() {
 									<Table>
 										<TableHeader>
 											<TableRow className="border-b border-border/50 bg-muted/20 hover:bg-muted/20">
-												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">#</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">SKU</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Description</TableHead>
+												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													#
+												</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													SKU
+												</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Description
+												</TableHead>
 												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
 													Opening
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">{unitName} / Loss</span>
+													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+														{unitName} / Loss
+													</span>
 												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Count Date</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Count Date
+												</TableHead>
 												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
 													On-Hand
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">{unitName} / Loss</span>
+													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+														{unitName} / Loss
+													</span>
 												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Reserved</TableHead>
+												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Reserved
+												</TableHead>
 												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
 													Diff
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">{unitName} / Loss</span>
+													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+														{unitName} / Loss
+													</span>
 												</TableHead>
-												<TableHead className="pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Action</TableHead>
+												<TableHead className="pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Action
+												</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
 											{itemsLoading ? (
 												<TableRow>
-													<TableCell colSpan={9} className="h-28 text-center text-sm text-muted-foreground">
+													<TableCell
+														colSpan={9}
+														className="h-28 text-center text-sm text-muted-foreground"
+													>
 														<div className="flex flex-col items-center gap-2">
 															<div className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
 															<span>Loading inventory…</span>
@@ -808,22 +868,36 @@ function ExceptionsComponent() {
 												</TableRow>
 											) : items.length === 0 ? (
 												<TableRow>
-													<TableCell colSpan={9} className="h-28 text-center text-sm text-muted-foreground">
+													<TableCell
+														colSpan={9}
+														className="h-28 text-center text-sm text-muted-foreground"
+													>
 														No items found.
 													</TableCell>
 												</TableRow>
 											) : (
 												items.map((item, index) => {
-													const selectedAction = rowActions[item.id] ?? item.action ?? "";
-													const isManualKeyIn = selectedAction === "manual_key_in";
-													const displayDozen = rowManualAmounts[item.id]?.dozen ?? item.countedQty ?? item.onHandQty;
-													const displayLoss = rowManualAmounts[item.id]?.loss ?? item.countedLossQty ?? item.onHandLossQty;
+													const selectedAction =
+														rowActions[item.id] ?? item.action ?? "";
+													const isManualKeyIn =
+														selectedAction === "manual_key_in";
+													const displayDozen =
+														rowManualAmounts[item.id]?.dozen ??
+														item.countedQty ??
+														item.onHandQty;
+													const displayLoss =
+														rowManualAmounts[item.id]?.loss ??
+														item.countedLossQty ??
+														item.onHandLossQty;
 													const diffDozen = item.qtyDifference;
 													const diffLoss = item.lossQtyDifference;
 													const hasDiff = diffDozen !== 0 || diffLoss !== 0;
 													const isShortage = diffDozen > 0 || diffLoss > 0;
 													return (
-														<TableRow key={item.id} className="border-b border-border/30 transition-colors last:border-0 bg-white hover:bg-muted/20">
+														<TableRow
+															key={item.id}
+															className="border-b border-border/30 transition-colors last:border-0 bg-white hover:bg-muted/20"
+														>
 															<TableCell className="pl-4 pr-2 w-12 py-3">
 																<span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted/50 text-[0.6875rem] font-mono font-medium text-muted-foreground">
 																	{(page - 1) * pageSize + index + 1}
@@ -835,28 +909,67 @@ function ExceptionsComponent() {
 																</span>
 															</TableCell>
 															<TableCell className="max-w-[180px] py-3">
-																<span className="block truncate text-sm text-foreground/80" title={item.skuDescription}>{item.skuDescription}</span>
+																<span
+																	className="block truncate text-sm text-foreground/80"
+																	title={item.skuDescription}
+																>
+																	{item.skuDescription}
+																</span>
 															</TableCell>
 															<TableCell className="text-center py-3">
 																<span className="font-mono text-sm tabular-nums text-foreground/70">
-																	{item.openingQty}<span className="mx-1 text-border">/</span>{item.openingLossQty}
+																	{item.openingQty}
+																	<span className="mx-1 text-border">/</span>
+																	{item.openingLossQty}
 																</span>
 															</TableCell>
 															<TableCell className="py-3">
 																<span className="text-xs text-muted-foreground font-mono">
-																	{new Date(selectedSession.countDate).toLocaleDateString("en-MY")}
+																	{new Date(
+																		selectedSession.countDate,
+																	).toLocaleDateString("en-MY")}
 																</span>
 															</TableCell>
 															<TableCell className="text-center py-3">
 																{isManualKeyIn ? (
 																	<div className="flex items-center justify-center gap-1">
-																		<Input type="number" min={0} className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30" placeholder={String(item.onHandQty)} value={displayDozen} onChange={(e) => { const v = e.target.value; handleManualAmountChange(item.id, { dozen: v === "" ? 0 : Number(v), loss: displayLoss }); }} />
-																		<span className="text-muted-foreground/50 text-xs">/</span>
-																		<Input type="number" min={0} className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30" placeholder={String(item.onHandLossQty)} value={displayLoss} onChange={(e) => { const v = e.target.value; handleManualAmountChange(item.id, { dozen: displayDozen, loss: v === "" ? 0 : Number(v) }); }} />
+																		<Input
+																			type="number"
+																			min={0}
+																			className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
+																			placeholder={String(item.onHandQty)}
+																			value={displayDozen}
+																			onChange={(e) => {
+																				const v = e.target.value;
+																				handleManualAmountChange(item.id, {
+																					dozen: v === "" ? 0 : Number(v),
+																					loss: displayLoss,
+																				});
+																			}}
+																		/>
+																		<span className="text-muted-foreground/50 text-xs">
+																			/
+																		</span>
+																		<Input
+																			type="number"
+																			min={0}
+																			className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
+																			placeholder={String(item.onHandLossQty)}
+																			value={displayLoss}
+																			onChange={(e) => {
+																				const v = e.target.value;
+																				handleManualAmountChange(item.id, {
+																					dozen: displayDozen,
+																					loss: v === "" ? 0 : Number(v),
+																				});
+																			}}
+																		/>
 																	</div>
 																) : (
 																	<span className="font-mono text-sm tabular-nums text-foreground/70">
-																		{item.onHandQty}<span className="mx-1 text-border">/</span>{item.onHandLossQty}
+																		{item.onHandQty}
+																		<span className="mx-1 text-border">/</span>
+																		{item.onHandLossQty}
 																	</span>
 																)}
 															</TableCell>
@@ -866,23 +979,68 @@ function ExceptionsComponent() {
 																</span>
 															</TableCell>
 															<TableCell className="text-center py-3">
-																<span className={["inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums", hasDiff ? isShortage ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-muted/40 text-muted-foreground ring-1 ring-border/40"].join(" ")}>
-																	{hasDiff && (isShortage ? <TrendingDown className="h-3 w-3 shrink-0" /> : <TrendingUp className="h-3 w-3 shrink-0" />)}
-																	{!hasDiff && <Minus className="h-3 w-3 shrink-0" />}
-																	<span>{diffDozen > 0 ? `-${diffDozen}` : diffDozen}</span>
+																<span
+																	className={[
+																		"inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
+																		hasDiff
+																			? isShortage
+																				? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+																				: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+																			: "bg-muted/40 text-muted-foreground ring-1 ring-border/40",
+																	].join(" ")}
+																>
+																	{hasDiff &&
+																		(isShortage ? (
+																			<TrendingDown className="h-3 w-3 shrink-0" />
+																		) : (
+																			<TrendingUp className="h-3 w-3 shrink-0" />
+																		))}
+																	{!hasDiff && (
+																		<Minus className="h-3 w-3 shrink-0" />
+																	)}
+																	<span>
+																		{diffDozen > 0
+																			? `-${diffDozen}`
+																			: diffDozen}
+																	</span>
 																	<span className="mx-0.5 opacity-40">/</span>
-																	<span>{diffLoss > 0 ? `-${diffLoss}` : diffLoss}</span>
+																	<span>
+																		{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
+																	</span>
 																</span>
 															</TableCell>
 															<TableCell className="pr-4 py-3">
-																<Select value={selectedAction} onValueChange={(value) => handleActionChange(item.id, value)} disabled={!isSessionOpen}>
-																	<SelectTrigger className={`h-7 w-[168px] rounded-lg text-xs border-border/50 bg-muted/20 transition-colors ${selectedAction ? "text-foreground" : "text-muted-foreground"}`}>
+																<Select
+																	value={selectedAction}
+																	onValueChange={(value) =>
+																		handleActionChange(item.id, value)
+																	}
+																	disabled={!isSessionOpen}
+																>
+																	<SelectTrigger
+																		className={`h-7 w-[168px] rounded-lg text-xs border-border/50 bg-muted/20 transition-colors ${selectedAction ? "text-foreground" : "text-muted-foreground"}`}
+																	>
 																		<SelectValue placeholder="Select action…" />
 																	</SelectTrigger>
 																	<SelectContent>
-																		<SelectItem value="tally_to_opening" className="text-xs">Tally to Opening</SelectItem>
-																		<SelectItem value="tally_to_stock_count" className="text-xs">Tally to Stock Count</SelectItem>
-																		<SelectItem value="manual_key_in" className="text-xs">Manual Key-In</SelectItem>
+																		<SelectItem
+																			value="tally_to_opening"
+																			className="text-xs"
+																		>
+																			Tally to Opening
+																		</SelectItem>
+																		<SelectItem
+																			value="tally_to_stock_count"
+																			className="text-xs"
+																		>
+																			Tally to Stock Count
+																		</SelectItem>
+																		<SelectItem
+																			value="manual_key_in"
+																			className="text-xs"
+																		>
+																			Manual Key-In
+																		</SelectItem>
 																	</SelectContent>
 																</Select>
 															</TableCell>
@@ -897,20 +1055,44 @@ function ExceptionsComponent() {
 								<div className="mt-4 flex items-center justify-between">
 									<p className="text-[0.75rem] text-muted-foreground">
 										Showing{" "}
-										<span className="font-mono font-medium text-foreground">{(page - 1) * pageSize + 1}</span>
+										<span className="font-mono font-medium text-foreground">
+											{(page - 1) * pageSize + 1}
+										</span>
 										{"–"}
-										<span className="font-mono font-medium text-foreground">{Math.min(page * pageSize, totalItems)}</span>
-										{" "}of{" "}
-										<span className="font-mono font-medium text-foreground">{totalItems}</span>
+										<span className="font-mono font-medium text-foreground">
+											{Math.min(page * pageSize, totalItems)}
+										</span>{" "}
+										of{" "}
+										<span className="font-mono font-medium text-foreground">
+											{totalItems}
+										</span>
 									</p>
 									<div className="flex items-center gap-1.5">
-										<Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-border/50" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-7 w-7 rounded-lg border-border/50"
+											disabled={page === 1}
+											onClick={() => setPage((p) => Math.max(1, p - 1))}
+										>
 											<ChevronLeft className="h-3.5 w-3.5" />
 										</Button>
 										<span className="min-w-[5rem] text-center text-[0.75rem] text-muted-foreground">
-											<span className="font-mono font-medium text-foreground">{page}</span>{" / "}<span className="font-mono">{totalPages}</span>
+											<span className="font-mono font-medium text-foreground">
+												{page}
+											</span>
+											{" / "}
+											<span className="font-mono">{totalPages}</span>
 										</span>
-										<Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-border/50" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-7 w-7 rounded-lg border-border/50"
+											disabled={page === totalPages}
+											onClick={() =>
+												setPage((p) => Math.min(totalPages, p + 1))
+											}
+										>
 											<ChevronRight className="h-3.5 w-3.5" />
 										</Button>
 									</div>
@@ -925,21 +1107,36 @@ function ExceptionsComponent() {
 									<Table>
 										<TableHeader>
 											<TableRow className="border-b border-border/50 bg-muted/20 hover:bg-muted/20">
-												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">#</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">SKU</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Description</TableHead>
+												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													#
+												</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													SKU
+												</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Description
+												</TableHead>
 												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
 													Diff
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">{unitName} / Loss</span>
+													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+														{unitName} / Loss
+													</span>
 												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Chosen Action</TableHead>
-												<TableHead className="text-center pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">Status</TableHead>
+												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Chosen Action
+												</TableHead>
+												<TableHead className="text-center pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+													Status
+												</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
 											{itemsLoading ? (
 												<TableRow>
-													<TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">
+													<TableCell
+														colSpan={6}
+														className="h-28 text-center text-sm text-muted-foreground"
+													>
 														<div className="flex flex-col items-center gap-2">
 															<div className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
 															<span>Loading inventory…</span>
@@ -948,20 +1145,29 @@ function ExceptionsComponent() {
 												</TableRow>
 											) : items.length === 0 ? (
 												<TableRow>
-													<TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">
+													<TableCell
+														colSpan={6}
+														className="h-28 text-center text-sm text-muted-foreground"
+													>
 														No items found.
 													</TableCell>
 												</TableRow>
 											) : (
 												items.map((item, index) => {
-													const selectedAction = rowActions[item.id] ?? item.action ?? "";
+													const selectedAction =
+														rowActions[item.id] ?? item.action ?? "";
 													const diffDozen = item.qtyDifference;
 													const diffLoss = item.lossQtyDifference;
 													const hasDiff = diffDozen !== 0 || diffLoss !== 0;
 													const isShortage = diffDozen > 0 || diffLoss > 0;
-													const actionLabel = selectedAction ? ACTION_LABELS[selectedAction] : null;
+													const actionLabel = selectedAction
+														? ACTION_LABELS[selectedAction]
+														: null;
 													return (
-														<TableRow key={item.id} className={`border-b border-border/30 transition-colors last:border-0 ${item.isApproved ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "bg-white hover:bg-amber-50/30"}`}>
+														<TableRow
+															key={item.id}
+															className={`border-b border-border/30 transition-colors last:border-0 ${item.isApproved ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "bg-white hover:bg-amber-50/30"}`}
+														>
 															<TableCell className="pl-4 pr-2 w-12 py-3.5">
 																<span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted/50 text-[0.6875rem] font-mono font-medium text-muted-foreground">
 																	{(page - 1) * pageSize + index + 1}
@@ -973,15 +1179,42 @@ function ExceptionsComponent() {
 																</span>
 															</TableCell>
 															<TableCell className="max-w-[200px] py-3.5">
-																<span className="block truncate text-sm text-foreground/80" title={item.skuDescription}>{item.skuDescription}</span>
+																<span
+																	className="block truncate text-sm text-foreground/80"
+																	title={item.skuDescription}
+																>
+																	{item.skuDescription}
+																</span>
 															</TableCell>
 															<TableCell className="text-center py-3.5">
-																<span className={["inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums", hasDiff ? isShortage ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-muted/40 text-muted-foreground ring-1 ring-border/40"].join(" ")}>
-																	{hasDiff && (isShortage ? <TrendingDown className="h-3 w-3 shrink-0" /> : <TrendingUp className="h-3 w-3 shrink-0" />)}
-																	{!hasDiff && <Minus className="h-3 w-3 shrink-0" />}
-																	<span>{diffDozen > 0 ? `-${diffDozen}` : diffDozen}</span>
+																<span
+																	className={[
+																		"inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
+																		hasDiff
+																			? isShortage
+																				? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+																				: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+																			: "bg-muted/40 text-muted-foreground ring-1 ring-border/40",
+																	].join(" ")}
+																>
+																	{hasDiff &&
+																		(isShortage ? (
+																			<TrendingDown className="h-3 w-3 shrink-0" />
+																		) : (
+																			<TrendingUp className="h-3 w-3 shrink-0" />
+																		))}
+																	{!hasDiff && (
+																		<Minus className="h-3 w-3 shrink-0" />
+																	)}
+																	<span>
+																		{diffDozen > 0
+																			? `-${diffDozen}`
+																			: diffDozen}
+																	</span>
 																	<span className="mx-0.5 opacity-40">/</span>
-																	<span>{diffLoss > 0 ? `-${diffLoss}` : diffLoss}</span>
+																	<span>
+																		{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
+																	</span>
 																</span>
 															</TableCell>
 															<TableCell className="py-3.5">
@@ -990,7 +1223,9 @@ function ExceptionsComponent() {
 																		{actionLabel}
 																	</span>
 																) : (
-																	<span className="text-xs text-muted-foreground/50 italic">Not set</span>
+																	<span className="text-xs text-muted-foreground/50 italic">
+																		Not set
+																	</span>
 																)}
 															</TableCell>
 															<TableCell className="text-center pr-4 py-3.5">
@@ -1000,7 +1235,13 @@ function ExceptionsComponent() {
 																		Approved
 																	</span>
 																) : (
-																	<Button variant="outline" size="sm" onClick={() => handleApprove(item.id)} disabled={!selectedAction || !isSessionOpen} className={`h-7 px-3 text-xs rounded-lg transition-all ${selectedAction && isSessionOpen ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400" : ""}`}>
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		onClick={() => handleApprove(item.id)}
+																		disabled={!selectedAction || !isSessionOpen}
+																		className={`h-7 px-3 text-xs rounded-lg transition-all ${selectedAction && isSessionOpen ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400" : ""}`}
+																	>
 																		<ShieldCheck className="h-3 w-3 mr-1" />
 																		Approve
 																	</Button>
@@ -1017,20 +1258,44 @@ function ExceptionsComponent() {
 								<div className="mt-4 flex items-center justify-between">
 									<p className="text-[0.75rem] text-muted-foreground">
 										Showing{" "}
-										<span className="font-mono font-medium text-foreground">{(page - 1) * pageSize + 1}</span>
+										<span className="font-mono font-medium text-foreground">
+											{(page - 1) * pageSize + 1}
+										</span>
 										{"–"}
-										<span className="font-mono font-medium text-foreground">{Math.min(page * pageSize, totalItems)}</span>
-										{" "}of{" "}
-										<span className="font-mono font-medium text-foreground">{totalItems}</span>
+										<span className="font-mono font-medium text-foreground">
+											{Math.min(page * pageSize, totalItems)}
+										</span>{" "}
+										of{" "}
+										<span className="font-mono font-medium text-foreground">
+											{totalItems}
+										</span>
 									</p>
 									<div className="flex items-center gap-1.5">
-										<Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-border/50" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-7 w-7 rounded-lg border-border/50"
+											disabled={page === 1}
+											onClick={() => setPage((p) => Math.max(1, p - 1))}
+										>
 											<ChevronLeft className="h-3.5 w-3.5" />
 										</Button>
 										<span className="min-w-[5rem] text-center text-[0.75rem] text-muted-foreground">
-											<span className="font-mono font-medium text-foreground">{page}</span>{" / "}<span className="font-mono">{totalPages}</span>
+											<span className="font-mono font-medium text-foreground">
+												{page}
+											</span>
+											{" / "}
+											<span className="font-mono">{totalPages}</span>
 										</span>
-										<Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-border/50" disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-7 w-7 rounded-lg border-border/50"
+											disabled={page === totalPages}
+											onClick={() =>
+												setPage((p) => Math.min(totalPages, p + 1))
+											}
+										>
 											<ChevronRight className="h-3.5 w-3.5" />
 										</Button>
 									</div>
@@ -1042,7 +1307,10 @@ function ExceptionsComponent() {
 			)}
 
 			{/* ── New Session Dialog ───────────────────────────────────── */}
-			<Dialog open={isNewSessionDialogOpen} onOpenChange={setIsNewSessionDialogOpen}>
+			<Dialog
+				open={isNewSessionDialogOpen}
+				onOpenChange={setIsNewSessionDialogOpen}
+			>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
 						<div className="flex items-center gap-3 mb-1">
@@ -1050,9 +1318,12 @@ function ExceptionsComponent() {
 								<Plus className="h-4 w-4 text-amber-600" />
 							</div>
 							<div>
-								<DialogTitle className="text-base">New Stock Count Session</DialogTitle>
+								<DialogTitle className="text-base">
+									New Stock Count Session
+								</DialogTitle>
 								<DialogDescription className="text-xs mt-0.5">
-									Creating a session snapshots the current inventory state for all SKUs.
+									Creating a session snapshots the current inventory state for
+									all SKUs.
 								</DialogDescription>
 							</div>
 						</div>
@@ -1096,7 +1367,10 @@ function ExceptionsComponent() {
 			</Dialog>
 
 			{/* ── Close Session Dialog ─────────────────────────────────── */}
-			<Dialog open={isCloseSessionDialogOpen} onOpenChange={setIsCloseSessionDialogOpen}>
+			<Dialog
+				open={isCloseSessionDialogOpen}
+				onOpenChange={setIsCloseSessionDialogOpen}
+			>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
 						<div className="flex items-center gap-3 mb-1">
@@ -1106,8 +1380,8 @@ function ExceptionsComponent() {
 							<div>
 								<DialogTitle className="text-base">Close Session</DialogTitle>
 								<DialogDescription className="text-xs mt-0.5">
-									Once closed, this session cannot be edited. All approved lines will be
-									finalised.
+									Once closed, this session cannot be edited. All approved lines
+									will be finalised.
 								</DialogDescription>
 							</div>
 						</div>
@@ -1187,7 +1461,11 @@ function ExceptionsComponent() {
 							</p>
 						</div>
 						<div className="flex items-center justify-between gap-4 pt-1">
-							<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
+							<div
+								className="flex gap-1.5"
+								role="tablist"
+								aria-label="Help steps"
+							>
 								{EXCEPTIONS_HELP_STEPS.map((_, i) => (
 									<button
 										type="button"

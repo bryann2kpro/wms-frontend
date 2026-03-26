@@ -5,7 +5,11 @@ import {
 	useCallback,
 	type ReactNode,
 } from "react";
-import { hasValidTokens, clearAuthTokens, getAccessToken } from "./auth/auth-storage";
+import {
+	hasValidTokens,
+	clearAuthTokens,
+	getAccessToken,
+} from "./auth/auth-storage";
 import {
 	login as apiLogin,
 	type LoginRequest,
@@ -16,7 +20,7 @@ import {
 // Helper function to decode JWT and extract payload
 function decodeJWT(token: string): any {
 	try {
-		const parts = token.split('.');
+		const parts = token.split(".");
 		if (parts.length !== 3) return null;
 		const decoded = JSON.parse(atob(parts[1]));
 		return decoded;

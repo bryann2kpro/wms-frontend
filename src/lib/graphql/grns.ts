@@ -247,7 +247,15 @@ export type GrnsWorkQueueQueryData = {
 				items: Array<
 					Pick<
 						GrnItem,
-						"id" | "grnId" | "skuId" | "skuCode" | "skuDescription" | "qty" | "lossQty" | "expiryDate" | "rack"
+						| "id"
+						| "grnId"
+						| "skuId"
+						| "skuCode"
+						| "skuDescription"
+						| "qty"
+						| "lossQty"
+						| "expiryDate"
+						| "rack"
 					>
 				>;
 			}

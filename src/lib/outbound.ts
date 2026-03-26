@@ -32,9 +32,7 @@ export type CreatePurchaseOrderLineItem = z.infer<
 >;
 
 export const createPurchaseOrderSchema = z.object({
-	purchaseOrderNumber: z
-		.string()
-		.min(1, "Purchase order number is required"),
+	purchaseOrderNumber: z.string().min(1, "Purchase order number is required"),
 	outletId: z.string().min(1, "Outlet is required"),
 	outletName: z.string().default(""),
 	notes: z.string(),

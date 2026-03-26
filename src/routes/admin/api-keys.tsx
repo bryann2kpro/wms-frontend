@@ -628,7 +628,10 @@ function ApiKeysPage() {
 							<Button
 								onClick={() => setIsGenerateOpen(true)}
 								className="gap-2 h-9"
-								style={{ background: "var(--dashboard-accent)", color: "white" }}
+								style={{
+									background: "var(--dashboard-accent)",
+									color: "white",
+								}}
 							>
 								<Plus className="h-4 w-4" />
 								Generate Key
@@ -764,10 +767,7 @@ function ApiKeysPage() {
 				onClose={() => setRevealedKey(null)}
 			/>
 
-			<RevokeDialog
-				apiKey={keyToRevoke}
-				onClose={() => setKeyToRevoke(null)}
-			/>
+			<RevokeDialog apiKey={keyToRevoke} onClose={() => setKeyToRevoke(null)} />
 		</>
 	);
 }

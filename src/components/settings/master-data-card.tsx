@@ -42,10 +42,7 @@ const SUB_TAB_ORDER: SubTab[] = [
 	"skus",
 ];
 
-const SUB_TAB_CONFIG: Record<
-	SubTab,
-	{ label: string; icon: typeof Truck }
-> = {
+const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
 	supplier: { label: "Suppliers", icon: Truck },
 	warehouse: { label: "Warehouses", icon: Building },
 	region: { label: "Regions", icon: MapPin },
@@ -64,9 +61,7 @@ interface MasterDataCardProps {
 export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 	const visibleSubTabs: SubTab[] =
 		allowedSubTabs && allowedSubTabs.length > 0
-			? SUB_TAB_ORDER.filter((id) =>
-					(allowedSubTabs as string[]).includes(id),
-				)
+			? SUB_TAB_ORDER.filter((id) => (allowedSubTabs as string[]).includes(id))
 			: SUB_TAB_ORDER;
 	const firstVisible = visibleSubTabs[0] ?? "supplier";
 	const [subTab, setSubTab] = useState<SubTab>(firstVisible);

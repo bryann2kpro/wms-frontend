@@ -95,8 +95,16 @@ export function RegionSection() {
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>Regions</CardTitle>
-						<CardDescription className="text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+						<CardTitle
+							className="text-xl"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Regions
+						</CardTitle>
+						<CardDescription
+							className="text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							Manage delivery region master data
 						</CardDescription>
 					</div>
@@ -106,7 +114,10 @@ export function RegionSection() {
 							<Input
 								placeholder="Search by name..."
 								value={search}
-								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
 								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
@@ -128,28 +139,74 @@ export function RegionSection() {
 					<Table>
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
-								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Code
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Name
+								</TableHead>
+								<TableHead
+									className="px-6 text-right"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Actions
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{loading ? (
 								<TableRow>
-									<TableCell colSpan={3} className="h-24 px-6 text-center text-muted-foreground">Loading...</TableCell>
+									<TableCell
+										colSpan={3}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
 								</TableRow>
 							) : list.length === 0 ? (
 								<TableRow>
-									<TableCell colSpan={3} className="h-24 px-6 text-center text-muted-foreground">No regions found.</TableCell>
+									<TableCell
+										colSpan={3}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										No regions found.
+									</TableCell>
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.regionId} className="transition-colors hover:bg-muted/50">
-										<TableCell className="px-6 font-mono text-sm">{row.regionCode}</TableCell>
-										<TableCell className="px-6 font-medium">{row.regionName}</TableCell>
+									<TableRow
+										key={row.regionId}
+										className="transition-colors hover:bg-muted/50"
+									>
+										<TableCell className="px-6 font-mono text-sm">
+											{row.regionCode}
+										</TableCell>
+										<TableCell className="px-6 font-medium">
+											{row.regionName}
+										</TableCell>
 										<TableCell className="px-6 text-right">
-											<Button variant="ghost" size="icon" onClick={() => setEditing(row)} className="rounded-lg"><Edit className="h-4 w-4" /></Button>
-											<Button variant="ghost" size="icon" className="text-destructive rounded-lg" onClick={() => setDeleting(row)}><Trash2 className="h-4 w-4" /></Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+												className="rounded-lg"
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive rounded-lg"
+												onClick={() => setDeleting(row)}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
 										</TableCell>
 									</TableRow>
 								))
@@ -159,12 +216,35 @@ export function RegionSection() {
 				</div>
 				{pagination && totalPages > 1 && (
 					<div className="mx-6 mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
+						<p
+							className="text-sm text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Page{" "}
+							<span className="font-semibold tabular-nums text-foreground">
+								{currentPage}
+							</span>{" "}
+							of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
-							<Button variant="outline" size="sm" disabled={!pagination.hasPrevPage} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg">Previous</Button>
-							<Button variant="outline" size="sm" disabled={!pagination.hasNextPage} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg">Next</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								className="rounded-lg"
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasNextPage}
+								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+								className="rounded-lg"
+							>
+								Next
+							</Button>
 						</div>
 					</div>
 				)}
@@ -271,22 +351,63 @@ function RegionFormDialog({
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50">
-					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
-					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						{title}
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
+						{description}
+					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="region-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
-						<Input id="region-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. REG001" className="rounded-lg border-muted-foreground/20" />
+						<Label
+							htmlFor="region-code"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Code
+						</Label>
+						<Input
+							id="region-code"
+							value={code}
+							onChange={(e) => setCode(e.target.value)}
+							placeholder="e.g. REG001"
+							className="rounded-lg border-muted-foreground/20"
+						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="region-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
-						<Input id="region-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Region name" className="rounded-lg border-muted-foreground/20" />
+						<Label
+							htmlFor="region-name"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Name
+						</Label>
+						<Input
+							id="region-name"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							placeholder="Region name"
+							className="rounded-lg border-muted-foreground/20"
+						/>
 					</div>
 				</div>
 				<DialogFooter className="border-t bg-muted/20">
-					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
-					<Button disabled={!name.trim() || !code.trim() || loading} onClick={() => onSubmit({ regionName: name.trim(), regionCode: code.trim() })} className="rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+					<Button
+						variant="outline"
+						onClick={() => handleOpenChange(false)}
+						className="rounded-lg"
+					>
+						Cancel
+					</Button>
+					<Button
+						disabled={!name.trim() || !code.trim() || loading}
+						onClick={() =>
+							onSubmit({ regionName: name.trim(), regionCode: code.trim() })
+						}
+						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+					>
 						{loading ? "Saving..." : "Save"}
 					</Button>
 				</DialogFooter>

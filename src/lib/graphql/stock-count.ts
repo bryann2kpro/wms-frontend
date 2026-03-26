@@ -30,39 +30,39 @@ export const STOCK_COUNTS_QUERY = gql`
 `;
 
 export type StockCountsQueryVariables = {
-    filter?: StockCountFilterInput;
-    pageSize?: number;
-    pageNumber?: number;
+	filter?: StockCountFilterInput;
+	pageSize?: number;
+	pageNumber?: number;
 };
 
 export type StockCountFilterInput = {
-    skuId?: string;
-    skuIds?: string[];
-    skuCode?: string;
-    skuCodes?: string[];
-    skuDescription?: string;
-    search?: string;
+	skuId?: string;
+	skuIds?: string[];
+	skuCode?: string;
+	skuCodes?: string[];
+	skuDescription?: string;
+	search?: string;
 };
 
 export interface StockCount {
-    skuId: string;
-    skuCode: string;
-    skuDescription: string;
-    openingQty: number;
-    openingLossQty: number;
-    onHandQty: number;
-    reservedQty: number;
-    lossQty: number;
-    skuExpiryDate: string;
-    qtyDifference: number;
-    lossQtyDifference: number;
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	openingQty: number;
+	openingLossQty: number;
+	onHandQty: number;
+	reservedQty: number;
+	lossQty: number;
+	skuExpiryDate: string;
+	qtyDifference: number;
+	lossQtyDifference: number;
 }
 
 export interface StockCountsPaginatedResponse {
-    query: StockCount[];
-    pagination: Pagination;
+	query: StockCount[];
+	pagination: Pagination;
 }
 
 export type StockCountsQueryData = {
-    stockCounts: StockCountsPaginatedResponse;
+	stockCounts: StockCountsPaginatedResponse;
 };

@@ -89,9 +89,14 @@ export function logout(): void {
  * Request a password reset email
  * POST /auth/forgot-password
  */
-export async function requestPasswordReset(email: string): Promise<ApiResponse<null>> {
+export async function requestPasswordReset(
+	email: string,
+): Promise<ApiResponse<null>> {
 	const client = getPublicClient();
-	const response = await client.post<ApiResponse<null>>('/auth/forgot-password', { email });
+	const response = await client.post<ApiResponse<null>>(
+		"/auth/forgot-password",
+		{ email },
+	);
 	return response.data;
 }
 
@@ -104,9 +109,12 @@ export async function resetPassword(
 	password: string,
 ): Promise<ApiResponse<null>> {
 	const client = getPublicClient();
-	const response = await client.post<ApiResponse<null>>('/auth/reset-password', {
-		token,
-		password,
-	});
+	const response = await client.post<ApiResponse<null>>(
+		"/auth/reset-password",
+		{
+			token,
+			password,
+		},
+	);
 	return response.data;
 }

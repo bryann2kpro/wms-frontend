@@ -23,7 +23,8 @@ export const SETTINGS_MASTER_DATA_MODULES: Record<string, string> = {
 	skus: "SKU",
 };
 
-export type SettingsMasterDataSubTabId = keyof typeof SETTINGS_MASTER_DATA_MODULES;
+export type SettingsMasterDataSubTabId =
+	keyof typeof SETTINGS_MASTER_DATA_MODULES;
 
 /**
  * Returns true if the user has Read or Create permission for the given module.
@@ -47,7 +48,9 @@ export function getAllowedMasterDataSubTabs(
 ): SettingsMasterDataSubTabId[] {
 	if (!user) return [];
 	const allowed: SettingsMasterDataSubTabId[] = [];
-	for (const [subTabId, moduleName] of Object.entries(SETTINGS_MASTER_DATA_MODULES)) {
+	for (const [subTabId, moduleName] of Object.entries(
+		SETTINGS_MASTER_DATA_MODULES,
+	)) {
 		if (hasModulePermission(user, moduleName)) {
 			allowed.push(subTabId as SettingsMasterDataSubTabId);
 		}
