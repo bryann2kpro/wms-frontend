@@ -194,9 +194,21 @@ export function OutboundListCard({
 						aria-label="Delivery period tabs"
 					>
 						<Button
-							variant={activeTab === "current-week" ? "default" : "ghost"}
+							variant="ghost"
 							onClick={() => setActiveTab("current-week")}
-							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							style={{
+								...(activeTab === "current-week"
+									? {
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "white",
+										}
+									: {
+											background: "transparent",
+											color: "inherit",
+										}),
+							}}
 							role="tab"
 							aria-selected={activeTab === "current-week"}
 							aria-controls="purchase-order-table"
@@ -205,9 +217,21 @@ export function OutboundListCard({
 							Next Delivery
 						</Button>
 						<Button
-							variant={activeTab === "past-weeks" ? "default" : "ghost"}
+							variant="ghost"
 							onClick={() => setActiveTab("past-weeks")}
-							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							style={{
+								...(activeTab === "past-weeks"
+									? {
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "white",
+										}
+									: {
+											background: "transparent",
+											color: "inherit",
+										}),
+							}}
 							role="tab"
 							aria-selected={activeTab === "past-weeks"}
 							aria-controls="purchase-order-table"

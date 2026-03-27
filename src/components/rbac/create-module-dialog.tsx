@@ -230,10 +230,19 @@ function CreateModuleDialog({
 							variant="outline"
 							onClick={handleClose}
 							disabled={isSubmitting}
+							className="rounded-lg border-border/70 bg-background hover:bg-[var(--dashboard-accent-muted)]/35"
 						>
 							Cancel
 						</Button>
-						<Button type="submit" disabled={isSubmitting}>
+						<Button
+							type="submit"
+							disabled={isSubmitting}
+							className="rounded-lg text-white shadow-sm hover:opacity-90"
+							style={{
+								background: "var(--dashboard-accent)",
+								borderColor: "var(--dashboard-accent)",
+							}}
+						>
 							{isSubmitting ? (
 								<>
 									<Loader2

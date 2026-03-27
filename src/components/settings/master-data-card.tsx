@@ -80,10 +80,22 @@ export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 					return (
 						<Button
 							key={id}
-							variant={subTab === id ? "default" : "ghost"}
+							variant="ghost"
 							size="sm"
 							onClick={() => setSubTab(id)}
-							className="rounded-lg rounded-b-none"
+							className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60"
+							style={{
+								...(subTab === id
+									? {
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "white",
+										}
+									: {
+											background: "transparent",
+											color: "inherit",
+										}),
+							}}
 						>
 							<Icon className="mr-2 h-4 w-4" />
 							{label}

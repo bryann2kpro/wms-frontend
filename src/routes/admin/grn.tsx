@@ -1132,14 +1132,26 @@ function GRNRouteComponent() {
 							{GRN_STATUS_TABS.map((value) => (
 								<Button
 									key={value}
-									variant={statusFilter === value ? "default" : "ghost"}
+									variant="ghost"
 									size="sm"
 									onClick={() => {
 										setStatusFilter(value);
 										setPage(1);
 									}}
-									className="rounded-lg rounded-b-none"
-									style={{ fontFamily: "var(--dashboard-body)" }}
+									className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60"
+									style={{
+										fontFamily: "var(--dashboard-body)",
+										...(statusFilter === value
+											? {
+													background: "var(--dashboard-accent)",
+													borderColor: "var(--dashboard-accent)",
+													color: "white",
+												}
+											: {
+													background: "transparent",
+													color: "inherit",
+												}),
+									}}
 								>
 									{value === "ALL" ? "All" : formatStatus(value)}
 								</Button>
