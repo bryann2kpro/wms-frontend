@@ -14,8 +14,10 @@ import type {
 	UserRolesQueryParams,
 	RolePermissionsApiResponse,
 	RolePermissionsQueryParams,
+	CreatePermissionInput,
 	CreateRolePermissionInput,
 	UpdateRolePermissionsInput,
+	PermissionApiResponse,
 	RolePermissionApiResponse,
 	RolePermissionsUpdateApiResponse,
 } from "./rbac-types";
@@ -191,6 +193,21 @@ export async function createRolePermission(
 	const client = getClient();
 	const response = await client.post<RolePermissionApiResponse>(
 		"/rbac/role-permission/create",
+		input,
+	);
+	return response.data;
+}
+
+/**
+ * Create a permission for a module
+ * POST /rbac/permissions/create
+ */
+export async function createPermission(
+	input: CreatePermissionInput,
+): Promise<PermissionApiResponse> {
+	const client = getClient();
+	const response = await client.post<PermissionApiResponse>(
+		"/rbac/permissions/create",
 		input,
 	);
 	return response.data;
