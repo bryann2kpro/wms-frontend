@@ -71,6 +71,7 @@ import { formatDateOnly, statusColors } from "@/lib/utils";
 import { ConfirmDeleteDialog } from "./shared";
 import { SkusFormDialog } from "./skus-form-dialog";
 import { SkusSuppliersViewDialog } from "./skus-suppliers-view-dialog";
+import { ImportDialog } from "./import-dialog";
 
 const SKUS_HELP_IMAGES_BASE = "/help/skus";
 
@@ -159,6 +160,7 @@ export function SkusSection() {
 	const [search, setSearch] = useState("");
 	const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Skus | null>(null);
 	const [deleting, setDeleting] = useState<Skus | null>(null);
 	const [viewingSuppliers, setViewingSuppliers] = useState<Skus | null>(null);
@@ -347,10 +349,10 @@ export function SkusSection() {
 									</div>
 									<div className="flex items-center justify-between gap-4 pt-2">
 										<div className="flex gap-1">
-											{SKUS_HELP_STEPS.map((_, i) => (
+											{SKUS_HELP_STEPS.map((step, i) => (
 												<button
 													type="button"
-													key={i}
+													key={step.title}
 													onClick={() => setHelpStep(i)}
 													aria-label={`Go to help step ${i + 1}`}
 													className={`h-2 rounded-full transition-colors ${i === helpStep ? "w-6 bg-amber-600" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"}`}
@@ -465,6 +467,15 @@ export function SkusSection() {
 								</SelectContent>
 							</Select>
 						</div>
+						<Button
+							variant="outline"
+							onClick={() => setIsImportOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to import" : undefined}
+							className="rounded-lg"
+						>
+							Import Excel
+						</Button>
 						<Button
 							onClick={() => setIsCreateOpen(true)}
 							disabled={!createdBy}
@@ -733,6 +744,16 @@ export function SkusSection() {
 				loading={createLoading}
 				title="Add SKU"
 				description="Create a new Stock Keeping Unit"
+			/>
+
+			<ImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				mode="skus"
+				createdBy={createdBy}
+				onImported={() => {
+					void refetch();
+				}}
 			/>
 
 			{editing && (

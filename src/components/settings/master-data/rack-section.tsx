@@ -42,12 +42,14 @@ import {
 import type { Rack } from "@/lib/graphql/types";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { PAGE_SIZE, ConfirmDeleteDialog } from "./shared";
+import { ImportDialog } from "./import-dialog";
 
 export function RackSection() {
 	const { user } = useCurrentUser();
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Rack | null>(null);
 	const [deleting, setDeleting] = useState<Rack | null>(null);
 
@@ -124,6 +126,15 @@ export function RackSection() {
 								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
+						<Button
+							variant="outline"
+							onClick={() => setIsImportOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to import" : undefined}
+							className="rounded-lg"
+						>
+							Import Excel
+						</Button>
 						<Button
 							onClick={() => setIsCreateOpen(true)}
 							disabled={!createdBy}
@@ -315,6 +326,16 @@ export function RackSection() {
 					loading={deleteLoading}
 				/>
 			)}
+
+			<ImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				mode="racks"
+				createdBy={createdBy}
+				onImported={() => {
+					void refetch();
+				}}
+			/>
 		</Card>
 	);
 }
