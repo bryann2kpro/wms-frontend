@@ -50,7 +50,7 @@ const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
 	outlet: { label: "Outlets", icon: Store },
 	"stock-unit": { label: "Stock Units", icon: Package },
 	rack: { label: "Racks", icon: LayoutGrid },
-	skus: { label: "SKUS", icon: Package },
+	skus: { label: "Stocks", icon: Package },
 };
 
 interface MasterDataCardProps {

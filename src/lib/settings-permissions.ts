@@ -26,6 +26,25 @@ export const SETTINGS_MASTER_DATA_MODULES: Record<string, string> = {
 export type SettingsMasterDataSubTabId =
 	keyof typeof SETTINGS_MASTER_DATA_MODULES;
 
+const MODULE_NAME_ALIASES: Record<string, string[]> = {
+	"Integration Status": ["Integration Status", "Integration"],
+	Supplier: ["Supplier", "Suppliers"],
+	Warehouse: ["Warehouse", "Warehouses"],
+	Region: ["Region", "Regions"],
+	"Delivery Schedule": ["Delivery Schedule", "Delivery Schedules"],
+	Outlet: ["Outlet", "Outlets"],
+	"Stock Unit": ["Stock Unit", "Stock Units", "UOM", "UoM"],
+	Rack: ["Rack", "Racks"],
+	SKU: ["SKU", "SKUs", "Stock", "Stocks"],
+};
+
+function normalizeModuleName(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, " ")
+		.trim();
+}
+
 /**
  * Returns true if the user has Read or Create permission for the given module.
  */
@@ -34,9 +53,17 @@ export function hasModulePermission(
 	moduleName: string,
 ): boolean {
 	if (!user?.readPermission && !user?.createPermission) return false;
-	return (
-		user.readPermission?.includes(moduleName) === true ||
-		user.createPermission?.includes(moduleName) === true
+	const candidates = MODULE_NAME_ALIASES[moduleName] ?? [moduleName];
+	const normalizedCandidates = new Set(
+		candidates.map((candidate) => normalizeModuleName(candidate)),
+	);
+	const userPermissions = [
+		...(user.readPermission ?? []),
+		...(user.createPermission ?? []),
+	];
+
+	return userPermissions.some((permission) =>
+		normalizedCandidates.has(normalizeModuleName(permission)),
 	);
 }
 
