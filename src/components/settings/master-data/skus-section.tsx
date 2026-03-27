@@ -1,4 +1,4 @@
-import { CSSProperties, useMemo, useState } from "react";
+import { CSSProperties, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
 	useReactTable,
@@ -203,49 +203,60 @@ export function SkusSection() {
 		{ variables: {}, fetchPolicy: "cache-and-network" },
 	);
 	const allSkus: Skus[] = data?.skus?.query ?? [];
+	const deferredSearch = useDeferredValue(search);
 
 	const LOW_STOCK_THRESHOLD = 10;
 
-	const list = allSkus
-		.filter((sku) =>
-			showLowStockOnly
-				? Number(sku.skuQuantity ?? 0) <= LOW_STOCK_THRESHOLD
-				: true,
-		)
-		.filter((sku) => {
-			if (!search.trim()) return true;
-			const query = search.toLowerCase().trim();
-			return (
-				sku.skuCode.toLowerCase().includes(query) ||
-				sku.skuDescription.toLowerCase().includes(query)
-			);
-		});
+	const list = useMemo(() => {
+		const query = deferredSearch.toLowerCase().trim();
+		return allSkus
+			.filter((sku) =>
+				showLowStockOnly
+					? Number(sku.skuQuantity ?? 0) <= LOW_STOCK_THRESHOLD
+					: true,
+			)
+			.filter((sku) => {
+				if (!query) return true;
+				return (
+					sku.skuCode.toLowerCase().includes(query) ||
+					sku.skuDescription.toLowerCase().includes(query)
+				);
+			});
+	}, [allSkus, deferredSearch, showLowStockOnly]);
 
-	const sortedList = [...list].sort((a, b) => {
-		const direction = sortDirection === "ASC" ? 1 : -1;
-		switch (sortField) {
-			case "DESCRIPTION":
-				return (a.skuDescription ?? "").localeCompare(b.skuDescription ?? "") * direction;
-			case "PRICE":
-				return ((a.skuPrice ?? 0) - (b.skuPrice ?? 0)) * direction;
-			case "QUANTITY":
-				return (Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) * direction;
-			case "EXPIRY_DATE": {
-				const aVal = a.skuExpiryDate ? new Date(a.skuExpiryDate).getTime() : 0;
-				const bVal = b.skuExpiryDate ? new Date(b.skuExpiryDate).getTime() : 0;
-				return (aVal - bVal) * direction;
+	const sortedList = useMemo(() => {
+		return [...list].sort((a, b) => {
+			const direction = sortDirection === "ASC" ? 1 : -1;
+			switch (sortField) {
+				case "DESCRIPTION":
+					return (
+						(a.skuDescription ?? "").localeCompare(b.skuDescription ?? "") *
+						direction
+					);
+				case "PRICE":
+					return ((a.skuPrice ?? 0) - (b.skuPrice ?? 0)) * direction;
+				case "QUANTITY":
+					return (Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) * direction;
+				case "EXPIRY_DATE": {
+					const aVal = a.skuExpiryDate ? new Date(a.skuExpiryDate).getTime() : 0;
+					const bVal = b.skuExpiryDate ? new Date(b.skuExpiryDate).getTime() : 0;
+					return (aVal - bVal) * direction;
+				}
+				default:
+					return (a.skuCode ?? "").localeCompare(b.skuCode ?? "") * direction;
 			}
-			default:
-				return (a.skuCode ?? "").localeCompare(b.skuCode ?? "") * direction;
-		}
-	});
+		});
+	}, [list, sortDirection, sortField]);
 
 	const totalItems = sortedList.length;
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 	const currentPage = Math.min(page, totalPages);
 	const startIndex = (currentPage - 1) * pageSize;
 	const endIndex = startIndex + pageSize;
-	const paginatedList = sortedList.slice(startIndex, endIndex);
+	const paginatedList = useMemo(
+		() => sortedList.slice(startIndex, endIndex),
+		[sortedList, startIndex, endIndex],
+	);
 
 	const createdBy = user?.id ?? "";
 
