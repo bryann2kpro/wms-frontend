@@ -300,6 +300,23 @@ export function formatDeliveryDateHeader(date: Date): string {
 	return `${dayName} (${dd}/${mm}/${yyyy})`;
 }
 
+/**
+ * Convert an Excel serial date (Windows epoch) into YYYY-MM-DD.
+ * Example: 46387 -> 2026-12-31
+ */
+export function excelSerialToDateString(serial: number): string {
+	if (!Number.isFinite(serial) || serial <= 0) return "";
+	// Excel serial date origin (Windows): 1899-12-30
+	const epoch = new Date(Date.UTC(1899, 11, 30));
+	const days = Math.floor(serial);
+	const date = new Date(epoch.getTime() + days * 24 * 60 * 60 * 1000);
+	if (Number.isNaN(date.getTime())) return "";
+	const yyyy = date.getUTCFullYear();
+	const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+	const dd = String(date.getUTCDate()).padStart(2, "0");
+	return `${yyyy}-${mm}-${dd}`;
+}
+
 /** Date key in local date (YYYY-MM-DD). Use local, not UTC, so day-of-week stays correct. */
 export function getDateKey(date: Date): string {
 	const d = new Date(date);

@@ -73,7 +73,7 @@ export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 	}, [visibleSubTabs.join(","), subTab]);
 
 	return (
-		<div className="space-y-4">
+		<div className="min-w-0 space-y-4">
 			<div className="flex flex-wrap gap-2 border-b pb-2">
 				{visibleSubTabs.map((id) => {
 					const { label, icon: Icon } = SUB_TAB_CONFIG[id];

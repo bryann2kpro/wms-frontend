@@ -113,7 +113,7 @@ export function RackSection() {
 							Warehouse rack locations (row, column, level)
 						</CardDescription>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center justify-end gap-2">
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
@@ -123,7 +123,7 @@ export function RackSection() {
 									setSearch(e.target.value);
 									setPage(1);
 								}}
-								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
+								className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-48"
 							/>
 						</div>
 						<Button

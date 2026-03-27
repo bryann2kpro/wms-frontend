@@ -176,7 +176,7 @@ function SettingsPage() {
 
 	return (
 		<main
-			className="settings-page min-h-screen bg-[var(--dashboard-surface)]"
+			className="settings-page min-h-screen overflow-x-hidden bg-[var(--dashboard-surface)]"
 			aria-labelledby="settings-page-title"
 			aria-describedby="settings-page-description"
 			aria-busy={isAnyMutationPending}
@@ -185,7 +185,7 @@ function SettingsPage() {
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
-			<div className="container relative mx-auto space-y-6 p-6">
+			<div className="container relative mx-auto min-w-0 space-y-6 p-6">
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div className="space-y-2">
 						<div className="flex items-center gap-2.5">
@@ -262,6 +262,7 @@ function SettingsPage() {
 
 				{/* Tab Content */}
 				<div
+					className="min-w-0"
 					role="tabpanel"
 					id={`settings-tabpanel-${activeTab}`}
 					aria-labelledby={`settings-tab-${activeTab}`}

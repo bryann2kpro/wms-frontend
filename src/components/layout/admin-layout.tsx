@@ -24,7 +24,7 @@ export function AdminLayout() {
 			<Sidebar />
 			<div className="w-full">
 				<Header />
-				<main className="w-full h-full overflow-y-auto">
+				<main className="w-full h-full overflow-y-auto overflow-x-hidden">
 					<Outlet />
 					<div className="mt-10 p-5"></div>
 				</main>

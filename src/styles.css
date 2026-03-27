@@ -19,6 +19,11 @@ code {
 }
 
 :root {
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-surface: oklch(0.988 0.002 286);
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.141 0.005 285.823);
 	--card: oklch(1 0 0);
@@ -55,6 +60,9 @@ code {
 }
 
 .dark {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
 	--background: oklch(0.141 0.005 285.823);
 	--foreground: oklch(0.985 0 0);
 	--card: oklch(0.141 0.005 285.823);
