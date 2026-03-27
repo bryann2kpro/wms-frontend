@@ -67,6 +67,28 @@ jobs:
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
+      - name: Select staging build env (from secrets)
+        if: ${{ github.ref_name == 'staging' || contains(steps.meta.outputs.version, '-staging') }}
+        shell: bash
+        env:
+          VITE_API_URL_STAG: ${{ secrets.VITE_API_URL_STAG }}
+          VITE_GRAPHQL_ENDPOINT_STAG: ${{ secrets.VITE_GRAPHQL_ENDPOINT_STAG }}
+        run: |
+          set -euo pipefail
+          echo "VITE_API_URL=${VITE_API_URL_STAG}" >> "$GITHUB_ENV"
+          echo "VITE_GRAPHQL_ENDPOINT=${VITE_GRAPHQL_ENDPOINT_STAG}" >> "$GITHUB_ENV"
+
+      - name: Select production build env (from secrets)
+        if: ${{ github.ref_name == 'main' || (!contains(steps.meta.outputs.version, '-staging') && github.ref_name != 'staging') }}
+        shell: bash
+        env:
+          VITE_API_URL_PROD: ${{ secrets.VITE_API_URL_PROD }}
+          VITE_GRAPHQL_ENDPOINT_PROD: ${{ secrets.VITE_GRAPHQL_ENDPOINT_PROD }}
+        run: |
+          set -euo pipefail
+          echo "VITE_API_URL=${VITE_API_URL_PROD}" >> "$GITHUB_ENV"
+          echo "VITE_GRAPHQL_ENDPOINT=${VITE_GRAPHQL_ENDPOINT_PROD}" >> "$GITHUB_ENV"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -83,5 +105,8 @@ jobs:
           context: .
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            VITE_API_URL=${{ env.VITE_API_URL }}
+            VITE_GRAPHQL_ENDPOINT=${{ env.VITE_GRAPHQL_ENDPOINT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

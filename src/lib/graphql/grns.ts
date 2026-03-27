@@ -62,10 +62,49 @@ export const GRNS_QUERY = gql`
 					qty
 					lossQty
 					remarks
+					expiryDate
 					createdAt
 					updatedAt
 					createdBy
 					updatedBy
+					rack {
+						rackId
+						rackLevel
+						rackRow
+						rackColumn
+					}
+				}
+			}
+		}
+	}
+`;
+
+/** GRN work queue query - non-draft GRNs for inbound stock movement queue */
+export const GRNS_WORK_QUEUE_QUERY = gql`
+	query GrnsWorkQueue($filter: GrnFilterInput, $pageSize: Int, $pageNumber: Int) {
+		grns(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+			query {
+				id
+				grnNo
+				status
+				receivedAt
+				items {
+					id
+					grnId
+					skuId
+					skuCode
+					skuDescription
+					qty
+					lossQty
+					expiryDate
 					rack {
 						rackId
 						rackLevel
@@ -174,6 +213,27 @@ export type GrnsQueryData = {
 	grns: GrnPaginatedResponse;
 };
 
+export type GrnsWorkQueueQueryVariables = {
+	filter?: GrnFilterInput | null;
+	pageSize?: number;
+	pageNumber?: number;
+};
+
+export type GrnsWorkQueueQueryData = {
+	grns: Pick<GrnPaginatedResponse, "pagination"> & {
+		query: Array<
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt"> & {
+				items: Array<
+					Pick<
+						GrnItem,
+						"id" | "grnId" | "skuId" | "skuCode" | "skuDescription" | "qty" | "lossQty" | "expiryDate" | "rack"
+					>
+				>;
+			}
+		>;
+	};
+};
+
 export type CreateGrnMutationVariables = {
 	input: CreateGrnInput;
 };
@@ -267,6 +327,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 				lossQuantity: lossNum,
 				receivedQuantity: cartonNum + lossNum,
 				location,
+				expiryDate: i.expiryDate ?? null,
 				rack: rack ?? null,
 			};
 		});

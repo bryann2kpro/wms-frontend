@@ -71,7 +71,7 @@ type SkuComboboxProps = {
 	className?: string;
 	createdBy?: string;
 	stockUnitCodes?: string[];
-	/** SKU codes already used in other rows (e.g. other line items). Those SKUs are hidden from the list so the same SKU cannot be added twice. */
+	/** SKU codes already used in other rows. These are shown with an "Added" badge but can still be selected (same SKU is valid with different expiry date / rack). */
 	usedSkuCodes?: string[];
 };
 
@@ -177,21 +177,15 @@ export function SkuCombobox({
 	});
 
 	const filtered = useMemo(() => {
-		// Exclude SKUs already used in other rows, but always include the current selection so it still displays
-		const available = usedSkuCodes?.length
-			? skus.filter(
-					(s: Skus) =>
-						!usedSkuCodes.includes(s.skuCode) || s.skuCode === value?.skuCode,
-				)
-			: skus;
-		if (!search.trim()) return available;
+		// All SKUs remain selectable — same SKU can appear in multiple rows with different expiry dates or racks
+		if (!search.trim()) return skus;
 		const q = search.toLowerCase();
-		return available.filter(
+		return skus.filter(
 			(s: Skus) =>
 				s.skuCode.toLowerCase().includes(q) ||
 				s.skuDescription?.toLowerCase().includes(q),
 		);
-	}, [skus, search, usedSkuCodes, value?.skuCode]);
+	}, [skus, search]);
 
 	function handleSelect(sku: Sku) {
 		const s = sku as unknown as Skus;
@@ -255,37 +249,49 @@ export function SkuCombobox({
 								</div>
 							) : (
 								<ul className="py-1 px-1">
-									{filtered.map((sku: Skus) => (
-										<li key={sku.skuId}>
-											<button
-												type="button"
-												title={[sku.skuCode, sku.skuDescription]
-													.filter(Boolean)
-													.join(" – ")}
-												className={cn(
-													"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
-													value?.skuId === sku.skuId && "bg-accent",
-												)}
-												onClick={() => handleSelect(sku as unknown as Sku)}
-											>
-												{value?.skuId === sku.skuId ? (
-													<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-												) : (
-													<span className="mt-0.5 w-3.5 shrink-0" />
-												)}
-												<div className="min-w-0 flex-1 overflow-hidden">
-													<div className="text-sm font-semibold text-foreground">
-														{sku.skuCode}
-													</div>
-													{sku.skuDescription && (
-														<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-															{sku.skuDescription}
-														</div>
+									{filtered.map((sku: Skus) => {
+										const alreadyAdded =
+											usedSkuCodes?.includes(sku.skuCode) &&
+											value?.skuCode !== sku.skuCode;
+										return (
+											<li key={sku.skuId}>
+												<button
+													type="button"
+													title={[sku.skuCode, sku.skuDescription]
+														.filter(Boolean)
+														.join(" – ")}
+													className={cn(
+														"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
+														value?.skuId === sku.skuId && "bg-accent",
 													)}
-												</div>
-											</button>
-										</li>
-									))}
+													onClick={() => handleSelect(sku as unknown as Sku)}
+												>
+													{value?.skuId === sku.skuId ? (
+														<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+													) : (
+														<span className="mt-0.5 w-3.5 shrink-0" />
+													)}
+													<div className="min-w-0 flex-1 overflow-hidden">
+														<div className="flex items-center gap-1.5">
+															<span className="text-sm font-semibold text-foreground">
+																{sku.skuCode}
+															</span>
+															{alreadyAdded && (
+																<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+																	Added
+																</span>
+															)}
+														</div>
+														{sku.skuDescription && (
+															<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+																{sku.skuDescription}
+															</div>
+														)}
+													</div>
+												</button>
+											</li>
+										);
+									})}
 								</ul>
 							)}
 						</div>

@@ -222,3 +222,16 @@ export const CLOSE_STOCK_COUNT_SESSION_MUTATION = gql`
 export type CloseStockCountSessionData = {
     closeStockCountSession: StockCountSession;
 };
+
+export const GENERATE_STOCK_COUNT_CHECKLIST_MUTATION = gql`
+    mutation GenerateStockCountChecklist($sessionId: ID!) {
+        generateStockCountChecklist(sessionId: $sessionId) {
+            pdfBase64
+            filename
+        }
+    }
+`;
+
+export type GenerateStockCountChecklistData = {
+    generateStockCountChecklist: { pdfBase64: string; filename: string };
+};
