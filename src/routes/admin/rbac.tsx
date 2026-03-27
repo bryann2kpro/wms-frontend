@@ -13,6 +13,7 @@ import {
 	fetchModules,
 	fetchRoles,
 	fetchUserRoles,
+	createPermission,
 	updateRole,
 	updateRolePermissions,
 	type RbacModule,
@@ -24,6 +25,7 @@ import {
 	type UpdateModuleInput,
 	type UpdateRoleInput,
 	type UpdateRolePermissionsInput,
+	type CreatePermissionInput,
 } from "@/lib/rbac";
 import {
 	CREATE_MODULE_MUTATION,
@@ -179,20 +181,21 @@ function RbacComponent() {
 	const [
 		createModuleGql,
 		{ loading: isCreatingModule, error: createModuleError },
-	] = useApolloMutation<unknown, CreateModuleVariables>(
-		CREATE_MODULE_MUTATION,
+	] = useApolloMutation<
 		{
-			onCompleted: () => {
-				queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-				setModulesPage(1);
-				setIsCreateModuleDialogOpen(false);
-			},
+			createModule: {
+				moduleId: string;
+				permissions?: Array<{ permissionType?: string | null }>;
+			};
 		},
-	);
+		CreateModuleVariables
+	>(CREATE_MODULE_MUTATION);
 
 	// Wrap to accept the dialog's CreateModuleInput format
 	const createModuleMutation = {
 		mutate: (input: CreateModuleInput) =>
+			createModuleGql({ variables: { input } }),
+		mutateAsync: async (input: CreateModuleInput) =>
 			createModuleGql({ variables: { input } }),
 		isPending: isCreatingModule,
 		error: createModuleError ?? null,
@@ -219,6 +222,10 @@ function RbacComponent() {
 		mutate: (input: UpdateModuleInput) => {
 			const { moduleId, ...rest } = input;
 			return updateModuleGql({ variables: { id: moduleId, input: rest } });
+		},
+		mutateAsync: async (input: UpdateModuleInput) => {
+			const { moduleId, ...rest } = input;
+			await updateModuleGql({ variables: { id: moduleId, input: rest } });
 		},
 		isPending: isUpdatingModule,
 		error: updateModuleError ?? null,
@@ -271,6 +278,16 @@ function RbacComponent() {
 			});
 			setIsRolePermissionsDialogOpen(false);
 			setSelectedRoleForPermissions(null);
+		},
+	});
+
+	const createPermissionMutation = useMutation({
+		mutationFn: (input: CreatePermissionInput) => createPermission(input),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rbac-role-permissions", selectedRoleForPermissions?.roleId],
+			});
 		},
 	});
 
@@ -525,8 +542,42 @@ function RbacComponent() {
 				<CreateModuleDialog
 					open={isCreateModuleDialogOpen}
 					onOpenChange={setIsCreateModuleDialogOpen}
-					onSubmit={(input) => createModuleMutation.mutate(input)}
-					isSubmitting={createModuleMutation.isPending}
+					onSubmit={async (input, addPermissionTypes) => {
+						const result = await createModuleMutation.mutateAsync(input);
+						const created = result.data?.createModule;
+						const moduleId = created?.moduleId;
+						if (!moduleId) return;
+
+						const existingTypes = new Set(
+							(created.permissions ?? [])
+								.map((p) => p.permissionType)
+								.filter((v): v is string => Boolean(v)),
+						);
+						const missingTypes = addPermissionTypes.filter(
+							(type) => !existingTypes.has(type),
+						);
+
+						if (missingTypes.length > 0) {
+							await Promise.all(
+								missingTypes.map((permissionType) =>
+									createPermissionMutation.mutateAsync({
+										moduleId,
+										permissionType,
+										status: "active",
+										createdBy: currentUserIdentifier,
+										updatedBy: currentUserIdentifier,
+									}),
+								),
+							);
+						}
+
+						queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+						setModulesPage(1);
+						setIsCreateModuleDialogOpen(false);
+					}}
+					isSubmitting={
+						createModuleMutation.isPending || createPermissionMutation.isPending
+					}
 					error={createModuleMutation.error}
 					currentUserIdentifier={currentUserIdentifier}
 				/>
@@ -539,8 +590,24 @@ function RbacComponent() {
 						if (!open) setSelectedModule(null);
 					}}
 					module={selectedModule}
-					onSubmit={(input) => updateModuleMutation.mutate(input)}
-					isSubmitting={updateModuleMutation.isPending}
+					onSubmit={async (input, addPermissionTypes) => {
+						await updateModuleMutation.mutateAsync(input);
+						if (addPermissionTypes.length === 0) return;
+						await Promise.all(
+							addPermissionTypes.map((permissionType) =>
+								createPermissionMutation.mutateAsync({
+									moduleId: input.moduleId,
+									permissionType,
+									status: "active",
+									createdBy: currentUserIdentifier,
+									updatedBy: currentUserIdentifier,
+								}),
+							),
+						);
+					}}
+					isSubmitting={
+						updateModuleMutation.isPending || createPermissionMutation.isPending
+					}
 					error={updateModuleMutation.error}
 					currentUserIdentifier={currentUserIdentifier}
 				/>
@@ -593,7 +660,17 @@ function RbacComponent() {
 					role={selectedRoleForPermissions}
 					logout={logout}
 					onSave={(input) => updateRolePermissionsMutation.mutate(input)}
+					onAddPermission={async (moduleId, permissionType) => {
+						await createPermissionMutation.mutateAsync({
+							moduleId,
+							permissionType,
+							createdBy: currentUserIdentifier,
+							updatedBy: currentUserIdentifier,
+							status: "active",
+						});
+					}}
 					isSaving={updateRolePermissionsMutation.isPending}
+					isAddingPermission={createPermissionMutation.isPending}
 					saveError={updateRolePermissionsMutation.error}
 					currentUserIdentifier={currentUserIdentifier}
 				/>

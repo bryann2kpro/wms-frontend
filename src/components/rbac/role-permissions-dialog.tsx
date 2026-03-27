@@ -18,6 +18,7 @@ import {
 	X,
 	Pencil,
 	Save,
+	PlusCircle,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { getErrorMessage } from "@/lib/utils";
@@ -40,7 +41,12 @@ interface RolePermissionsDialogProps {
 	role: RbacRole | null;
 	logout: () => void;
 	onSave?: (input: UpdateRolePermissionsInput) => void;
+	onAddPermission?: (
+		moduleId: string,
+		permissionType: string,
+	) => Promise<unknown>;
 	isSaving?: boolean;
+	isAddingPermission?: boolean;
 	saveError?: Error | null;
 	currentUserIdentifier: string;
 }
@@ -49,15 +55,20 @@ function RolePermissionsDialog({
 	open,
 	onOpenChange,
 	role,
-	logout,
+	logout: _logout,
 	onSave,
+	onAddPermission,
 	isSaving = false,
+	isAddingPermission = false,
 	saveError,
 	currentUserIdentifier,
 }: RolePermissionsDialogProps) {
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [localPermissions, setLocalPermissions] = useState<PermissionState>(
 		new Map(),
+	);
+	const [pendingAddModuleKey, setPendingAddModuleKey] = useState<string | null>(
+		null,
 	);
 
 	// Fetch role permissions when dialog opens
@@ -69,8 +80,7 @@ function RolePermissionsDialog({
 		refetch,
 	} = useQuery({
 		queryKey: ["rbac-role-permissions", role?.roleId],
-		queryFn: () =>
-			fetchRolePermissions({ roleId: role!.roleId, pageSize: 100 }, logout),
+		queryFn: () => fetchRolePermissions({ roleId: role!.roleId, pageSize: 100 }),
 		enabled: open && !!role?.roleId,
 		staleTime: 30_000,
 	});
@@ -136,6 +146,20 @@ function RolePermissionsDialog({
 			updatedBy: currentUserIdentifier,
 		});
 	}, [role, onSave, localPermissions, currentUserIdentifier]);
+
+	const handleAddApprovePermission = useCallback(
+		async (moduleId: string) => {
+			if (!onAddPermission) return;
+			setPendingAddModuleKey(moduleId);
+			try {
+				await onAddPermission(moduleId, "Approve");
+				await refetch();
+			} finally {
+				setPendingAddModuleKey(null);
+			}
+		},
+		[onAddPermission, refetch],
+	);
 
 	// Check if there are unsaved changes
 	const hasChanges = useCallback(() => {
@@ -238,6 +262,9 @@ function RolePermissionsDialog({
 									isEditMode={isEditMode}
 									localPermissions={localPermissions}
 									onPermissionToggle={handlePermissionToggle}
+									onAddApprovePermission={handleAddApprovePermission}
+									isAddingPermission={isAddingPermission}
+									pendingAddModuleKey={pendingAddModuleKey}
 									isSaving={isSaving}
 								/>
 							))}
@@ -307,6 +334,9 @@ interface PermissionModuleCardProps {
 	isEditMode: boolean;
 	localPermissions: PermissionState;
 	onPermissionToggle: (permissionId: string) => void;
+	onAddApprovePermission: (moduleId: string) => void;
+	isAddingPermission: boolean;
+	pendingAddModuleKey: string | null;
 	isSaving: boolean;
 }
 
@@ -315,10 +345,19 @@ function PermissionModuleCard({
 	isEditMode,
 	localPermissions,
 	onPermissionToggle,
+	onAddApprovePermission,
+	isAddingPermission,
+	pendingAddModuleKey,
 	isSaving,
 }: PermissionModuleCardProps) {
 	// Define permission types in order
-	const permissionTypes = ["Read", "Create", "Update", "Delete"] as const;
+	const permissionTypes = [
+		"Read",
+		"Create",
+		"Update",
+		"Delete",
+		"Approve",
+	] as const;
 
 	// Create a map of permission type to permission detail
 	const permissionMap = new Map(
@@ -335,15 +374,43 @@ function PermissionModuleCard({
 			</CardHeader>
 			<CardContent>
 				<div
-					className="grid grid-cols-4 gap-2"
+					className="grid grid-cols-5 gap-2"
 					role="group"
 					aria-label={`Permissions for ${moduleData.module}`}
 				>
 					{permissionTypes.map((type) => {
 						const permission = permissionMap.get(type);
+						const moduleId = moduleData.permissions[0]?.moduleId ?? null;
+						const isAddingThisModule =
+							isAddingPermission &&
+							pendingAddModuleKey != null &&
+							pendingAddModuleKey === moduleId;
 
 						// Permission type not configured in DB — non-interactive placeholder
 						if (!permission) {
+							if (type === "Approve" && isEditMode && moduleId) {
+								return (
+									<button
+										key={type}
+										type="button"
+										onClick={() => onAddApprovePermission(moduleId)}
+										disabled={isSaving || isAddingThisModule}
+										className="flex flex-col items-center justify-center p-3 rounded-lg border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 transition-colors hover:bg-amber-100 dark:hover:bg-amber-950/30 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+										aria-label={`Add ${type} permission type for ${moduleData.module}`}
+									>
+										<div className="w-6 h-6 rounded-full flex items-center justify-center mb-1 bg-amber-500 text-white">
+											{isAddingThisModule ? (
+												<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+											) : (
+												<PlusCircle className="h-4 w-4" aria-hidden="true" />
+											)}
+										</div>
+										<span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+											{isAddingThisModule ? "Adding..." : "Add"}
+										</span>
+									</button>
+								);
+							}
 							return (
 								<div
 									key={type}

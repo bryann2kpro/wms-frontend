@@ -50,6 +50,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Edit,
+	RotateCcw,
 	Send,
 	HelpCircle,
 	ImageOff,
@@ -58,6 +59,7 @@ import { AdminPageHeader } from "@/components/admin-page-header";
 import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { useProfile } from "@/lib/auth/use-profile";
 import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
 	GrnFormDialog,
@@ -461,6 +463,7 @@ function AsnPickerDialog({
 
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
+	const { data: profile } = useProfile();
 	const { hasPermission } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
@@ -715,6 +718,7 @@ function GRNRouteComponent() {
 	const totalPages = data
 		? Math.max(1, Math.ceil(data.total / data.pageSize))
 		: 1;
+	const canApproveGrn = (profile?.approvePermission ?? []).includes("GRN");
 
 	const getStatusColor = (status: GRNStatus | null | undefined) => {
 		if (!status) return "bg-gray-500/10 text-gray-600 border-gray-500/20";
@@ -1182,11 +1186,10 @@ function GRNRouteComponent() {
 												grn.status &&
 												(grn.status === "Draft" || grn.status === "Submitted");
 											const showApprove =
-												hasPermission("grn:approve") &&
-												grn.status === "Submitted";
+												canApproveGrn && grn.status === "Submitted";
 											const showSend =
-												hasPermission("grn:send_to_es") &&
-												grn.status === "Approved";
+												canApproveGrn && grn.status === "Approved";
+											const showRetry = canApproveGrn && grn.status === "Failed";
 											return (
 												<TableRow
 													key={grn.id}
@@ -1263,6 +1266,19 @@ function GRNRouteComponent() {
 																	disabled={statusMutation.status === "pending"}
 																>
 																	<Send className="h-4 w-4 text-purple-600" />
+																</Button>
+															)}
+															{showRetry && (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() =>
+																		handleUpdateStatus(grn.id, "Approved")
+																	}
+																	disabled={statusMutation.status === "pending"}
+																	aria-label="Retry sync"
+																>
+																	<RotateCcw className="h-4 w-4 text-amber-600" />
 																</Button>
 															)}
 														</div>
@@ -1516,8 +1532,7 @@ function GRNRouteComponent() {
 							<Button variant="outline" onClick={() => setIsViewOpen(false)}>
 								Close
 							</Button>
-							{hasPermission("grn:approve") &&
-								selectedGRN?.status === "Submitted" && (
+							{canApproveGrn && selectedGRN?.status === "Submitted" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Approved");
@@ -1527,8 +1542,7 @@ function GRNRouteComponent() {
 										Approve
 									</Button>
 								)}
-							{hasPermission("grn:send_to_es") &&
-								selectedGRN?.status === "Approved" && (
+							{canApproveGrn && selectedGRN?.status === "Approved" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
@@ -1537,6 +1551,17 @@ function GRNRouteComponent() {
 									>
 										<Send className="mr-2 h-4 w-4" />
 										Send to ES
+									</Button>
+								)}
+							{canApproveGrn && selectedGRN?.status === "Failed" && (
+									<Button
+										onClick={() => {
+											handleUpdateStatus(selectedGRN.id, "Approved");
+										}}
+										disabled={statusMutation.status === "pending"}
+									>
+										<RotateCcw className="mr-2 h-4 w-4" />
+										Retry
 									</Button>
 								)}
 						</DialogFooter>
