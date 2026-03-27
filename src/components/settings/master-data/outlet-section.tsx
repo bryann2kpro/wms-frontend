@@ -109,24 +109,38 @@ export function OutletSection() {
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>Outlets</CardTitle>
-						<CardDescription className="text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+						<CardTitle
+							className="text-xl"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Outlets
+						</CardTitle>
+						<CardDescription
+							className="text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							Store/outlet locations; each outlet can be assigned to a region
 						</CardDescription>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search by name..."
 								value={search}
-								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
 								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
 						<Select
 							value={regionIdFilter || "all"}
-							onValueChange={(v) => { setRegionIdFilter(v === "all" ? "" : v); setPage(1); }}
+							onValueChange={(v) => {
+								setRegionIdFilter(v === "all" ? "" : v);
+								setPage(1);
+							}}
 						>
 							<SelectTrigger className="w-40 rounded-lg border-muted-foreground/20">
 								<SelectValue placeholder="All regions" />
@@ -158,30 +172,85 @@ export function OutletSection() {
 					<Table>
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Region</TableHead>
-								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Code
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Name
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Region
+								</TableHead>
+								<TableHead
+									className="px-6 text-right"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Actions
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{loading ? (
 								<TableRow>
-									<TableCell colSpan={4} className="h-24 px-6 text-center text-muted-foreground">Loading...</TableCell>
+									<TableCell
+										colSpan={4}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
 								</TableRow>
 							) : outletsList.length === 0 ? (
 								<TableRow>
-									<TableCell colSpan={4} className="h-24 px-6 text-center text-muted-foreground">No outlets found.</TableCell>
+									<TableCell
+										colSpan={4}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										No outlets found.
+									</TableCell>
 								</TableRow>
 							) : (
 								outletsList.map((row) => (
-									<TableRow key={row.outletId} className="transition-colors hover:bg-muted/50">
-										<TableCell className="px-6 font-mono text-sm">{row.outletCode}</TableCell>
-										<TableCell className="px-6 font-medium">{row.outletName}</TableCell>
-										<TableCell className="px-6 text-muted-foreground">{row.regionName ? `${row.regionName} (${row.regionCode ?? ""})` : "Unassigned"}</TableCell>
+									<TableRow
+										key={row.outletId}
+										className="transition-colors hover:bg-muted/50"
+									>
+										<TableCell className="px-6 font-mono text-sm">
+											{row.outletCode}
+										</TableCell>
+										<TableCell className="px-6 font-medium">
+											{row.outletName}
+										</TableCell>
+										<TableCell className="px-6 text-muted-foreground">
+											{row.regionName
+												? `${row.regionName} (${row.regionCode ?? ""})`
+												: "Unassigned"}
+										</TableCell>
 										<TableCell className="px-6 text-right">
-											<Button variant="ghost" size="icon" onClick={() => setEditing(row)} className="rounded-lg"><Edit className="h-4 w-4" /></Button>
-											<Button variant="ghost" size="icon" className="text-destructive rounded-lg" onClick={() => setDeleting(row)}><Trash2 className="h-4 w-4" /></Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+												className="rounded-lg"
+											>
+												<Edit className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive rounded-lg"
+												onClick={() => setDeleting(row)}
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
 										</TableCell>
 									</TableRow>
 								))
@@ -191,12 +260,38 @@ export function OutletSection() {
 				</div>
 				{outletsPagination && outletsPagination.totalPages > 1 && (
 					<div className="mx-6 mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Page <span className="font-semibold tabular-nums text-foreground">{outletsPagination.currentPage}</span> of {outletsPagination.totalPages} ({outletsPagination.totalCount} total)
+						<p
+							className="text-sm text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Page{" "}
+							<span className="font-semibold tabular-nums text-foreground">
+								{outletsPagination.currentPage}
+							</span>{" "}
+							of {outletsPagination.totalPages} ({outletsPagination.totalCount}{" "}
+							total)
 						</p>
 						<div className="flex gap-2">
-							<Button variant="outline" size="sm" disabled={!outletsPagination.hasPrevPage} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg">Previous</Button>
-							<Button variant="outline" size="sm" disabled={!outletsPagination.hasNextPage} onClick={() => setPage((p) => Math.min(outletsPagination.totalPages, p + 1))} className="rounded-lg">Next</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!outletsPagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								className="rounded-lg"
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!outletsPagination.hasNextPage}
+								onClick={() =>
+									setPage((p) => Math.min(outletsPagination.totalPages, p + 1))
+								}
+								className="rounded-lg"
+							>
+								Next
+							</Button>
 						</div>
 					</div>
 				)}

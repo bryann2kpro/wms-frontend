@@ -318,12 +318,7 @@ function PermissionModuleCard({
 	isSaving,
 }: PermissionModuleCardProps) {
 	// Define permission types in order
-	const permissionTypes = [
-		"Read",
-		"Create",
-		"Update",
-		"Delete",
-	] as const;
+	const permissionTypes = ["Read", "Create", "Update", "Delete"] as const;
 
 	// Create a map of permission type to permission detail
 	const permissionMap = new Map(
@@ -385,15 +380,15 @@ function PermissionModuleCard({
 								className={`
                   flex flex-col items-center justify-center p-3 rounded-lg border transition-all
                   ${
-									hasPermission
-										? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-										: "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800"
-								}
+										hasPermission
+											? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+											: "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800"
+									}
                   ${
-									isInteractive
-										? "cursor-pointer hover:ring-2 hover:ring-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-										: "cursor-default"
-								}
+										isInteractive
+											? "cursor-pointer hover:ring-2 hover:ring-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+											: "cursor-default"
+									}
                   ${isSaving ? "opacity-50" : ""}
                 `}
 								aria-pressed={hasPermission}

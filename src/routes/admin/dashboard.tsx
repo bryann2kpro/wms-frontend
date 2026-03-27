@@ -103,8 +103,7 @@ function DashboardComponent() {
 	};
 
 	const scheduledDeliveries = deliveries.filter(
-		(d) =>
-			d.status === "CREATED" || d.status === "PACKING",
+		(d) => d.status === "CREATED" || d.status === "PACKING",
 	);
 
 	const kpiDelays = [0, 80, 160, 240];
@@ -301,7 +300,9 @@ function DashboardComponent() {
 									</span>
 								</div>
 								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">Stock Sync Status</span>
+									<span className="text-muted-foreground">
+										Stock Sync Status
+									</span>
 									<Badge
 										variant="outline"
 										className={
@@ -346,7 +347,8 @@ function DashboardComponent() {
 									className="text-sm text-muted-foreground"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
-									Delivery orders are waiting for signed proof of delivery upload.
+									Delivery orders are waiting for signed proof of delivery
+									upload.
 								</p>
 								<Button
 									className="bg-[var(--dashboard-accent)] text-white hover:opacity-90"
@@ -370,7 +372,9 @@ function DashboardComponent() {
 								>
 									Recent GRNs
 								</CardTitle>
-								<CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+								<CardDescription
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
 									Latest goods receipt notes
 								</CardDescription>
 							</div>
@@ -424,7 +428,9 @@ function DashboardComponent() {
 								>
 									Purchase Orders from ES
 								</CardTitle>
-								<CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+								<CardDescription
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
 									In progress purchase orders from ES
 								</CardDescription>
 							</div>
@@ -478,7 +484,9 @@ function DashboardComponent() {
 								>
 									Scheduled Deliveries
 								</CardTitle>
-								<CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+								<CardDescription
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
 									Upcoming deliveries
 								</CardDescription>
 							</div>
@@ -540,7 +548,9 @@ function DashboardComponent() {
 										<AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
 									</div>
 									<div className="flex-1 min-w-0">
-										<p className="text-sm font-semibold">Pending GRN Approvals</p>
+										<p className="text-sm font-semibold">
+											Pending GRN Approvals
+										</p>
 										<p className="text-xs text-muted-foreground mt-0.5">
 											{stats.pendingGRNs} GRNs awaiting verification
 										</p>
@@ -562,7 +572,9 @@ function DashboardComponent() {
 										<AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
 									</div>
 									<div className="flex-1 min-w-0">
-										<p className="text-sm font-semibold">NetSuite Sync Pending</p>
+										<p className="text-sm font-semibold">
+											NetSuite Sync Pending
+										</p>
 										<p className="text-xs text-muted-foreground mt-0.5">
 											2 purchase orders from ES waiting to sync
 										</p>
@@ -582,7 +594,10 @@ function DashboardSkeleton() {
 		<div className="dashboard-page min-h-screen bg-[var(--dashboard-surface)]">
 			<div className="container relative mx-auto px-6 py-8 space-y-8">
 				<header className="relative">
-					<div className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-muted" aria-hidden />
+					<div
+						className="absolute left-0 top-1 bottom-1 w-1 rounded-full bg-muted"
+						aria-hidden
+					/>
 					<div className="pl-5 space-y-2">
 						<Skeleton className="h-10 w-48" />
 						<Skeleton className="h-4 w-56" />

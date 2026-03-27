@@ -43,9 +43,7 @@ export function ConfirmDeleteDialog({
 					>
 						Delete
 					</DialogTitle>
-					<DialogDescription
-						style={{ fontFamily: '"Figtree", sans-serif' }}
-					>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
 						Are you sure you want to delete &quot;{itemName}&quot;? This action
 						cannot be undone.
 					</DialogDescription>

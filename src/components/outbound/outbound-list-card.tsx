@@ -229,12 +229,24 @@ export function OutboundListCard({
 					<Table aria-label="Purchase orders list">
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead scope="col" className="px-6">PO Number</TableHead>
-								<TableHead scope="col" className="px-6">Outlet</TableHead>
-								<TableHead scope="col" className="px-6">Region</TableHead>
-								<TableHead scope="col" className="px-6">PO Status</TableHead>
-								<TableHead scope="col" className="px-6">DO Status</TableHead>
-								<TableHead scope="col" className="px-6">NetSuite (API)</TableHead>
+								<TableHead scope="col" className="px-6">
+									PO Number
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									Outlet
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									Region
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									PO Status
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									DO Status
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									NetSuite (API)
+								</TableHead>
 								<TableHead scope="col" className="px-6 text-right">
 									Actions
 								</TableHead>
@@ -392,7 +404,9 @@ export function OutboundListCard({
 													<TableCell className="px-6 font-medium">
 														{purchaseOrder.purchaseOrderNumber}
 													</TableCell>
-													<TableCell className="px-6">{purchaseOrder.toLocation}</TableCell>
+													<TableCell className="px-6">
+														{purchaseOrder.toLocation}
+													</TableCell>
 													<TableCell className="px-6">
 														{purchaseOrder.regionName ? (
 															<div className="flex flex-col">
@@ -429,21 +443,22 @@ export function OutboundListCard({
 																	)}
 																</Badge>
 																{purchaseOrder.deliveryOrder.status === "NEW" ||
-																purchaseOrder.deliveryOrder.status === "CREATED" ||
-																purchaseOrder.deliveryOrder.status === "PICKING" ? (
+																purchaseOrder.deliveryOrder.status ===
+																	"CREATED" ||
+																purchaseOrder.deliveryOrder.status ===
+																	"PICKING" ? (
 																	<span className="text-xs text-muted-foreground italic">
 																		Awaiting picking
 																	</span>
 																) : onAdvanceStep &&
-																	purchaseOrder.deliveryOrder.status === "PACKING" &&
-																	(dateKey === todayKey) ? (
+																	purchaseOrder.deliveryOrder.status ===
+																		"PACKING" &&
+																	dateKey === todayKey ? (
 																	<Button
 																		variant="outline"
 																		size="sm"
 																		className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		onClick={() =>
-																			onAdvanceStep(purchaseOrder)
-																		}
+																		onClick={() => onAdvanceStep(purchaseOrder)}
 																		disabled={
 																			isAdvanceStepPending &&
 																			advancingDeliveryOrderId ===
@@ -461,7 +476,9 @@ export function OutboundListCard({
 																) : null}
 															</div>
 														) : (
-															<span className="text-muted-foreground text-sm">—</span>
+															<span className="text-muted-foreground text-sm">
+																—
+															</span>
 														)}
 													</TableCell>
 													<TableCell className="px-6">
@@ -496,7 +513,9 @@ export function OutboundListCard({
 																	<Button
 																		variant="ghost"
 																		size="icon"
-																		onClick={() => onAcceptClick?.(purchaseOrder)}
+																		onClick={() =>
+																			onAcceptClick?.(purchaseOrder)
+																		}
 																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 																		aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
 																	>

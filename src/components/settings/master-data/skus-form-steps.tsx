@@ -234,7 +234,9 @@ export function SkusFormStep1({
 							setErrors((prev) => ({ ...prev, skuUom: undefined }));
 					}}
 				>
-					<SelectTrigger className={`rounded-lg border-muted-foreground/20 ${errors.skuUom ? "border-destructive" : ""}`}>
+					<SelectTrigger
+						className={`rounded-lg border-muted-foreground/20 ${errors.skuUom ? "border-destructive" : ""}`}
+					>
 						<SelectValue placeholder="Select UOM" />
 					</SelectTrigger>
 					<SelectContent>
@@ -254,13 +256,18 @@ export function SkusFormStep1({
 			<div className="grid gap-2">
 				<Label htmlFor="sku-picking-strategy">Picking Strategy</Label>
 				<Select value={pickingStrategy} onValueChange={setPickingStrategy}>
-					<SelectTrigger id="sku-picking-strategy" className="rounded-lg border-muted-foreground/20">
+					<SelectTrigger
+						id="sku-picking-strategy"
+						className="rounded-lg border-muted-foreground/20"
+					>
 						<SelectValue placeholder="Select picking strategy" />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="FIFO">FIFO — First In, First Out</SelectItem>
 						<SelectItem value="LIFO">LIFO — Last In, First Out</SelectItem>
-						<SelectItem value="FEFO">FEFO — First Expired, First Out</SelectItem>
+						<SelectItem value="FEFO">
+							FEFO — First Expired, First Out
+						</SelectItem>
 					</SelectContent>
 				</Select>
 				<p className="text-xs text-muted-foreground">

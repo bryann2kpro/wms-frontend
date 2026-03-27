@@ -89,20 +89,29 @@ export function WarehouseSection() {
 			<CardHeader>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>
+						<CardTitle
+							className="text-xl"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
 							Warehouses
 						</CardTitle>
-						<CardDescription className="text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+						<CardDescription
+							className="text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
 							Manage warehouse locations and addresses
 						</CardDescription>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search by name..."
 								value={search}
-								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+								onChange={(e) => {
+									setSearch(e.target.value);
+									setPage(1);
+								}}
 								className="pl-9 w-48 rounded-lg border-muted-foreground/20"
 							/>
 						</div>
@@ -124,34 +133,94 @@ export function WarehouseSection() {
 					<Table>
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Address</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Created By</TableHead>
-								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Code
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Name
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Address
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Created By
+								</TableHead>
+								<TableHead
+									className="px-6 text-right"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Actions
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{loading ? (
 								<TableRow>
-									<TableCell colSpan={5} className="h-24 px-6 text-center text-muted-foreground">Loading...</TableCell>
+									<TableCell
+										colSpan={5}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										Loading...
+									</TableCell>
 								</TableRow>
 							) : list.length === 0 ? (
 								<TableRow>
-									<TableCell colSpan={5} className="h-24 px-6 text-center text-muted-foreground">No warehouses found.</TableCell>
+									<TableCell
+										colSpan={5}
+										className="h-24 px-6 text-center text-muted-foreground"
+									>
+										No warehouses found.
+									</TableCell>
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.warehouseId} className="transition-colors hover:bg-muted/50">
-										<TableCell className="px-6 font-mono text-sm">{row.warehouseCode || "-"}</TableCell>
-										<TableCell className="px-6 font-medium">{row.warehouseName}</TableCell>
-										<TableCell className="max-w-xs truncate px-6">{row.warehouseAddress || "-"}</TableCell>
-										<TableCell className="px-6">{row.createdByUser ? row.createdByUser.displayName : row.createdBy}</TableCell>
+									<TableRow
+										key={row.warehouseId}
+										className="transition-colors hover:bg-muted/50"
+									>
+										<TableCell className="px-6 font-mono text-sm">
+											{row.warehouseCode || "-"}
+										</TableCell>
+										<TableCell className="px-6 font-medium">
+											{row.warehouseName}
+										</TableCell>
+										<TableCell className="max-w-xs truncate px-6">
+											{row.warehouseAddress || "-"}
+										</TableCell>
+										<TableCell className="px-6">
+											{row.createdByUser
+												? row.createdByUser.displayName
+												: row.createdBy}
+										</TableCell>
 										<TableCell className="px-6 text-right">
-											<Button variant="ghost" size="icon" onClick={() => setEditing(row)} aria-label={`Edit warehouse ${row.warehouseName}`} className="rounded-lg">
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setEditing(row)}
+												aria-label={`Edit warehouse ${row.warehouseName}`}
+												className="rounded-lg"
+											>
 												<Edit className="h-4 w-4" />
 											</Button>
-											<Button variant="ghost" size="icon" className="text-destructive rounded-lg" onClick={() => setDeleting(row)} aria-label={`Delete warehouse ${row.warehouseName}`}>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="text-destructive rounded-lg"
+												onClick={() => setDeleting(row)}
+												aria-label={`Delete warehouse ${row.warehouseName}`}
+											>
 												<Trash2 className="h-4 w-4" />
 											</Button>
 										</TableCell>
@@ -163,12 +232,35 @@ export function WarehouseSection() {
 				</div>
 				{pagination && totalPages > 1 && (
 					<div className="mx-6 mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
+						<p
+							className="text-sm text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Page{" "}
+							<span className="font-semibold tabular-nums text-foreground">
+								{currentPage}
+							</span>{" "}
+							of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
-							<Button variant="outline" size="sm" disabled={!pagination.hasPrevPage} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg">Previous</Button>
-							<Button variant="outline" size="sm" disabled={!pagination.hasNextPage} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg">Next</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasPrevPage}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								className="rounded-lg"
+							>
+								Previous
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={!pagination.hasNextPage}
+								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+								className="rounded-lg"
+							>
+								Next
+							</Button>
 						</div>
 					</div>
 				)}

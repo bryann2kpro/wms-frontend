@@ -61,72 +61,472 @@ function WarehouseIllustration() {
 			{/* ══════════════════════════════════
 			    LEFT SHELF UNIT
 			══════════════════════════════════ */}
-			<rect x="18" y="30" width="7" height="162" rx="3.5" fill="currentColor" opacity="0.55" />
-			<rect x="120" y="30" width="7" height="162" rx="3.5" fill="currentColor" opacity="0.55" />
+			<rect
+				x="18"
+				y="30"
+				width="7"
+				height="162"
+				rx="3.5"
+				fill="currentColor"
+				opacity="0.55"
+			/>
+			<rect
+				x="120"
+				y="30"
+				width="7"
+				height="162"
+				rx="3.5"
+				fill="currentColor"
+				opacity="0.55"
+			/>
 
-			<line x1="25" y1="35" x2="120" y2="100" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
-			<line x1="25" y1="100" x2="120" y2="35" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
+			<line
+				x1="25"
+				y1="35"
+				x2="120"
+				y2="100"
+				stroke="currentColor"
+				strokeWidth="1.5"
+				opacity="0.2"
+			/>
+			<line
+				x1="25"
+				y1="100"
+				x2="120"
+				y2="35"
+				stroke="currentColor"
+				strokeWidth="1.5"
+				opacity="0.2"
+			/>
 
-			<rect x="18" y="85"  width="109" height="6" rx="3" fill="currentColor" opacity="0.7" />
-			<rect x="18" y="148" width="109" height="6" rx="3" fill="currentColor" opacity="0.7" />
-			<rect x="18" y="210" width="109" height="6" rx="3" fill="currentColor" opacity="0.5" />
+			<rect
+				x="18"
+				y="85"
+				width="109"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<rect
+				x="18"
+				y="148"
+				width="109"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<rect
+				x="18"
+				y="210"
+				width="109"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.5"
+			/>
 
-			<rect x="26"  y="50" width="38" height="33" rx="4" fill="var(--dashboard-accent)" opacity="0.9" />
-			<line x1="45"  y1="50" x2="45"  y2="83" stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<line x1="26"  y1="66" x2="64"  y2="66" stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<rect x="70"  y="59" width="26" height="24" rx="3" fill="var(--dashboard-accent)" opacity="0.7" />
-			<line x1="83"  y1="59" x2="83"  y2="83" stroke="white" strokeWidth="0.6" opacity="0.2" />
-			<rect x="100" y="44" width="20" height="39" rx="3" fill="var(--dashboard-accent)" opacity="0.55" />
+			<rect
+				x="26"
+				y="50"
+				width="38"
+				height="33"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.9"
+			/>
+			<line
+				x1="45"
+				y1="50"
+				x2="45"
+				y2="83"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<line
+				x1="26"
+				y1="66"
+				x2="64"
+				y2="66"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<rect
+				x="70"
+				y="59"
+				width="26"
+				height="24"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.7"
+			/>
+			<line
+				x1="83"
+				y1="59"
+				x2="83"
+				y2="83"
+				stroke="white"
+				strokeWidth="0.6"
+				opacity="0.2"
+			/>
+			<rect
+				x="100"
+				y="44"
+				width="20"
+				height="39"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.55"
+			/>
 
-			<rect x="26"  y="111" width="30" height="35" rx="4" fill="var(--dashboard-accent)" opacity="0.65" />
-			<line x1="41"  y1="111" x2="41"  y2="146" stroke="white" strokeWidth="0.8" opacity="0.2" />
-			<rect x="62"  y="118" width="24" height="28" rx="3" fill="var(--dashboard-accent)" opacity="0.85" />
-			<rect x="91"  y="113" width="30" height="33" rx="3" fill="var(--dashboard-accent)" opacity="0.5" />
-			<line x1="106" y1="113" x2="106" y2="146" stroke="white" strokeWidth="0.6" opacity="0.2" />
+			<rect
+				x="26"
+				y="111"
+				width="30"
+				height="35"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.65"
+			/>
+			<line
+				x1="41"
+				y1="111"
+				x2="41"
+				y2="146"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.2"
+			/>
+			<rect
+				x="62"
+				y="118"
+				width="24"
+				height="28"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.85"
+			/>
+			<rect
+				x="91"
+				y="113"
+				width="30"
+				height="33"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.5"
+			/>
+			<line
+				x1="106"
+				y1="113"
+				x2="106"
+				y2="146"
+				stroke="white"
+				strokeWidth="0.6"
+				opacity="0.2"
+			/>
 
-			<rect x="26"  y="170" width="44" height="38" rx="4" fill="var(--dashboard-accent)" opacity="0.75" />
-			<line x1="48"  y1="170" x2="48"  y2="208" stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<line x1="26"  y1="189" x2="70"  y2="189" stroke="white" strokeWidth="0.8" opacity="0.2" />
-			<rect x="76"  y="177" width="28" height="31" rx="3" fill="var(--dashboard-accent)" opacity="0.55" />
-			<rect x="109" y="174" width="14" height="34" rx="3" fill="var(--dashboard-accent)" opacity="0.4" />
+			<rect
+				x="26"
+				y="170"
+				width="44"
+				height="38"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.75"
+			/>
+			<line
+				x1="48"
+				y1="170"
+				x2="48"
+				y2="208"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<line
+				x1="26"
+				y1="189"
+				x2="70"
+				y2="189"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.2"
+			/>
+			<rect
+				x="76"
+				y="177"
+				width="28"
+				height="31"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.55"
+			/>
+			<rect
+				x="109"
+				y="174"
+				width="14"
+				height="34"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.4"
+			/>
 
 			{/* ══════════════════════════════════
 			    RIGHT SHELF UNIT
 			══════════════════════════════════ */}
-			<rect x="185" y="30" width="7" height="162" rx="3.5" fill="currentColor" opacity="0.55" />
-			<rect x="297" y="30" width="7" height="162" rx="3.5" fill="currentColor" opacity="0.55" />
+			<rect
+				x="185"
+				y="30"
+				width="7"
+				height="162"
+				rx="3.5"
+				fill="currentColor"
+				opacity="0.55"
+			/>
+			<rect
+				x="297"
+				y="30"
+				width="7"
+				height="162"
+				rx="3.5"
+				fill="currentColor"
+				opacity="0.55"
+			/>
 
-			<line x1="192" y1="35" x2="297" y2="100" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
-			<line x1="192" y1="100" x2="297" y2="35" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
+			<line
+				x1="192"
+				y1="35"
+				x2="297"
+				y2="100"
+				stroke="currentColor"
+				strokeWidth="1.5"
+				opacity="0.2"
+			/>
+			<line
+				x1="192"
+				y1="100"
+				x2="297"
+				y2="35"
+				stroke="currentColor"
+				strokeWidth="1.5"
+				opacity="0.2"
+			/>
 
-			<rect x="185" y="85"  width="119" height="6" rx="3" fill="currentColor" opacity="0.7" />
-			<rect x="185" y="148" width="119" height="6" rx="3" fill="currentColor" opacity="0.7" />
-			<rect x="185" y="210" width="119" height="6" rx="3" fill="currentColor" opacity="0.5" />
+			<rect
+				x="185"
+				y="85"
+				width="119"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<rect
+				x="185"
+				y="148"
+				width="119"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.7"
+			/>
+			<rect
+				x="185"
+				y="210"
+				width="119"
+				height="6"
+				rx="3"
+				fill="currentColor"
+				opacity="0.5"
+			/>
 
-			<rect x="193" y="46" width="46" height="37" rx="4" fill="var(--dashboard-accent)" opacity="0.8" />
-			<line x1="216" y1="46" x2="216" y2="83"  stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<line x1="193" y1="64" x2="239" y2="64"  stroke="white" strokeWidth="0.8" opacity="0.2" />
-			<rect x="244" y="55" width="28" height="28" rx="3" fill="var(--dashboard-accent)" opacity="0.6" />
-			<rect x="277" y="50" width="18" height="33" rx="3" fill="var(--dashboard-accent)" opacity="0.45" />
+			<rect
+				x="193"
+				y="46"
+				width="46"
+				height="37"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.8"
+			/>
+			<line
+				x1="216"
+				y1="46"
+				x2="216"
+				y2="83"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<line
+				x1="193"
+				y1="64"
+				x2="239"
+				y2="64"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.2"
+			/>
+			<rect
+				x="244"
+				y="55"
+				width="28"
+				height="28"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.6"
+			/>
+			<rect
+				x="277"
+				y="50"
+				width="18"
+				height="33"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.45"
+			/>
 
-			<rect x="193" y="109" width="32" height="37" rx="4" fill="var(--dashboard-accent)" opacity="0.55" />
-			<rect x="231" y="115" width="40" height="31" rx="3" fill="var(--dashboard-accent)" opacity="0.85" />
-			<line x1="251" y1="115" x2="251" y2="146" stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<line x1="231" y1="130" x2="271" y2="130" stroke="white" strokeWidth="0.8" opacity="0.2" />
-			<rect x="277" y="112" width="18" height="34" rx="3" fill="var(--dashboard-accent)" opacity="0.65" />
+			<rect
+				x="193"
+				y="109"
+				width="32"
+				height="37"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.55"
+			/>
+			<rect
+				x="231"
+				y="115"
+				width="40"
+				height="31"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.85"
+			/>
+			<line
+				x1="251"
+				y1="115"
+				x2="251"
+				y2="146"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<line
+				x1="231"
+				y1="130"
+				x2="271"
+				y2="130"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.2"
+			/>
+			<rect
+				x="277"
+				y="112"
+				width="18"
+				height="34"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.65"
+			/>
 
-			<rect x="193" y="172" width="50" height="36" rx="4" fill="var(--dashboard-accent)" opacity="0.7" />
-			<line x1="218" y1="172" x2="218" y2="208" stroke="white" strokeWidth="0.8" opacity="0.25" />
-			<line x1="193" y1="190" x2="243" y2="190" stroke="white" strokeWidth="0.8" opacity="0.2" />
-			<rect x="250" y="178" width="28" height="30" rx="3" fill="var(--dashboard-accent)" opacity="0.5" />
-			<rect x="283" y="175" width="16" height="33" rx="3" fill="var(--dashboard-accent)" opacity="0.8" />
+			<rect
+				x="193"
+				y="172"
+				width="50"
+				height="36"
+				rx="4"
+				fill="var(--dashboard-accent)"
+				opacity="0.7"
+			/>
+			<line
+				x1="218"
+				y1="172"
+				x2="218"
+				y2="208"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.25"
+			/>
+			<line
+				x1="193"
+				y1="190"
+				x2="243"
+				y2="190"
+				stroke="white"
+				strokeWidth="0.8"
+				opacity="0.2"
+			/>
+			<rect
+				x="250"
+				y="178"
+				width="28"
+				height="30"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.5"
+			/>
+			<rect
+				x="283"
+				y="175"
+				width="16"
+				height="33"
+				rx="3"
+				fill="var(--dashboard-accent)"
+				opacity="0.8"
+			/>
 
 			{/* ── Pallet jack ── */}
-			<rect x="148" y="155" width="5" height="50" rx="2.5" fill="currentColor" opacity="0.4" />
-			<rect x="143" y="152" width="14" height="5" rx="2.5" fill="currentColor" opacity="0.4" />
-			<rect x="136" y="198" width="28" height="10" rx="3" fill="currentColor" opacity="0.35" />
-			<rect x="134" y="205" width="6"  height="20" rx="2" fill="currentColor" opacity="0.4" />
-			<rect x="158" y="205" width="6"  height="20" rx="2" fill="currentColor" opacity="0.4" />
+			<rect
+				x="148"
+				y="155"
+				width="5"
+				height="50"
+				rx="2.5"
+				fill="currentColor"
+				opacity="0.4"
+			/>
+			<rect
+				x="143"
+				y="152"
+				width="14"
+				height="5"
+				rx="2.5"
+				fill="currentColor"
+				opacity="0.4"
+			/>
+			<rect
+				x="136"
+				y="198"
+				width="28"
+				height="10"
+				rx="3"
+				fill="currentColor"
+				opacity="0.35"
+			/>
+			<rect
+				x="134"
+				y="205"
+				width="6"
+				height="20"
+				rx="2"
+				fill="currentColor"
+				opacity="0.4"
+			/>
+			<rect
+				x="158"
+				y="205"
+				width="6"
+				height="20"
+				rx="2"
+				fill="currentColor"
+				opacity="0.4"
+			/>
 			<circle cx="136" cy="224" r="4" fill="currentColor" opacity="0.5" />
 			<circle cx="163" cy="224" r="4" fill="currentColor" opacity="0.5" />
 		</svg>
@@ -200,7 +600,8 @@ function RouteComponent() {
 				aria-hidden="true"
 				className="hidden lg:flex lg:w-[460px] xl:w-[500px] flex-col justify-between overflow-hidden relative"
 				style={{
-					borderRight: "1px solid oklch(from var(--dashboard-accent) l c h / 0.12)",
+					borderRight:
+						"1px solid oklch(from var(--dashboard-accent) l c h / 0.12)",
 					background: `
 						linear-gradient(
 							160deg,
@@ -227,7 +628,8 @@ function RouteComponent() {
 							className="flex h-9 w-9 items-center justify-center rounded-lg"
 							style={{
 								background: "oklch(from var(--dashboard-accent) l c h / 0.15)",
-								border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.3)",
+								border:
+									"1px solid oklch(from var(--dashboard-accent) l c h / 0.3)",
 							}}
 						>
 							<Package
@@ -285,27 +687,31 @@ function RouteComponent() {
 								className="text-[14px] leading-relaxed"
 								style={{ color: "oklch(from var(--foreground) l c h / 0.5)" }}
 							>
-								Receive goods, send deliveries, and track your stock —
-								all in one simple place.
+								Receive goods, send deliveries, and track your stock — all in
+								one simple place.
 							</p>
 						</div>
 
 						<ul className="flex flex-col gap-2.5">
 							{[
-								{ icon: Boxes,         label: "Stock & inventory tracking" },
+								{ icon: Boxes, label: "Stock & inventory tracking" },
 								{ icon: ClipboardList, label: "Orders & delivery notes" },
-								{ icon: Truck,         label: "Delivery scheduling & POD" },
+								{ icon: Truck, label: "Delivery scheduling & POD" },
 							].map(({ icon: Icon, label }) => (
 								<li
 									key={label}
 									className="flex items-center gap-3 text-[13px]"
-									style={{ color: "oklch(from var(--foreground) l c h / 0.55)" }}
+									style={{
+										color: "oklch(from var(--foreground) l c h / 0.55)",
+									}}
 								>
 									<span
 										className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
 										style={{
-											background: "oklch(from var(--dashboard-accent) l c h / 0.1)",
-											border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.2)",
+											background:
+												"oklch(from var(--dashboard-accent) l c h / 0.1)",
+											border:
+												"1px solid oklch(from var(--dashboard-accent) l c h / 0.2)",
 										}}
 									>
 										<Icon
@@ -341,7 +747,8 @@ function RouteComponent() {
 						className="flex h-9 w-9 items-center justify-center rounded-lg"
 						style={{
 							background: "oklch(from var(--dashboard-accent) l c h / 0.15)",
-							border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.3)",
+							border:
+								"1px solid oklch(from var(--dashboard-accent) l c h / 0.3)",
 						}}
 					>
 						<Package
@@ -376,8 +783,10 @@ function RouteComponent() {
 								<span
 									className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold tracking-widest uppercase"
 									style={{
-										background: "oklch(from var(--dashboard-accent) l c h / 0.12)",
-										border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.25)",
+										background:
+											"oklch(from var(--dashboard-accent) l c h / 0.12)",
+										border:
+											"1px solid oklch(from var(--dashboard-accent) l c h / 0.25)",
 										color: "var(--dashboard-accent)",
 									}}
 								>
@@ -406,7 +815,8 @@ function RouteComponent() {
 								className="relative overflow-hidden rounded-2xl p-6 shadow-lg space-y-5"
 								style={{
 									background: "var(--card)",
-									border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.15)",
+									border:
+										"1px solid oklch(from var(--dashboard-accent) l c h / 0.15)",
 								}}
 							>
 								{/* Top highlight stripe */}
@@ -422,8 +832,10 @@ function RouteComponent() {
 								<div
 									className="flex items-start gap-3 rounded-xl px-4 py-3.5"
 									style={{
-										background: "oklch(from var(--dashboard-accent) l c h / 0.08)",
-										border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.2)",
+										background:
+											"oklch(from var(--dashboard-accent) l c h / 0.08)",
+										border:
+											"1px solid oklch(from var(--dashboard-accent) l c h / 0.2)",
 									}}
 								>
 									<CircleCheck
@@ -468,8 +880,10 @@ function RouteComponent() {
 								<span
 									className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold tracking-widest uppercase"
 									style={{
-										background: "oklch(from var(--dashboard-accent) l c h / 0.12)",
-										border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.25)",
+										background:
+											"oklch(from var(--dashboard-accent) l c h / 0.12)",
+										border:
+											"1px solid oklch(from var(--dashboard-accent) l c h / 0.25)",
 										color: "var(--dashboard-accent)",
 									}}
 								>
@@ -506,7 +920,8 @@ function RouteComponent() {
 								className="relative overflow-hidden rounded-2xl p-6 shadow-lg"
 								style={{
 									background: "var(--card)",
-									border: "1px solid oklch(from var(--dashboard-accent) l c h / 0.15)",
+									border:
+										"1px solid oklch(from var(--dashboard-accent) l c h / 0.15)",
 								}}
 							>
 								{/* Top highlight stripe */}
@@ -531,8 +946,7 @@ function RouteComponent() {
 										<form.Field name="email">
 											{(field) => {
 												const isInvalid =
-													field.state.meta.isDirty &&
-													!field.state.meta.isValid;
+													field.state.meta.isDirty && !field.state.meta.isValid;
 												const errorId = `${field.name}-error`;
 												return (
 													<Field data-invalid={isInvalid}>
@@ -547,7 +961,8 @@ function RouteComponent() {
 																<Mail
 																	className="h-4 w-4"
 																	style={{
-																		color: "oklch(from var(--foreground) l c h / 0.4)",
+																		color:
+																			"oklch(from var(--foreground) l c h / 0.4)",
 																	}}
 																/>
 															</InputGroupAddon>
@@ -604,10 +1019,7 @@ function RouteComponent() {
 									</div>
 
 									<form.Subscribe
-										selector={(state) => [
-											state.isSubmitting,
-											state.canSubmit,
-										]}
+										selector={(state) => [state.isSubmitting, state.canSubmit]}
 									>
 										{([isSubmitting, canSubmit]) => (
 											<Button

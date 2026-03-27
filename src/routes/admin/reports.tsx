@@ -30,8 +30,6 @@ import {
 import {
 	Download,
 	BarChart3,
-	Package,
-	Truck,
 	ArrowRightLeft,
 	Receipt,
 	HelpCircle,
@@ -60,7 +58,7 @@ export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
 });
 
-type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
+type ReportType = "Movement" | "InvoiceSummary";
 type ExportFormat = "PDF" | "Excel";
 
 type ReportFormValues = {
@@ -79,39 +77,18 @@ const reportTypes: {
 	index: string;
 }[] = [
 	{
-		value: "GRN",
-		label: "GRN Reports",
-		shortLabel: "Goods Receipt",
-		icon: Package,
-		index: "01",
-	},
-	{
-		value: "DO",
-		label: "DO Reports",
-		shortLabel: "Delivery Order",
-		icon: Truck,
-		index: "02",
-	},
-	{
-		value: "Inventory",
-		label: "Inventory Reports",
-		shortLabel: "Inventory",
-		icon: BarChart3,
-		index: "03",
-	},
-	{
 		value: "Movement",
 		label: "Movement Reports",
 		shortLabel: "Movement",
 		icon: ArrowRightLeft,
-		index: "04",
+		index: "01",
 	},
 	{
 		value: "InvoiceSummary",
-		label: "Invoices Summary",
+		label: "Proforma Invoice Summary",
 		shortLabel: "Inv. Summary",
 		icon: Receipt,
-		index: "05",
+		index: "02",
 	},
 ];
 
@@ -139,10 +116,9 @@ const REPORTS_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-2.png`,
 		description: (
 			<>
-				<strong>GRN</strong>, <strong>DO</strong>, <strong>Inventory</strong>,{" "}
-				<strong>Movement</strong>, and <strong>Invoices Summary</strong>.
-				Movement and Invoices Summary (PDF) require a region and date range;
-				others can use optional filters.
+				Available reports: <strong>Movement</strong> and{" "}
+				<strong>Proforma Invoice Summary</strong>. Both require a region and
+				date range when exporting as PDF.
 			</>
 		),
 	},
@@ -336,10 +312,15 @@ function ReportsComponent() {
 							))}
 						</div>
 						<div className="text-center space-y-1">
-							<p className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--dashboard-display)" }}>
+							<p
+								className="text-sm font-semibold text-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
 								Generating report…
 							</p>
-							<p className="text-xs text-muted-foreground">This may take a moment</p>
+							<p className="text-xs text-muted-foreground">
+								This may take a moment
+							</p>
 						</div>
 					</div>
 				</div>
@@ -432,7 +413,8 @@ function ReportsComponent() {
 								style={{ background: "var(--dashboard-accent)" }}
 								aria-hidden
 							>
-								{String(helpStep + 1).padStart(2, "0")} / {REPORTS_HELP_STEPS.length}
+								{String(helpStep + 1).padStart(2, "0")} /{" "}
+								{REPORTS_HELP_STEPS.length}
 							</span>
 						</div>
 
@@ -452,7 +434,11 @@ function ReportsComponent() {
 						{/* Navigation */}
 						<div className="flex items-center justify-between gap-4 pt-1">
 							{/* Step dots */}
-							<div className="flex gap-1.5" role="tablist" aria-label="Help steps">
+							<div
+								className="flex gap-1.5"
+								role="tablist"
+								aria-label="Help steps"
+							>
 								{REPORTS_HELP_STEPS.map((_, i) => (
 									<button
 										type="button"
@@ -464,8 +450,15 @@ function ReportsComponent() {
 										className="h-2 rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 										style={
 											i === helpStep
-												? { width: "1.5rem", background: "var(--dashboard-accent)" }
-												: { width: "0.5rem", background: "var(--muted-foreground)", opacity: 0.3 }
+												? {
+														width: "1.5rem",
+														background: "var(--dashboard-accent)",
+													}
+												: {
+														width: "0.5rem",
+														background: "var(--muted-foreground)",
+														opacity: 0.3,
+													}
 										}
 									/>
 								))}
@@ -490,7 +483,10 @@ function ReportsComponent() {
 										onClick={() => setHelpStep((s) => s + 1)}
 										aria-label="Next help step"
 										className="text-white"
-										style={{ background: "var(--dashboard-accent)", borderColor: "var(--dashboard-accent)" }}
+										style={{
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+										}}
 									>
 										Next
 										<ChevronRight className="h-4 w-4 ml-0.5" aria-hidden />
@@ -501,7 +497,10 @@ function ReportsComponent() {
 										onClick={() => setIsHelpOpen(false)}
 										aria-label="Close help"
 										className="text-white"
-										style={{ background: "var(--dashboard-accent)", borderColor: "var(--dashboard-accent)" }}
+										style={{
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+										}}
 									>
 										Got it
 									</Button>
@@ -538,7 +537,7 @@ function ReportsComponent() {
 							<form.Field name="selectedReport">
 								{(field) => (
 									<Field
-										className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+										className="grid grid-cols-2 gap-3"
 										role="group"
 										aria-labelledby="report-type-label"
 									>
@@ -566,9 +565,7 @@ function ReportsComponent() {
 															{report.index}
 														</span>
 														{/* Icon box */}
-														<span
-															className="report-icon-box flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors"
-														>
+														<span className="report-icon-box flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors">
 															<Icon className="h-5 w-5" aria-hidden />
 														</span>
 														{/* Label */}
@@ -749,7 +746,9 @@ function ReportsComponent() {
 											selectedReport === "Movement" ||
 											selectedReport === "InvoiceSummary";
 										const missingRequiredRegion =
-											format === "PDF" && needsRegionAndDateRange && !regionId?.trim();
+											format === "PDF" &&
+											needsRegionAndDateRange &&
+											!regionId?.trim();
 										const missingRequiredDateRange =
 											format === "PDF" &&
 											needsRegionAndDateRange &&
@@ -769,17 +768,22 @@ function ReportsComponent() {
 														<span>Select a report type above to continue.</span>
 													) : missingRequiredRegion ? (
 														<span className="text-amber-600 dark:text-amber-400 font-medium">
-															Region required for {selectedMeta?.label ?? "this report"} (PDF).
+															Region required for{" "}
+															{selectedMeta?.label ?? "this report"} (PDF).
 														</span>
 													) : missingRequiredDateRange ? (
 														<span className="text-amber-600 dark:text-amber-400 font-medium">
-															Date range (From and To) required for {selectedMeta?.label ?? "this report"} (PDF).
+															Date range (From and To) required for{" "}
+															{selectedMeta?.label ?? "this report"} (PDF).
 														</span>
 													) : (
 														<span>
 															Ready to generate{" "}
 															<strong>{selectedMeta?.label}</strong> as{" "}
-															<strong>{format === "Excel" ? "Excel (XLSX)" : format}</strong>.
+															<strong>
+																{format === "Excel" ? "Excel (XLSX)" : format}
+															</strong>
+															.
 														</span>
 													)}
 												</p>

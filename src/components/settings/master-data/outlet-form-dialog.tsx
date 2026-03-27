@@ -69,21 +69,55 @@ export function OutletFormDialog({
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50">
-					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
-					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						{title}
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
+						{description}
+					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="outlet-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
-						<Input id="outlet-code" value={outletCode} onChange={(e) => setOutletCode(e.target.value)} placeholder="e.g. OUT001" className="rounded-lg border-muted-foreground/20" />
+						<Label
+							htmlFor="outlet-code"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Code
+						</Label>
+						<Input
+							id="outlet-code"
+							value={outletCode}
+							onChange={(e) => setOutletCode(e.target.value)}
+							placeholder="e.g. OUT001"
+							className="rounded-lg border-muted-foreground/20"
+						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="outlet-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
-						<Input id="outlet-name" value={outletName} onChange={(e) => setOutletName(e.target.value)} placeholder="Outlet name" className="rounded-lg border-muted-foreground/20" />
+						<Label
+							htmlFor="outlet-name"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Name
+						</Label>
+						<Input
+							id="outlet-name"
+							value={outletName}
+							onChange={(e) => setOutletName(e.target.value)}
+							placeholder="Outlet name"
+							className="rounded-lg border-muted-foreground/20"
+						/>
 					</div>
 					<div className="grid gap-2">
-						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>Region (optional)</Label>
-						<Select value={regionId || "none"} onValueChange={(v) => setRegionId(v === "none" ? "" : v)}>
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+							Region (optional)
+						</Label>
+						<Select
+							value={regionId || "none"}
+							onValueChange={(v) => setRegionId(v === "none" ? "" : v)}
+						>
 							<SelectTrigger className="rounded-lg border-muted-foreground/20">
 								<SelectValue placeholder="Unassigned" />
 							</SelectTrigger>
@@ -99,10 +133,22 @@ export function OutletFormDialog({
 					</div>
 				</div>
 				<DialogFooter className="border-t bg-muted/20">
-					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">Cancel</Button>
+					<Button
+						variant="outline"
+						onClick={() => handleOpenChange(false)}
+						className="rounded-lg"
+					>
+						Cancel
+					</Button>
 					<Button
 						disabled={!outletName.trim() || !outletCode.trim() || loading}
-						onClick={() => onSubmit({ outletName: outletName.trim(), outletCode: outletCode.trim(), regionId: regionId || undefined })}
+						onClick={() =>
+							onSubmit({
+								outletName: outletName.trim(),
+								outletCode: outletCode.trim(),
+								regionId: regionId || undefined,
+							})
+						}
 						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
 					>
 						{loading ? "Saving..." : "Save"}

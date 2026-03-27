@@ -31,7 +31,10 @@ import {
 	type AllocatePickListMutationVariables,
 	type AllocatePickListMutationData,
 } from "@/lib/graphql/delivery-orders";
-import type { DeliveryOrderItemWithDetails, DoItemAllocation } from "@/lib/graphql/types";
+import type {
+	DeliveryOrderItemWithDetails,
+	DoItemAllocation,
+} from "@/lib/graphql/types";
 import { formatDate } from "@/lib/utils";
 import { useProfile } from "@/lib/auth/use-profile";
 
@@ -55,7 +58,6 @@ function formatQty(qty: string | number | null | undefined): string {
 	if (Number.isNaN(num)) return "0";
 	return Number.isInteger(num) ? String(num) : num.toFixed(2);
 }
-
 
 function getStatusBadgeVariant(
 	status: string | null | undefined,
@@ -184,10 +186,7 @@ function EmpireSushiDOComponent() {
 		AllocatePickListMutationVariables
 	>(ALLOCATE_PICK_LIST_MUTATION);
 
-	const allItems = useMemo(
-		() => data?.deliveryOrderItems?.query ?? [],
-		[data],
-	);
+	const allItems = useMemo(() => data?.deliveryOrderItems?.query ?? [], [data]);
 
 	/** Items grouped by DO (filtering is done by GraphQL query). */
 	const groups = useMemo<DOGroup[]>(() => {
@@ -238,16 +237,20 @@ function EmpireSushiDOComponent() {
 				// Check now (before any awaits) whether this is the last item to pick
 				const allDOItemsPicked = doItems.every(
 					(i) =>
-						Number(i.qtyPicked ?? 0) > 0 || optimisticPickedRef.current.has(i.id),
+						Number(i.qtyPicked ?? 0) > 0 ||
+						optimisticPickedRef.current.has(i.id),
 				);
 
-				const isFirstPick = !anyAlreadyPicked && !allocatedDOs.current.has(doId);
+				const isFirstPick =
+					!anyAlreadyPicked && !allocatedDOs.current.has(doId);
 				if (isFirstPick) {
 					allocatedDOs.current.add(doId);
 					if (allDOItemsPicked) {
 						// Single-item DO: must await so DO is in PICKING before we advance to PACKING
 						try {
-							await allocatePickListMutation({ variables: { deliveryOrderId: doId } });
+							await allocatePickListMutation({
+								variables: { deliveryOrderId: doId },
+							});
 						} catch {
 							/* non-fatal — allocation guidance only */
 						}
@@ -503,8 +506,7 @@ function EmpireSushiDOComponent() {
 									</TableRow>
 								) : (
 									groups.flatMap((group) => {
-										const pickedCount =
-											group.items.filter(isItemPicked).length;
+										const pickedCount = group.items.filter(isItemPicked).length;
 										const totalCount = group.items.length;
 										const allPicked = pickedCount === totalCount;
 
@@ -541,11 +543,16 @@ function EmpireSushiDOComponent() {
 																size="sm"
 																variant="secondary"
 																onClick={() => handleBulkPickAll(group)}
-																disabled={bulkPickingDOs.has(group.doId) || !canApprove}
+																disabled={
+																	bulkPickingDOs.has(group.doId) || !canApprove
+																}
 																className="ml-auto text-xs h-7"
 															>
 																{bulkPickingDOs.has(group.doId) ? (
-																	<Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden />
+																	<Loader2
+																		className="h-3 w-3 animate-spin mr-1"
+																		aria-hidden
+																	/>
 																) : null}
 																Mark all as Picked
 															</Button>
@@ -554,12 +561,19 @@ function EmpireSushiDOComponent() {
 															<Button
 																size="sm"
 																variant="default"
-																onClick={() => handleAdvanceToShipped(group.doId)}
-																disabled={advancingDOs.has(group.doId) || !canApprove}
+																onClick={() =>
+																	handleAdvanceToShipped(group.doId)
+																}
+																disabled={
+																	advancingDOs.has(group.doId) || !canApprove
+																}
 																className="ml-auto text-xs h-7"
 															>
 																{advancingDOs.has(group.doId) ? (
-																	<Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden />
+																	<Loader2
+																		className="h-3 w-3 animate-spin mr-1"
+																		aria-hidden
+																	/>
 																) : null}
 																Mark as Shipped
 															</Button>
@@ -592,9 +606,7 @@ function EmpireSushiDOComponent() {
 															<div className="truncate text-sm">
 																{item.skuDescription ?? "—"}
 															</div>
-															<AllocationGuide
-																allocations={item.allocations}
-															/>
+															<AllocationGuide allocations={item.allocations} />
 														</TableCell>
 														<TableCell className="font-mono text-xs text-muted-foreground">
 															{item.purchaseOrderNo}

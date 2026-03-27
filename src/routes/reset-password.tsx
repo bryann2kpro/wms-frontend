@@ -201,8 +201,7 @@ function RouteComponent() {
 										<form.Field name="password">
 											{(field) => {
 												const isInvalid =
-													field.state.meta.isDirty &&
-													!field.state.meta.isValid;
+													field.state.meta.isDirty && !field.state.meta.isValid;
 												const errorId = `${field.name}-error`;
 												return (
 													<Field data-invalid={isInvalid}>
@@ -234,9 +233,7 @@ function RouteComponent() {
 															<InputGroupAddon align="inline-end">
 																<InputGroupButton
 																	type="button"
-																	onClick={() =>
-																		setShowPassword(!showPassword)
-																	}
+																	onClick={() => setShowPassword(!showPassword)}
 																	aria-label={
 																		showPassword
 																			? "Hide password"
@@ -269,8 +266,7 @@ function RouteComponent() {
 										<form.Field name="confirmPassword">
 											{(field) => {
 												const isInvalid =
-													field.state.meta.isDirty &&
-													!field.state.meta.isValid;
+													field.state.meta.isDirty && !field.state.meta.isValid;
 												const errorId = `${field.name}-error`;
 												return (
 													<Field data-invalid={isInvalid}>

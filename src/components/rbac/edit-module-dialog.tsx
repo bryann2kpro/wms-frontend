@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -48,13 +48,13 @@ function EditModuleDialog({
 		Record<string, string>
 	>({});
 
-	// Update form when module changes
-	useState(() => {
-		if (module) {
-			setModuleName(module.moduleName);
-			setStatus(module.status);
-		}
-	});
+	// Update form when selected module changes
+	useEffect(() => {
+		if (!module) return;
+		setModuleName(module.moduleName);
+		setStatus(module.status);
+		setValidationErrors({});
+	}, [module]);
 
 	// Reset form when dialog opens with a module
 	const handleOpenChange = (newOpen: boolean) => {
@@ -65,12 +65,6 @@ function EditModuleDialog({
 		}
 		onOpenChange(newOpen);
 	};
-
-	// Also reset when module changes while dialog is open
-	if (open && module && moduleName !== module.moduleName && !isSubmitting) {
-		setModuleName(module.moduleName);
-		setStatus(module.status);
-	}
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();

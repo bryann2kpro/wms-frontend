@@ -13,8 +13,8 @@ function ForbiddenComponent() {
 			<div className="space-y-2">
 				<h1 className="text-3xl font-bold tracking-tight">Access Denied</h1>
 				<p className="text-muted-foreground max-w-sm">
-					You don't have permission to view this page. Contact your administrator
-					if you believe this is a mistake.
+					You don't have permission to view this page. Contact your
+					administrator if you believe this is a mistake.
 				</p>
 			</div>
 			<Button asChild>

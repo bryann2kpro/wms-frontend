@@ -64,7 +64,6 @@ const NavLinkSchema: z.ZodType<NavLinkSchemaType[]> = z.array(
 
 export { NavLinkSchema, type NavLinkSchemaType };
 
-
 /**
  * Sidebar navigation: each item has a group. Groups are rendered in SIDEBAR_GROUP_ORDER
  * with labels from SIDEBAR_GROUP_LABELS (Overview, Inbound, Outbound, Work Queues, etc.).

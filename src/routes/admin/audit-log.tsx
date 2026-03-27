@@ -287,37 +287,37 @@ function RouteComponent() {
 									<SelectTrigger className="w-[180px] rounded-lg border-muted-foreground/20">
 										<SelectValue placeholder="All Actions" />
 									</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Actions</SelectItem>
-									{uniqueActions.map((action) => (
-										<SelectItem key={action} value={action}>
-											{action}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Select
-								value={selectedEntity}
-								onValueChange={(value) => {
-									setSelectedEntity(value);
-									setCurrentPage(1);
-								}}
-							>
-								<SelectTrigger className="w-[180px] rounded-lg border-muted-foreground/20">
-									<SelectValue placeholder="All Entities" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Entities</SelectItem>
-									{uniqueEntities.map((entity) => (
-										<SelectItem key={entity} value={entity}>
-											{entity}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+									<SelectContent>
+										<SelectItem value="all">All Actions</SelectItem>
+										{uniqueActions.map((action) => (
+											<SelectItem key={action} value={action}>
+												{action}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<Select
+									value={selectedEntity}
+									onValueChange={(value) => {
+										setSelectedEntity(value);
+										setCurrentPage(1);
+									}}
+								>
+									<SelectTrigger className="w-[180px] rounded-lg border-muted-foreground/20">
+										<SelectValue placeholder="All Entities" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All Entities</SelectItem>
+										{uniqueEntities.map((entity) => (
+											<SelectItem key={entity} value={entity}>
+												{entity}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
-					</div>
-				</CardHeader>
+					</CardHeader>
 					<CardContent className="px-0 pb-6">
 						<div className="overflow-x-auto rounded-lg border mx-6">
 							<Table>
@@ -358,18 +358,20 @@ function RouteComponent() {
 												className="cursor-pointer transition-colors hover:bg-muted/50"
 												onClick={() => handleViewDetail(log)}
 											>
-												<TableCell className="px-6">{formatDate(log.createdAt)}</TableCell>
 												<TableCell className="px-6">
-												<div className="flex flex-col">
-													<span className="font-medium">
-														{log.userName || truncateId(log.userId)}
-													</span>
-													{log.role && (
-														<span className="text-xs text-muted-foreground">
-															{log.role}
+													{formatDate(log.createdAt)}
+												</TableCell>
+												<TableCell className="px-6">
+													<div className="flex flex-col">
+														<span className="font-medium">
+															{log.userName || truncateId(log.userId)}
 														</span>
-													)}
-												</div>
+														{log.role && (
+															<span className="text-xs text-muted-foreground">
+																{log.role}
+															</span>
+														)}
+													</div>
 												</TableCell>
 												<TableCell className="px-6">
 													<Badge
@@ -497,205 +499,240 @@ function RouteComponent() {
 										</Badge>
 									</div>
 								</DialogHeader>
-							<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-								<div className="space-y-6">
-									{/* Summary Cards */}
-									<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-										<Card className="rounded-xl">
-											<CardContent className="pt-6">
-												<div className="flex items-center gap-2 mb-2">
-													<Clock className="h-4 w-4 text-muted-foreground" />
-													<span className="text-xs text-muted-foreground uppercase" style={{ fontFamily: "var(--dashboard-body)" }}>
-														Timestamp
-													</span>
-												</div>
-												<p className="text-lg font-semibold" style={{ fontFamily: "var(--dashboard-display)" }}>
-													{formatDate(selectedLog.createdAt)}
-												</p>
-											</CardContent>
-										</Card>
-										<Card className="rounded-xl">
-											<CardContent className="pt-6">
-												<div className="flex items-center gap-2 mb-2">
-													<UserIcon className="h-4 w-4 text-muted-foreground" />
-													<span className="text-xs text-muted-foreground uppercase" style={{ fontFamily: "var(--dashboard-body)" }}>
-														User
-													</span>
-												</div>
-												<p className="text-lg font-semibold" style={{ fontFamily: "var(--dashboard-display)" }}>
-													{selectedLog.userName ||
-														truncateId(selectedLog.userId)}
-												</p>
-												{selectedLog.role && (
-													<p className="text-sm text-muted-foreground mt-1" style={{ fontFamily: "var(--dashboard-body)" }}>
-														{selectedLog.role}
+								<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
+									<div className="space-y-6">
+										{/* Summary Cards */}
+										<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+											<Card className="rounded-xl">
+												<CardContent className="pt-6">
+													<div className="flex items-center gap-2 mb-2">
+														<Clock className="h-4 w-4 text-muted-foreground" />
+														<span
+															className="text-xs text-muted-foreground uppercase"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															Timestamp
+														</span>
+													</div>
+													<p
+														className="text-lg font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														{formatDate(selectedLog.createdAt)}
 													</p>
-												)}
-											</CardContent>
-										</Card>
-										<Card className="rounded-xl">
-											<CardContent className="pt-6">
-												<div className="flex items-center gap-2 mb-2">
-													<Box className="h-4 w-4 text-muted-foreground" />
-													<span className="text-xs text-muted-foreground uppercase" style={{ fontFamily: "var(--dashboard-body)" }}>
-														Entity
-													</span>
-												</div>
-												<p className="text-lg font-semibold" style={{ fontFamily: "var(--dashboard-display)" }}>
-													{selectedLog.entity} ({selectedLog.entityId})
-												</p>
-											</CardContent>
-										</Card>
-										<Card className="rounded-xl">
-											<CardContent className="pt-6">
-												<div className="flex items-center gap-2 mb-2">
-													<Globe className="h-4 w-4 text-muted-foreground" />
-													<span className="text-xs text-muted-foreground uppercase" style={{ fontFamily: "var(--dashboard-body)" }}>
-														IP Address
-													</span>
-												</div>
-												<p className="text-lg font-semibold font-mono text-xs" style={{ fontFamily: "var(--dashboard-display)" }}>
-													{selectedLog.ipAddress}
-												</p>
-											</CardContent>
-										</Card>
-										<Card className="rounded-xl">
-											<CardContent className="pt-6">
-												<div className="flex items-center gap-2 mb-2">
-													<Monitor className="h-4 w-4 text-muted-foreground" />
-													<span className="text-xs text-muted-foreground uppercase" style={{ fontFamily: "var(--dashboard-body)" }}>
-														User Agent
-													</span>
-												</div>
-												<p
-													className="text-sm font-semibold truncate"
-													title={selectedLog.userAgent}
-													style={{ fontFamily: "var(--dashboard-body)" }}
-												>
-													{selectedLog.userAgent}
-												</p>
-											</CardContent>
-										</Card>
-									</div>
-
-									{/* Changes Table */}
-									<div>
-										<h3
-											className="text-lg font-semibold mb-4"
-											style={{ fontFamily: "var(--dashboard-display)" }}
-										>
-											Changes
-										</h3>
-										<div className="rounded-xl border overflow-x-auto">
-											<Table>
-												<TableHeader>
-													<TableRow className="hover:bg-transparent">
-														<TableHead className="px-6">Field</TableHead>
-														<TableHead className="px-6">Old Value</TableHead>
-														<TableHead className="px-6">New Value</TableHead>
-													</TableRow>
-												</TableHeader>
-												<TableBody>
-													{selectedLog.oldData && selectedLog.newData ? (
-														Object.keys({
-															...selectedLog.oldData,
-															...selectedLog.newData,
-														}).map((key) => {
-															const oldValue = selectedLog.oldData?.[key];
-															const newValue = selectedLog.newData?.[key];
-															const hasChanged =
-																JSON.stringify(oldValue) !==
-																JSON.stringify(newValue);
-
-															return (
-																<TableRow key={key} className="transition-colors hover:bg-muted/50">
-																	<TableCell className="px-6">
-																		<div className="flex items-center gap-2">
-																			{hasChanged && (
-																				<span className="h-2 w-2 rounded-full bg-orange-500" />
-																			)}
-																			<span className="font-medium">{key}</span>
-																		</div>
-																	</TableCell>
-																	<TableCell className="px-6 min-w-[200px] max-w-[300px]">
-																		{oldValue !== null &&
-																		oldValue !== undefined ? (
-																			<span
-																				className={
-																					hasChanged
-																						? "text-red-600 font-mono text-xs break-all"
-																						: "font-mono text-xs break-all"
-																				}
-																			>
-																				{typeof oldValue === "object"
-																					? JSON.stringify(oldValue, null, 2)
-																					: String(oldValue)}
-																			</span>
-																		) : (
-																			<span className="text-muted-foreground italic">
-																				null
-																			</span>
-																		)}
-																	</TableCell>
-																	<TableCell className="px-6 min-w-[200px] max-w-[300px]">
-																		{newValue !== null &&
-																		newValue !== undefined ? (
-																			<span
-																				className={
-																					hasChanged
-																						? "text-green-600 font-mono text-xs break-all"
-																						: "font-mono text-xs break-all"
-																				}
-																			>
-																				{typeof newValue === "object"
-																					? JSON.stringify(newValue, null, 2)
-																					: String(newValue)}
-																			</span>
-																		) : (
-																			<span className="text-muted-foreground italic">
-																				null
-																			</span>
-																		)}
-																	</TableCell>
-																</TableRow>
-															);
-														})
-													) : selectedLog.oldData ? (
-														<TableRow>
-															<TableCell
-																colSpan={3}
-																className="px-6 text-center text-muted-foreground"
-															>
-																Deleted entity data
-															</TableCell>
-														</TableRow>
-													) : selectedLog.newData ? (
-														<TableRow>
-															<TableCell
-																colSpan={3}
-																className="px-6 text-center text-muted-foreground"
-															>
-																Created entity data
-															</TableCell>
-														</TableRow>
-													) : (
-														<TableRow>
-															<TableCell
-																colSpan={3}
-																className="px-6 text-center text-muted-foreground"
-															>
-																No changes data available
-															</TableCell>
-														</TableRow>
+												</CardContent>
+											</Card>
+											<Card className="rounded-xl">
+												<CardContent className="pt-6">
+													<div className="flex items-center gap-2 mb-2">
+														<UserIcon className="h-4 w-4 text-muted-foreground" />
+														<span
+															className="text-xs text-muted-foreground uppercase"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															User
+														</span>
+													</div>
+													<p
+														className="text-lg font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														{selectedLog.userName ||
+															truncateId(selectedLog.userId)}
+													</p>
+													{selectedLog.role && (
+														<p
+															className="text-sm text-muted-foreground mt-1"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															{selectedLog.role}
+														</p>
 													)}
-												</TableBody>
-											</Table>
+												</CardContent>
+											</Card>
+											<Card className="rounded-xl">
+												<CardContent className="pt-6">
+													<div className="flex items-center gap-2 mb-2">
+														<Box className="h-4 w-4 text-muted-foreground" />
+														<span
+															className="text-xs text-muted-foreground uppercase"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															Entity
+														</span>
+													</div>
+													<p
+														className="text-lg font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														{selectedLog.entity} ({selectedLog.entityId})
+													</p>
+												</CardContent>
+											</Card>
+											<Card className="rounded-xl">
+												<CardContent className="pt-6">
+													<div className="flex items-center gap-2 mb-2">
+														<Globe className="h-4 w-4 text-muted-foreground" />
+														<span
+															className="text-xs text-muted-foreground uppercase"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															IP Address
+														</span>
+													</div>
+													<p
+														className="text-lg font-semibold font-mono text-xs"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														{selectedLog.ipAddress}
+													</p>
+												</CardContent>
+											</Card>
+											<Card className="rounded-xl">
+												<CardContent className="pt-6">
+													<div className="flex items-center gap-2 mb-2">
+														<Monitor className="h-4 w-4 text-muted-foreground" />
+														<span
+															className="text-xs text-muted-foreground uppercase"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															User Agent
+														</span>
+													</div>
+													<p
+														className="text-sm font-semibold truncate"
+														title={selectedLog.userAgent}
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
+														{selectedLog.userAgent}
+													</p>
+												</CardContent>
+											</Card>
+										</div>
+
+										{/* Changes Table */}
+										<div>
+											<h3
+												className="text-lg font-semibold mb-4"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												Changes
+											</h3>
+											<div className="rounded-xl border overflow-x-auto">
+												<Table>
+													<TableHeader>
+														<TableRow className="hover:bg-transparent">
+															<TableHead className="px-6">Field</TableHead>
+															<TableHead className="px-6">Old Value</TableHead>
+															<TableHead className="px-6">New Value</TableHead>
+														</TableRow>
+													</TableHeader>
+													<TableBody>
+														{selectedLog.oldData && selectedLog.newData ? (
+															Object.keys({
+																...selectedLog.oldData,
+																...selectedLog.newData,
+															}).map((key) => {
+																const oldValue = selectedLog.oldData?.[key];
+																const newValue = selectedLog.newData?.[key];
+																const hasChanged =
+																	JSON.stringify(oldValue) !==
+																	JSON.stringify(newValue);
+
+																return (
+																	<TableRow
+																		key={key}
+																		className="transition-colors hover:bg-muted/50"
+																	>
+																		<TableCell className="px-6">
+																			<div className="flex items-center gap-2">
+																				{hasChanged && (
+																					<span className="h-2 w-2 rounded-full bg-orange-500" />
+																				)}
+																				<span className="font-medium">
+																					{key}
+																				</span>
+																			</div>
+																		</TableCell>
+																		<TableCell className="px-6 min-w-[200px] max-w-[300px]">
+																			{oldValue !== null &&
+																			oldValue !== undefined ? (
+																				<span
+																					className={
+																						hasChanged
+																							? "text-red-600 font-mono text-xs break-all"
+																							: "font-mono text-xs break-all"
+																					}
+																				>
+																					{typeof oldValue === "object"
+																						? JSON.stringify(oldValue, null, 2)
+																						: String(oldValue)}
+																				</span>
+																			) : (
+																				<span className="text-muted-foreground italic">
+																					null
+																				</span>
+																			)}
+																		</TableCell>
+																		<TableCell className="px-6 min-w-[200px] max-w-[300px]">
+																			{newValue !== null &&
+																			newValue !== undefined ? (
+																				<span
+																					className={
+																						hasChanged
+																							? "text-green-600 font-mono text-xs break-all"
+																							: "font-mono text-xs break-all"
+																					}
+																				>
+																					{typeof newValue === "object"
+																						? JSON.stringify(newValue, null, 2)
+																						: String(newValue)}
+																				</span>
+																			) : (
+																				<span className="text-muted-foreground italic">
+																					null
+																				</span>
+																			)}
+																		</TableCell>
+																	</TableRow>
+																);
+															})
+														) : selectedLog.oldData ? (
+															<TableRow>
+																<TableCell
+																	colSpan={3}
+																	className="px-6 text-center text-muted-foreground"
+																>
+																	Deleted entity data
+																</TableCell>
+															</TableRow>
+														) : selectedLog.newData ? (
+															<TableRow>
+																<TableCell
+																	colSpan={3}
+																	className="px-6 text-center text-muted-foreground"
+																>
+																	Created entity data
+																</TableCell>
+															</TableRow>
+														) : (
+															<TableRow>
+																<TableCell
+																	colSpan={3}
+																	className="px-6 text-center text-muted-foreground"
+																>
+																	No changes data available
+																</TableCell>
+															</TableRow>
+														)}
+													</TableBody>
+												</Table>
+											</div>
 										</div>
 									</div>
-								</div>
-							</ScrollArea>
-						</>
-					)}
+								</ScrollArea>
+							</>
+						)}
 					</DialogContent>
 				</Dialog>
 			</div>

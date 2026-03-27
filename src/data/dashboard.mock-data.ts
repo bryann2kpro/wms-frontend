@@ -57,11 +57,7 @@ export interface Delivery {
 	id: string;
 	deliveryNumber: string;
 	customerName: string;
-	status:
-		| "CREATED"
-		| "PACKING"
-		| "SHIPPED"
-		| "DELIVERED";
+	status: "CREATED" | "PACKING" | "SHIPPED" | "DELIVERED";
 	scheduledDate: Date;
 	deliveryDate?: Date;
 	totalAmount: number;

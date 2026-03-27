@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@apollo/client/react";
@@ -16,13 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
 	Field,
 	FieldError,
 	FieldGroup,
@@ -34,7 +25,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
@@ -48,6 +38,7 @@ import {
 	Trash2,
 	Clock,
 	CalendarDays,
+	AlertTriangle,
 } from "lucide-react";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
@@ -63,7 +54,7 @@ import {
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
-import { toUserFriendlyMessage } from "@/lib/utils";
+import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
 /** Get a user-facing message from Apollo or generic errors */
@@ -118,16 +109,6 @@ export type GRNLineItemForm = {
 	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
 	rackIds: string[];
 };
-
-function toDatetimeLocal(value: string | null | undefined): string {
-	if (value == null || value === "") return "";
-	const ms = Number(value);
-	const date =
-		!isNaN(ms) && String(ms) === String(value).trim()
-			? new Date(ms)
-			: new Date(value);
-	return isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
-}
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
 function normalizeFieldErrors(
@@ -184,7 +165,12 @@ function CreateRackDialog({
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="rack-row" style={{ fontFamily: "var(--dashboard-body)" }}>Row</Label>
+						<Label
+							htmlFor="rack-row"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Row
+						</Label>
 						<Input
 							id="rack-row"
 							value={rackRow}
@@ -194,7 +180,12 @@ function CreateRackDialog({
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="rack-level" style={{ fontFamily: "var(--dashboard-body)" }}>Level</Label>
+						<Label
+							htmlFor="rack-level"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Level
+						</Label>
 						<Input
 							id="rack-level"
 							value={rackLevel}
@@ -204,7 +195,12 @@ function CreateRackDialog({
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="rack-column" style={{ fontFamily: "var(--dashboard-body)" }}>Column</Label>
+						<Label
+							htmlFor="rack-column"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Column
+						</Label>
 						<Input
 							id="rack-column"
 							value={rackColumn}
@@ -215,7 +211,11 @@ function CreateRackDialog({
 					</div>
 				</div>
 				<DialogFooter>
-					<Button variant="outline" className="rounded-lg" onClick={() => onOpenChange(false)}>
+					<Button
+						variant="outline"
+						className="rounded-lg"
+						onClick={() => onOpenChange(false)}
+					>
 						Cancel
 					</Button>
 					<Button
@@ -280,6 +280,11 @@ function GRNLineRow({
 		};
 	}, [item.skuCode, item.description, item.uom, skuOptions]);
 
+	const isUnknownSku = useMemo(() => {
+		if (!item.skuCode?.trim()) return false;
+		return !skuOptions.some((s) => s.skuCode === item.skuCode);
+	}, [item.skuCode, skuOptions]);
+
 	const uomLabel = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -291,208 +296,231 @@ function GRNLineRow({
 	}, [item.skuCode, skuOptions, stockUnits]);
 
 	return (
-		<Card className="border-border/60 rounded-xl">
-			<CardHeader className="pb-3 pt-4 px-4">
-				<div className="flex items-center justify-between">
-					<span className="text-sm font-medium text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-						Item {index + 1}
-					</span>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
-						className="h-7 w-7 p-0 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
-						aria-label="Remove item"
-					>
-						<XCircle className="h-4 w-4" />
-					</Button>
-				</div>
-			</CardHeader>
-			<CardContent className="px-4 pb-4 space-y-3">
-				{/* Row 1: SKU combobox + UOM badge */}
-				<div className="flex items-center gap-3">
-					<div className="flex-1">
-						<SkuCombobox
-							value={skuValue}
-							onChange={(v: SkuLineValue) => {
-								const newItems = [...items];
-								newItems[index] = {
-									...newItems[index],
-									skuCode: v.skuCode ?? "",
-									description: v.description ?? "",
-									uom: v.uom ?? "",
-								};
-								onItemsChange(newItems);
-							}}
-							usedSkuCodes={items
-								.filter((_, i) => i !== index)
-								.map((it) => it.skuCode)
-								.filter(Boolean)}
-							placeholder="Search or select SKU..."
-						/>
+		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
+			<div className="flex items-start gap-2.5">
+				{/* Index badge */}
+				<span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-mono font-bold text-muted-foreground">
+					{index + 1}
+				</span>
+				<div className="flex-1 space-y-2.5 min-w-0">
+					{/* Row 1: SKU + UOM + remove */}
+					<div className="flex items-center gap-2">
+						<div className="flex-1 min-w-0">
+							<SkuCombobox
+								value={skuValue}
+								onChange={(v: SkuLineValue) => {
+									const newItems = [...items];
+									newItems[index] = {
+										...newItems[index],
+										skuCode: v.skuCode ?? "",
+										description: v.description ?? "",
+										uom: v.uom ?? "",
+									};
+									onItemsChange(newItems);
+								}}
+								usedSkuCodes={items
+									.filter((_, i) => i !== index)
+									.map((it) => it.skuCode)
+									.filter(Boolean)}
+								placeholder="Search or select SKU..."
+							/>
+						</div>
+						{isUnknownSku && (
+							<Badge
+								variant="outline"
+								className="shrink-0 text-xs h-6 gap-1 border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+							>
+								<AlertTriangle className="h-3 w-3" />
+								New
+							</Badge>
+						)}
+						{uomLabel && (
+							<Badge
+								variant="outline"
+								className="shrink-0 font-mono text-xs h-6"
+							>
+								{uomLabel}
+							</Badge>
+						)}
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
+							className="h-7 w-7 shrink-0 p-0 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10"
+							aria-label="Remove item"
+						>
+							<XCircle className="h-3.5 w-3.5" />
+						</Button>
 					</div>
-					{uomLabel && (
-						<Badge variant="secondary" className="shrink-0 text-xs font-medium">
-							{uomLabel}
-						</Badge>
-					)}
-				</div>
 
-				{/* Row 2: Carton, Loss, Expiry date */}
-				<div className="grid grid-cols-3 gap-3">
-					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Carton
-						</label>
-						<Input
-							type="number"
-							min={0}
-							value={item.carton}
-							onChange={(e) => {
-								const newItems = [...items];
-								const v = Number(e.target.value);
-								newItems[index] = {
-									...newItems[index],
-									carton: Number.isFinite(v) && v >= 0 ? v : 0,
-								};
-								onItemsChange(newItems);
-							}}
-							placeholder="0"
-							className="rounded-lg border-muted-foreground/20"
-						/>
+					{/* Row 2: Carton + Loss + Expiry */}
+					<div className="grid grid-cols-3 gap-2">
+						<div className="space-y-1">
+							<label
+								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Carton
+							</label>
+							<Input
+								type="number"
+								min={0}
+								value={item.carton}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										carton: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</div>
+						<div className="space-y-1">
+							<label
+								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Loss
+							</label>
+							<Input
+								type="number"
+								min={0}
+								value={item.loss}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										loss: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</div>
+						<div className="space-y-1">
+							<label
+								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								<CalendarDays className="h-2.5 w-2.5" />
+								Expiry
+							</label>
+							<Input
+								type="date"
+								value={item.expiryDate ?? ""}
+								onChange={(e) => {
+									const newItems = [...items];
+									newItems[index] = {
+										...newItems[index],
+										expiryDate: e.target.value,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="YYYY-MM-DD"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</div>
 					</div>
-					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Loss
-						</label>
-						<Input
-							type="number"
-							min={0}
-							value={item.loss}
-							onChange={(e) => {
-								const newItems = [...items];
-								const v = Number(e.target.value);
-								newItems[index] = {
-									...newItems[index],
-									loss: Number.isFinite(v) && v >= 0 ? v : 0,
-								};
-								onItemsChange(newItems);
-							}}
-							placeholder="0"
-							className="rounded-lg border-muted-foreground/20"
-						/>
-					</div>
-					<div className="space-y-1">
-						<label className="text-xs text-muted-foreground font-medium flex items-center gap-1" style={{ fontFamily: "var(--dashboard-body)" }}>
-							<CalendarDays className="h-3 w-3" />
-							Expiry date
-						</label>
-						<Input
-							type="date"
-							value={item.expiryDate ?? ""}
-							onChange={(e) => {
-								const newItems = [...items];
-								newItems[index] = {
-									...newItems[index],
-									expiryDate: e.target.value,
-								};
-								onItemsChange(newItems);
-							}}
-							placeholder="YYYY-MM-DD"
-							className="rounded-lg border-muted-foreground/20"
-						/>
-					</div>
-				</div>
 
-				{/* Row 3: Racks */}
-				<div className="space-y-1">
-					<label className="text-xs text-muted-foreground font-medium" style={{ fontFamily: "var(--dashboard-body)" }}>
-						Racks *
-					</label>
-					<div className="flex flex-wrap items-center gap-1.5">
-						{rackIds.map((rid) => {
-							const r = racks.find((x) => x.rackId === rid);
-							const label = r
-								? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
-								: rid;
-							return (
-								<Badge
-									key={rid}
-									variant="secondary"
-									className="gap-1 pr-1 font-normal"
-								>
-									{label}
-									<button
-										type="button"
-										onClick={() => {
-											const newItems = [...items];
-											newItems[index] = {
-												...newItems[index],
-												rackIds: rackIds.filter((id) => id !== rid),
-											};
-											onItemsChange(newItems);
-										}}
-										className="rounded-full p-0.5 hover:bg-muted"
-										aria-label={`Remove rack ${label}`}
+					{/* Row 3: Racks */}
+					<div className="space-y-1">
+						<label
+							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Racks <span className="text-destructive">*</span>
+						</label>
+						<div className="flex flex-wrap items-center gap-1.5">
+							{rackIds.map((rid) => {
+								const r = racks.find((x) => x.rackId === rid);
+								const label = r
+									? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+									: rid;
+								return (
+									<Badge
+										key={rid}
+										variant="secondary"
+										className="gap-1 pr-1 font-mono text-xs font-normal h-6"
 									>
-										<XCircle className="h-3 w-3" />
-									</button>
-								</Badge>
-							);
-						})}
-						<Popover>
-							<PopoverTrigger asChild>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="h-7 gap-1 rounded-lg"
-								>
-									<Plus className="h-3.5 w-3.5" />
-									Add rack
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-56 p-2 rounded-xl" align="start">
-								<div className="flex flex-col gap-1">
-									{racks
-										.filter((r) => !rackIds.includes(r.rackId))
-										.map((r) => (
-											<Button
-												key={r.rackId}
-												type="button"
-												variant="ghost"
-												size="sm"
-												className="justify-start font-normal rounded-lg"
-												onClick={() => {
-													const newItems = [...items];
-													newItems[index] = {
-														...newItems[index],
-														rackIds: [...rackIds, r.rackId],
-													};
-													onItemsChange(newItems);
-												}}
-											>
-												{r.rackRow}-{r.rackColumn}-{r.rackLevel}
-											</Button>
-										))}
+										{label}
+										<button
+											type="button"
+											onClick={() => {
+												const newItems = [...items];
+												newItems[index] = {
+													...newItems[index],
+													rackIds: rackIds.filter((id) => id !== rid),
+												};
+												onItemsChange(newItems);
+											}}
+											className="rounded-full p-0.5 hover:bg-muted/80"
+											aria-label={`Remove rack ${label}`}
+										>
+											<XCircle className="h-3 w-3" />
+										</button>
+									</Badge>
+								);
+							})}
+							<Popover>
+								<PopoverTrigger asChild>
 									<Button
 										type="button"
-										variant="ghost"
+										variant="outline"
 										size="sm"
-										className="justify-start gap-1 text-muted-foreground rounded-lg"
-										onClick={() => onOpenCreateRack?.(index)}
+										className="h-6 gap-1 rounded-lg px-2 text-xs border-dashed"
 									>
-										<Plus className="h-3.5 w-3.5" />
-										Create new rack
+										<Plus className="h-3 w-3" />
+										Rack
 									</Button>
-								</div>
-							</PopoverContent>
-						</Popover>
+								</PopoverTrigger>
+								<PopoverContent className="w-56 p-2 rounded-xl" align="start">
+									<div className="flex flex-col gap-1">
+										{racks
+											.filter((r) => !rackIds.includes(r.rackId))
+											.map((r) => (
+												<Button
+													key={r.rackId}
+													type="button"
+													variant="ghost"
+													size="sm"
+													className="justify-start font-mono font-normal rounded-lg text-sm"
+													onClick={() => {
+														const newItems = [...items];
+														newItems[index] = {
+															...newItems[index],
+															rackIds: [...rackIds, r.rackId],
+														};
+														onItemsChange(newItems);
+													}}
+												>
+													{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+												</Button>
+											))}
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="justify-start gap-1 text-muted-foreground rounded-lg"
+											onClick={() => onOpenCreateRack?.(index)}
+										>
+											<Plus className="h-3.5 w-3.5" />
+											Create new rack
+										</Button>
+									</div>
+								</PopoverContent>
+							</Popover>
+						</div>
 					</div>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 }
 
@@ -543,6 +571,12 @@ export type GrnFormDialogProps = {
 	onWarehouseCreated?: () => void | Promise<void>;
 	/** Called after a new rack is created so parent can refetch rack list */
 	onRackCreated?: () => void | Promise<void>;
+	/** Pre-fill form fields from an ASN selection (create mode only). */
+	initialValues?: {
+		poReference?: string;
+		receivedDate?: string;
+		items?: GRNLineItemForm[];
+	};
 };
 
 export function GrnFormDialog({
@@ -552,15 +586,16 @@ export function GrnFormDialog({
 	grn = null,
 	skuOptions,
 	stockUnits,
-	warehouses,
+	warehouses: _warehouses,
 	racks,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
 	canCreate = true,
 	onSkusRefetch: _onSkusRefetch,
-	onWarehouseCreated,
+	onWarehouseCreated: _onWarehouseCreated,
 	onRackCreated,
+	initialValues,
 }: GrnFormDialogProps) {
 	const { user } = useCurrentUser();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
@@ -612,12 +647,12 @@ export function GrnFormDialog({
 	const form = useForm({
 		defaultValues: {
 			grnNumber: "",
-			poReference: "",
+			poReference: initialValues?.poReference ?? "",
 			supplierDO: "",
-			receivedDate: "",
+			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
 			warehouseId: "",
-			items: [] as GRNLineItemForm[],
+			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
 			onSubmit: ({ value }) => {
@@ -776,25 +811,29 @@ export function GrnFormDialog({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
 				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
-				receivedDate: toDatetimeLocal(grn.receivedAt),
+				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
 				items: initialItems,
 			});
 		} else if (mode === "create") {
-			form.reset();
-			form.setFieldValue("items", []);
+			form.reset({
+				grnNumber: "",
+				poReference: initialValues?.poReference ?? "",
+				supplierDO: "",
+				receivedDate: initialValues?.receivedDate ?? "",
+				notes: "",
+				warehouseId: "",
+				items: (initialValues?.items ?? []) as GRNLineItemForm[],
+			});
 			setProofFiles([]);
 		}
-	}, [open, mode, grn?.id]);
+	}, [open, mode, grn?.id, initialValues]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			(document.activeElement as HTMLElement | null)?.blur();
 			setProofFiles([]);
-			if (mode === "create") {
-				form.setFieldValue("items", []);
-			}
 		}
 		onOpenChange(next);
 	};
@@ -831,6 +870,13 @@ export function GrnFormDialog({
 	};
 
 	const isCreate = mode === "create";
+	const isAsnPrefilledCreate =
+		isCreate &&
+		!!(
+			initialValues?.poReference?.trim() ||
+			initialValues?.receivedDate?.trim() ||
+			(initialValues?.items?.length ?? 0) > 0
+		);
 	const title = isCreate ? "Create New GRN" : "Edit GRN";
 	const description = isCreate
 		? "Enter the details for the new goods receipt note"
@@ -838,352 +884,362 @@ export function GrnFormDialog({
 
 	const dialogContent = (
 		<DialogContent
-			className="max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border bg-background shadow-xl"
+			className="max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-background shadow-2xl"
 			style={{ maxWidth: "min(95vw, 1400px)" }}
 		>
-			<DialogHeader className="pb-4 border-b bg-muted/50">
-				<DialogTitle
-					className="text-2xl font-semibold flex items-center gap-2"
-					style={{ fontFamily: "var(--dashboard-display)" }}
-				>
-					<Package className="h-5 w-5 text-primary" />
-					{title}
-				</DialogTitle>
-				<DialogDescription
-					className="text-base text-muted-foreground"
-					style={{ fontFamily: "var(--dashboard-body)" }}
-				>
-					{description}
-				</DialogDescription>
+			<DialogHeader className="pb-0">
+				<div className="flex items-center gap-3 pb-4 border-b border-border">
+					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 shadow-sm">
+						<Package className="h-[18px] w-[18px] text-white" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<DialogTitle
+							className="text-lg font-semibold leading-tight"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							{title}
+						</DialogTitle>
+						<DialogDescription
+							className="text-sm text-muted-foreground mt-0.5"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							{description}
+						</DialogDescription>
+					</div>
+					{!isCreate && grn && (
+						<Badge
+							variant="outline"
+							className="shrink-0 text-xs font-medium uppercase tracking-wide"
+						>
+							{grn.status}
+						</Badge>
+					)}
+				</div>
 			</DialogHeader>
-			<Separator />
 			{(isCreate || grn) && (
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
 						form.handleSubmit();
 					}}
-					className="space-y-6 py-4"
+					className="space-y-7 pt-5"
 				>
-					<div className="lg:grid-cols-3">
-						<div className="lg:col-span-2 space-y-6">
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle
-										className="text-base font-semibold flex items-center gap-2"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										<FileText className="h-4 w-4 text-muted-foreground" />
-										Basic Information
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<FieldGroup>
-										<div className="grid gap-4 sm:grid-cols-2">
-											<form.Field name="poReference">
-												{(field) => {
-													const isInvalid = field.state.meta.errors.length > 0;
-													return (
-														<Field data-invalid={isInvalid}>
-															<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
-															End User PO
-														</FieldLabel>
-															<Input
-																id={field.name}
-																value={field.state.value}
-																placeholder="PO-2024-001"
-																onBlur={field.handleBlur}
-																onChange={(e) =>
-																	field.handleChange(e.target.value)
-																}
-																required
-																aria-invalid={isInvalid}
-																className="rounded-lg border-muted-foreground/20"
-															/>
-															{isInvalid && (
-																<FieldError
-																	errors={normalizeFieldErrors(
-																		field.state.meta.errors,
-																	)}
-																/>
-															)}
-														</Field>
-													);
-												}}
-											</form.Field>
-										</div>
-										<form.Field name="supplierDO">
-											{(field) => {
-												const isInvalid = field.state.meta.errors.length > 0;
-												return (
-													<Field data-invalid={isInvalid}>
-														<FieldLabel htmlFor={field.name} style={{ fontFamily: "var(--dashboard-body)" }}>
-															Supplier DO <span className="text-destructive">*</span>
-														</FieldLabel>
-														<Input
-															id={field.name}
-															value={field.state.value}
-															placeholder="DO-2024-001"
-															onBlur={field.handleBlur}
-															required
-															onChange={(e) =>
-																field.handleChange(e.target.value)
-															}
-															aria-invalid={isInvalid}
-															className="rounded-lg border-muted-foreground/20"
-														/>
-														{isInvalid && (
-															<FieldError
-																errors={normalizeFieldErrors(
-																	field.state.meta.errors,
-																)}
-															/>
-														)}
-													</Field>
-												);
-											}}
-										</form.Field>
-										<form.Field name="receivedDate">
-											{(field) => {
-												const isInvalid = field.state.meta.errors.length > 0;
-												return (
-													<Field data-invalid={isInvalid}>
-														<FieldLabel
-															htmlFor={field.name}
-															className="flex items-center gap-2"
-															style={{ fontFamily: "var(--dashboard-body)" }}
-														>
-															<Calendar className="h-4 w-4 text-muted-foreground" />
-															Received Date/Time
-														</FieldLabel>
-														<Input
-															id={field.name}
-															type="datetime-local"
-															value={field.state.value}
-															onBlur={field.handleBlur}
-															onChange={(e) =>
-																field.handleChange(e.target.value)
-															}
-															required
-															aria-invalid={isInvalid}
-															className="rounded-lg border-muted-foreground/20"
-														/>
-														{isInvalid && (
-															<FieldError
-																errors={normalizeFieldErrors(
-																	field.state.meta.errors,
-																)}
-															/>
-														)}
-													</Field>
-												);
-											}}
-										</form.Field>
-									</FieldGroup>
-								</CardContent>
-							</Card>
-
-							<Card>
-								<CardHeader className="pb-3">
-									<div className="flex items-center justify-between gap-4">
-										<div>
-											<CardTitle
-												className="text-base font-semibold flex items-center gap-2"
-												style={{ fontFamily: "var(--dashboard-display)" }}
-											>
-												<Package className="h-4 w-4 text-muted-foreground" />
-												Line Items
-											</CardTitle>
-											<CardDescription
-												className="text-xs mt-1 text-muted-foreground"
-												style={{ fontFamily: "var(--dashboard-body)" }}
-											>
-												Add line items and fill in the details below
-											</CardDescription>
-										</div>
-										<form.Field name="items">
-											{(field) => {
-												const items = (field.state.value ??
-													[]) as GRNLineItemForm[];
-												return (
-													<Button
-														type="button"
-														variant="default"
-														size="sm"
-														className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-														onClick={() => {
-															field.handleChange([
-																...items,
-																{
-																	skuCode: "",
-																	description: "",
-																	uom: "",
-																	unitPrice: 0,
-																	carton: 1,
-																	loss: 0,
-																	expiryDate: "",
-																	rackIds: [],
-																},
-															]);
-														}}
-													>
-														<Plus className="mr-2 h-4 w-4" />
-														Add Line Item
-													</Button>
-												);
-											}}
-										</form.Field>
-									</div>
-								</CardHeader>
-								<CardContent>
-									<form.Field name="items">
+					<div className="space-y-7">
+						<div className="space-y-4">
+							{/* Section: Receipt Details */}
+							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
+								<FileText className="h-3.5 w-3.5 text-amber-600" />
+								<h3
+									className="text-xs font-semibold uppercase tracking-widest text-foreground"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Receipt Details
+								</h3>
+							</div>
+							<FieldGroup>
+								<div className="grid gap-4 sm:grid-cols-2">
+									<form.Field name="poReference">
 										{(field) => {
-											const items = (field.state.value ??
-												[]) as GRNLineItemForm[];
-											updateItemsWithRackRef.current = (lineIndex, rackId) => {
-												const current = (field.state.value ??
-													[]) as GRNLineItemForm[];
-												if (current[lineIndex] == null) return;
-												const next = [...current];
-												const existing = next[lineIndex].rackIds ?? [];
-												if (existing.includes(rackId)) return;
-												next[lineIndex] = {
-													...next[lineIndex],
-													rackIds: [...existing, rackId],
-												};
-												field.handleChange(next);
-											};
+											const isInvalid = field.state.meta.errors.length > 0;
 											return (
-												<>
-													{items.length === 0 ? (
-														<div className="flex h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-muted-foreground">
-															<div className="rounded-full bg-muted p-3">
-																<Package className="h-10 w-10 opacity-60" />
-															</div>
-															<div className="text-center">
-																<p className="text-sm font-medium">
-																	No line items yet
-																</p>
-																<p className="text-xs mt-1">
-																	Click &quot;Add Line Item&quot; above to get
-																	started
-																</p>
-															</div>
-														</div>
-													) : (
-														<div className="flex flex-col gap-3">
-															{items.map((item, index) => (
-																<GRNLineRow
-																	key={`line-${index}-${item.skuCode || "new"}`}
-																	item={item}
-																	index={index}
-																	items={items}
-																	onItemsChange={field.handleChange}
-																	skuOptions={skuOptions}
-																	stockUnits={stockUnits}
-																	racks={racks}
-																	onOpenCreateRack={(lineIndex) => {
-																		setCreateRackForLineIndex(lineIndex);
-																		setCreateRackOpen(true);
-																	}}
-																/>
-															))}
-														</div>
-													)}
-													{field.state.meta.errors.length > 0 && (
-														<p className="text-sm text-destructive mt-2">
-															{field.state.meta.errors
-																.map((e) =>
-																	typeof e === "string"
-																		? e
-																		: (e as unknown as { message?: string })
-																				.message,
-																)
-																.filter(Boolean)
-																.join(" ")}
-														</p>
-													)}
-													<CreateRackDialog
-														open={createRackOpen}
-														onOpenChange={(open) => {
-															setCreateRackOpen(open);
-															if (!open) setCreateRackForLineIndex(null);
-														}}
-														onSubmit={(values) =>
-															createRack({
-																variables: {
-																	input: {
-																		rackRow: values.rackRow,
-																		rackColumn: values.rackColumn,
-																		rackLevel: values.rackLevel,
-																		createdBy,
-																		updatedBy: createdBy,
-																	},
-																},
-															})
-														}
-														loading={createRackLoading}
+												<Field data-invalid={isInvalid}>
+													<FieldLabel
+														htmlFor={field.name}
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
+														End User PO
+													</FieldLabel>
+													<Input
+														id={field.name}
+														value={field.state.value}
+														placeholder="PO-2024-001"
+														onBlur={field.handleBlur}
+														onChange={(e) => field.handleChange(e.target.value)}
+														disabled={isAsnPrefilledCreate}
+														required
+														aria-invalid={isInvalid}
+														className="rounded-lg border-muted-foreground/20 font-mono text-sm"
 													/>
-												</>
+													{isAsnPrefilledCreate ? (
+														<p className="text-xs text-muted-foreground mt-1">
+															Prefilled from selected ASN.
+														</p>
+													) : null}
+													{isInvalid && (
+														<FieldError
+															errors={normalizeFieldErrors(
+																field.state.meta.errors,
+															)}
+														/>
+													)}
+												</Field>
 											);
 										}}
 									</form.Field>
-								</CardContent>
-							</Card>
-
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle
-										className="text-base font-semibold flex items-center gap-2"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										<Upload className="h-4 w-4 text-muted-foreground" />
-										Proof Upload
-									</CardTitle>
-									<CardDescription className="text-xs text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-										Upload supporting documents (max 5 files)
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<FileUpload
-										files={proofFiles}
-										onFilesChange={setProofFiles}
-										maxFiles={5}
-										accept="image/*,application/pdf"
-									/>
-								</CardContent>
-							</Card>
-
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle
-										className="text-base font-semibold flex items-center gap-2"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										<FileText className="h-4 w-4 text-muted-foreground" />
-										Additional Notes
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<form.Field name="notes">
-										{(field) => (
-											<Field>
-												<FieldLabel htmlFor={field.name} className="sr-only">
-													Notes
+									<form.Field name="supplierDO">
+										{(field) => {
+											const isInvalid = field.state.meta.errors.length > 0;
+											return (
+												<Field data-invalid={isInvalid}>
+													<FieldLabel
+														htmlFor={field.name}
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
+														Supplier DO{" "}
+														<span className="text-destructive">*</span>
+													</FieldLabel>
+													<Input
+														id={field.name}
+														value={field.state.value}
+														placeholder="DO-2024-001"
+														onBlur={field.handleBlur}
+														required
+														onChange={(e) => field.handleChange(e.target.value)}
+														aria-invalid={isInvalid}
+														className="rounded-lg border-muted-foreground/20 font-mono text-sm"
+													/>
+													{isInvalid && (
+														<FieldError
+															errors={normalizeFieldErrors(
+																field.state.meta.errors,
+															)}
+														/>
+													)}
+												</Field>
+											);
+										}}
+									</form.Field>
+								</div>
+								<form.Field name="receivedDate">
+									{(field) => {
+										const isInvalid = field.state.meta.errors.length > 0;
+										return (
+											<Field data-invalid={isInvalid} className="sm:max-w-xs">
+												<FieldLabel
+													htmlFor={field.name}
+													className="flex items-center gap-1.5"
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													<Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+													Received Date/Time{" "}
+													<span className="text-destructive">*</span>
 												</FieldLabel>
-												<Textarea
+												<Input
 													id={field.name}
+													type="datetime-local"
 													value={field.state.value}
-													placeholder="Enter any additional notes or comments..."
 													onBlur={field.handleBlur}
 													onChange={(e) => field.handleChange(e.target.value)}
-													className="min-h-[100px] resize-none rounded-lg border-muted-foreground/20"
+													required
+													aria-invalid={isInvalid}
+													className="rounded-lg border-muted-foreground/20 font-mono text-sm"
 												/>
+												{isInvalid && (
+													<FieldError
+														errors={normalizeFieldErrors(
+															field.state.meta.errors,
+														)}
+													/>
+												)}
 											</Field>
-										)}
-									</form.Field>
-								</CardContent>
-							</Card>
+										);
+									}}
+								</form.Field>
+							</FieldGroup>
+						</div>
+
+						<div className="space-y-3">
+							{/* Section: Line Items */}
+							<div className="flex items-center justify-between gap-4">
+								<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
+									<Package className="h-3.5 w-3.5 text-amber-600" />
+									<h3
+										className="text-xs font-semibold uppercase tracking-widest text-foreground"
+										style={{ fontFamily: "var(--dashboard-display)" }}
+									>
+										Line Items
+									</h3>
+								</div>
+								<form.Field name="items">
+									{(field) => {
+										const items = (field.state.value ??
+											[]) as GRNLineItemForm[];
+										return (
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												className="h-8 gap-1.5 rounded-lg border-amber-500/60 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
+												onClick={() => {
+													field.handleChange([
+														...items,
+														{
+															skuCode: "",
+															description: "",
+															uom: "",
+															unitPrice: 0,
+															carton: 1,
+															loss: 0,
+															expiryDate: "",
+															rackIds: [],
+														},
+													]);
+												}}
+											>
+												<Plus className="h-3.5 w-3.5" />
+												Add Item
+											</Button>
+										);
+									}}
+								</form.Field>
+							</div>
+							<form.Field name="items">
+								{(field) => {
+									const items = (field.state.value ?? []) as GRNLineItemForm[];
+									updateItemsWithRackRef.current = (lineIndex, rackId) => {
+										const current = (field.state.value ??
+											[]) as GRNLineItemForm[];
+										if (current[lineIndex] == null) return;
+										const next = [...current];
+										const existing = next[lineIndex].rackIds ?? [];
+										if (existing.includes(rackId)) return;
+										next[lineIndex] = {
+											...next[lineIndex],
+											rackIds: [...existing, rackId],
+										};
+										field.handleChange(next);
+									};
+									return (
+										<>
+											{items.length === 0 ? (
+												<div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/40 text-muted-foreground">
+													<Package className="h-7 w-7 text-amber-400/70" />
+													<div className="text-center">
+														<p
+															className="text-sm font-medium text-amber-800/70"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															No line items
+														</p>
+														<p
+															className="text-xs mt-0.5 text-amber-700/50"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															Use &#34;Add Item&#34; above to add received goods
+														</p>
+													</div>
+												</div>
+											) : (
+												<div className="flex flex-col gap-2">
+													{items.map((item, index) => (
+														<GRNLineRow
+															key={`line-${index}-${item.skuCode || "new"}`}
+															item={item}
+															index={index}
+															items={items}
+															onItemsChange={field.handleChange}
+															skuOptions={skuOptions}
+															stockUnits={stockUnits}
+															racks={racks}
+															onOpenCreateRack={(lineIndex) => {
+																setCreateRackForLineIndex(lineIndex);
+																setCreateRackOpen(true);
+															}}
+														/>
+													))}
+												</div>
+											)}
+											{field.state.meta.errors.length > 0 && (
+												<p className="text-sm text-destructive mt-2">
+													{field.state.meta.errors
+														.map((e) =>
+															typeof e === "string"
+																? e
+																: (e as unknown as { message?: string })
+																		.message,
+														)
+														.filter(Boolean)
+														.join(" ")}
+												</p>
+											)}
+											<CreateRackDialog
+												open={createRackOpen}
+												onOpenChange={(open) => {
+													setCreateRackOpen(open);
+													if (!open) setCreateRackForLineIndex(null);
+												}}
+												onSubmit={(values) =>
+													createRack({
+														variables: {
+															input: {
+																rackRow: values.rackRow,
+																rackColumn: values.rackColumn,
+																rackLevel: values.rackLevel,
+																createdBy,
+																updatedBy: createdBy,
+															},
+														},
+													})
+												}
+												loading={createRackLoading}
+											/>
+										</>
+									);
+								}}
+							</form.Field>
+						</div>
+
+						<div className="space-y-3">
+							{/* Section: Proof Upload */}
+							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
+								<Upload className="h-3.5 w-3.5 text-amber-600" />
+								<h3
+									className="text-xs font-semibold uppercase tracking-widest text-foreground"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Proof Upload
+									<span className="ml-1.5 normal-case text-muted-foreground font-normal text-[11px]">
+										(max 5 files)
+									</span>
+								</h3>
+							</div>
+							<FileUpload
+								files={proofFiles}
+								onFilesChange={setProofFiles}
+								maxFiles={5}
+								accept="image/*,application/pdf"
+							/>
+						</div>
+
+						<div className="space-y-3">
+							{/* Section: Notes */}
+							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
+								<FileText className="h-3.5 w-3.5 text-amber-600" />
+								<h3
+									className="text-xs font-semibold uppercase tracking-widest text-foreground"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Additional Notes
+								</h3>
+							</div>
+							<form.Field name="notes">
+								{(field) => (
+									<Field>
+										<FieldLabel htmlFor={field.name} className="sr-only">
+											Notes
+										</FieldLabel>
+										<Textarea
+											id={field.name}
+											value={field.state.value}
+											placeholder="Enter any additional notes or comments..."
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											className="min-h-[80px] resize-none rounded-lg border-muted-foreground/20 text-sm"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										/>
+									</Field>
+								)}
+							</form.Field>
 						</div>
 					</div>
 
@@ -1191,92 +1247,89 @@ export function GrnFormDialog({
 						selector={(state) => [state.isSubmitting, state.canSubmit]}
 					>
 						{([isSubmitting, canSubmit]) => (
-							<>
-								<Separator className="mt-6" />
-								<DialogFooter className="pt-4 flex-wrap gap-2 border-t bg-muted/20">
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-lg"
-										onClick={() => handleOpenChange(false)}
-										disabled={isSubmitting || deleteLoading}
-									>
-										Cancel
-									</Button>
-									{isCreate && canCreate && (
-										<>
-											<Button
-												type="button"
-												variant="outline"
-												className="rounded-lg"
-												onClick={() => {
-													createIntentRef.current = "draft";
-													form.handleSubmit();
-												}}
-												disabled={isSubmitting}
-											>
-												Save Draft
-											</Button>
-											<Button
-												type="button"
-												disabled={isSubmitting || !canSubmit}
-												className="min-w-[140px] rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-												onClick={() => {
-													createIntentRef.current = "submit";
-													form.handleSubmit();
-												}}
-											>
-												{isSubmitting ? (
-													<>
-														<Clock className="mr-2 h-4 w-4 animate-spin" />
-														Submitting...
-													</>
-												) : (
-													<>
-														<Send className="mr-2 h-4 w-4" />
-														Submit for Approval
-													</>
-												)}
-											</Button>
-										</>
-									)}
-									{!isCreate && grn && (
-										<>
-											{grn.status === "Draft" && (
+							<div className="mt-2 border-t border-border pt-4 flex flex-wrap items-center justify-end gap-2">
+								<Button
+									type="button"
+									variant="ghost"
+									className="rounded-lg text-muted-foreground hover:text-foreground"
+									onClick={() => handleOpenChange(false)}
+									disabled={isSubmitting || deleteLoading}
+								>
+									Cancel
+								</Button>
+								{isCreate && canCreate && (
+									<>
+										<Button
+											type="button"
+											variant="outline"
+											className="rounded-lg"
+											onClick={() => {
+												createIntentRef.current = "draft";
+												form.handleSubmit();
+											}}
+											disabled={isSubmitting}
+										>
+											Save Draft
+										</Button>
+										<Button
+											type="button"
+											disabled={isSubmitting || !canSubmit}
+											className="min-w-[150px] rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow-sm"
+											onClick={() => {
+												createIntentRef.current = "submit";
+												form.handleSubmit();
+											}}
+										>
+											{isSubmitting ? (
 												<>
-													<Button
-														type="button"
-														variant="outline"
-														className="rounded-lg text-destructive hover:text-destructive"
-														onClick={handleDelete}
-														disabled={isSubmitting || deleteLoading}
-													>
-														<Trash2 className="mr-2 h-4 w-4" />
-														{deleteLoading ? "Deleting..." : "Delete"}
-													</Button>
-													<Button
-														type="button"
-														variant="outline"
-														className="rounded-lg"
-														onClick={handleSubmitForApproval}
-														disabled={isSubmitting || deleteLoading}
-													>
-														<Send className="mr-2 h-4 w-4" />
-														Submit for Approval
-													</Button>
+													<Clock className="mr-2 h-4 w-4 animate-spin" />
+													Submitting...
+												</>
+											) : (
+												<>
+													<Send className="mr-2 h-4 w-4" />
+													Submit for Approval
 												</>
 											)}
-											<Button
-												type="submit"
-												className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-												disabled={isSubmitting || deleteLoading}
-											>
-												{isSubmitting ? "Saving..." : "Save changes"}
-											</Button>
-										</>
-									)}
-								</DialogFooter>
-							</>
+										</Button>
+									</>
+								)}
+								{!isCreate && grn && (
+									<>
+										{grn.status === "Draft" && (
+											<>
+												<Button
+													type="button"
+													variant="ghost"
+													className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+													onClick={handleDelete}
+													disabled={isSubmitting || deleteLoading}
+												>
+													<Trash2 className="mr-2 h-4 w-4" />
+													{deleteLoading ? "Deleting..." : "Delete"}
+												</Button>
+												<Button
+													type="button"
+													variant="outline"
+													className="rounded-lg"
+													onClick={handleSubmitForApproval}
+													disabled={isSubmitting || deleteLoading}
+												>
+													<Send className="mr-2 h-4 w-4" />
+													Submit for Approval
+												</Button>
+											</>
+										)}
+										<Button
+											type="submit"
+											className="rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow-sm"
+											disabled={isSubmitting || deleteLoading}
+										>
+											{isSubmitting ? "Saving..." : "Save changes"}
+										</Button>
+									</>
+								)}
+							</div>
 						)}
 					</form.Subscribe>
 				</form>

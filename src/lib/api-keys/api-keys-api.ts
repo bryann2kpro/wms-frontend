@@ -76,13 +76,9 @@ export async function createApiKey(
  * Revoke an API key (soft-delete)
  * DELETE /api-keys/:id
  */
-export async function revokeApiKey(
-	id: string,
-): Promise<RevokeApiKeyResponse> {
+export async function revokeApiKey(id: string): Promise<RevokeApiKeyResponse> {
 	const client = getClient();
-	const response = await client.delete<RevokeApiKeyResponse>(
-		`/api-keys/${id}`,
-	);
+	const response = await client.delete<RevokeApiKeyResponse>(`/api-keys/${id}`);
 	if (!response.data.success) {
 		throw new Error(response.data.message || "Failed to revoke API key");
 	}

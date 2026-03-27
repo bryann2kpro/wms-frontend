@@ -42,10 +42,7 @@ const SUB_TAB_ORDER: SubTab[] = [
 	"skus",
 ];
 
-const SUB_TAB_CONFIG: Record<
-	SubTab,
-	{ label: string; icon: typeof Truck }
-> = {
+const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
 	supplier: { label: "Suppliers", icon: Truck },
 	warehouse: { label: "Warehouses", icon: Building },
 	region: { label: "Regions", icon: MapPin },
@@ -53,7 +50,7 @@ const SUB_TAB_CONFIG: Record<
 	outlet: { label: "Outlets", icon: Store },
 	"stock-unit": { label: "Stock Units", icon: Package },
 	rack: { label: "Racks", icon: LayoutGrid },
-	skus: { label: "SKUS", icon: Package },
+	skus: { label: "Stocks", icon: Package },
 };
 
 interface MasterDataCardProps {
@@ -64,9 +61,7 @@ interface MasterDataCardProps {
 export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 	const visibleSubTabs: SubTab[] =
 		allowedSubTabs && allowedSubTabs.length > 0
-			? SUB_TAB_ORDER.filter((id) =>
-					(allowedSubTabs as string[]).includes(id),
-				)
+			? SUB_TAB_ORDER.filter((id) => (allowedSubTabs as string[]).includes(id))
 			: SUB_TAB_ORDER;
 	const firstVisible = visibleSubTabs[0] ?? "supplier";
 	const [subTab, setSubTab] = useState<SubTab>(firstVisible);
@@ -78,7 +73,7 @@ export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 	}, [visibleSubTabs.join(","), subTab]);
 
 	return (
-		<div className="space-y-4">
+		<div className="min-w-0 space-y-4">
 			<div className="flex flex-wrap gap-2 border-b pb-2">
 				{visibleSubTabs.map((id) => {
 					const { label, icon: Icon } = SUB_TAB_CONFIG[id];
