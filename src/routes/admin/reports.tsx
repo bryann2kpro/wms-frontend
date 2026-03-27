@@ -30,8 +30,6 @@ import {
 import {
 	Download,
 	BarChart3,
-	Package,
-	Truck,
 	ArrowRightLeft,
 	Receipt,
 	HelpCircle,
@@ -60,7 +58,7 @@ export const Route = createFileRoute("/admin/reports")({
 	component: ReportsComponent,
 });
 
-type ReportType = "GRN" | "DO" | "Inventory" | "Movement" | "InvoiceSummary";
+type ReportType = "Movement" | "InvoiceSummary";
 type ExportFormat = "PDF" | "Excel";
 
 type ReportFormValues = {
@@ -79,39 +77,18 @@ const reportTypes: {
 	index: string;
 }[] = [
 	{
-		value: "GRN",
-		label: "GRN Reports",
-		shortLabel: "Goods Receipt",
-		icon: Package,
-		index: "01",
-	},
-	{
-		value: "DO",
-		label: "DO Reports",
-		shortLabel: "Delivery Order",
-		icon: Truck,
-		index: "02",
-	},
-	{
-		value: "Inventory",
-		label: "Inventory Reports",
-		shortLabel: "Inventory",
-		icon: BarChart3,
-		index: "03",
-	},
-	{
 		value: "Movement",
 		label: "Movement Reports",
 		shortLabel: "Movement",
 		icon: ArrowRightLeft,
-		index: "04",
+		index: "01",
 	},
 	{
 		value: "InvoiceSummary",
-		label: "Invoices Summary",
+		label: "Proforma Invoice Summary",
 		shortLabel: "Inv. Summary",
 		icon: Receipt,
-		index: "05",
+		index: "02",
 	},
 ];
 
@@ -139,10 +116,9 @@ const REPORTS_HELP_STEPS: Array<{
 		image: `${HELP_IMAGES_BASE}/step-2.png`,
 		description: (
 			<>
-				<strong>GRN</strong>, <strong>DO</strong>, <strong>Inventory</strong>,{" "}
-				<strong>Movement</strong>, and <strong>Invoices Summary</strong>.
-				Movement and Invoices Summary (PDF) require a region and date range;
-				others can use optional filters.
+				Available reports: <strong>Movement</strong> and{" "}
+				<strong>Proforma Invoice Summary</strong>. Both require a region and
+				date range when exporting as PDF.
 			</>
 		),
 	},
@@ -561,7 +537,7 @@ function ReportsComponent() {
 							<form.Field name="selectedReport">
 								{(field) => (
 									<Field
-										className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+										className="grid grid-cols-2 gap-3"
 										role="group"
 										aria-labelledby="report-type-label"
 									>
