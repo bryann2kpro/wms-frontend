@@ -142,7 +142,14 @@ function ModulesTable({
 							</SelectContent>
 						</Select>
 						{/* Create Button */}
-						<Button onClick={onCreateClick}>
+						<Button
+							onClick={onCreateClick}
+							className="text-white hover:opacity-90"
+							style={{
+								background: "var(--rbac-accent)",
+								borderColor: "var(--rbac-accent)",
+							}}
+						>
 							<Plus className="mr-2 h-4 w-4" aria-hidden="true" />
 							Create Module
 						</Button>
