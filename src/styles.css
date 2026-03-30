@@ -19,6 +19,11 @@ code {
 }
 
 :root {
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-surface: oklch(0.988 0.002 286);
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.141 0.005 285.823);
 	--card: oklch(1 0 0);
@@ -55,6 +60,9 @@ code {
 }
 
 .dark {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
 	--background: oklch(0.141 0.005 285.823);
 	--foreground: oklch(0.985 0 0);
 	--card: oklch(0.141 0.005 285.823);
@@ -167,10 +175,14 @@ code {
 }
 .dashboard-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .dashboard-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* GRN (and other admin list) pages: same tokens as dashboard */
@@ -191,10 +203,14 @@ code {
 }
 .grn-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .grn-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Outbound page: same tokens as dashboard/grn */
@@ -215,10 +231,14 @@ code {
 }
 .outbound-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .outbound-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* DO Work Queue page: same tokens as dashboard/grn/outbound */
@@ -239,10 +259,14 @@ code {
 }
 .do-work-queue-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .do-work-queue-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Empire Sushi DO Work Queue page: same tokens as dashboard/grn/outbound */
@@ -263,10 +287,14 @@ code {
 }
 .es-do-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .es-do-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Settlement page: same tokens as dashboard/grn/outbound */
@@ -287,10 +315,14 @@ code {
 }
 .settlement-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .settlement-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Inventory page: same tokens as dashboard/grn/outbound */
@@ -311,10 +343,14 @@ code {
 }
 .inventory-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .inventory-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* User Management page: same tokens as dashboard/grn/outbound */
@@ -335,10 +371,14 @@ code {
 }
 .user-management-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .user-management-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Audit Log page: same tokens as dashboard/grn/outbound */
@@ -359,10 +399,14 @@ code {
 }
 .audit-log-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .audit-log-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Settings page: same tokens as dashboard/grn/outbound */
@@ -383,10 +427,14 @@ code {
 }
 .settings-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .settings-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 .settings-page .settings-tab.settings-tab-active {
@@ -416,10 +464,14 @@ code {
 }
 .api-keys-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .api-keys-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* RBAC page: match dashboard/admin amber accent */
@@ -455,14 +507,20 @@ code {
 	font-family: var(--rbac-display);
 }
 .rbac-page .rbac-summary-card > * {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .rbac-page .rbac-summary-card:hover > * {
 	transform: translateY(-2px);
-	box-shadow: 0 8px 25px -5px oklch(0.2 0.02 70 / 0.12), 0 4px 10px -6px oklch(0.2 0.02 70 / 0.08);
+	box-shadow:
+		0 8px 25px -5px oklch(0.2 0.02 70 / 0.12),
+		0 4px 10px -6px oklch(0.2 0.02 70 / 0.08);
 }
 .dark .rbac-page .rbac-summary-card:hover > * {
-	box-shadow: 0 8px 25px -5px oklch(0 0 0 / 0.35), 0 4px 10px -6px oklch(0 0 0 / 0.2);
+	box-shadow:
+		0 8px 25px -5px oklch(0 0 0 / 0.35),
+		0 4px 10px -6px oklch(0 0 0 / 0.2);
 }
 
 .rbac-page .rbac-tab.rbac-tab-active {
@@ -492,10 +550,14 @@ code {
 }
 .invoices-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .invoices-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Invoices status pill tabs */
@@ -568,10 +630,18 @@ code {
 .invoice-detail-page .invoice-detail-meta-card {
 	animation: invoice-detail-fade-up 0.45s ease-out both;
 }
-.invoice-detail-page .invoice-detail-meta-card:nth-child(1) { animation-delay: 0.05s; }
-.invoice-detail-page .invoice-detail-meta-card:nth-child(2) { animation-delay: 0.1s; }
-.invoice-detail-page .invoice-detail-meta-card:nth-child(3) { animation-delay: 0.15s; }
-.invoice-detail-page .invoice-detail-meta-card:nth-child(4) { animation-delay: 0.2s; }
+.invoice-detail-page .invoice-detail-meta-card:nth-child(1) {
+	animation-delay: 0.05s;
+}
+.invoice-detail-page .invoice-detail-meta-card:nth-child(2) {
+	animation-delay: 0.1s;
+}
+.invoice-detail-page .invoice-detail-meta-card:nth-child(3) {
+	animation-delay: 0.15s;
+}
+.invoice-detail-page .invoice-detail-meta-card:nth-child(4) {
+	animation-delay: 0.2s;
+}
 
 .invoice-detail-page .invoice-detail-items-card {
 	animation: invoice-detail-fade-up 0.5s ease-out 0.25s both;
@@ -580,10 +650,14 @@ code {
 	transition: box-shadow 0.2s ease;
 }
 .invoice-detail-page .invoice-detail-items-card:hover {
-	box-shadow: 0 12px 28px -8px oklch(0.2 0.02 70 / 0.08), 0 4px 12px -4px oklch(0.2 0.02 70 / 0.06);
+	box-shadow:
+		0 12px 28px -8px oklch(0.2 0.02 70 / 0.08),
+		0 4px 12px -4px oklch(0.2 0.02 70 / 0.06);
 }
 .dark .invoice-detail-page .invoice-detail-items-card:hover {
-	box-shadow: 0 12px 28px -8px oklch(0 0 0 / 0.25), 0 4px 12px -4px oklch(0 0 0 / 0.15);
+	box-shadow:
+		0 12px 28px -8px oklch(0 0 0 / 0.25),
+		0 4px 12px -4px oklch(0 0 0 / 0.15);
 }
 
 .invoice-detail-page .invoice-detail-row {
@@ -618,25 +692,46 @@ code {
 }
 .reports-page .dashboard-card {
 	animation: dashboard-fade-up 0.45s ease-out both;
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
-.reports-page .dashboard-card:nth-child(1) { animation-delay: 0.05s; }
-.reports-page .dashboard-card:nth-child(2) { animation-delay: 0.1s; }
+.reports-page .dashboard-card:nth-child(1) {
+	animation-delay: 0.05s;
+}
+.reports-page .dashboard-card:nth-child(2) {
+	animation-delay: 0.1s;
+}
 
 .reports-page .report-type-btn {
-	transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+	transition:
+		border-color 0.15s ease,
+		background 0.15s ease,
+		color 0.15s ease,
+		box-shadow 0.15s ease;
 }
-.reports-page .report-type-btn:nth-child(1) { animation: dashboard-fade-up 0.4s ease-out 0.12s both; }
-.reports-page .report-type-btn:nth-child(2) { animation: dashboard-fade-up 0.4s ease-out 0.18s both; }
-.reports-page .report-type-btn:nth-child(3) { animation: dashboard-fade-up 0.4s ease-out 0.24s both; }
-.reports-page .report-type-btn:nth-child(4) { animation: dashboard-fade-up 0.4s ease-out 0.30s both; }
-.reports-page .report-type-btn:nth-child(5) { animation: dashboard-fade-up 0.4s ease-out 0.36s both; }
+.reports-page .report-type-btn:nth-child(1) {
+	animation: dashboard-fade-up 0.4s ease-out 0.12s both;
+}
+.reports-page .report-type-btn:nth-child(2) {
+	animation: dashboard-fade-up 0.4s ease-out 0.18s both;
+}
+.reports-page .report-type-btn:nth-child(3) {
+	animation: dashboard-fade-up 0.4s ease-out 0.24s both;
+}
+.reports-page .report-type-btn:nth-child(4) {
+	animation: dashboard-fade-up 0.4s ease-out 0.3s both;
+}
+.reports-page .report-type-btn:nth-child(5) {
+	animation: dashboard-fade-up 0.4s ease-out 0.36s both;
+}
 
 .reports-page .report-type-btn[aria-pressed="true"] {
 	border-color: var(--dashboard-accent);
 	background: color-mix(in oklch, var(--dashboard-accent) 8%, transparent);
 	color: var(--dashboard-accent);
-	box-shadow: 0 0 0 1px color-mix(in oklch, var(--dashboard-accent) 30%, transparent);
+	box-shadow: 0 0 0 1px
+		color-mix(in oklch, var(--dashboard-accent) 30%, transparent);
 }
 .reports-page .report-type-btn[aria-pressed="true"] .report-icon-box {
 	background: var(--dashboard-accent);
@@ -650,14 +745,23 @@ code {
 .dark .reports-page .report-type-btn:not([aria-pressed="true"]):hover {
 	background: oklch(0.22 0.006 286);
 }
-.reports-page .report-type-btn:not([aria-pressed="true"]):hover .report-icon-box {
+.reports-page
+	.report-type-btn:not([aria-pressed="true"]):hover
+	.report-icon-box {
 	background: color-mix(in oklch, var(--dashboard-accent) 12%, transparent);
 	color: var(--dashboard-accent);
 }
 
 @keyframes reports-bar-wave {
-	0%, 100% { height: 8px; opacity: 0.45; }
-	50% { height: 40px; opacity: 1; }
+	0%,
+	100% {
+		height: 8px;
+		opacity: 0.45;
+	}
+	50% {
+		height: 40px;
+		opacity: 1;
+	}
 }
 .reports-page .reports-bar-wave {
 	animation: reports-bar-wave 1s ease-in-out infinite;
@@ -692,10 +796,14 @@ code {
 }
 .exceptions-page .dashboard-card:hover {
 	transform: translateY(-2px);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 .exceptions-page .dashboard-card {
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* App sidebar: align with admin design system (typography + amber active) */

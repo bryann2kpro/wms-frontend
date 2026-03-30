@@ -143,7 +143,10 @@ export function Sidebar() {
 	}
 	// If any items have a group not in SIDEBAR_GROUP_ORDER, render them at the end
 	for (const [groupKey, links] of byGroup) {
-		if (SIDEBAR_GROUP_ORDER.includes(groupKey as SidebarGroupKey) || !links.length)
+		if (
+			SIDEBAR_GROUP_ORDER.includes(groupKey as SidebarGroupKey) ||
+			!links.length
+		)
 			continue;
 		navSections.push(
 			<SidebarGroup key={groupKey} className="space-y-1">

@@ -13,6 +13,7 @@ import {
 	fetchModules,
 	fetchRoles,
 	fetchUserRoles,
+	createPermission,
 	updateRole,
 	updateRolePermissions,
 	type RbacModule,
@@ -24,6 +25,7 @@ import {
 	type UpdateModuleInput,
 	type UpdateRoleInput,
 	type UpdateRolePermissionsInput,
+	type CreatePermissionInput,
 } from "@/lib/rbac";
 import {
 	CREATE_MODULE_MUTATION,
@@ -176,36 +178,44 @@ function RbacComponent() {
 	});
 
 	// Create module mutation (GraphQL)
-	const [createModuleGql, { loading: isCreatingModule, error: createModuleError }] = useApolloMutation<
-		unknown,
-		CreateModuleVariables
-	>(CREATE_MODULE_MUTATION, {
-		onCompleted: () => {
-			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-			setModulesPage(1);
-			setIsCreateModuleDialogOpen(false);
+	const [
+		createModuleGql,
+		{ loading: isCreatingModule, error: createModuleError },
+	] = useApolloMutation<
+		{
+			createModule: {
+				moduleId: string;
+				permissions?: Array<{ permissionType?: string | null }>;
+			};
 		},
-	});
+		CreateModuleVariables
+	>(CREATE_MODULE_MUTATION);
 
 	// Wrap to accept the dialog's CreateModuleInput format
 	const createModuleMutation = {
-		mutate: (input: CreateModuleInput) => createModuleGql({ variables: { input } }),
+		mutate: (input: CreateModuleInput) =>
+			createModuleGql({ variables: { input } }),
+		mutateAsync: async (input: CreateModuleInput) =>
+			createModuleGql({ variables: { input } }),
 		isPending: isCreatingModule,
 		error: createModuleError ?? null,
 		isError: !!createModuleError,
 	};
 
 	// Update module mutation (GraphQL)
-	const [updateModuleGql, { loading: isUpdatingModule, error: updateModuleError }] = useApolloMutation<
-		unknown,
-		UpdateModuleVariables
-	>(UPDATE_MODULE_MUTATION, {
-		onCompleted: () => {
-			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-			setIsEditModuleDialogOpen(false);
-			setSelectedModule(null);
+	const [
+		updateModuleGql,
+		{ loading: isUpdatingModule, error: updateModuleError },
+	] = useApolloMutation<unknown, UpdateModuleVariables>(
+		UPDATE_MODULE_MUTATION,
+		{
+			onCompleted: () => {
+				queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+				setIsEditModuleDialogOpen(false);
+				setSelectedModule(null);
+			},
 		},
-	});
+	);
 
 	// Wrap to accept the dialog's UpdateModuleInput format (moduleId → id)
 	const updateModuleMutation = {
@@ -213,22 +223,29 @@ function RbacComponent() {
 			const { moduleId, ...rest } = input;
 			return updateModuleGql({ variables: { id: moduleId, input: rest } });
 		},
+		mutateAsync: async (input: UpdateModuleInput) => {
+			const { moduleId, ...rest } = input;
+			await updateModuleGql({ variables: { id: moduleId, input: rest } });
+		},
 		isPending: isUpdatingModule,
 		error: updateModuleError ?? null,
 		isError: !!updateModuleError,
 	};
 
 	// Deactivate module mutation (GraphQL – reuses updateModule)
-	const [deactivateModuleGql, { loading: isDeactivatingModule, error: deactivateModuleError }] = useApolloMutation<
-		unknown,
-		UpdateModuleVariables
-	>(UPDATE_MODULE_MUTATION, {
-		onCompleted: () => {
-			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-			setIsDeleteModuleDialogOpen(false);
-			setSelectedModule(null);
+	const [
+		deactivateModuleGql,
+		{ loading: isDeactivatingModule, error: deactivateModuleError },
+	] = useApolloMutation<unknown, UpdateModuleVariables>(
+		UPDATE_MODULE_MUTATION,
+		{
+			onCompleted: () => {
+				queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+				setIsDeleteModuleDialogOpen(false);
+				setSelectedModule(null);
+			},
 		},
-	});
+	);
 
 	const deactivateModuleMutation = {
 		mutate: (input: UpdateModuleInput) => {
@@ -261,6 +278,16 @@ function RbacComponent() {
 			});
 			setIsRolePermissionsDialogOpen(false);
 			setSelectedRoleForPermissions(null);
+		},
+	});
+
+	const createPermissionMutation = useMutation({
+		mutationFn: (input: CreatePermissionInput) => createPermission(input),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rbac-role-permissions", selectedRoleForPermissions?.roleId],
+			});
 		},
 	});
 
@@ -323,8 +350,7 @@ function RbacComponent() {
 
 	const summaryCardDelays = [0, 60, 120, 180];
 
-	const isAnyLoading =
-		isLoadingModules || isLoadingRoles || isLoadingUserRoles;
+	const isAnyLoading = isLoadingModules || isLoadingRoles || isLoadingUserRoles;
 
 	return (
 		<main
@@ -434,160 +460,220 @@ function RbacComponent() {
 					id={`tabpanel-${activeTab}`}
 					aria-labelledby={`tab-${activeTab}`}
 				>
-				{activeTab === "modules" && (
-					<ModulesTable
-						modules={filteredModules}
-						pagination={modulesData?.pagination}
-						isLoading={isLoadingModules}
-						isFetching={isFetchingModules}
-						isError={isErrorModules}
-						error={modulesError}
-						searchTerm={modulesSearchTerm}
-						onSearchChange={(value) => {
-							setModulesSearchTerm(value);
-							setModulesPage(1);
-						}}
-						statusFilter={modulesStatusFilter}
-						onStatusFilterChange={(value) => {
-							setModulesStatusFilter(value);
-							setModulesPage(1);
-						}}
-						page={modulesPage}
-						onPageChange={setModulesPage}
-						onRetry={() => refetchModules()}
-						onCreateClick={() => setIsCreateModuleDialogOpen(true)}
-						onEditClick={handleEditModule}
-						onDeleteClick={handleDeleteModule}
-					/>
-				)}
+					{activeTab === "modules" && (
+						<ModulesTable
+							modules={filteredModules}
+							pagination={modulesData?.pagination}
+							isLoading={isLoadingModules}
+							isFetching={isFetchingModules}
+							isError={isErrorModules}
+							error={modulesError}
+							searchTerm={modulesSearchTerm}
+							onSearchChange={(value) => {
+								setModulesSearchTerm(value);
+								setModulesPage(1);
+							}}
+							statusFilter={modulesStatusFilter}
+							onStatusFilterChange={(value) => {
+								setModulesStatusFilter(value);
+								setModulesPage(1);
+							}}
+							page={modulesPage}
+							onPageChange={setModulesPage}
+							onRetry={() => refetchModules()}
+							onCreateClick={() => setIsCreateModuleDialogOpen(true)}
+							onEditClick={handleEditModule}
+							onDeleteClick={handleDeleteModule}
+						/>
+					)}
 
-				{activeTab === "roles" && (
-					<RolesTable
-						roles={filteredRoles}
-						pagination={rolesData?.pagination}
-						isLoading={isLoadingRoles}
-						isFetching={isFetchingRoles}
-						isError={isErrorRoles}
-						error={rolesError}
-						searchTerm={rolesSearchTerm}
-						onSearchChange={(value) => {
-							setRolesSearchTerm(value);
-							setRolesPage(1);
-						}}
-						statusFilter={rolesStatusFilter}
-						onStatusFilterChange={(value) => {
-							setRolesStatusFilter(value);
-							setRolesPage(1);
-						}}
-						page={rolesPage}
-						onPageChange={setRolesPage}
-						onRetry={() => refetchRoles()}
-						onEditClick={handleEditRole}
-						onViewPermissionsClick={handleViewRolePermissions}
-					/>
-				)}
+					{activeTab === "roles" && (
+						<RolesTable
+							roles={filteredRoles}
+							pagination={rolesData?.pagination}
+							isLoading={isLoadingRoles}
+							isFetching={isFetchingRoles}
+							isError={isErrorRoles}
+							error={rolesError}
+							searchTerm={rolesSearchTerm}
+							onSearchChange={(value) => {
+								setRolesSearchTerm(value);
+								setRolesPage(1);
+							}}
+							statusFilter={rolesStatusFilter}
+							onStatusFilterChange={(value) => {
+								setRolesStatusFilter(value);
+								setRolesPage(1);
+							}}
+							page={rolesPage}
+							onPageChange={setRolesPage}
+							onRetry={() => refetchRoles()}
+							onEditClick={handleEditRole}
+							onViewPermissionsClick={handleViewRolePermissions}
+						/>
+					)}
 
-				{activeTab === "user-roles" && (
-					<UserRolesTable
-						userRoles={filteredUserRoles}
-						pagination={userRolesData?.pagination}
-						isLoading={isLoadingUserRoles}
-						isFetching={isFetchingUserRoles}
-						isError={isErrorUserRoles}
-						error={userRolesError}
-						searchTerm={userRolesSearchTerm}
-						onSearchChange={(value) => {
-							setUserRolesSearchTerm(value);
-							setUserRolesPage(1);
-						}}
-						statusFilter={userRolesStatusFilter}
-						onStatusFilterChange={(value) => {
-							setUserRolesStatusFilter(value);
-							setUserRolesPage(1);
-						}}
-						page={userRolesPage}
-						onPageChange={setUserRolesPage}
-						onRetry={() => refetchUserRoles()}
-					/>
-				)}
+					{activeTab === "user-roles" && (
+						<UserRolesTable
+							userRoles={filteredUserRoles}
+							pagination={userRolesData?.pagination}
+							isLoading={isLoadingUserRoles}
+							isFetching={isFetchingUserRoles}
+							isError={isErrorUserRoles}
+							error={userRolesError}
+							searchTerm={userRolesSearchTerm}
+							onSearchChange={(value) => {
+								setUserRolesSearchTerm(value);
+								setUserRolesPage(1);
+							}}
+							statusFilter={userRolesStatusFilter}
+							onStatusFilterChange={(value) => {
+								setUserRolesStatusFilter(value);
+								setUserRolesPage(1);
+							}}
+							page={userRolesPage}
+							onPageChange={setUserRolesPage}
+							onRetry={() => refetchUserRoles()}
+						/>
+					)}
 				</div>
 
 				{/* Create Module Dialog */}
-			<CreateModuleDialog
-				open={isCreateModuleDialogOpen}
-				onOpenChange={setIsCreateModuleDialogOpen}
-				onSubmit={(input) => createModuleMutation.mutate(input)}
-				isSubmitting={createModuleMutation.isPending}
-				error={createModuleMutation.error}
-				currentUserIdentifier={currentUserIdentifier}
-			/>
+				<CreateModuleDialog
+					open={isCreateModuleDialogOpen}
+					onOpenChange={setIsCreateModuleDialogOpen}
+					onSubmit={async (input, addPermissionTypes) => {
+						const result = await createModuleMutation.mutateAsync(input);
+						const created = result.data?.createModule;
+						const moduleId = created?.moduleId;
+						if (!moduleId) return;
 
-			{/* Edit Module Dialog */}
-			<EditModuleDialog
-				open={isEditModuleDialogOpen}
-				onOpenChange={(open) => {
-					setIsEditModuleDialogOpen(open);
-					if (!open) setSelectedModule(null);
-				}}
-				module={selectedModule}
-				onSubmit={(input) => updateModuleMutation.mutate(input)}
-				isSubmitting={updateModuleMutation.isPending}
-				error={updateModuleMutation.error}
-				currentUserIdentifier={currentUserIdentifier}
-			/>
+						const existingTypes = new Set(
+							(created.permissions ?? [])
+								.map((p) => p.permissionType)
+								.filter((v): v is string => Boolean(v)),
+						);
+						const missingTypes = addPermissionTypes.filter(
+							(type) => !existingTypes.has(type),
+						);
 
-			{/* Delete (Deactivate) Module Dialog */}
-			<DeleteModuleDialog
-				open={isDeleteModuleDialogOpen}
-				onOpenChange={(open) => {
-					setIsDeleteModuleDialogOpen(open);
-					if (!open) setSelectedModule(null);
-				}}
-				module={selectedModule}
-				onConfirm={(input) => deactivateModuleMutation.mutate(input)}
-				isSubmitting={deactivateModuleMutation.isPending}
-				error={deactivateModuleMutation.error}
-				currentUserIdentifier={currentUserIdentifier}
-			/>
+						if (missingTypes.length > 0) {
+							await Promise.all(
+								missingTypes.map((permissionType) =>
+									createPermissionMutation.mutateAsync({
+										moduleId,
+										permissionType,
+										status: "active",
+										createdBy: currentUserIdentifier,
+										updatedBy: currentUserIdentifier,
+									}),
+								),
+							);
+						}
 
-			{/* Edit Role Dialog */}
-			<EditRoleDialog
-				open={isEditRoleDialogOpen}
-				onOpenChange={(open) => {
-					if (!open && updateRoleMutation.isPending) return;
-					setIsEditRoleDialogOpen(open);
-					if (!open) {
-						setSelectedRole(null);
-						updateRoleMutation.reset();
+						queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+						setModulesPage(1);
+						setIsCreateModuleDialogOpen(false);
+					}}
+					isSubmitting={
+						createModuleMutation.isPending || createPermissionMutation.isPending
 					}
-				}}
-				role={selectedRole}
-				onSubmit={(input) => updateRoleMutation.mutate(input)}
-				isSubmitting={updateRoleMutation.isPending}
-				error={updateRoleMutation.error}
-				currentUserIdentifier={currentUserIdentifier}
-			/>
+					error={createModuleMutation.error}
+					currentUserIdentifier={currentUserIdentifier}
+				/>
 
-			{/* Role Permissions Dialog */}
-			<RolePermissionsDialog
-				open={isRolePermissionsDialogOpen}
-				onOpenChange={(open) => {
-					// Don't close if currently saving
-					if (!open && updateRolePermissionsMutation.isPending) return;
-					setIsRolePermissionsDialogOpen(open);
-					if (!open) {
-						setSelectedRoleForPermissions(null);
-						// Reset mutation state when dialog closes
-						updateRolePermissionsMutation.reset();
+				{/* Edit Module Dialog */}
+				<EditModuleDialog
+					open={isEditModuleDialogOpen}
+					onOpenChange={(open) => {
+						setIsEditModuleDialogOpen(open);
+						if (!open) setSelectedModule(null);
+					}}
+					module={selectedModule}
+					onSubmit={async (input, addPermissionTypes) => {
+						await updateModuleMutation.mutateAsync(input);
+						if (addPermissionTypes.length === 0) return;
+						await Promise.all(
+							addPermissionTypes.map((permissionType) =>
+								createPermissionMutation.mutateAsync({
+									moduleId: input.moduleId,
+									permissionType,
+									status: "active",
+									createdBy: currentUserIdentifier,
+									updatedBy: currentUserIdentifier,
+								}),
+							),
+						);
+					}}
+					isSubmitting={
+						updateModuleMutation.isPending || createPermissionMutation.isPending
 					}
-				}}
-				role={selectedRoleForPermissions}
-				logout={logout}
-				onSave={(input) => updateRolePermissionsMutation.mutate(input)}
-				isSaving={updateRolePermissionsMutation.isPending}
-				saveError={updateRolePermissionsMutation.error}
-				currentUserIdentifier={currentUserIdentifier}
-			/>
+					error={updateModuleMutation.error}
+					currentUserIdentifier={currentUserIdentifier}
+				/>
+
+				{/* Delete (Deactivate) Module Dialog */}
+				<DeleteModuleDialog
+					open={isDeleteModuleDialogOpen}
+					onOpenChange={(open) => {
+						setIsDeleteModuleDialogOpen(open);
+						if (!open) setSelectedModule(null);
+					}}
+					module={selectedModule}
+					onConfirm={(input) => deactivateModuleMutation.mutate(input)}
+					isSubmitting={deactivateModuleMutation.isPending}
+					error={deactivateModuleMutation.error}
+					currentUserIdentifier={currentUserIdentifier}
+				/>
+
+				{/* Edit Role Dialog */}
+				<EditRoleDialog
+					open={isEditRoleDialogOpen}
+					onOpenChange={(open) => {
+						if (!open && updateRoleMutation.isPending) return;
+						setIsEditRoleDialogOpen(open);
+						if (!open) {
+							setSelectedRole(null);
+							updateRoleMutation.reset();
+						}
+					}}
+					role={selectedRole}
+					onSubmit={(input) => updateRoleMutation.mutate(input)}
+					isSubmitting={updateRoleMutation.isPending}
+					error={updateRoleMutation.error}
+					currentUserIdentifier={currentUserIdentifier}
+				/>
+
+				{/* Role Permissions Dialog */}
+				<RolePermissionsDialog
+					open={isRolePermissionsDialogOpen}
+					onOpenChange={(open) => {
+						// Don't close if currently saving
+						if (!open && updateRolePermissionsMutation.isPending) return;
+						setIsRolePermissionsDialogOpen(open);
+						if (!open) {
+							setSelectedRoleForPermissions(null);
+							// Reset mutation state when dialog closes
+							updateRolePermissionsMutation.reset();
+						}
+					}}
+					role={selectedRoleForPermissions}
+					logout={logout}
+					onSave={(input) => updateRolePermissionsMutation.mutate(input)}
+					onAddPermission={async (moduleId, permissionType) => {
+						await createPermissionMutation.mutateAsync({
+							moduleId,
+							permissionType,
+							createdBy: currentUserIdentifier,
+							updatedBy: currentUserIdentifier,
+							status: "active",
+						});
+					}}
+					isSaving={updateRolePermissionsMutation.isPending}
+					isAddingPermission={createPermissionMutation.isPending}
+					saveError={updateRolePermissionsMutation.error}
+					currentUserIdentifier={currentUserIdentifier}
+				/>
 			</div>
 		</main>
 	);

@@ -176,7 +176,7 @@ function SettingsPage() {
 
 	return (
 		<main
-			className="settings-page min-h-screen bg-[var(--dashboard-surface)]"
+			className="settings-page min-h-screen overflow-x-hidden bg-[var(--dashboard-surface)]"
 			aria-labelledby="settings-page-title"
 			aria-describedby="settings-page-description"
 			aria-busy={isAnyMutationPending}
@@ -185,7 +185,7 @@ function SettingsPage() {
 				className="pointer-events-none fixed left-0 right-0 top-0 h-[420px] bg-gradient-to-b from-[var(--dashboard-accent-muted)]/30 via-transparent to-transparent"
 				aria-hidden
 			/>
-			<div className="container relative mx-auto space-y-6 p-6">
+			<div className="container relative mx-auto min-w-0 space-y-6 p-6">
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div className="space-y-2">
 						<div className="flex items-center gap-2.5">
@@ -231,7 +231,11 @@ function SettingsPage() {
 				)}
 
 				{/* Tabs */}
-				<div className="flex gap-1 border-b border-border" role="tablist" aria-label="Settings sections">
+				<div
+					className="flex gap-1 border-b border-border"
+					role="tablist"
+					aria-label="Settings sections"
+				>
 					{tabs.map((tab) => {
 						const Icon = tab.icon;
 						const isActive = activeTab === tab.id;
@@ -258,37 +262,38 @@ function SettingsPage() {
 
 				{/* Tab Content */}
 				<div
+					className="min-w-0"
 					role="tabpanel"
 					id={`settings-tabpanel-${activeTab}`}
 					aria-labelledby={`settings-tab-${activeTab}`}
 				>
-			{activeTab === "profile" && (
-				<div className="grid gap-6 lg:grid-cols-2">
-					<UserProfileCard
-						user={user}
-						onSubmit={updateUserProfile.mutateAsync}
-						isSubmitting={updateUserProfile.isPending}
-					/>
-					<SecurityCard
-						onSubmit={updatePassword.mutateAsync}
-						isSubmitting={updatePassword.isPending}
-					/>
-					<NotificationsCard
-						onSubmit={updateNotifications.mutateAsync}
-						isSubmitting={updateNotifications.isPending}
-					/>
-				</div>
-			)}
+					{activeTab === "profile" && (
+						<div className="grid gap-6 lg:grid-cols-2">
+							<UserProfileCard
+								user={user}
+								onSubmit={updateUserProfile.mutateAsync}
+								isSubmitting={updateUserProfile.isPending}
+							/>
+							<SecurityCard
+								onSubmit={updatePassword.mutateAsync}
+								isSubmitting={updatePassword.isPending}
+							/>
+							<NotificationsCard
+								onSubmit={updateNotifications.mutateAsync}
+								isSubmitting={updateNotifications.isPending}
+							/>
+						</div>
+					)}
 
-			{activeTab === "users" && <UsersRolesCard />}
+					{activeTab === "users" && <UsersRolesCard />}
 
-			{activeTab === "master-data" && showMasterDataTab && (
-				<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
-			)}
+					{activeTab === "master-data" && showMasterDataTab && (
+						<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
+					)}
 
-			{activeTab === "integration" && showIntegrationTab && (
-				<IntegrationStatusCard />
-			)}
+					{activeTab === "integration" && showIntegrationTab && (
+						<IntegrationStatusCard />
+					)}
 				</div>
 			</div>
 		</main>
@@ -984,10 +989,18 @@ function UsersRolesCard() {
 										</TableCell>
 										<TableCell className="px-6 text-right">
 											<div className="flex justify-end gap-1">
-												<Button variant="ghost" size="icon" className="rounded-lg">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="rounded-lg"
+												>
 													<Edit className="h-4 w-4" />
 												</Button>
-												<Button variant="ghost" size="icon" className="rounded-lg">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="rounded-lg"
+												>
 													<Trash2 className="h-4 w-4 text-red-600" />
 												</Button>
 											</div>

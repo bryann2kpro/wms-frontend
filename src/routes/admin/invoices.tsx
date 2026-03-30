@@ -106,9 +106,7 @@ function InvoicesComponent() {
 
 	const summary = data?.invoices.summary;
 	const pagination = data?.invoices.pagination;
-	const totalPages = pagination
-		? Math.max(1, pagination.totalPages)
-		: 1;
+	const totalPages = pagination ? Math.max(1, pagination.totalPages) : 1;
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
@@ -307,13 +305,27 @@ function InvoicesComponent() {
 						<Table>
 							<TableHeader>
 								<TableRow className="bg-muted/40">
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice #</TableHead>
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">DO #</TableHead>
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">PO #</TableHead>
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</TableHead>
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Issued</TableHead>
-									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
-									<TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Invoice #
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										DO #
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										PO #
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Amount
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Issued
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Status
+									</TableHead>
+									<TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Actions
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -328,14 +340,13 @@ function InvoicesComponent() {
 									</TableRow>
 								) : invoices.length === 0 ? (
 									<TableRow>
-										<TableCell
-											colSpan={7}
-											className="h-32 text-center"
-										>
+										<TableCell colSpan={7} className="h-32 text-center">
 											<div className="flex flex-col items-center gap-2 text-muted-foreground">
 												<FileText className="h-8 w-8 opacity-30" />
 												<p className="text-sm font-medium">No invoices found</p>
-												<p className="text-xs">Try adjusting your search or filter</p>
+												<p className="text-xs">
+													Try adjusting your search or filter
+												</p>
 											</div>
 										</TableCell>
 									</TableRow>
@@ -351,16 +362,28 @@ function InvoicesComponent() {
 												})
 											}
 										>
-											<TableCell className="font-semibold text-sm" style={{ fontFamily: "var(--dashboard-display)" }}>
+											<TableCell
+												className="font-semibold text-sm"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
 												{invoice.invoiceNumber}
 											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">{invoice.doNumber ?? "—"}</TableCell>
-											<TableCell className="text-sm text-muted-foreground">{invoice.toNumber ?? "—"}</TableCell>
-											<TableCell className="text-sm font-semibold" style={{ fontFamily: "var(--dashboard-display)" }}>
+											<TableCell className="text-sm text-muted-foreground">
+												{invoice.doNumber ?? "—"}
+											</TableCell>
+											<TableCell className="text-sm text-muted-foreground">
+												{invoice.toNumber ?? "—"}
+											</TableCell>
+											<TableCell
+												className="text-sm font-semibold"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
 												{formatCurrency(invoice.totalAmount)}
 											</TableCell>
 											<TableCell className="text-sm text-muted-foreground">
-											{invoice.issuedDate ? formatDateOnly(invoice.issuedDate) : "—"}
+												{invoice.issuedDate
+													? formatDateOnly(invoice.issuedDate)
+													: "—"}
 											</TableCell>
 											<TableCell>
 												<Badge
@@ -370,7 +393,10 @@ function InvoicesComponent() {
 													{invoice.status}
 												</Badge>
 											</TableCell>
-											<TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+											<TableCell
+												className="text-right"
+												onClick={(e) => e.stopPropagation()}
+											>
 												<Button
 													variant="ghost"
 													size="icon"
@@ -401,10 +427,15 @@ function InvoicesComponent() {
 								</span>{" "}
 								–{" "}
 								<span className="font-medium text-foreground">
-									{Math.min(pagination.currentPage * pageSize, pagination.totalCount)}
+									{Math.min(
+										pagination.currentPage * pageSize,
+										pagination.totalCount,
+									)}
 								</span>{" "}
 								of{" "}
-								<span className="font-medium text-foreground">{pagination.totalCount}</span>{" "}
+								<span className="font-medium text-foreground">
+									{pagination.totalCount}
+								</span>{" "}
 								invoices
 							</p>
 							<div className="flex items-center gap-1.5">

@@ -194,9 +194,21 @@ export function OutboundListCard({
 						aria-label="Delivery period tabs"
 					>
 						<Button
-							variant={activeTab === "current-week" ? "default" : "ghost"}
+							variant="ghost"
 							onClick={() => setActiveTab("current-week")}
-							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							style={{
+								...(activeTab === "current-week"
+									? {
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "white",
+										}
+									: {
+											background: "transparent",
+											color: "inherit",
+										}),
+							}}
 							role="tab"
 							aria-selected={activeTab === "current-week"}
 							aria-controls="purchase-order-table"
@@ -205,9 +217,21 @@ export function OutboundListCard({
 							Next Delivery
 						</Button>
 						<Button
-							variant={activeTab === "past-weeks" ? "default" : "ghost"}
+							variant="ghost"
 							onClick={() => setActiveTab("past-weeks")}
-							className="rounded-lg rounded-b-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							className="rounded-lg rounded-b-none border border-transparent transition-colors hover:bg-[var(--dashboard-accent-muted)]/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							style={{
+								...(activeTab === "past-weeks"
+									? {
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "white",
+										}
+									: {
+											background: "transparent",
+											color: "inherit",
+										}),
+							}}
 							role="tab"
 							aria-selected={activeTab === "past-weeks"}
 							aria-controls="purchase-order-table"
@@ -229,12 +253,24 @@ export function OutboundListCard({
 					<Table aria-label="Purchase orders list">
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead scope="col" className="px-6">PO Number</TableHead>
-								<TableHead scope="col" className="px-6">Outlet</TableHead>
-								<TableHead scope="col" className="px-6">Region</TableHead>
-								<TableHead scope="col" className="px-6">PO Status</TableHead>
-								<TableHead scope="col" className="px-6">DO Status</TableHead>
-								<TableHead scope="col" className="px-6">NetSuite (API)</TableHead>
+								<TableHead scope="col" className="px-6">
+									PO Number
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									Outlet
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									Region
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									PO Status
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									DO Status
+								</TableHead>
+								<TableHead scope="col" className="px-6">
+									NetSuite (API)
+								</TableHead>
 								<TableHead scope="col" className="px-6 text-right">
 									Actions
 								</TableHead>
@@ -392,7 +428,9 @@ export function OutboundListCard({
 													<TableCell className="px-6 font-medium">
 														{purchaseOrder.purchaseOrderNumber}
 													</TableCell>
-													<TableCell className="px-6">{purchaseOrder.toLocation}</TableCell>
+													<TableCell className="px-6">
+														{purchaseOrder.toLocation}
+													</TableCell>
 													<TableCell className="px-6">
 														{purchaseOrder.regionName ? (
 															<div className="flex flex-col">
@@ -429,21 +467,22 @@ export function OutboundListCard({
 																	)}
 																</Badge>
 																{purchaseOrder.deliveryOrder.status === "NEW" ||
-																purchaseOrder.deliveryOrder.status === "CREATED" ||
-																purchaseOrder.deliveryOrder.status === "PICKING" ? (
+																purchaseOrder.deliveryOrder.status ===
+																	"CREATED" ||
+																purchaseOrder.deliveryOrder.status ===
+																	"PICKING" ? (
 																	<span className="text-xs text-muted-foreground italic">
 																		Awaiting picking
 																	</span>
 																) : onAdvanceStep &&
-																	purchaseOrder.deliveryOrder.status === "PACKING" &&
-																	(dateKey === todayKey) ? (
+																	purchaseOrder.deliveryOrder.status ===
+																		"PACKING" &&
+																	dateKey === todayKey ? (
 																	<Button
 																		variant="outline"
 																		size="sm"
 																		className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		onClick={() =>
-																			onAdvanceStep(purchaseOrder)
-																		}
+																		onClick={() => onAdvanceStep(purchaseOrder)}
 																		disabled={
 																			isAdvanceStepPending &&
 																			advancingDeliveryOrderId ===
@@ -461,7 +500,9 @@ export function OutboundListCard({
 																) : null}
 															</div>
 														) : (
-															<span className="text-muted-foreground text-sm">—</span>
+															<span className="text-muted-foreground text-sm">
+																—
+															</span>
 														)}
 													</TableCell>
 													<TableCell className="px-6">
@@ -496,7 +537,9 @@ export function OutboundListCard({
 																	<Button
 																		variant="ghost"
 																		size="icon"
-																		onClick={() => onAcceptClick?.(purchaseOrder)}
+																		onClick={() =>
+																			onAcceptClick?.(purchaseOrder)
+																		}
 																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 																		aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
 																	>

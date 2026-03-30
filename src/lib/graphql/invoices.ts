@@ -163,7 +163,9 @@ export type InvoiceQueryVariables = { id: string };
 export type InvoiceQueryData = { invoice: InvoiceGQL | null };
 
 export type UpdateInvoiceStatusVariables = { id: string; status: string };
-export type UpdateInvoiceStatusData = { updateInvoiceStatus: InvoiceGQL | null };
+export type UpdateInvoiceStatusData = {
+	updateInvoiceStatus: InvoiceGQL | null;
+};
 
 // ---------------------------------------------------------------------------
 // Status mapping: backend (UPPERCASE) ↔ frontend UI (Title Case)
@@ -185,7 +187,9 @@ export function gqlStatusToUI(status: string): InvoiceStatusUI {
 }
 
 /** Map UI filter value to backend status string(s). Returns array for multi-status mapping. */
-export function uiStatusToGql(status: InvoiceStatusFilter): string | string[] | undefined {
+export function uiStatusToGql(
+	status: InvoiceStatusFilter,
+): string | string[] | undefined {
 	if (status === "ALL") return undefined;
 	// "Issued" covers DRAFT, GENERATED, and ISSUED backend statuses
 	if (status === "Issued") return ["DRAFT", "GENERATED", "ISSUED"];

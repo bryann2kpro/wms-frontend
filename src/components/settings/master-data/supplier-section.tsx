@@ -108,7 +108,7 @@ export function SupplierSection() {
 							Manage supplier master data
 						</CardDescription>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
@@ -139,9 +139,24 @@ export function SupplierSection() {
 					<Table>
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Code</TableHead>
-								<TableHead className="px-6" style={{ fontFamily: "var(--dashboard-body)" }}>Name</TableHead>
-								<TableHead className="px-6 text-right" style={{ fontFamily: "var(--dashboard-body)" }}>Actions</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Code
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Name
+								</TableHead>
+								<TableHead
+									className="px-6 text-right"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Actions
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -165,7 +180,10 @@ export function SupplierSection() {
 								</TableRow>
 							) : (
 								list.map((row) => (
-									<TableRow key={row.supplierId} className="transition-colors hover:bg-muted/50">
+									<TableRow
+										key={row.supplierId}
+										className="transition-colors hover:bg-muted/50"
+									>
 										<TableCell className="px-6 font-mono text-sm">
 											{row.supplierCode}
 										</TableCell>
@@ -198,8 +216,15 @@ export function SupplierSection() {
 				</div>
 				{pagination && totalPages > 1 && (
 					<div className="mx-6 mt-4 flex items-center justify-between">
-						<p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-							Page <span className="font-semibold tabular-nums text-foreground">{currentPage}</span> of {totalPages} ({pagination.totalCount} total)
+						<p
+							className="text-sm text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Page{" "}
+							<span className="font-semibold tabular-nums text-foreground">
+								{currentPage}
+							</span>{" "}
+							of {totalPages} ({pagination.totalCount} total)
 						</p>
 						<div className="flex gap-2">
 							<Button
@@ -326,12 +351,24 @@ function SupplierFormDialog({
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50">
-					<DialogTitle className="text-xl" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>{title}</DialogTitle>
-					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>{description}</DialogDescription>
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						{title}
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
+						{description}
+					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
 					<div className="grid gap-2">
-						<Label htmlFor="supplier-code" style={{ fontFamily: '"Figtree", sans-serif' }}>Code</Label>
+						<Label
+							htmlFor="supplier-code"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Code
+						</Label>
 						<Input
 							id="supplier-code"
 							value={code}
@@ -341,7 +378,12 @@ function SupplierFormDialog({
 						/>
 					</div>
 					<div className="grid gap-2">
-						<Label htmlFor="supplier-name" style={{ fontFamily: '"Figtree", sans-serif' }}>Name</Label>
+						<Label
+							htmlFor="supplier-name"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Name
+						</Label>
 						<Input
 							id="supplier-name"
 							value={name}
@@ -352,7 +394,11 @@ function SupplierFormDialog({
 					</div>
 				</div>
 				<DialogFooter className="border-t bg-muted/20">
-					<Button variant="outline" onClick={() => handleOpenChange(false)} className="rounded-lg">
+					<Button
+						variant="outline"
+						onClick={() => handleOpenChange(false)}
+						className="rounded-lg"
+					>
 						Cancel
 					</Button>
 					<Button

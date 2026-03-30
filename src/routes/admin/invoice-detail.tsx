@@ -1,7 +1,4 @@
-import {
-	createFileRoute,
-	useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
@@ -48,14 +45,14 @@ function InvoiceDetailComponent() {
 	const { id } = Route.useSearch();
 	const navigate = useNavigate();
 
-	const { data, loading, refetch } = useQuery<InvoiceQueryData, InvoiceQueryVariables>(
-		INVOICE_QUERY,
-		{
-			variables: { id },
-			skip: !id,
-			fetchPolicy: "cache-and-network",
-		},
-	);
+	const { data, loading, refetch } = useQuery<
+		InvoiceQueryData,
+		InvoiceQueryVariables
+	>(INVOICE_QUERY, {
+		variables: { id },
+		skip: !id,
+		fetchPolicy: "cache-and-network",
+	});
 
 	const [updateStatus, { loading: updating }] = useMutation<
 		UpdateInvoiceStatusData,
@@ -83,7 +80,7 @@ function InvoiceDetailComponent() {
 					unitPrice: parseFloat(item.unitPrice) || 0,
 					totalPrice: parseFloat(item.subTotal) || 0,
 				})),
-		  }
+			}
 		: null;
 
 	if (loading && !invoice) {
@@ -124,7 +121,9 @@ function InvoiceDetailComponent() {
 					style={{ fontFamily: "var(--invoice-detail-body)" }}
 				>
 					<FileText className="mx-auto h-12 w-12 text-muted-foreground/60" />
-					<p className="mt-3 text-sm font-medium text-foreground">Invoice not found</p>
+					<p className="mt-3 text-sm font-medium text-foreground">
+						Invoice not found
+					</p>
 					<p className="mt-1 text-sm text-muted-foreground">
 						The invoice may have been removed or the link is invalid.
 					</p>
@@ -143,9 +142,11 @@ function InvoiceDetailComponent() {
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
-			Issued: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+			Issued:
+				"bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
 			Sent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-			Cancelled: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+			Cancelled:
+				"bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
 		};
 		return colors[status] || "bg-muted text-muted-foreground border-border";
 	};
@@ -246,7 +247,9 @@ function InvoiceDetailComponent() {
 									borderColor: "var(--invoice-detail-accent)",
 								}}
 								onClick={() =>
-									updateStatus({ variables: { id: invoice.id, status: "SENT" } })
+									updateStatus({
+										variables: { id: invoice.id, status: "SENT" },
+									})
 								}
 								disabled={updating}
 							>
@@ -269,7 +272,10 @@ function InvoiceDetailComponent() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pb-5 pt-0">
-							<Badge variant="outline" className={getStatusColor(invoice.status)}>
+							<Badge
+								variant="outline"
+								className={getStatusColor(invoice.status)}
+							>
 								{invoice.status}
 							</Badge>
 						</CardContent>
@@ -395,7 +401,9 @@ function InvoiceDetailComponent() {
 												</TableCell>
 												<TableCell
 													className="font-medium text-sm"
-													style={{ fontFamily: "var(--invoice-detail-display)" }}
+													style={{
+														fontFamily: "var(--invoice-detail-display)",
+													}}
 												>
 													{item.skuCode ?? item.skuId}
 												</TableCell>
@@ -419,7 +427,9 @@ function InvoiceDetailComponent() {
 												</TableCell>
 												<TableCell
 													className="text-right text-sm font-medium tabular-nums"
-													style={{ fontFamily: "var(--invoice-detail-display)" }}
+													style={{
+														fontFamily: "var(--invoice-detail-display)",
+													}}
 												>
 													{formatCurrency(item.totalPrice)}
 												</TableCell>

@@ -251,7 +251,8 @@ function DODetailComponent() {
 								Emergency delivery
 							</Badge>
 							<p className="text-xs text-muted-foreground mt-2">
-								This order was assigned to the next delivery day regardless of cutoff time.
+								This order was assigned to the next delivery day regardless of
+								cutoff time.
 							</p>
 						</CardContent>
 					</Card>

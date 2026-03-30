@@ -4,50 +4,50 @@ import type { Pagination } from "./types";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface StockCountSession {
-    id: string;
-    organizationId: string;
-    name: string;
-    status: "open" | "closed";
-    countDate: string;
-    createdBy: string;
-    createdAt: string;
-    closedBy: string | null;
-    closedAt: string | null;
-    itemCount: number;
-    pendingCount: number;
+	id: string;
+	organizationId: string;
+	name: string;
+	status: "open" | "closed";
+	countDate: string;
+	createdBy: string;
+	createdAt: string;
+	closedBy: string | null;
+	closedAt: string | null;
+	itemCount: number;
+	pendingCount: number;
 }
 
 export interface StockCountItem {
-    id: string;
-    sessionId: string;
-    organizationId: string;
-    skuId: string;
-    skuCode: string;
-    skuDescription: string;
-    openingQty: number;
-    openingLossQty: number;
-    onHandQty: number;
-    onHandLossQty: number;
-    reservedQty: number;
-    qtyDifference: number;
-    lossQtyDifference: number;
-    countedQty: number | null;
-    countedLossQty: number | null;
-    action: "tally_to_opening" | "tally_to_stock_count" | "manual_key_in" | null;
-    notes: string | null;
-    isApproved: boolean;
-    approvedBy: string | null;
-    approvedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
+	id: string;
+	sessionId: string;
+	organizationId: string;
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	openingQty: number;
+	openingLossQty: number;
+	onHandQty: number;
+	onHandLossQty: number;
+	reservedQty: number;
+	qtyDifference: number;
+	lossQtyDifference: number;
+	countedQty: number | null;
+	countedLossQty: number | null;
+	action: "tally_to_opening" | "tally_to_stock_count" | "manual_key_in" | null;
+	notes: string | null;
+	isApproved: boolean;
+	approvedBy: string | null;
+	approvedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface UpdateStockCountItemInput {
-    action?: string;
-    countedQty?: number;
-    countedLossQty?: number;
-    notes?: string;
-    isApproved?: boolean;
+	action?: string;
+	countedQty?: number;
+	countedLossQty?: number;
+	notes?: string;
+	isApproved?: boolean;
 }
 
 // ─── Queries ────────────────────────────────────────────────────────────────
@@ -81,10 +81,10 @@ export const STOCK_COUNT_SESSIONS_QUERY = gql`
 `;
 
 export type StockCountSessionsQueryData = {
-    stockCountSessions: {
-        query: StockCountSession[];
-        pagination: Pagination;
-    };
+	stockCountSessions: {
+		query: StockCountSession[];
+		pagination: Pagination;
+	};
 };
 
 export const STOCK_COUNT_SESSION_QUERY = gql`
@@ -106,7 +106,7 @@ export const STOCK_COUNT_SESSION_QUERY = gql`
 `;
 
 export type StockCountSessionQueryData = {
-    stockCountSession: StockCountSession | null;
+	stockCountSession: StockCountSession | null;
 };
 
 export const STOCK_COUNT_SESSION_ITEMS_QUERY = gql`
@@ -157,10 +157,10 @@ export const STOCK_COUNT_SESSION_ITEMS_QUERY = gql`
 `;
 
 export type StockCountSessionItemsQueryData = {
-    stockCountSessionItems: {
-        query: StockCountItem[];
-        pagination: Pagination;
-    };
+	stockCountSessionItems: {
+		query: StockCountItem[];
+		pagination: Pagination;
+	};
 };
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ export const CREATE_STOCK_COUNT_SESSION_MUTATION = gql`
 `;
 
 export type CreateStockCountSessionData = {
-    createStockCountSession: StockCountSession;
+	createStockCountSession: StockCountSession;
 };
 
 export const UPDATE_STOCK_COUNT_ITEM_MUTATION = gql`
@@ -202,7 +202,7 @@ export const UPDATE_STOCK_COUNT_ITEM_MUTATION = gql`
 `;
 
 export type UpdateStockCountItemData = {
-    updateStockCountItem: StockCountItem;
+	updateStockCountItem: StockCountItem;
 };
 
 export const CLOSE_STOCK_COUNT_SESSION_MUTATION = gql`
@@ -220,7 +220,7 @@ export const CLOSE_STOCK_COUNT_SESSION_MUTATION = gql`
 `;
 
 export type CloseStockCountSessionData = {
-    closeStockCountSession: StockCountSession;
+	closeStockCountSession: StockCountSession;
 };
 
 export const GENERATE_STOCK_COUNT_CHECKLIST_MUTATION = gql`
@@ -233,5 +233,5 @@ export const GENERATE_STOCK_COUNT_CHECKLIST_MUTATION = gql`
 `;
 
 export type GenerateStockCountChecklistData = {
-    generateStockCountChecklist: { pdfBase64: string; filename: string };
+	generateStockCountChecklist: { pdfBase64: string; filename: string };
 };

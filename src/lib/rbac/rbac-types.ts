@@ -8,7 +8,13 @@ import type { Pagination } from "../pagination/pagination";
 export interface ModulePermission {
 	moduleId: string;
 	permissionId: string;
-	permissionType: "View" | "Read" | "Create" | "Update" | "Delete";
+	permissionType:
+		| "View"
+		| "Read"
+		| "Create"
+		| "Update"
+		| "Delete"
+		| "Approve";
 	description: string;
 }
 
@@ -174,7 +180,13 @@ export interface RolePermissionDetail {
 	id: string;
 	roleId: string;
 	permissionId: string;
-	permissionType: "View" | "Read" | "Create" | "Update" | "Delete";
+	permissionType:
+		| "View"
+		| "Read"
+		| "Create"
+		| "Update"
+		| "Delete"
+		| "Approve";
 	moduleId: string;
 	moduleName: string;
 	hasPermission: boolean;
@@ -233,6 +245,19 @@ export interface CreateRolePermissionInput {
 }
 
 /**
+ * Input for creating a permission row under a module
+ * POST /rbac/permissions/create
+ */
+export interface CreatePermissionInput {
+	moduleId: string;
+	permissionType: string;
+	description?: string;
+	status?: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+/**
  * Input for updating (syncing) all permissions for a role
  * PUT /rbac/role-permission/update/:roleId
  */
@@ -249,6 +274,21 @@ export interface RolePermissionApiResponse {
 	success: boolean;
 	message: string;
 	data: RolePermission;
+}
+
+/**
+ * API Response for single permission operations
+ */
+export interface PermissionApiResponse {
+	success: boolean;
+	message: string;
+	data: {
+		permissionId: string;
+		moduleId: string;
+		permissionType: string;
+		status: string;
+		description?: string | null;
+	};
 }
 
 /**

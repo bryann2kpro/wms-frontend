@@ -431,7 +431,8 @@ function UserManagementComponent() {
 													className="mt-0.5"
 													style={{ fontFamily: "var(--dashboard-body)" }}
 												>
-													Step {helpStep + 1} of {USER_MANAGEMENT_HELP_STEPS.length}
+													Step {helpStep + 1} of{" "}
+													{USER_MANAGEMENT_HELP_STEPS.length}
 												</DialogDescription>
 											</div>
 										</div>
@@ -532,9 +533,21 @@ function UserManagementComponent() {
 						aria-label="User summary by role"
 					>
 						{[
-							{ key: "supervisor", label: "Supervisors", value: summary.byRole.supervisor ?? 0 },
-							{ key: "logistic", label: "Logistic", value: summary.byRole.logistic ?? 0 },
-							{ key: "store_keeper", label: "Store Keepers", value: summary.byRole.store_keeper ?? 0 },
+							{
+								key: "supervisor",
+								label: "Supervisors",
+								value: summary.byRole.supervisor ?? 0,
+							},
+							{
+								key: "logistic",
+								label: "Logistic",
+								value: summary.byRole.logistic ?? 0,
+							},
+							{
+								key: "store_keeper",
+								label: "Store Keepers",
+								value: summary.byRole.store_keeper ?? 0,
+							},
 							{ key: "total", label: "Total Users", value: summary.total },
 						].map((item, i) => (
 							<Card
@@ -607,85 +620,85 @@ function UserManagementComponent() {
 									>
 										<SelectValue placeholder="Filter by role" />
 									</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ALL">All Roles</SelectItem>
-									{displayRolesList.map((r) => (
-										<SelectItem key={r.roleId} value={r.roleId}>
-											{r.roleName}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Select
-								value={statusFilter}
-								onValueChange={(value: StatusFilterValue) => {
-									setStatusFilter(value);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger
-									className="sm:w-36 rounded-lg border-muted-foreground/20"
-									aria-label="Filter by status"
-								>
-									<SelectValue placeholder="Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ALL">All statuses</SelectItem>
-									<SelectItem value="ACTIVE">Active</SelectItem>
-									<SelectItem value="INACTIVE">Inactive</SelectItem>
-								</SelectContent>
-							</Select>
-							<div className="flex items-center gap-1.5 shrink-0">
-								<ArrowUpDown
-									className="h-4 w-4 text-muted-foreground shrink-0"
-									aria-hidden
-								/>
-								<Select
-									value={sortField}
-									onValueChange={(value) => {
-										setSortField(value);
-										setPage(1);
-									}}
-								>
-									<SelectTrigger
-										className="sm:w-36 rounded-lg border-muted-foreground/20"
-										aria-label="Sort by field"
-									>
-										<SelectValue placeholder="Sort by" />
-									</SelectTrigger>
 									<SelectContent>
-										{SORT_FIELDS.map((f) => (
-											<SelectItem key={f.value} value={f.value}>
-												{f.label}
+										<SelectItem value="ALL">All Roles</SelectItem>
+										{displayRolesList.map((r) => (
+											<SelectItem key={r.roleId} value={r.roleId}>
+												{r.roleName}
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 								<Select
-									value={sortDirection}
-									onValueChange={(value: "ASC" | "DESC") => {
-										setSortDirection(value);
+									value={statusFilter}
+									onValueChange={(value: StatusFilterValue) => {
+										setStatusFilter(value);
 										setPage(1);
 									}}
 								>
 									<SelectTrigger
 										className="sm:w-36 rounded-lg border-muted-foreground/20"
-										aria-label="Sort direction"
+										aria-label="Filter by status"
 									>
-										<SelectValue placeholder="Order" />
+										<SelectValue placeholder="Status" />
 									</SelectTrigger>
 									<SelectContent>
-										{SORT_DIRECTIONS.map((d) => (
-											<SelectItem key={d.value} value={d.value}>
-												{d.label}
-											</SelectItem>
-										))}
+										<SelectItem value="ALL">All statuses</SelectItem>
+										<SelectItem value="ACTIVE">Active</SelectItem>
+										<SelectItem value="INACTIVE">Inactive</SelectItem>
 									</SelectContent>
 								</Select>
+								<div className="flex items-center gap-1.5 shrink-0">
+									<ArrowUpDown
+										className="h-4 w-4 text-muted-foreground shrink-0"
+										aria-hidden
+									/>
+									<Select
+										value={sortField}
+										onValueChange={(value) => {
+											setSortField(value);
+											setPage(1);
+										}}
+									>
+										<SelectTrigger
+											className="sm:w-36 rounded-lg border-muted-foreground/20"
+											aria-label="Sort by field"
+										>
+											<SelectValue placeholder="Sort by" />
+										</SelectTrigger>
+										<SelectContent>
+											{SORT_FIELDS.map((f) => (
+												<SelectItem key={f.value} value={f.value}>
+													{f.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<Select
+										value={sortDirection}
+										onValueChange={(value: "ASC" | "DESC") => {
+											setSortDirection(value);
+											setPage(1);
+										}}
+									>
+										<SelectTrigger
+											className="sm:w-36 rounded-lg border-muted-foreground/20"
+											aria-label="Sort direction"
+										>
+											<SelectValue placeholder="Order" />
+										</SelectTrigger>
+										<SelectContent>
+											{SORT_DIRECTIONS.map((d) => (
+												<SelectItem key={d.value} value={d.value}>
+													{d.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
 							</div>
 						</div>
-					</div>
-				</CardHeader>
+					</CardHeader>
 					<CardContent className="relative px-0 pb-6">
 						<GlobalLoadingShadow />
 						<div className="overflow-x-auto rounded-lg border mx-6">
@@ -728,7 +741,7 @@ function UserManagementComponent() {
 													className="transition-colors hover:bg-muted/50"
 												>
 													<TableCell className="px-6 font-medium">
-															{user.displayName}
+														{user.displayName}
 													</TableCell>
 													<TableCell className="px-6 text-muted-foreground">
 														{user.email}
@@ -835,7 +848,7 @@ function UserManagementComponent() {
 					isSubmitting={createLoading}
 				/>
 
-			{/* Edit User Dialog */}
+				{/* Edit User Dialog */}
 				<EditUserDialog
 					open={isEditRoleDialogOpen}
 					onOpenChange={(open) => {

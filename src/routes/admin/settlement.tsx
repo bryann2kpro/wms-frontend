@@ -136,114 +136,114 @@ function SettlementComponent() {
 					descriptionId="settlement-page-description"
 				/>
 
-			<Card className="dashboard-card">
-				<CardHeader>
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<CardTitle>Settlement Queue</CardTitle>
-							<CardDescription>
-								DOs ready for settlement verification
-							</CardDescription>
+				<Card className="dashboard-card">
+					<CardHeader>
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<CardTitle>Settlement Queue</CardTitle>
+								<CardDescription>
+									DOs ready for settlement verification
+								</CardDescription>
+							</div>
+							<div className="relative">
+								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									placeholder="Search DOs..."
+									value={searchTerm}
+									onChange={(e) => {
+										setSearchTerm(e.target.value);
+										setPage(1);
+									}}
+									className="pl-9 sm:w-64"
+								/>
+							</div>
 						</div>
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								placeholder="Search DOs..."
-								value={searchTerm}
-								onChange={(e) => {
-									setSearchTerm(e.target.value);
-									setPage(1);
-								}}
-								className="pl-9 sm:w-64"
-							/>
+					</CardHeader>
+					<CardContent className="relative">
+						<GlobalLoadingShadow />
+						<div className="overflow-x-auto rounded-lg border">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>DO Number</TableHead>
+										<TableHead>TO Number</TableHead>
+										<TableHead>Outlet</TableHead>
+										<TableHead>Status</TableHead>
+										<TableHead>Settlement Status</TableHead>
+										<TableHead className="text-right">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{isLoading ? (
+										<TableRow>
+											<TableCell
+												colSpan={6}
+												className="h-24 text-center text-muted-foreground"
+											>
+												Loading settlement queue...
+											</TableCell>
+										</TableRow>
+									) : settlementDOs.length === 0 ? (
+										<TableRow>
+											<TableCell
+												colSpan={6}
+												className="h-24 text-center text-muted-foreground"
+											>
+												No DOs ready for settlement.
+											</TableCell>
+										</TableRow>
+									) : (
+										settlementDOs.map((do_) => {
+											const checklist = getSettlementChecklist(do_);
+											const settled = isFullySettled(checklist);
+											return (
+												<TableRow key={do_.id}>
+													<TableCell className="font-medium">
+														{do_.doNumber}
+													</TableCell>
+													<TableCell>{do_.toNumber}</TableCell>
+													<TableCell>{do_.outlet}</TableCell>
+													<TableCell>
+														<Badge variant="outline">
+															{do_.status.replace(/_/g, " ")}
+														</Badge>
+													</TableCell>
+													<TableCell>
+														{settled ? (
+															<Badge
+																variant="outline"
+																className="bg-green-500/10 text-green-600 border-green-500/20"
+															>
+																<CheckCircle2 className="mr-1 h-3 w-3" />
+																Settled
+															</Badge>
+														) : (
+															<Badge
+																variant="outline"
+																className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+															>
+																Pending
+															</Badge>
+														)}
+													</TableCell>
+													<TableCell className="text-right">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={() => handleViewSettlement(do_.id)}
+														>
+															<Eye className="h-4 w-4" />
+														</Button>
+													</TableCell>
+												</TableRow>
+											);
+										})
+									)}
+								</TableBody>
+							</Table>
 						</div>
-					</div>
-				</CardHeader>
-				<CardContent className="relative">
-					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>DO Number</TableHead>
-									<TableHead>TO Number</TableHead>
-									<TableHead>Outlet</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Settlement Status</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{isLoading ? (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="h-24 text-center text-muted-foreground"
-										>
-											Loading settlement queue...
-										</TableCell>
-									</TableRow>
-								) : settlementDOs.length === 0 ? (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="h-24 text-center text-muted-foreground"
-										>
-											No DOs ready for settlement.
-										</TableCell>
-									</TableRow>
-								) : (
-									settlementDOs.map((do_) => {
-										const checklist = getSettlementChecklist(do_);
-										const settled = isFullySettled(checklist);
-										return (
-											<TableRow key={do_.id}>
-												<TableCell className="font-medium">
-													{do_.doNumber}
-												</TableCell>
-												<TableCell>{do_.toNumber}</TableCell>
-												<TableCell>{do_.outlet}</TableCell>
-												<TableCell>
-													<Badge variant="outline">
-														{do_.status.replace(/_/g, " ")}
-													</Badge>
-												</TableCell>
-												<TableCell>
-													{settled ? (
-														<Badge
-															variant="outline"
-															className="bg-green-500/10 text-green-600 border-green-500/20"
-														>
-															<CheckCircle2 className="mr-1 h-3 w-3" />
-															Settled
-														</Badge>
-													) : (
-														<Badge
-															variant="outline"
-															className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-														>
-															Pending
-														</Badge>
-													)}
-												</TableCell>
-												<TableCell className="text-right">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() => handleViewSettlement(do_.id)}
-													>
-														<Eye className="h-4 w-4" />
-													</Button>
-												</TableCell>
-											</TableRow>
-										);
-									})
-								)}
-							</TableBody>
-						</Table>
-					</div>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
 			</main>
 		</div>
 	);

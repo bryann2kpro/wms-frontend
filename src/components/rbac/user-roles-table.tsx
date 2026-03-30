@@ -95,11 +95,11 @@ function UserRolesTable({
 								aria-hidden="true"
 							/>
 							<Input
-								placeholder="Search by role or user ID..."
+								placeholder="Search by role or username..."
 								value={searchTerm}
 								onChange={(e) => onSearchChange(e.target.value)}
 								className="pl-9 sm:w-64"
-								aria-label="Search user roles by role name or user ID"
+								aria-label="Search user roles by role name or username"
 							/>
 						</div>
 						{/* Status Filter */}
@@ -126,7 +126,7 @@ function UserRolesTable({
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-[300px]">User ID</TableHead>
+								<TableHead className="w-[300px]">Username</TableHead>
 								<TableHead className="w-[150px]">Role</TableHead>
 								<TableHead className="w-[120px]">Status</TableHead>
 								<TableHead>Created By</TableHead>
@@ -194,9 +194,7 @@ function UserRolesTable({
 							) : (
 								userRoles.map((userRole) => (
 									<TableRow key={userRole.id}>
-										<TableCell className="font-mono text-sm">
-											{userRole.userId}
-										</TableCell>
+										<TableCell className="text-sm">{userRole.userName}</TableCell>
 										<TableCell>
 											<Badge
 												variant="outline"

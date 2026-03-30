@@ -10,7 +10,11 @@ import {
 import { HttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-import { getAccessToken, hasValidTokens, clearAuthTokens } from "@/lib/auth/auth-storage";
+import {
+	getAccessToken,
+	hasValidTokens,
+	clearAuthTokens,
+} from "@/lib/auth/auth-storage";
 import { env } from "@/env";
 import { toast } from "sonner";
 

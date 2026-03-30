@@ -245,14 +245,18 @@ export function CreatePurchaseOrderDialog({
 																className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
 																style={{ fontFamily: "var(--dashboard-body)" }}
 															>
-																<Zap className="h-4 w-4 text-amber-500 shrink-0" aria-hidden />
+																<Zap
+																	className="h-4 w-4 text-amber-500 shrink-0"
+																	aria-hidden
+																/>
 																Emergency delivery
 															</FieldLabel>
 															<p
 																id="isEmergency-description"
 																className="text-xs text-muted-foreground"
 															>
-																Assign to the next delivery day even if the normal cutoff has passed.
+																Assign to the next delivery day even if the
+																normal cutoff has passed.
 															</p>
 														</div>
 													</div>
@@ -295,13 +299,17 @@ export function CreatePurchaseOrderDialog({
 																<TableRow className="hover:bg-transparent border-b h-12">
 																	<TableHead
 																		className="font-semibold text-[14px] px-6"
-																		style={{ fontFamily: "var(--dashboard-body)" }}
+																		style={{
+																			fontFamily: "var(--dashboard-body)",
+																		}}
 																	>
 																		Stock (SKU)
 																	</TableHead>
 																	<TableHead
 																		className="w-32 font-semibold text-[14px] px-6"
-																		style={{ fontFamily: "var(--dashboard-body)" }}
+																		style={{
+																			fontFamily: "var(--dashboard-body)",
+																		}}
 																	>
 																		Quantity
 																	</TableHead>
@@ -453,22 +461,22 @@ function LineItemRow({
 			</TableCell>
 			<TableCell className="align-middle py-2 px-6">
 				<Input
-													type="number"
-													min={1}
-													value={item.quantity}
-													onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
-													className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
-												/>
-											</TableCell>
+					type="number"
+					min={1}
+					value={item.quantity}
+					onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
+					className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
+				/>
+			</TableCell>
 			<TableCell className="align-middle py-2 w-12 px-6">
 				{canRemove ? (
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="rounded-lg"
-														aria-label="Remove line"
-														onClick={() => {
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="rounded-lg"
+						aria-label="Remove line"
+						onClick={() => {
 							form.setFieldValue(
 								"items",
 								items.filter((_, i) => i !== index),

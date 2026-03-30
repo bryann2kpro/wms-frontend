@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 
 type AdminPageHeaderProps = {
 	icon: React.ComponentType<{ className?: string }>;
@@ -69,4 +69,3 @@ export function AdminPageHeader({
 		</div>
 	);
 }
-

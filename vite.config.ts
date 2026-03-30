@@ -36,7 +36,8 @@ const config = defineConfig({
     }),
   ],
   server: {
-    allowedHosts: ['0.0.0.0', 'smee.gremoryyx.com']
+    allowedHosts: ['0.0.0.0', 'smee.gremoryyx.com'],
+    host: '0.0.0.0'
   }
 })
 

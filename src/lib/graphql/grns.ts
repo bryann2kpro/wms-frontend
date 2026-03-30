@@ -201,6 +201,27 @@ export const NEXT_GRN_NUMBER_QUERY = gql`
 	}
 `;
 
+/** List advance notices from NetSuite not yet linked to a GRN (for Create GRN dropdown) */
+export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
+	query ListPendingAdvanceNotices {
+		listPendingAdvanceNotices {
+			id
+			tranid
+			entity
+			duedate
+			receivedAt
+			lines {
+				lineuniquekey
+				itemid
+				displayname
+				quantity
+				units
+				custrecord_r2o_order_code
+			}
+		}
+	}
+`;
+
 // ---------------------------------------------------------------------------
 // Query / mutation types (from types.ts)
 // ---------------------------------------------------------------------------
@@ -226,7 +247,15 @@ export type GrnsWorkQueueQueryData = {
 				items: Array<
 					Pick<
 						GrnItem,
-						"id" | "grnId" | "skuId" | "skuCode" | "skuDescription" | "qty" | "lossQty" | "expiryDate" | "rack"
+						| "id"
+						| "grnId"
+						| "skuId"
+						| "skuCode"
+						| "skuDescription"
+						| "qty"
+						| "lossQty"
+						| "expiryDate"
+						| "rack"
 					>
 				>;
 			}
@@ -265,6 +294,28 @@ export type NextGrnNumberQueryVariables = {
 
 export type NextGrnNumberQueryData = {
 	nextGrnNumber: string;
+};
+
+export type AdvanceNoticeLine = {
+	lineuniquekey: number;
+	itemid: string;
+	displayname: string | null;
+	quantity: number;
+	units: string;
+	custrecord_r2o_order_code: string | null;
+};
+
+export type AdvanceNotice = {
+	id: string;
+	tranid: string;
+	entity: string;
+	duedate: string;
+	receivedAt: string;
+	lines: AdvanceNoticeLine[];
+};
+
+export type ListPendingAdvanceNoticesQueryData = {
+	listPendingAdvanceNotices: AdvanceNotice[];
 };
 
 // ---------------------------------------------------------------------------
