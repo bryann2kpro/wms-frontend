@@ -1,7 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { CheckCircle2, Eye, FileText, Search } from "lucide-react";
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { requirePermission } from "@/lib/rbac";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -9,9 +12,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import {
 	Table,
 	TableBody,
@@ -20,20 +22,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import {
-	Search,
-	Eye,
-	CheckCircle2,
-	ChevronLeft,
-	ChevronRight,
-	FileText,
-	ExternalLink,
-} from "lucide-react";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { usePermissions } from "@/lib/permissions";
-import { getDOs, type DeliveryOrder, type DOStatus } from "@/data/do.mock-data";
-import { AdminPageHeader } from "@/components/admin-page-header";
+import { type DeliveryOrder, getDOs } from "@/data/do.mock-data";
+import { requirePermission } from "@/lib/rbac";
 
 export const Route = createFileRoute("/admin/settlement")({
 	beforeLoad: async ({ context }) => {
@@ -77,9 +67,6 @@ function isFullySettled(checklist: SettlementChecklist): boolean {
 
 function SettlementComponent() {
 	const navigate = useNavigate();
-	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
-	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -105,10 +92,6 @@ function SettlementComponent() {
 				do_.status === "DELIVERED_PENDING_PROOF" ||
 				do_.status === "DELIVERED_CONFIRMED",
 		) || [];
-
-	const totalPages = data
-		? Math.max(1, Math.ceil(settlementDOs.length / data.pageSize))
-		: 1;
 
 	const handleViewSettlement = (doId: string) => {
 		navigate({
