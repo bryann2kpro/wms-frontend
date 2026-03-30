@@ -80,7 +80,7 @@ function DODetailComponent() {
 	const { id } = useParams({ from: "/admin/do-detail/$id" });
 	const navigate = useNavigate();
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
+	const { read, create, update } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [isExceptionDialogOpen, setIsExceptionDialogOpen] = useState(false);
 	const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -190,7 +190,7 @@ function DODetailComponent() {
 					<h1 className="text-3xl font-bold tracking-tight">{do_.doNumber}</h1>
 					<p className="text-muted-foreground">Delivery Order Details</p>
 				</div>
-				{hasPermission("do:print") && (
+				{read("Delivery Order") && (
 					<Button variant="outline" onClick={() => window.print()}>
 						<Printer className="mr-2 h-4 w-4" />
 						Print DO
@@ -289,7 +289,7 @@ function DODetailComponent() {
 										<TableCell>{item.packedQuantity}</TableCell>
 										<TableCell>{item.location || "-"}</TableCell>
 										<TableCell className="text-right">
-											{hasPermission("do:report_exception") && (
+											{create("Exception") && (
 												<Button
 													variant="ghost"
 													size="sm"
@@ -317,7 +317,7 @@ function DODetailComponent() {
 					<CardDescription>Update delivery order status</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-wrap gap-2">
-					{hasPermission("do:mark_picking") && do_.status === "CREATED" && (
+					{update("Delivery Order") && do_.status === "CREATED" && (
 						<Button
 							onClick={() => handleStatusChange("PICKING")}
 							disabled={statusMutation.isPending}
@@ -326,7 +326,7 @@ function DODetailComponent() {
 							Mark Picking
 						</Button>
 					)}
-					{hasPermission("do:mark_packed") && do_.status === "PICKING" && (
+					{update("Delivery Order") && do_.status === "PICKING" && (
 						<Button
 							onClick={() => handleStatusChange("PACKED")}
 							disabled={statusMutation.isPending}
@@ -335,7 +335,7 @@ function DODetailComponent() {
 							Mark Packed
 						</Button>
 					)}
-					{hasPermission("do:mark_ready") && do_.status === "PACKED" && (
+					{update("Delivery Order") && do_.status === "PACKED" && (
 						<Button
 							onClick={() => handleStatusChange("READY_FOR_COLLECTION")}
 							disabled={statusMutation.isPending}

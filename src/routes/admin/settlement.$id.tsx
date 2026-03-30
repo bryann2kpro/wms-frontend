@@ -82,7 +82,7 @@ function SettlementDetailComponent() {
 	const { id } = useParams({ from: "/admin/settlement/$id" });
 	const navigate = useNavigate();
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
+	const { approve } = usePermissions(user);
 	const queryClient = useQueryClient();
 
 	const { data: do_, isLoading } = useQuery({
@@ -205,7 +205,7 @@ function SettlementDetailComponent() {
 							View Invoice
 						</Button>
 					</div>
-					{hasPermission("settlement:settle") && settled && (
+					{approve("Settlement") && settled && (
 						<Button
 							onClick={() => settleMutation.mutate()}
 							disabled={settleMutation.isPending}

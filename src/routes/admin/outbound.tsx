@@ -169,7 +169,7 @@ function HelpStepImage({
 
 function OutboundRouteComponent() {
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
+	const { update } = usePermissions(user);
 	const [selectedPurchaseOrder, setSelectedPurchaseOrder] =
 		useState<PurchaseOrderDetail | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -405,7 +405,7 @@ function OutboundRouteComponent() {
 									</div>
 								</DialogContent>
 							</Dialog>
-							{hasPermission("to:refresh") && (
+							{update("Outbound") && (
 								<Button
 									variant="outline"
 									className="rounded-lg"
