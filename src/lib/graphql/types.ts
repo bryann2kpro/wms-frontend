@@ -146,6 +146,7 @@ export interface Outlet {
 	outletId: string;
 	outletName: string;
 	outletCode: string;
+	address: string | null;
 	regionId: string | null;
 	regionName: string | null;
 	regionCode: string | null;
@@ -163,6 +164,7 @@ export interface OutletPaginatedResponse {
 export interface CreateOutletInput {
 	outletName: string;
 	outletCode: string;
+	address?: string;
 	regionId?: string | null;
 	createdBy: string;
 	updatedBy: string;
@@ -171,6 +173,7 @@ export interface CreateOutletInput {
 export interface UpdateOutletInput {
 	outletName?: string;
 	outletCode?: string;
+	address?: string;
 	regionId?: string | null;
 	updatedBy: string;
 }

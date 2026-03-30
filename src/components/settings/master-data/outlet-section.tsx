@@ -43,9 +43,10 @@ import {
 	type DeleteOutletMutationData,
 } from "@/lib/graphql/outlets";
 import type { Outlet } from "@/lib/graphql/types";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Upload } from "lucide-react";
 import { PAGE_SIZE, ConfirmDeleteDialog } from "./shared";
 import { OutletFormDialog } from "./outlet-form-dialog";
+import { OutletImportDialog } from "./outlet-import-dialog";
 
 export function OutletSection() {
 	const { user } = useCurrentUser();
@@ -53,6 +54,7 @@ export function OutletSection() {
 	const [search, setSearch] = useState("");
 	const [regionIdFilter, setRegionIdFilter] = useState<string>("");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Outlet | null>(null);
 	const [deleting, setDeleting] = useState<Outlet | null>(null);
 
@@ -154,6 +156,16 @@ export function OutletSection() {
 								))}
 							</SelectContent>
 						</Select>
+						<Button
+							variant="outline"
+							onClick={() => setIsImportOpen(true)}
+							disabled={!createdBy}
+							title={!createdBy ? "Sign in to import" : undefined}
+							className="rounded-lg"
+						>
+							<Upload className="mr-2 h-4 w-4" />
+							Import
+						</Button>
 						<Button
 							onClick={() => setIsCreateOpen(true)}
 							disabled={!createdBy}
@@ -297,6 +309,14 @@ export function OutletSection() {
 				)}
 			</CardContent>
 
+			<OutletImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				regions={regions}
+				createdBy={createdBy}
+				onComplete={() => refetch()}
+			/>
+
 			<OutletFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
@@ -307,6 +327,7 @@ export function OutletSection() {
 							input: {
 								outletName: values.outletName,
 								outletCode: values.outletCode,
+								address: values.address || undefined,
 								regionId: values.regionId || null,
 								createdBy,
 								updatedBy: createdBy,
@@ -328,6 +349,7 @@ export function OutletSection() {
 					initial={{
 						outletName: editing.outletName,
 						outletCode: editing.outletCode,
+						address: editing.address ?? undefined,
 						regionId: editing.regionId ?? undefined,
 					}}
 					onSubmit={(values) =>
@@ -337,6 +359,7 @@ export function OutletSection() {
 								input: {
 									outletName: values.outletName,
 									outletCode: values.outletCode,
+									address: values.address || undefined,
 									regionId: values.regionId || null,
 									updatedBy: createdBy,
 								},

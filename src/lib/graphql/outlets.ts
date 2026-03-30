@@ -11,6 +11,7 @@ export const OUTLET_FRAGMENT = gql`
 		outletId
 		outletName
 		outletCode
+		address
 		regionId
 		regionName
 		regionCode
