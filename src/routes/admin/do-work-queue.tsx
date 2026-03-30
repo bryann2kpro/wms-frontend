@@ -84,7 +84,7 @@ interface GRNGroup {
 	items: GRNGroupItem[];
 }
 
-const TABLE_COLS = 7;
+const TABLE_COLS = 8;
 
 function DOWorkQueueComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -254,6 +254,7 @@ function DOWorkQueueComponent() {
 									<TableHead className="text-center">Loss Qty</TableHead>
 									<TableHead>Rack/Location</TableHead>
 									<TableHead>Expiry Date</TableHead>
+									<TableHead>Lot No.</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -372,6 +373,9 @@ function DOWorkQueueComponent() {
 													{item.expiryDate
 														? formatDateOnly(item.expiryDate)
 														: "—"}
+												</TableCell>
+												<TableCell className="font-mono text-sm">
+													{item.lotNo ?? "—"}
 												</TableCell>
 											</TableRow>
 										)),

@@ -384,6 +384,8 @@ export interface GrnItem {
 	rack: GrnRack | null;
 	/** Optional expiry date for this GRN item (ISO string from backend). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer to identify this production batch. */
+	lotNo?: string | null;
 	/** Legacy: some backends still return warehouse on item */
 	warehouseId?: string | null;
 	warehouseName?: string | null;
@@ -400,6 +402,8 @@ export interface CreateGrnItemInput {
 	rackIds?: string[] | null;
 	/** Expiry date (ISO date string YYYY-MM-DD). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer. */
+	lotNo?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -485,6 +489,8 @@ export interface GrnItemForList {
 	location?: string;
 	/** Optional expiry date (ISO string or YYYY-MM-DD). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer. */
+	lotNo?: string | null;
 	rack?: {
 		rackId: string;
 		rackLevel: number | string;
@@ -586,6 +592,8 @@ export interface DoItemAllocation {
 	/** Rack location display (e.g. row-column-level) */
 	rackName: string | null;
 	expiryDate: string | null;
+	/** Lot number from the GRN item, null if not recorded. */
+	lotNo: string | null;
 	qtyAllocated: string;
 	priorityFlag: boolean;
 }

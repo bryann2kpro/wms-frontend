@@ -106,6 +106,7 @@ function AllocationGuide({ allocations }: { allocations: DoItemAllocation[] }) {
 					<span>
 						{alloc.rackName ? `Rack ${alloc.rackName} · ` : ""}
 						{alloc.grnNo ?? "—"}
+						{alloc.lotNo ? ` · Lot: ${alloc.lotNo}` : ""}
 						{alloc.expiryDate ? ` · Exp: ${formatDate(alloc.expiryDate)}` : ""}
 						{" · Qty: "}
 						{formatQty(alloc.qtyAllocated)}

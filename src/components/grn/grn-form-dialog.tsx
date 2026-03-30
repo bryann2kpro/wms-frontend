@@ -106,6 +106,8 @@ export type GRNLineItemForm = {
 	unitPrice: number;
 	/** Expiry date (YYYY-MM-DD). Optional. */
 	expiryDate: string;
+	/** Lot number assigned by supplier/manufacturer. Optional. */
+	lotNo: string;
 	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
 	rackIds: string[];
 };
@@ -424,6 +426,28 @@ function GRNLineRow({
 									onItemsChange(newItems);
 								}}
 								placeholder="YYYY-MM-DD"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</div>
+						<div className="space-y-1">
+							<label
+								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Lot No.
+							</label>
+							<Input
+								type="text"
+								value={item.lotNo ?? ""}
+								onChange={(e) => {
+									const newItems = [...items];
+									newItems[index] = {
+										...newItems[index],
+										lotNo: e.target.value,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="e.g. LOT-2026-001"
 								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
 							/>
 						</div>
@@ -770,6 +794,7 @@ export function GrnFormDialog({
 									lossQty: String(i.loss),
 									skuUom: uomId ?? undefined,
 									expiryDate: (i.expiryDate ?? "").trim() || undefined,
+									lotNo: (i.lotNo ?? "").trim() || undefined,
 									...(rackIds.length > 0 && { rackIds }),
 								};
 							}),
@@ -795,7 +820,8 @@ export function GrnFormDialog({
 				const rack = it.rack;
 				const rackIds =
 					(it as { rackIds?: string[] }).rackIds ?? (rack ? [rack.rackId] : []);
-				const expiryDate = (it as { expiryDate?: string }).expiryDate ?? "";
+				const expiryDate = it.expiryDate ?? "";
+				const lotNo = it.lotNo ?? "";
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -804,6 +830,7 @@ export function GrnFormDialog({
 					uom: uomUnit?.unitCode ?? sku?.skuUom ?? "",
 					unitPrice: 0,
 					expiryDate,
+					lotNo,
 					rackIds,
 				};
 			});
@@ -1081,6 +1108,7 @@ export function GrnFormDialog({
 															carton: 1,
 															loss: 0,
 															expiryDate: "",
+															lotNo: "",
 															rackIds: [],
 														},
 													]);
