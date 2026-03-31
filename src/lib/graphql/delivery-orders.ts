@@ -201,6 +201,22 @@ export const ALLOCATE_PICK_LIST_MUTATION = gql`
 	${DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT}
 `;
 
+export const GENERATE_DO_PICKING_LIST_MUTATION = gql`
+	mutation GenerateDoPickingList {
+		generateDoPickingList {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
+export type GenerateDoPickingListMutationData = {
+	generateDoPickingList: {
+		pdfBase64: string;
+		filename: string;
+	};
+};
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
