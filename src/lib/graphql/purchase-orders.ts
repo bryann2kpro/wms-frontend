@@ -48,6 +48,7 @@ export const PURCHASE_ORDER_WITH_OUTLET_FRAGMENT = gql`
 		}
 		deliveryOrder {
 			id
+			doNo
 			status
 		}
 		status
@@ -277,7 +278,7 @@ export function mapGqlToPurchaseOrderDetail(
 				: "NEW";
 	const deliveryOrderStep =
 		po.deliveryOrder?.id && rawDoStatus != null
-			? { id: po.deliveryOrder.id, status: doStepStatus }
+			? { id: po.deliveryOrder.id, doNo: po.deliveryOrder.doNo, status: doStepStatus }
 			: null;
 
 	return {
