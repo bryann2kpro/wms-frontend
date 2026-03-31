@@ -1,4 +1,4 @@
-import { CSSProperties, useDeferredValue, useMemo, useState } from "react";
+import { type CSSProperties, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
 	useReactTable,
