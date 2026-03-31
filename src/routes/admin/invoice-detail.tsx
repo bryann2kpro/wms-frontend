@@ -62,6 +62,20 @@ function InvoiceDetailComponent() {
 		onCompleted: () => refetch(),
 	});
 
+	const parseSnapshotNumber = (
+		snapshot: Record<string, unknown> | null | undefined,
+		key: string,
+	): number | null => {
+		if (!snapshot) return null;
+		const value = snapshot[key];
+		if (typeof value === "number" && Number.isFinite(value)) return value;
+		if (typeof value === "string") {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		return null;
+	};
+
 	const raw = data?.invoice;
 	const invoice = raw
 		? {
@@ -72,12 +86,20 @@ function InvoiceDetailComponent() {
 				status: gqlStatusToUI(raw.status),
 				issuedDate: raw.dateIssued ? new Date(raw.dateIssued) : null,
 				totalAmount: parseFloat(raw.poAmount ?? "0") || 0,
-			sstRate:
+				sstRate:
 				typeof raw.poAmountCalcSnapshot === "object" &&
 				raw.poAmountCalcSnapshot &&
 				"sstRate" in raw.poAmountCalcSnapshot
 					? Number(raw.poAmountCalcSnapshot.sstRate)
 					: null,
+				regionRate:
+					typeof raw.poAmountCalcSnapshot === "object"
+						? parseSnapshotNumber(raw.poAmountCalcSnapshot, "rate")
+						: null,
+				minQty:
+					typeof raw.poAmountCalcSnapshot === "object"
+						? parseSnapshotNumber(raw.poAmountCalcSnapshot, "minQty")
+						: null,
 				subtotal: parseFloat(raw.totalExclTax ?? "0") || 0,
 				tax: parseFloat(raw.taxAmount ?? "0") || 0,
 				taxRate: parseFloat(raw.taxRate ?? "0") || 0,
@@ -91,11 +113,32 @@ function InvoiceDetailComponent() {
 			}
 		: null;
 
-	const lineItemsTaxRate = invoice?.taxRate ?? 0;
+	const lineItemsTaxRate = invoice?.taxRate || invoice?.sstRate || 0;
+	const computedLineItems = invoice
+		? invoice.items.map((item) => {
+				const hasStoredPricing = item.unitPrice > 0 || item.totalPrice > 0;
+				const canFallbackFromRegion =
+					(invoice.regionRate ?? 0) > 0 && (invoice.minQty ?? 0) > 0;
+
+				if (hasStoredPricing || !canFallbackFromRegion) {
+					return item;
+				}
+
+				const rate = invoice.regionRate ?? 0;
+				const minQty = invoice.minQty ?? 0;
+				const effectiveQty = Math.max(item.quantity, minQty);
+				const fallbackSubtotal = effectiveQty * rate;
+
+				return {
+					...item,
+					unitPrice: rate,
+					totalPrice: fallbackSubtotal,
+				};
+			})
+		: [];
 	const taxRatePercent = Math.round(lineItemsTaxRate * 100);
 	const taxRateLabel = taxRatePercent > 0 ? `Tax (${taxRatePercent}%)` : "Tax";
-	const lineItemsSummary = invoice
-		? invoice.items.reduce(
+	const lineItemsSummary = computedLineItems.reduce(
 				(acc, item) => {
 					const lineTax = item.totalPrice * lineItemsTaxRate;
 					acc.subtotal += item.totalPrice;
@@ -104,8 +147,7 @@ function InvoiceDetailComponent() {
 					return acc;
 				},
 				{ subtotal: 0, tax: 0, total: 0 },
-			)
-		: { subtotal: 0, tax: 0, total: 0 };
+			);
 
 	if (loading && !invoice) {
 		return (
@@ -527,7 +569,7 @@ function InvoiceDetailComponent() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{invoice.items.length === 0 ? (
+									{computedLineItems.length === 0 ? (
 										<TableRow>
 											<TableCell
 												colSpan={8}
@@ -538,7 +580,7 @@ function InvoiceDetailComponent() {
 											</TableCell>
 										</TableRow>
 									) : (
-										invoice.items.map((item, idx) => (
+										computedLineItems.map((item, idx) => (
 											<TableRow
 												key={item.id}
 												className="invoice-detail-row border-[var(--invoice-detail-doc-border)]"
