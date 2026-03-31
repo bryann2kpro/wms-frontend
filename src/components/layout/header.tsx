@@ -1,7 +1,6 @@
 import { Bell, Search, LogOut, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuthActions } from "@/lib/auth/use-auth-actions";
 import { useNavigate } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -14,6 +13,9 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createAvatar } from '@dicebear/core';
+import { glass } from '@dicebear/collection';
+import { useMemo } from "react";
 
 export function Header() {
 	const navigate = useNavigate();
@@ -25,6 +27,14 @@ export function Header() {
 		logout();
 		navigate({ to: "/login" });
 	};
+
+	const iconSvg = useMemo(() => {
+		const avatarData = createAvatar(glass, {
+			seed: user?.displayName ?? "",
+		});
+
+		return avatarData.toDataUri();
+	}, [user]);
 
 	return (
 		<header className="flex h-16 items-center justify-between border-b bg-background px-6">
@@ -49,7 +59,7 @@ export function Header() {
 						<Button variant="ghost" className="relative h-10 w-10 rounded-full">
 							<Avatar className="h-10 w-10">
 								<AvatarImage
-									src={`http://210.187.49.131:913/9.x/glass/svg?seed=${user?.displayName}`}
+									src={iconSvg}
 									alt={user?.displayName ?? ""}
 								/>
 								<AvatarFallback>
