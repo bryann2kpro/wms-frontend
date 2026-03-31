@@ -1,1 +1,5 @@
-export { downloadPdfFromBase64 } from "./report-pdf";
+export {
+	downloadPdfFromBase64,
+	downloadPdfFromUrl,
+	sanitizePdfFilenameSegment,
+} from "./report-pdf";
