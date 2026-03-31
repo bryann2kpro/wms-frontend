@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -18,7 +19,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { ChevronLeft, Download, Send, FileText } from "lucide-react";
 import {
 	INVOICE_QUERY,
@@ -28,6 +28,7 @@ import {
 	type UpdateInvoiceStatusData,
 	type UpdateInvoiceStatusVariables,
 	gqlStatusToUI,
+	INVOICES_QUERY,
 } from "@/lib/graphql/invoices";
 import { formatCurrency, formatDateOnly } from "@/lib/utils";
 
@@ -61,6 +62,20 @@ function InvoiceDetailComponent() {
 		onCompleted: () => refetch(),
 	});
 
+	const parseSnapshotNumber = (
+		snapshot: Record<string, unknown> | null | undefined,
+		key: string,
+	): number | null => {
+		if (!snapshot) return null;
+		const value = snapshot[key];
+		if (typeof value === "number" && Number.isFinite(value)) return value;
+		if (typeof value === "string") {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		return null;
+	};
+
 	const raw = data?.invoice;
 	const invoice = raw
 		? {
@@ -70,9 +85,24 @@ function InvoiceDetailComponent() {
 				poNumber: raw.poNo,
 				status: gqlStatusToUI(raw.status),
 				issuedDate: raw.dateIssued ? new Date(raw.dateIssued) : null,
-				totalAmount: parseFloat(raw.totalInclTax ?? "0") || 0,
+				totalAmount: parseFloat(raw.poAmount ?? "0") || 0,
+				sstRate:
+				typeof raw.poAmountCalcSnapshot === "object" &&
+				raw.poAmountCalcSnapshot &&
+				"sstRate" in raw.poAmountCalcSnapshot
+					? Number(raw.poAmountCalcSnapshot.sstRate)
+					: null,
+				regionRate:
+					typeof raw.poAmountCalcSnapshot === "object"
+						? parseSnapshotNumber(raw.poAmountCalcSnapshot, "rate")
+						: null,
+				minQty:
+					typeof raw.poAmountCalcSnapshot === "object"
+						? parseSnapshotNumber(raw.poAmountCalcSnapshot, "minQty")
+						: null,
 				subtotal: parseFloat(raw.totalExclTax ?? "0") || 0,
 				tax: parseFloat(raw.taxAmount ?? "0") || 0,
+				taxRate: parseFloat(raw.taxRate ?? "0") || 0,
 				items: (raw.items ?? []).map((item) => ({
 					...item,
 					skuCode: item.skuCode ?? null,
@@ -83,27 +113,140 @@ function InvoiceDetailComponent() {
 			}
 		: null;
 
+	const lineItemsTaxRate = invoice?.taxRate || invoice?.sstRate || 0;
+	const computedLineItems = invoice
+		? invoice.items.map((item) => {
+				const hasStoredPricing = item.unitPrice > 0 || item.totalPrice > 0;
+				const canFallbackFromRegion =
+					(invoice.regionRate ?? 0) > 0 && (invoice.minQty ?? 0) > 0;
+
+				if (hasStoredPricing || !canFallbackFromRegion) {
+					return item;
+				}
+
+				const rate = invoice.regionRate ?? 0;
+				const minQty = invoice.minQty ?? 0;
+				const effectiveQty = Math.max(item.quantity, minQty);
+				const fallbackSubtotal = effectiveQty * rate;
+
+				return {
+					...item,
+					unitPrice: rate,
+					totalPrice: fallbackSubtotal,
+				};
+			})
+		: [];
+	const taxRatePercent = Math.round(lineItemsTaxRate * 100);
+	const taxRateLabel = taxRatePercent > 0 ? `Tax (${taxRatePercent}%)` : "Tax";
+	const lineItemsSummary = computedLineItems.reduce(
+				(acc, item) => {
+					const lineTax = item.totalPrice * lineItemsTaxRate;
+					acc.subtotal += item.totalPrice;
+					acc.tax += lineTax;
+					acc.total += item.totalPrice + lineTax;
+					return acc;
+				},
+				{ subtotal: 0, tax: 0, total: 0 },
+			);
+
 	if (loading && !invoice) {
 		return (
 			<main
-				className="invoice-detail-page min-h-[60vh] flex items-center justify-center"
+				className="invoice-detail-page min-h-screen bg-background"
 				aria-busy={true}
 				aria-labelledby="invoice-detail-page-title"
 				aria-describedby="invoice-detail-page-description"
 			>
-				<div className="flex flex-col items-center gap-3 text-muted-foreground">
-					<div
-						className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent"
+				<div className="container mx-auto p-6 space-y-8">
+					{/* Header skeleton */}
+					<header className="flex flex-wrap items-start justify-between gap-4">
+						<div className="flex items-start gap-4">
+							<Skeleton className="h-9 w-9 rounded-lg shrink-0" aria-hidden />
+							<div className="space-y-2">
+								<div className="flex items-center gap-2.5">
+									<Skeleton className="h-9 w-9 rounded-lg shrink-0" aria-hidden />
+									<Skeleton className="h-8 w-56" aria-hidden />
+								</div>
+								<Skeleton className="ml-[2.875rem] h-4 w-44" aria-hidden />
+							</div>
+						</div>
+						<Skeleton className="h-9 w-24 rounded-md" aria-hidden />
+					</header>
+
+					{/* Meta card skeletons */}
+					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+						{Array.from({ length: 5 }).map((_, i) => (
+							<Card
+								key={i}
+								className="border-[var(--invoice-detail-doc-border)]"
+								aria-hidden
+							>
+								<CardHeader className="pb-2 pt-5">
+									<Skeleton className="h-3 w-16" />
+								</CardHeader>
+								<CardContent className="pb-5 pt-0">
+									<Skeleton className="h-5 w-24" />
+								</CardContent>
+							</Card>
+						))}
+					</div>
+
+					{/* Line items card skeleton */}
+					<Card
+						className="border-[var(--invoice-detail-doc-border)]"
 						aria-hidden
-					/>
-					<p
-						id="invoice-detail-page-description"
-						className="text-sm"
-						style={{ fontFamily: "var(--invoice-detail-body)" }}
 					>
-						Loading invoice…
-					</p>
+						<CardHeader className="invoice-detail-doc-strip pl-6">
+							<div className="flex items-center gap-3">
+								<Skeleton className="h-5 w-24" />
+								<Skeleton className="h-5 w-14 rounded-full" />
+							</div>
+							<Skeleton className="h-4 w-40 mt-1" />
+						</CardHeader>
+						<CardContent className="px-0 sm:px-6 pt-4">
+							<div className="overflow-x-auto">
+								<div className="flex gap-4 px-4 py-2 border-b border-[var(--invoice-detail-doc-border)]">
+									<Skeleton className="h-3 w-4 shrink-0" />
+									<Skeleton className="h-3 w-16 shrink-0" />
+									<Skeleton className="h-3 w-32 grow" />
+									<Skeleton className="h-3 w-8 shrink-0" />
+									<Skeleton className="h-3 w-16 shrink-0" />
+									<Skeleton className="h-3 w-16 shrink-0" />
+									<Skeleton className="h-3 w-16 shrink-0" />
+									<Skeleton className="h-3 w-16 shrink-0" />
+								</div>
+								{Array.from({ length: 4 }).map((_, i) => (
+									<div
+										key={i}
+										className="flex gap-4 px-4 py-3 border-b border-[var(--invoice-detail-doc-border)]"
+									>
+										<Skeleton className="h-4 w-4 shrink-0" />
+										<Skeleton className="h-4 w-16 shrink-0" />
+										<Skeleton className="h-4 w-40 grow" />
+										<Skeleton className="h-4 w-6 shrink-0" />
+										<Skeleton className="h-4 w-16 shrink-0" />
+										<Skeleton className="h-4 w-16 shrink-0" />
+										<Skeleton className="h-4 w-16 shrink-0" />
+										<Skeleton className="h-4 w-16 shrink-0" />
+									</div>
+								))}
+							</div>
+							<div className="mt-6 flex justify-end px-6">
+								<div className="w-full max-w-xs space-y-2 rounded-lg bg-muted/50 px-5 py-4">
+									{Array.from({ length: 3 }).map((_, i) => (
+										<div key={i} className="flex justify-between">
+											<Skeleton className="h-4 w-16" />
+											<Skeleton className="h-4 w-20" />
+										</div>
+									))}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
+				<p id="invoice-detail-page-description" className="sr-only">
+					Loading invoice…
+				</p>
 			</main>
 		);
 	}
@@ -111,7 +254,7 @@ function InvoiceDetailComponent() {
 	if (!invoice) {
 		return (
 			<main
-				className="invoice-detail-page container mx-auto max-w-4xl px-6 py-12"
+				className="invoice-detail-page container mx-auto p-6"
 				aria-labelledby="invoice-detail-page-title"
 				aria-describedby="invoice-detail-page-description"
 				aria-busy={false}
@@ -158,7 +301,7 @@ function InvoiceDetailComponent() {
 			aria-describedby="invoice-detail-page-description"
 			aria-busy={loading || updating}
 		>
-			<div className="container mx-auto max-w-5xl px-6 py-8">
+			<div className="container mx-auto p-6">
 				{/* Document header */}
 				<header className="mb-8 flex flex-wrap items-start justify-between gap-4">
 					<div className="flex min-w-0 items-start gap-4">
@@ -193,7 +336,7 @@ function InvoiceDetailComponent() {
 									className="text-sm text-muted-foreground"
 									style={{ fontFamily: "var(--invoice-detail-body)" }}
 								>
-									Proforma invoice details, line items, and integration logs.
+									Proforma invoice details and line items.
 								</p>
 								<div
 									style={{
@@ -212,31 +355,11 @@ function InvoiceDetailComponent() {
 							variant="outline"
 							size="sm"
 							disabled
-							title="PDF export coming soon"
+							title="Export coming soon"
 							className="gap-2"
 						>
 							<Download className="h-4 w-4" />
-							PDF
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled
-							title="Excel export coming soon"
-							className="gap-2"
-						>
-							<Download className="h-4 w-4" />
-							Excel
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled
-							title="TXT export coming soon"
-							className="gap-2"
-						>
-							<Download className="h-4 w-4" />
-							TXT
+							Export
 						</Button>
 						{invoice.status === "Issued" && (
 							<Button
@@ -261,7 +384,7 @@ function InvoiceDetailComponent() {
 				</header>
 
 				{/* Meta cards */}
-				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)]">
 						<CardHeader className="pb-2 pt-5">
 							<CardTitle
@@ -304,6 +427,24 @@ function InvoiceDetailComponent() {
 								className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
 								style={{ fontFamily: "var(--invoice-detail-body)" }}
 							>
+								DO number
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pb-5 pt-0">
+							<p
+								className="text-sm font-semibold text-foreground"
+								style={{ fontFamily: "var(--invoice-detail-display)" }}
+							>
+								{invoice.doNumber ?? "—"}
+							</p>
+						</CardContent>
+					</Card>
+					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)]">
+						<CardHeader className="pb-2 pt-5">
+							<CardTitle
+								className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+								style={{ fontFamily: "var(--invoice-detail-body)" }}
+							>
 								Issued date
 							</CardTitle>
 						</CardHeader>
@@ -316,17 +457,56 @@ function InvoiceDetailComponent() {
 							</p>
 						</CardContent>
 					</Card>
+					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)]">
+						<CardHeader className="pb-2 pt-5">
+							<CardTitle
+								className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+								style={{ fontFamily: "var(--invoice-detail-body)" }}
+							>
+								Total amount
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="pb-5 pt-0">
+							<p
+								className="text-base font-bold tabular-nums"
+								style={{
+									fontFamily: "var(--invoice-detail-display)",
+									color: "var(--invoice-detail-accent)",
+								}}
+							>
+								{formatCurrency(invoice.totalAmount)}
+							</p>
+							<p
+								className="mt-0.5 text-[11px] text-muted-foreground"
+								style={{ fontFamily: "var(--invoice-detail-body)" }}
+							>
+								{Math.round((invoice.sstRate ?? 0.06) * 100)}% SST included
+							</p>
+						</CardContent>
+					</Card>
 				</div>
 
 				{/* Line items */}
 				<Card className="invoice-detail-items-card mb-8 border-[var(--invoice-detail-doc-border)]">
 					<CardHeader className="invoice-detail-doc-strip pl-6">
-						<CardTitle
-							className="text-lg"
-							style={{ fontFamily: "var(--invoice-detail-display)" }}
-						>
-							Line items
-						</CardTitle>
+						<div className="flex items-center gap-2.5">
+							<CardTitle
+								className="text-lg"
+								style={{ fontFamily: "var(--invoice-detail-display)" }}
+							>
+								Line items
+							</CardTitle>
+							{invoice.items.length > 0 && (
+								<Badge
+									variant="outline"
+									className="text-xs font-medium tabular-nums border-[var(--invoice-detail-doc-border)] text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									{invoice.items.length}{" "}
+									{invoice.items.length === 1 ? "item" : "items"}
+								</Badge>
+							)}
+						</div>
 						<CardDescription
 							style={{ fontFamily: "var(--invoice-detail-body)" }}
 						>
@@ -374,13 +554,25 @@ function InvoiceDetailComponent() {
 										>
 											Subtotal
 										</TableHead>
+										<TableHead
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											style={{ fontFamily: "var(--invoice-detail-body)" }}
+										>
+											Tax amount
+										</TableHead>
+										<TableHead
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											style={{ fontFamily: "var(--invoice-detail-body)" }}
+										>
+											Total
+										</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{invoice.items.length === 0 ? (
+									{computedLineItems.length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={6}
+												colSpan={8}
 												className="h-28 text-center text-muted-foreground text-sm"
 												style={{ fontFamily: "var(--invoice-detail-body)" }}
 											>
@@ -388,7 +580,7 @@ function InvoiceDetailComponent() {
 											</TableCell>
 										</TableRow>
 									) : (
-										invoice.items.map((item, idx) => (
+										computedLineItems.map((item, idx) => (
 											<TableRow
 												key={item.id}
 												className="invoice-detail-row border-[var(--invoice-detail-doc-border)]"
@@ -408,7 +600,7 @@ function InvoiceDetailComponent() {
 													{item.skuCode ?? item.skuId}
 												</TableCell>
 												<TableCell
-													className="max-w-[200px] text-sm text-foreground"
+													className="text-sm text-foreground"
 													style={{ fontFamily: "var(--invoice-detail-body)" }}
 												>
 													{item.description ?? "—"}
@@ -433,53 +625,63 @@ function InvoiceDetailComponent() {
 												>
 													{formatCurrency(item.totalPrice)}
 												</TableCell>
+												<TableCell
+													className="text-right text-sm tabular-nums"
+													style={{ fontFamily: "var(--invoice-detail-body)" }}
+												>
+													{formatCurrency(item.totalPrice * lineItemsTaxRate)}
+												</TableCell>
+												<TableCell
+													className="text-right text-sm font-semibold tabular-nums"
+													style={{
+														fontFamily: "var(--invoice-detail-display)",
+														color: "var(--invoice-detail-accent)",
+													}}
+												>
+													{formatCurrency(
+														item.totalPrice +
+															item.totalPrice * lineItemsTaxRate,
+													)}
+												</TableCell>
 											</TableRow>
 										))
 									)}
 								</TableBody>
 							</Table>
 						</div>
-						{invoice.totalAmount > 0 && (
-							<div className="mt-6 flex justify-end border-t border-[var(--invoice-detail-doc-border)] px-6 pt-6">
+						<div className="mt-6 flex justify-end border-t border-[var(--invoice-detail-doc-border)] px-6 pt-6">
+							<div
+								className="w-full max-w-xs space-y-2 rounded-lg bg-muted/50 px-5 py-4"
+								style={{ fontFamily: "var(--invoice-detail-body)" }}
+							>
+								<div className="flex justify-between text-sm">
+									<span className="text-muted-foreground">Subtotal</span>
+									<span className="font-medium tabular-nums">
+										{formatCurrency(lineItemsSummary.subtotal)}
+									</span>
+								</div>
+								<div className="flex justify-between text-sm">
+									<span className="text-muted-foreground">{taxRateLabel}</span>
+									<span className="font-medium tabular-nums">
+										{formatCurrency(lineItemsSummary.tax)}
+									</span>
+								</div>
 								<div
-									className="w-full max-w-xs space-y-2 rounded-lg bg-muted/50 px-5 py-4"
-									style={{ fontFamily: "var(--invoice-detail-body)" }}
+									className="flex justify-between border-t border-[var(--invoice-detail-doc-border)] pt-3 text-base font-bold"
+									style={{
+										fontFamily: "var(--invoice-detail-display)",
+										color: "var(--invoice-detail-accent)",
+									}}
 								>
-									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">Subtotal</span>
-										<span className="font-medium tabular-nums">
-											{formatCurrency(invoice.subtotal)}
-										</span>
-									</div>
-									<div className="flex justify-between text-sm">
-										<span className="text-muted-foreground">Tax</span>
-										<span className="font-medium tabular-nums">
-											{formatCurrency(invoice.tax)}
-										</span>
-									</div>
-									<div
-										className="flex justify-between border-t border-border pt-3 text-base font-bold text-foreground"
-										style={{ fontFamily: "var(--invoice-detail-display)" }}
-									>
-										<span>Total</span>
-										<span className="tabular-nums">
-											{formatCurrency(invoice.totalAmount)}
-										</span>
-									</div>
+									<span>Total (incl. tax)</span>
+									<span className="tabular-nums">
+										{formatCurrency(lineItemsSummary.total)}
+									</span>
 								</div>
 							</div>
-						)}
+						</div>
 					</CardContent>
 				</Card>
-
-				{/* Integration log */}
-				<IntegrationLogPanel
-					entityId={invoice.id}
-					entityType="invoice"
-					onRetry={(logId) => {
-						console.log("Retry log:", logId);
-					}}
-				/>
 			</div>
 		</main>
 	);

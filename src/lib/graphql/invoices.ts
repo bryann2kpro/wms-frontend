@@ -14,6 +14,8 @@ export const INVOICES_QUERY = gql`
 				doNo
 				poId
 				poNo
+				poAmount
+				poAmountCalcSnapshot
 				dateIssued
 				totalExclTax
 				taxAmount
@@ -50,6 +52,8 @@ export const INVOICE_QUERY = gql`
 			doNo
 			poId
 			poNo
+			poAmount
+			poAmountCalcSnapshot
 			dateIssued
 			totalExclTax
 			taxAmount
@@ -114,6 +118,8 @@ export interface InvoiceGQL {
 	doNo: string | null;
 	poId: string | null;
 	poNo: string | null;
+	poAmount?: string | null;
+	poAmountCalcSnapshot?: Record<string, unknown> | null;
 	dateIssued: string | null;
 	totalExclTax: string | null;
 	taxAmount: string | null;

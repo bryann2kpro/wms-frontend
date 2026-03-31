@@ -63,6 +63,7 @@ export const GRNS_QUERY = gql`
 					lossQty
 					remarks
 					expiryDate
+					lotNo
 					createdAt
 					updatedAt
 					createdBy
@@ -105,6 +106,7 @@ export const GRNS_WORK_QUEUE_QUERY = gql`
 					qty
 					lossQty
 					expiryDate
+					lotNo
 					rack {
 						rackId
 						rackLevel
@@ -255,6 +257,7 @@ export type GrnsWorkQueueQueryData = {
 						| "qty"
 						| "lossQty"
 						| "expiryDate"
+						| "lotNo"
 						| "rack"
 					>
 				>;
@@ -379,6 +382,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 				receivedQuantity: cartonNum + lossNum,
 				location,
 				expiryDate: i.expiryDate ?? null,
+				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
 			};
 		});
