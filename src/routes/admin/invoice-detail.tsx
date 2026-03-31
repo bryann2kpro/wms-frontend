@@ -28,6 +28,7 @@ import {
 	type UpdateInvoiceStatusData,
 	type UpdateInvoiceStatusVariables,
 	gqlStatusToUI,
+	INVOICES_QUERY,
 } from "@/lib/graphql/invoices";
 import { formatCurrency, formatDateOnly } from "@/lib/utils";
 
@@ -70,7 +71,13 @@ function InvoiceDetailComponent() {
 				poNumber: raw.poNo,
 				status: gqlStatusToUI(raw.status),
 				issuedDate: raw.dateIssued ? new Date(raw.dateIssued) : null,
-				totalAmount: parseFloat(raw.totalInclTax ?? "0") || 0,
+				totalAmount: parseFloat(raw.poAmount ?? "0") || 0,
+			sstRate:
+				typeof raw.poAmountCalcSnapshot === "object" &&
+				raw.poAmountCalcSnapshot &&
+				"sstRate" in raw.poAmountCalcSnapshot
+					? Number(raw.poAmountCalcSnapshot.sstRate)
+					: null,
 				subtotal: parseFloat(raw.totalExclTax ?? "0") || 0,
 				tax: parseFloat(raw.taxAmount ?? "0") || 0,
 				taxRate: parseFloat(raw.taxRate ?? "0") || 0,
@@ -426,6 +433,12 @@ function InvoiceDetailComponent() {
 								}}
 							>
 								{formatCurrency(invoice.totalAmount)}
+							</p>
+							<p
+								className="mt-0.5 text-[11px] text-muted-foreground"
+								style={{ fontFamily: "var(--invoice-detail-body)" }}
+							>
+								{Math.round((invoice.sstRate ?? 0.06) * 100)}% SST included
 							</p>
 						</CardContent>
 					</Card>

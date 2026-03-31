@@ -52,6 +52,8 @@ export const INVOICE_QUERY = gql`
 			doNo
 			poId
 			poNo
+			poAmount
+			poAmountCalcSnapshot
 			dateIssued
 			totalExclTax
 			taxAmount
