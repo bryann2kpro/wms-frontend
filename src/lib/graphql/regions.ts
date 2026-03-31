@@ -1,9 +1,11 @@
 import { gql } from "@apollo/client";
 import type {
+	CreateRegionInput,
 	Region,
 	RegionPaginatedResponse,
-	CreateRegionInput,
+	RegionPricing,
 	UpdateRegionInput,
+	UpsertRegionPricingInput,
 } from "./types";
 
 export const REGION_FRAGMENT = gql`
@@ -15,6 +17,15 @@ export const REGION_FRAGMENT = gql`
 		updatedAt
 		createdBy
 		updatedBy
+		pricing {
+			id
+			regionId
+			rate
+			minQty
+			sstRate
+			isActive
+			updatedAt
+		}
 	}
 `;
 
@@ -74,6 +85,20 @@ export const DELETE_REGION_MUTATION = gql`
 	}
 `;
 
+export const UPSERT_REGION_PRICING_MUTATION = gql`
+	mutation UpsertRegionPricing($regionId: ID!, $input: UpsertRegionPricingInput!) {
+		upsertRegionPricing(regionId: $regionId, input: $input) {
+			id
+			regionId
+			rate
+			minQty
+			sstRate
+			isActive
+			updatedAt
+		}
+	}
+`;
+
 export type RegionsQueryVariables = {
 	filter?: {
 		regionId?: string;
@@ -104,3 +129,11 @@ export type UpdateRegionMutationData = { updateRegion: Region | null };
 
 export type DeleteRegionMutationVariables = { id: string };
 export type DeleteRegionMutationData = { deleteRegion: boolean };
+
+export type UpsertRegionPricingMutationVariables = {
+	regionId: string;
+	input: UpsertRegionPricingInput;
+};
+export type UpsertRegionPricingMutationData = {
+	upsertRegionPricing: RegionPricing;
+};

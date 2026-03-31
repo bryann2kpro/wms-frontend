@@ -45,6 +45,19 @@ export interface UpdateSupplierInput {
 	updatedBy: string;
 }
 
+export interface RegionPricing {
+	id: string;
+	regionId: string;
+	/** Delivery rate per CTN as a numeric string, e.g. "12.50" */
+	rate: string;
+	/** Minimum qty threshold as a numeric string, e.g. "5" */
+	minQty: string;
+	/** SST rate as a decimal string, e.g. "0.0600" */
+	sstRate: string;
+	isActive: boolean;
+	updatedAt: string;
+}
+
 export interface Region {
 	regionId: string;
 	regionName: string;
@@ -53,6 +66,7 @@ export interface Region {
 	updatedAt: string;
 	createdBy: string;
 	updatedBy: string;
+	pricing?: RegionPricing | null;
 }
 
 export interface RegionPaginatedResponse {
@@ -71,6 +85,13 @@ export interface UpdateRegionInput {
 	regionName?: string;
 	regionCode?: string;
 	updatedBy: string;
+}
+
+export interface UpsertRegionPricingInput {
+	rate: number;
+	minQty?: number;
+	sstRate?: number;
+	isActive?: boolean;
 }
 
 export interface Warehouse {
