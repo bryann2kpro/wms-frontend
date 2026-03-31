@@ -22,6 +22,7 @@ export interface PurchaseOrderItem {
 /** Delivery order step status (NEW -> PACKING -> SHIPPED = out from warehouse -> DELIVERED). */
 export interface DeliveryOrderStep {
 	id: string;
+	doNo: string;
 	status: "NEW" | "PACKING" | "SHIPPED" | "DELIVERED";
 }
 

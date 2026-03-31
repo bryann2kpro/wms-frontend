@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import type { ComponentProps, ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
@@ -28,6 +29,11 @@ import {
 	updatePurchaseOrderStatus,
 	applyEmergencyDelivery,
 } from "@/data/purchase-orders";
+import { generateDeliveryOrderPdfUrl } from "@/data/documents";
+import {
+	downloadPdfFromUrl,
+	sanitizePdfFilenameSegment,
+} from "@/lib/reports/report-pdf";
 import { advanceDeliveryOrderStatus } from "@/data/delivery-orders";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -178,6 +184,9 @@ function OutboundRouteComponent() {
 	const [rejectReason, setRejectReason] = useState("");
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
+	const [pendingDoPdfDeliveryOrderId, setPendingDoPdfDeliveryOrderId] =
+		useState<string | null>(null);
+	const [isBulkDoPdfPending, setIsBulkDoPdfPending] = useState(false);
 
 	const queryClient = useQueryClient();
 	const { summary, isLoading: isSummaryLoading } = useOutboundSummary();
@@ -212,6 +221,62 @@ function OutboundRouteComponent() {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 		},
 	});
+
+	const downloadDoPdf = useCallback(async (po: PurchaseOrderDetail) => {
+		const doId = po.deliveryOrder?.id;
+		if (!doId) return;
+		setPendingDoPdfDeliveryOrderId(doId);
+		try {
+			const url = await generateDeliveryOrderPdfUrl(doId);
+			const doNo = po.deliveryOrder?.doNo?.trim();
+			const filenameBase = doNo || po.purchaseOrderNumber.trim();
+			const filenamePrefix = doNo ? "" : "DO-";
+			const filename = `${filenamePrefix}${sanitizePdfFilenameSegment(filenameBase)}.pdf`;
+			await downloadPdfFromUrl(url, filename);
+			toast.success("Delivery order PDF downloaded");
+		} catch {
+			toast.error("Could not generate delivery order PDF");
+		} finally {
+			setPendingDoPdfDeliveryOrderId(null);
+		}
+	}, []);
+
+	const bulkDownloadDoPdf = useCallback(
+		async (orders: PurchaseOrderDetail[]) => {
+			setIsBulkDoPdfPending(true);
+			let ok = 0;
+			let fail = 0;
+			for (const po of orders) {
+				const doId = po.deliveryOrder?.id;
+				if (!doId) continue;
+				try {
+					const url = await generateDeliveryOrderPdfUrl(doId);
+					const doNo = po.deliveryOrder?.doNo?.trim();
+					const filenameBase = doNo || po.purchaseOrderNumber.trim();
+					const filenamePrefix = doNo ? "" : "DO-";
+					const filename = `${filenamePrefix}${sanitizePdfFilenameSegment(filenameBase)}.pdf`;
+					await downloadPdfFromUrl(url, filename);
+					ok++;
+					await new Promise((r) => setTimeout(r, 400));
+				} catch {
+					fail++;
+				}
+			}
+			setIsBulkDoPdfPending(false);
+			if (fail === 0) {
+				toast.success(
+					ok === 1
+						? "Downloaded 1 delivery order PDF"
+						: `Downloaded ${ok} delivery order PDFs`,
+				);
+			} else if (ok === 0) {
+				toast.error("Could not download delivery order PDFs");
+			} else {
+				toast.warning(`Downloaded ${ok} PDF(s); ${fail} failed.`);
+			}
+		},
+		[],
+	);
 
 	const form = useForm({
 		defaultValues: {
@@ -497,6 +562,10 @@ function OutboundRouteComponent() {
 					}}
 					isAdvanceStepPending={advanceStepMutation.isPending}
 					advancingDeliveryOrderId={advanceStepMutation.variables ?? null}
+					onDownloadDoPdf={downloadDoPdf}
+					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
+					onBulkDownloadDoPdf={bulkDownloadDoPdf}
+					isBulkDoPdfPending={isBulkDoPdfPending}
 				/>
 
 				<ViewPurchaseOrderDialog
@@ -519,6 +588,19 @@ function OutboundRouteComponent() {
 							: undefined
 					}
 					isEmergencyDeliveryPending={emergencyDeliveryMutation.isPending}
+					onDownloadDoPdf={
+						selectedPurchaseOrder?.deliveryOrder?.id
+							? () => {
+									const po = selectedPurchaseOrder;
+									if (po) void downloadDoPdf(po);
+								}
+							: undefined
+					}
+					isDownloadDoPdfPending={
+						Boolean(selectedPurchaseOrder?.deliveryOrder?.id) &&
+						pendingDoPdfDeliveryOrderId ===
+							selectedPurchaseOrder?.deliveryOrder?.id
+					}
 				/>
 
 				<RejectPurchaseOrderDialog

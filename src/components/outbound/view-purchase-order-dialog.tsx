@@ -1,4 +1,14 @@
+import {
+	AlertCircle,
+	ChevronRight,
+	Download,
+	Loader2,
+	Zap,
+} from "lucide-react";
 import { useState } from "react";
+import { IntegrationLogPanel } from "@/components/integration-log-panel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -7,9 +17,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Table,
 	TableBody,
@@ -18,16 +27,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertCircle, ChevronRight, Zap } from "lucide-react";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
-import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import {
-	getStatusColor,
-	getNetSuiteStatusColor,
-	formatStatus,
 	formatDeliveryOrderStepStatus,
+	formatStatus,
 	getDeliveryOrderStepStatusColor,
+	getNetSuiteStatusColor,
+	getStatusColor,
 } from "@/lib/outbound";
 
 interface ViewPurchaseOrderDialogProps {
@@ -38,6 +44,8 @@ interface ViewPurchaseOrderDialogProps {
 	isAdvanceStepPending?: boolean;
 	onEmergencyDelivery?: () => void;
 	isEmergencyDeliveryPending?: boolean;
+	onDownloadDoPdf?: () => void;
+	isDownloadDoPdfPending?: boolean;
 }
 
 export function ViewPurchaseOrderDialog({
@@ -48,6 +56,8 @@ export function ViewPurchaseOrderDialog({
 	isAdvanceStepPending,
 	onEmergencyDelivery,
 	isEmergencyDeliveryPending,
+	onDownloadDoPdf,
+	isDownloadDoPdfPending,
 }: ViewPurchaseOrderDialogProps) {
 	const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
 
@@ -318,6 +328,28 @@ export function ViewPurchaseOrderDialog({
 							)}
 
 							<DialogFooter>
+								{purchaseOrder.deliveryOrder && onDownloadDoPdf ? (
+									<Button
+										type="button"
+										variant="outline"
+										className="mr-auto gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										onClick={() => onDownloadDoPdf()}
+										disabled={isDownloadDoPdfPending}
+										aria-busy={isDownloadDoPdfPending}
+									>
+										{isDownloadDoPdfPending ? (
+											<Loader2
+												className="h-4 w-4 animate-spin shrink-0"
+												aria-hidden
+											/>
+										) : (
+											<Download className="h-4 w-4 shrink-0" aria-hidden />
+										)}
+										{isDownloadDoPdfPending
+											? "Preparing PDF…"
+											: "Download DO PDF"}
+									</Button>
+								) : null}
 								<Button variant="outline" onClick={() => onOpenChange(false)}>
 									Close
 								</Button>
