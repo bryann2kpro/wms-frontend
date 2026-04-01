@@ -47,6 +47,7 @@ export const Route = createFileRoute("/admin/invoice-detail")({
 });
 
 function InvoiceDetailComponent() {
+	"use no memo";
 	const { id } = Route.useSearch();
 	const navigate = useNavigate();
 
