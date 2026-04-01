@@ -37,6 +37,9 @@ import {
 } from "@/lib/graphql/racks";
 import {
 	STOCK_UNITS_QUERY,
+	CREATE_STOCK_UNIT_MUTATION,
+	type CreateStockUnitMutationData,
+	type CreateStockUnitMutationVariables,
 	type StockUnitsQueryData,
 	type StockUnitsQueryVariables,
 } from "@/lib/graphql/stock-units";
@@ -92,6 +95,12 @@ function normalizeKey(value: string): string {
 	return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function rowToHeaders(row: Record<string, unknown>): Record<string, string> {
+	return Object.fromEntries(
+		Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
+	);
+}
+
 function parseDate(value: string): string {
 	if (!value.trim()) return "";
 	const date = new Date(value);
@@ -113,6 +122,18 @@ function parseExcelDateInput(value: string): { display: string; db: string } {
 	const db = parseDate(normalizedDate);
 	if (!db) return { display: trimmed, db: "" };
 	return { display: db.slice(0, 10), db };
+}
+
+function parseBinCode(binCode: string): {
+	rackRow: string;
+	rackLevel: string;
+	rackColumn: string;
+} | null {
+	const parts = binCode.trim().split("-");
+	if (parts.length !== 3) return null;
+	const [rackRow, rackLevel, rackColumn] = parts.map((part) => part.trim());
+	if (!rackRow || !rackLevel || !rackColumn) return null;
+	return { rackRow, rackLevel, rackColumn };
 }
 
 function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
@@ -179,6 +200,11 @@ export function ImportDialog({
 	const [isParsing, setIsParsing] = useState(false);
 	const [isImporting, setIsImporting] = useState(false);
 	const [processedCount, setProcessedCount] = useState(0);
+	const [isStockTakeFormat, setIsStockTakeFormat] = useState(false);
+	const [newRacksToCreate, setNewRacksToCreate] = useState<
+		CreateRackMutationVariables["input"][]
+	>([]);
+	const [newUomsToCreate, setNewUomsToCreate] = useState<string[]>([]);
 
 	const { data: stockUnitsData } = useQuery<
 		StockUnitsQueryData,
@@ -192,7 +218,7 @@ export function ImportDialog({
 		RACKS_QUERY,
 		{
 			variables: { pageSize: 5000, pageNumber: 1 },
-			skip: mode !== "racks" || !open,
+			skip: !open,
 		},
 	);
 
@@ -204,15 +230,22 @@ export function ImportDialog({
 		CreateRackMutationData,
 		CreateRackMutationVariables
 	>(CREATE_RACK_MUTATION);
+	const [createStockUnit] = useMutation<
+		CreateStockUnitMutationData,
+		CreateStockUnitMutationVariables
+	>(CREATE_STOCK_UNIT_MUTATION);
 
 	const validRows = useMemo(
 		() =>
-			rows.filter((row) =>
-				mode === "skus"
+			rows.filter((row) => {
+				if (mode === "skus" && isStockTakeFormat) {
+					return row.errors.length === 0;
+				}
+				return mode === "skus"
 					? Boolean((row as Extract<PreviewRow, { skuPayload?: unknown }>).skuPayload)
-					: Boolean((row as Extract<PreviewRow, { rackPayload?: unknown }>).rackPayload),
-			),
-		[rows, mode],
+					: Boolean((row as Extract<PreviewRow, { rackPayload?: unknown }>).rackPayload);
+			}),
+		[rows, mode, isStockTakeFormat],
 	);
 
 	const progress = validRows.length
@@ -253,26 +286,155 @@ export function ImportDialog({
 			uomLookup.set(normalizeKey(unit.unitCode), unit.stockUnitId);
 		}
 
+		const firstHeaders = rowToHeaders(rawRows[0] ?? {});
+		const stockTakeFormat =
+			Boolean(firstHeaders["item code"]) ||
+			Boolean(firstHeaders["storage bin code"]) ||
+			Boolean(firstHeaders["loose uom"]);
+		setIsStockTakeFormat(stockTakeFormat);
+
+		if (stockTakeFormat) {
+			const existingRackKeys = new Set(
+				(racksData?.racks.query ?? []).map((rack) =>
+					normalizeKey(`${rack.rackRow}|${rack.rackColumn}|${rack.rackLevel}`),
+				),
+			);
+			const newRackMap = new Map<string, CreateRackMutationVariables["input"]>();
+			const newUomSet = new Set<string>();
+			const aggregate = new Map<
+				string,
+				{
+					skuCode: string;
+					skuDescription: string;
+					skuQuantity: number;
+					skuUomLabel: string;
+				}
+			>();
+
+			for (const rawRow of rawRows) {
+				const headers = rowToHeaders(rawRow);
+				const binCode = headers["storage bin code"] ?? "";
+				const skuCodeRaw = headers["item code"] ?? headers["sku code"] ?? headers.code ?? "";
+				const skuCode = skuCodeRaw.replace(/\s*\(f\)\s*$/i, "").trim();
+				const skuDescription = headers.description ?? "";
+				const quantityRaw = headers["unit qty"] ?? headers.quantity ?? "";
+				const skuUomLabel =
+					headers["loose uom"] ?? headers["unit of measure"] ?? headers.uom ?? headers.unit ?? "";
+
+				const isSubtotalRow =
+					!skuCode && (!quantityRaw || String(quantityRaw).trim().startsWith("="));
+				if (isSubtotalRow) continue;
+				if (!skuCode) continue;
+
+				const qty = Number(quantityRaw);
+				if (!Number.isNaN(qty)) {
+					const key = skuCode.toLowerCase();
+					const current = aggregate.get(key);
+					if (current) {
+						current.skuQuantity += qty;
+						if (!current.skuDescription && skuDescription) {
+							current.skuDescription = skuDescription;
+						}
+						if (!current.skuUomLabel && skuUomLabel) {
+							current.skuUomLabel = skuUomLabel;
+						}
+					} else {
+						aggregate.set(key, {
+							skuCode,
+							skuDescription,
+							skuQuantity: qty,
+							skuUomLabel,
+						});
+					}
+				}
+
+				if (binCode) {
+					const parsedBin = parseBinCode(binCode);
+					if (parsedBin) {
+						const rackKey = normalizeKey(
+							`${parsedBin.rackRow}|${parsedBin.rackColumn}|${parsedBin.rackLevel}`,
+						);
+						if (!existingRackKeys.has(rackKey) && !newRackMap.has(rackKey)) {
+							newRackMap.set(rackKey, {
+								rackRow: parsedBin.rackRow,
+								rackColumn: parsedBin.rackColumn,
+								rackLevel: parsedBin.rackLevel,
+								createdBy,
+								updatedBy: createdBy,
+							});
+						}
+					}
+				}
+
+				if (skuUomLabel && !uomLookup.has(normalizeKey(skuUomLabel))) {
+					newUomSet.add(skuUomLabel);
+				}
+			}
+
+			setNewRacksToCreate(Array.from(newRackMap.values()));
+			setNewUomsToCreate(Array.from(newUomSet.values()));
+
+			return Array.from(aggregate.values()).map((item, index) => {
+				const errors: string[] = [];
+				if (!item.skuCode) errors.push("SKU Code is required");
+				if (!item.skuDescription) errors.push("Description is required");
+				if (Number.isNaN(item.skuQuantity)) {
+					errors.push("Quantity must be a number");
+				} else if (item.skuQuantity < 0) {
+					errors.push("Quantity must be >= 0");
+				}
+				if (!item.skuUomLabel) errors.push("Unit of Measure is required");
+				const stockUnitId = uomLookup.get(normalizeKey(item.skuUomLabel));
+
+				return {
+					rowNumber: index + 2,
+					data: {
+						skuCode: item.skuCode,
+						skuDescription: item.skuDescription,
+						skuPrice: "0",
+						skuQuantity: String(item.skuQuantity),
+						skuUomLabel: item.skuUomLabel,
+						pickingStrategy: "FIFO",
+						skuExpiryDate: "",
+					},
+					errors,
+					skuPayload:
+						errors.length === 0 && stockUnitId
+							? {
+									skuCode: item.skuCode,
+									skuDescription: item.skuDescription,
+									skuPrice: 0,
+									skuQuantity: item.skuQuantity,
+									skuExpiryDate: "",
+									skuSuppliers: [],
+									skuUom: stockUnitId,
+									pickingStrategy: "FIFO",
+									isActive: true,
+							  }
+							: undefined,
+				};
+			});
+		}
+
+		setNewRacksToCreate([]);
+		setNewUomsToCreate([]);
+
 		const counts = new Map<string, number>();
 		for (const row of rawRows) {
-			const headers: Record<string, string> = Object.fromEntries(
-				Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
-			);
+			const headers = rowToHeaders(row);
 			const skuCode = headers["sku code"] ?? headers.code ?? "";
 			if (!skuCode) continue;
 			counts.set(skuCode.toLowerCase(), (counts.get(skuCode.toLowerCase()) ?? 0) + 1);
 		}
 
 		return rawRows.map((row, index) => {
-			const headers: Record<string, string> = Object.fromEntries(
-				Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
-			);
-			const skuCode = headers["sku code"] ?? headers.code ?? "";
+			const headers = rowToHeaders(row);
+			const skuCode = headers["sku code"] ?? headers["item code"] ?? headers.code ?? "";
 			const skuDescription = headers.description ?? "";
 			const skuPrice = headers.price ?? "";
-			const skuQuantity = headers.quantity ?? "";
+			const skuQuantity = headers.quantity ?? headers["unit qty"] ?? "";
 			const skuUomLabel =
-				headers["unit of measure"] ?? headers.uom ?? headers.unit ?? "";
+				headers["unit of measure"] ?? headers["loose uom"] ?? headers.uom ?? headers.unit ?? "";
 			const pickingStrategy =
 				(headers["picking strategy"] ?? "FIFO").toUpperCase().trim() || "FIFO";
 			const expiryInput = headers["expiry date"] ?? "";
@@ -392,6 +554,9 @@ export function ImportDialog({
 		setFileName(file.name);
 		setIsParsing(true);
 		setRows([]);
+		setIsStockTakeFormat(false);
+		setNewRacksToCreate([]);
+		setNewUomsToCreate([]);
 		try {
 			const arrayBuffer = await file.arrayBuffer();
 			const workbook = read(arrayBuffer, { type: "array" });
@@ -431,16 +596,76 @@ export function ImportDialog({
 		setProcessedCount(0);
 		const batchSize = 5;
 		const mutableRows = [...rows];
+		const uomLookup = new Map<string, string>();
+		for (const unit of stockUnitsData?.stockUnits.query ?? []) {
+			uomLookup.set(normalizeKey(`${unit.unitName} ${unit.unitCode}`), unit.stockUnitId);
+			uomLookup.set(normalizeKey(unit.unitName), unit.stockUnitId);
+			uomLookup.set(normalizeKey(unit.unitCode), unit.stockUnitId);
+		}
 
 		try {
+			if (mode === "skus" && isStockTakeFormat) {
+				for (const uomLabel of newUomsToCreate) {
+					if (uomLookup.has(normalizeKey(uomLabel))) continue;
+					const { data } = await createStockUnit({
+						variables: {
+							input: {
+								unitName: uomLabel,
+								unitCode: uomLabel,
+								isActive: true,
+								createdBy,
+								updatedBy: createdBy,
+							},
+						},
+					});
+					const created = data?.createStockUnit;
+					if (created) {
+						uomLookup.set(normalizeKey(created.unitName), created.stockUnitId);
+						uomLookup.set(normalizeKey(created.unitCode), created.stockUnitId);
+						uomLookup.set(
+							normalizeKey(`${created.unitName} ${created.unitCode}`),
+							created.stockUnitId,
+						);
+					}
+				}
+
+				for (const rackInput of newRacksToCreate) {
+					await createRack({ variables: { input: rackInput } });
+				}
+			}
+
 			for (let i = 0; i < validRows.length; i += batchSize) {
 				const batch = validRows.slice(i, i + batchSize);
 				const settled = await Promise.allSettled(
 					batch.map(async (row) => {
 						if (mode === "skus") {
-							const payload = (
+							let payload = (
 								row as Extract<PreviewRow, { skuPayload?: unknown }>
 							).skuPayload;
+							if (isStockTakeFormat) {
+								const skuRow = row as Extract<PreviewRow, { skuPayload?: unknown }>;
+								const stockUnitId = uomLookup.get(
+									normalizeKey(skuRow.data.skuUomLabel),
+								);
+								if (!stockUnitId) {
+									return {
+										rowNumber: row.rowNumber,
+										ok: false as const,
+										error: "Unit of Measure not found",
+									};
+								}
+								payload = {
+									skuCode: skuRow.data.skuCode,
+									skuDescription: skuRow.data.skuDescription,
+									skuPrice: Number(skuRow.data.skuPrice || "0"),
+									skuQuantity: Number(skuRow.data.skuQuantity),
+									skuExpiryDate: "",
+									skuSuppliers: [],
+									skuUom: stockUnitId,
+									pickingStrategy: skuRow.data.pickingStrategy || "FIFO",
+									isActive: true,
+								};
+							}
 							if (!payload) return { rowNumber: row.rowNumber, ok: false as const, error: "Missing payload" };
 							await createSku({ variables: { input: payload } });
 							return { rowNumber: row.rowNumber, ok: true as const };
@@ -527,6 +752,16 @@ export function ImportDialog({
 							>
 								Ready: {validRows.length}
 							</span>
+							{mode === "skus" && isStockTakeFormat && newRacksToCreate.length > 0 && (
+								<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
+									+{newRacksToCreate.length} new racks
+								</span>
+							)}
+							{mode === "skus" && isStockTakeFormat && newUomsToCreate.length > 0 && (
+								<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
+									+{newUomsToCreate.length} new UOMs
+								</span>
+							)}
 						</div>
 					</div>
 				</DialogHeader>

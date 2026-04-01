@@ -88,6 +88,15 @@ export const UPDATE_INVOICE_STATUS_MUTATION = gql`
 	}
 `;
 
+export const GENERATE_PROFORMA_INVOICE_PDF_MUTATION = gql`
+	mutation GenerateProformaInvoicePdf($invoiceId: ID!) {
+		generateProformaInvoicePdf(invoiceId: $invoiceId) {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
 // ---------------------------------------------------------------------------
 // TypeScript types (aligned with GraphQL schema)
 // ---------------------------------------------------------------------------
@@ -171,6 +180,14 @@ export type InvoiceQueryData = { invoice: InvoiceGQL | null };
 export type UpdateInvoiceStatusVariables = { id: string; status: string };
 export type UpdateInvoiceStatusData = {
 	updateInvoiceStatus: InvoiceGQL | null;
+};
+
+export type GenerateProformaInvoicePdfVariables = { invoiceId: string };
+export type GenerateProformaInvoicePdfData = {
+	generateProformaInvoicePdf: {
+		pdfBase64: string;
+		filename: string;
+	};
 };
 
 // ---------------------------------------------------------------------------

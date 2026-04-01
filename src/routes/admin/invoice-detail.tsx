@@ -1,6 +1,9 @@
+import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { requirePermission } from "@/lib/rbac";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { ChevronLeft, Download, FileText, Send } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -8,8 +11,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
@@ -19,17 +20,20 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, Download, Send, FileText } from "lucide-react";
 import {
+	GENERATE_PROFORMA_INVOICE_PDF_MUTATION,
+	type GenerateProformaInvoicePdfData,
+	type GenerateProformaInvoicePdfVariables,
+	gqlStatusToUI,
 	INVOICE_QUERY,
-	UPDATE_INVOICE_STATUS_MUTATION,
 	type InvoiceQueryData,
 	type InvoiceQueryVariables,
+	UPDATE_INVOICE_STATUS_MUTATION,
 	type UpdateInvoiceStatusData,
 	type UpdateInvoiceStatusVariables,
-	gqlStatusToUI,
-	INVOICES_QUERY,
 } from "@/lib/graphql/invoices";
+import { requirePermission } from "@/lib/rbac";
+import { downloadPdfFromBase64 } from "@/lib/reports";
 import { formatCurrency, formatDateOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/invoice-detail")({
@@ -62,6 +66,11 @@ function InvoiceDetailComponent() {
 		onCompleted: () => refetch(),
 	});
 
+	const [generateProformaPdf, { loading: exportPdfLoading }] = useMutation<
+		GenerateProformaInvoicePdfData,
+		GenerateProformaInvoicePdfVariables
+	>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION);
+
 	const parseSnapshotNumber = (
 		snapshot: Record<string, unknown> | null | undefined,
 		key: string,
@@ -87,11 +96,11 @@ function InvoiceDetailComponent() {
 				issuedDate: raw.dateIssued ? new Date(raw.dateIssued) : null,
 				totalAmount: parseFloat(raw.poAmount ?? "0") || 0,
 				sstRate:
-				typeof raw.poAmountCalcSnapshot === "object" &&
-				raw.poAmountCalcSnapshot &&
-				"sstRate" in raw.poAmountCalcSnapshot
-					? Number(raw.poAmountCalcSnapshot.sstRate)
-					: null,
+					typeof raw.poAmountCalcSnapshot === "object" &&
+					raw.poAmountCalcSnapshot &&
+					"sstRate" in raw.poAmountCalcSnapshot
+						? Number(raw.poAmountCalcSnapshot.sstRate)
+						: null,
 				regionRate:
 					typeof raw.poAmountCalcSnapshot === "object"
 						? parseSnapshotNumber(raw.poAmountCalcSnapshot, "rate")
@@ -139,15 +148,15 @@ function InvoiceDetailComponent() {
 	const taxRatePercent = Math.round(lineItemsTaxRate * 100);
 	const taxRateLabel = taxRatePercent > 0 ? `Tax (${taxRatePercent}%)` : "Tax";
 	const lineItemsSummary = computedLineItems.reduce(
-				(acc, item) => {
-					const lineTax = item.totalPrice * lineItemsTaxRate;
-					acc.subtotal += item.totalPrice;
-					acc.tax += lineTax;
-					acc.total += item.totalPrice + lineTax;
-					return acc;
-				},
-				{ subtotal: 0, tax: 0, total: 0 },
-			);
+		(acc, item) => {
+			const lineTax = item.totalPrice * lineItemsTaxRate;
+			acc.subtotal += item.totalPrice;
+			acc.tax += lineTax;
+			acc.total += item.totalPrice + lineTax;
+			return acc;
+		},
+		{ subtotal: 0, tax: 0, total: 0 },
+	);
 
 	if (loading && !invoice) {
 		return (
@@ -164,7 +173,10 @@ function InvoiceDetailComponent() {
 							<Skeleton className="h-9 w-9 rounded-lg shrink-0" aria-hidden />
 							<div className="space-y-2">
 								<div className="flex items-center gap-2.5">
-									<Skeleton className="h-9 w-9 rounded-lg shrink-0" aria-hidden />
+									<Skeleton
+										className="h-9 w-9 rounded-lg shrink-0"
+										aria-hidden
+									/>
 									<Skeleton className="h-8 w-56" aria-hidden />
 								</div>
 								<Skeleton className="ml-[2.875rem] h-4 w-44" aria-hidden />
@@ -210,10 +222,12 @@ function InvoiceDetailComponent() {
 									<Skeleton className="h-3 w-16 shrink-0" />
 									<Skeleton className="h-3 w-32 grow" />
 									<Skeleton className="h-3 w-8 shrink-0" />
-									<Skeleton className="h-3 w-16 shrink-0" />
-									<Skeleton className="h-3 w-16 shrink-0" />
-									<Skeleton className="h-3 w-16 shrink-0" />
-									<Skeleton className="h-3 w-16 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
+									<Skeleton className="h-3 w-14 shrink-0" />
 								</div>
 								{Array.from({ length: 4 }).map((_, i) => (
 									<div
@@ -225,9 +239,11 @@ function InvoiceDetailComponent() {
 										<Skeleton className="h-4 w-40 grow" />
 										<Skeleton className="h-4 w-6 shrink-0" />
 										<Skeleton className="h-4 w-16 shrink-0" />
-										<Skeleton className="h-4 w-16 shrink-0" />
-										<Skeleton className="h-4 w-16 shrink-0" />
-										<Skeleton className="h-4 w-16 shrink-0" />
+										<Skeleton className="h-4 w-14 shrink-0" />
+										<Skeleton className="h-4 w-14 shrink-0" />
+										<Skeleton className="h-4 w-14 shrink-0" />
+										<Skeleton className="h-4 w-14 shrink-0" />
+										<Skeleton className="h-4 w-14 shrink-0" />
 									</div>
 								))}
 							</div>
@@ -299,7 +315,7 @@ function InvoiceDetailComponent() {
 			className="invoice-detail-page min-h-screen bg-background"
 			aria-labelledby="invoice-detail-page-title"
 			aria-describedby="invoice-detail-page-description"
-			aria-busy={loading || updating}
+			aria-busy={loading || updating || exportPdfLoading}
 		>
 			<div className="container mx-auto p-6">
 				{/* Document header */}
@@ -354,12 +370,28 @@ function InvoiceDetailComponent() {
 						<Button
 							variant="outline"
 							size="sm"
-							disabled
-							title="Export coming soon"
+							disabled={exportPdfLoading}
 							className="gap-2"
+							onClick={() => {
+								void generateProformaPdf({
+									variables: { invoiceId: invoice.id },
+									onCompleted: (res) => {
+										const p = res?.generateProformaInvoicePdf;
+										if (p?.pdfBase64) {
+											downloadPdfFromBase64(p.pdfBase64, p.filename);
+											toast.success("Proforma PDF downloaded");
+										} else {
+											toast.error("No PDF returned");
+										}
+									},
+									onError: (err) => {
+										toast.error(err.message ?? "Failed to export PDF");
+									},
+								});
+							}}
 						>
-							<Download className="h-4 w-4" />
-							Export
+							<Download className="h-4 w-4" aria-hidden />
+							{exportPdfLoading ? "Exporting…" : "Export"}
 						</Button>
 						{invoice.status === "Issued" && (
 							<Button
@@ -384,7 +416,7 @@ function InvoiceDetailComponent() {
 				</header>
 
 				{/* Meta cards */}
-				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)]">
 						<CardHeader className="pb-2 pt-5">
 							<CardTitle
@@ -457,31 +489,100 @@ function InvoiceDetailComponent() {
 							</p>
 						</CardContent>
 					</Card>
-					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)]">
+					<Card className="invoice-detail-meta-card border-[var(--invoice-detail-doc-border)] sm:col-span-2 lg:col-span-3 xl:col-span-2">
 						<CardHeader className="pb-2 pt-5">
 							<CardTitle
 								className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
 								style={{ fontFamily: "var(--invoice-detail-body)" }}
 							>
-								Total amount
+								Amounts
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="pb-5 pt-0">
-							<p
-								className="text-base font-bold tabular-nums"
-								style={{
-									fontFamily: "var(--invoice-detail-display)",
-									color: "var(--invoice-detail-accent)",
-								}}
-							>
-								{formatCurrency(invoice.totalAmount)}
-							</p>
-							<p
-								className="mt-0.5 text-[11px] text-muted-foreground"
+						<CardContent className="space-y-2 pb-5 pt-0">
+							<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-xs">
+								<dt
+									className="text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									Subtotal
+								</dt>
+								<dd
+									className="text-right font-semibold tabular-nums text-foreground"
+									style={{ fontFamily: "var(--invoice-detail-display)" }}
+								>
+									{formatCurrency(lineItemsSummary.subtotal)}
+								</dd>
+								<dt
+									className="text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									Total (excl. tax)
+								</dt>
+								<dd
+									className="text-right font-semibold tabular-nums text-foreground"
+									style={{ fontFamily: "var(--invoice-detail-display)" }}
+								>
+									{formatCurrency(
+										invoice.subtotal > 0
+											? invoice.subtotal
+											: lineItemsSummary.subtotal,
+									)}
+								</dd>
+								<dt
+									className="text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									Tax rate
+								</dt>
+								<dd
+									className="text-right font-semibold text-foreground"
+									style={{ fontFamily: "var(--invoice-detail-display)" }}
+								>
+									{taxRatePercent > 0 ? `${taxRatePercent}%` : "—"}
+								</dd>
+								<dt
+									className="text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									Tax amount
+								</dt>
+								<dd
+									className="text-right font-semibold tabular-nums text-foreground"
+									style={{ fontFamily: "var(--invoice-detail-display)" }}
+								>
+									{formatCurrency(
+										invoice.tax > 0 ? invoice.tax : lineItemsSummary.tax,
+									)}
+								</dd>
+							</dl>
+							<div
+								className="border-t border-[var(--invoice-detail-doc-border)] pt-2"
 								style={{ fontFamily: "var(--invoice-detail-body)" }}
 							>
-								{Math.round((invoice.sstRate ?? 0.06) * 100)}% SST included
-							</p>
+								<p
+									className="text-[11px] text-muted-foreground"
+									style={{ fontFamily: "var(--invoice-detail-body)" }}
+								>
+									PO total (reference)
+								</p>
+								<p
+									className="text-base font-bold tabular-nums"
+									style={{
+										fontFamily: "var(--invoice-detail-display)",
+										color: "var(--invoice-detail-accent)",
+									}}
+								>
+									{formatCurrency(invoice.totalAmount)}
+								</p>
+								<p className="mt-0.5 text-[11px] text-muted-foreground">
+									{taxRateLabel}
+									{" · "}
+									Line total (incl. tax){" "}
+									<span className="font-medium text-foreground tabular-nums">
+										{formatCurrency(lineItemsSummary.total)}
+									</span>
+								</p>
+							</div>
 						</CardContent>
 					</Card>
 				</div>
@@ -543,28 +644,40 @@ function InvoiceDetailComponent() {
 											Qty
 										</TableHead>
 										<TableHead
-											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
 											style={{ fontFamily: "var(--invoice-detail-body)" }}
 										>
-											Unit price
+											Price/Unit (RM)
 										</TableHead>
 										<TableHead
-											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
 											style={{ fontFamily: "var(--invoice-detail-body)" }}
 										>
-											Subtotal
+											Subtotal (RM)
 										</TableHead>
 										<TableHead
-											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
 											style={{ fontFamily: "var(--invoice-detail-body)" }}
 										>
-											Tax amount
+											Total excl. tax (RM)
 										</TableHead>
 										<TableHead
-											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider"
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
 											style={{ fontFamily: "var(--invoice-detail-body)" }}
 										>
-											Total
+											Tax Amt (RM)
+										</TableHead>
+										<TableHead
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
+											style={{ fontFamily: "var(--invoice-detail-body)" }}
+										>
+											Total Incl. Tax (RM)
+										</TableHead>
+										<TableHead
+											className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wider whitespace-nowrap"
+											style={{ fontFamily: "var(--invoice-detail-body)" }}
+										>
+											Tax Rate
 										</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -572,7 +685,7 @@ function InvoiceDetailComponent() {
 									{computedLineItems.length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={8}
+												colSpan={10}
 												className="h-28 text-center text-muted-foreground text-sm"
 												style={{ fontFamily: "var(--invoice-detail-body)" }}
 											>
