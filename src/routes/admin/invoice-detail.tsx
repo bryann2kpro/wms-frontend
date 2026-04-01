@@ -748,9 +748,7 @@ function InvoiceDetailComponent() {
 													className="text-right text-sm tabular-nums"
 													style={{ fontFamily: "var(--invoice-detail-body)" }}
 												>
-													{formatCurrency(
-														item.totalPrice * lineItemsTaxRate,
-													)}
+													{formatCurrency(item.totalPrice * lineItemsTaxRate)}
 												</TableCell>
 												<TableCell
 													className="text-right text-sm font-semibold tabular-nums"
