@@ -45,6 +45,19 @@ export interface UpdateSupplierInput {
 	updatedBy: string;
 }
 
+export interface RegionPricing {
+	id: string;
+	regionId: string;
+	/** Delivery rate per CTN as a numeric string, e.g. "12.50" */
+	rate: string;
+	/** Minimum qty threshold as a numeric string, e.g. "5" */
+	minQty: string;
+	/** SST rate as a decimal string, e.g. "0.0600" */
+	sstRate: string;
+	isActive: boolean;
+	updatedAt: string;
+}
+
 export interface Region {
 	regionId: string;
 	regionName: string;
@@ -53,6 +66,7 @@ export interface Region {
 	updatedAt: string;
 	createdBy: string;
 	updatedBy: string;
+	pricing?: RegionPricing | null;
 }
 
 export interface RegionPaginatedResponse {
@@ -71,6 +85,13 @@ export interface UpdateRegionInput {
 	regionName?: string;
 	regionCode?: string;
 	updatedBy: string;
+}
+
+export interface UpsertRegionPricingInput {
+	rate: number;
+	minQty?: number;
+	sstRate?: number;
+	isActive?: boolean;
 }
 
 export interface Warehouse {
@@ -146,6 +167,7 @@ export interface Outlet {
 	outletId: string;
 	outletName: string;
 	outletCode: string;
+	address: string | null;
 	regionId: string | null;
 	regionName: string | null;
 	regionCode: string | null;
@@ -163,6 +185,7 @@ export interface OutletPaginatedResponse {
 export interface CreateOutletInput {
 	outletName: string;
 	outletCode: string;
+	address?: string;
 	regionId?: string | null;
 	createdBy: string;
 	updatedBy: string;
@@ -171,6 +194,7 @@ export interface CreateOutletInput {
 export interface UpdateOutletInput {
 	outletName?: string;
 	outletCode?: string;
+	address?: string;
 	regionId?: string | null;
 	updatedBy: string;
 }
@@ -381,6 +405,8 @@ export interface GrnItem {
 	rack: GrnRack | null;
 	/** Optional expiry date for this GRN item (ISO string from backend). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer to identify this production batch. */
+	lotNo?: string | null;
 	/** Legacy: some backends still return warehouse on item */
 	warehouseId?: string | null;
 	warehouseName?: string | null;
@@ -397,6 +423,8 @@ export interface CreateGrnItemInput {
 	rackIds?: string[] | null;
 	/** Expiry date (ISO date string YYYY-MM-DD). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer. */
+	lotNo?: string | null;
 	skuCode?: string | null;
 	skuDescription?: string | null;
 	skuUom?: string | null;
@@ -482,6 +510,8 @@ export interface GrnItemForList {
 	location?: string;
 	/** Optional expiry date (ISO string or YYYY-MM-DD). */
 	expiryDate?: string | null;
+	/** Lot number assigned by supplier/manufacturer. */
+	lotNo?: string | null;
 	rack?: {
 		rackId: string;
 		rackLevel: number | string;
@@ -583,6 +613,8 @@ export interface DoItemAllocation {
 	/** Rack location display (e.g. row-column-level) */
 	rackName: string | null;
 	expiryDate: string | null;
+	/** Lot number from the GRN item, null if not recorded. */
+	lotNo: string | null;
 	qtyAllocated: string;
 	priorityFlag: boolean;
 }

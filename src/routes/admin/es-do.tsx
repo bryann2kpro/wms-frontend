@@ -15,13 +15,14 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, Loader2, Truck, PackageOpen, AlertCircle } from "lucide-react";
+import { Search, Loader2, Truck, PackageOpen, AlertCircle, Printer, Layers } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
 	DELIVERY_ORDER_ITEMS_QUERY,
 	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
 	ADVANCE_DELIVERY_ORDER_STATUS_MUTATION,
 	ALLOCATE_PICK_LIST_MUTATION,
+	GENERATE_DO_PICKING_LIST_MUTATION,
 	type DeliveryOrderItemsQueryVariables,
 	type DeliveryOrderItemsQueryData,
 	type MarkDeliveryOrderItemPickedMutationVariables,
@@ -30,7 +31,9 @@ import {
 	type AdvanceDeliveryOrderStatusMutationData,
 	type AllocatePickListMutationVariables,
 	type AllocatePickListMutationData,
+	type GenerateDoPickingListMutationData,
 } from "@/lib/graphql/delivery-orders";
+import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import type {
 	DeliveryOrderItemWithDetails,
 	DoItemAllocation,
@@ -88,8 +91,64 @@ interface DOGroup {
 	items: DeliveryOrderItemWithDetails[];
 }
 
-function AllocationGuide({ allocations }: { allocations: DoItemAllocation[] }) {
+interface SKUSummaryGroup {
+	skuCode: string;
+	skuDescription: string;
+	totalQtyRequired: number;
+	totalQtyPicked: number;
+	doBreakdown: {
+		doNo: string;
+		doId: string;
+		qtyRequired: number;
+		qtyPicked: number;
+	}[];
+	allocations: DoItemAllocation[];
+}
+
+interface SKURackRow {
+	key: string;
+	skuCode: string;
+	skuDescription: string;
+	doBreakdown: {
+		doNo: string;
+		doId: string;
+		qtyRequired: number;
+		qtyPicked: number;
+	}[];
+	qtyRequired: number;
+	rackLabel: string;
+	completedPicking: boolean;
+}
+
+interface AllocationGuideProps {
+	allocations: DoItemAllocation[];
+	compactRackOnly?: boolean;
+}
+
+function AllocationGuide({
+	allocations,
+	compactRackOnly = false,
+}: AllocationGuideProps) {
 	if (!allocations || allocations.length === 0) return null;
+
+	if (compactRackOnly) {
+		const uniqueRacks = Array.from(
+			new Set(
+				allocations
+					.map((alloc) => alloc.rackName?.trim())
+					.filter((rack): rack is string => Boolean(rack)),
+			),
+		);
+
+		return (
+			<div className="mt-1 text-xs text-muted-foreground">
+				{uniqueRacks.length > 0
+					? uniqueRacks.map((rack) => `Rack ${rack}`).join(", ")
+					: "Rack —"}
+			</div>
+		);
+	}
+
 	return (
 		<div className="mt-1 space-y-0.5">
 			{allocations.map((alloc) => (
@@ -105,7 +164,7 @@ function AllocationGuide({ allocations }: { allocations: DoItemAllocation[] }) {
 					)}
 					<span>
 						{alloc.rackName ? `Rack ${alloc.rackName} · ` : ""}
-						{alloc.grnNo ?? "—"}
+						{alloc.lotNo ? ` · Lot: ${alloc.lotNo}` : ""}
 						{alloc.expiryDate ? ` · Exp: ${formatDate(alloc.expiryDate)}` : ""}
 						{" · Qty: "}
 						{formatQty(alloc.qtyAllocated)}
@@ -130,6 +189,7 @@ function EmpireSushiDOComponent() {
 	);
 	const [advancingDOs, setAdvancingDOs] = useState<Set<string>>(new Set());
 	const [bulkPickingDOs, setBulkPickingDOs] = useState<Set<string>>(new Set());
+	const [viewMode, setViewMode] = useState<"do" | "sku">("sku");
 
 	const { data: profile } = useProfile();
 	const canApprove =
@@ -205,6 +265,104 @@ function EmpireSushiDOComponent() {
 		}
 		return Array.from(grouped.values());
 	}, [allItems]);
+
+	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
+	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
+		const grouped = new Map<string, SKUSummaryGroup>();
+		for (const item of allItems) {
+			const key = item.skuCode ?? "no-sku";
+			if (!grouped.has(key)) {
+				grouped.set(key, {
+					skuCode: item.skuCode ?? "—",
+					skuDescription: item.skuDescription ?? "—",
+					totalQtyRequired: 0,
+					totalQtyPicked: 0,
+					doBreakdown: [],
+					allocations: [],
+				});
+			}
+			const group = grouped.get(key)!;
+			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
+			const pickedQty =
+				optimisticPicked.has(item.id)
+					? req
+					: parseFloat(String(item.qtyPicked ?? 0)) || 0;
+			group.totalQtyRequired += req;
+			group.totalQtyPicked += pickedQty;
+			group.doBreakdown.push({
+				doNo: item.doNo ?? "—",
+				doId: item.doId ?? "",
+				qtyRequired: req,
+				qtyPicked: pickedQty,
+			});
+			for (const alloc of item.allocations ?? []) {
+				if (!group.allocations.some((a) => a.id === alloc.id)) {
+					group.allocations.push(alloc);
+				}
+			}
+		}
+		return Array.from(grouped.values()).sort((a, b) =>
+			a.skuCode.localeCompare(b.skuCode),
+		);
+	}, [allItems, optimisticPicked]);
+
+	const skuRackRows = useMemo<SKURackRow[]>(() => {
+		const rows: SKURackRow[] = [];
+
+		for (const group of skuGroups) {
+			const completedPicking = group.totalQtyPicked >= group.totalQtyRequired;
+			const rackQtyMap = new Map<string, number>();
+
+			for (const alloc of group.allocations) {
+				const rackLabel = alloc.rackName?.trim()
+					? `Rack ${alloc.rackName.trim()}`
+					: "Rack —";
+				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
+				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
+			}
+
+			if (rackQtyMap.size === 0) {
+				rows.push({
+					key: `${group.skuCode}-rack-none`,
+					skuCode: group.skuCode,
+					skuDescription: group.skuDescription,
+					doBreakdown: group.doBreakdown,
+					qtyRequired: group.totalQtyRequired,
+					rackLabel: "Rack —",
+					completedPicking,
+				});
+				continue;
+			}
+
+			const sortedRackRows = Array.from(rackQtyMap.entries()).sort(([a], [b]) =>
+				a.localeCompare(b),
+			);
+			for (const [rackLabel, qtyRequired] of sortedRackRows) {
+				rows.push({
+					key: `${group.skuCode}-${rackLabel}`,
+					skuCode: group.skuCode,
+					skuDescription: group.skuDescription,
+					doBreakdown: group.doBreakdown,
+					qtyRequired,
+					rackLabel,
+					completedPicking,
+				});
+			}
+		}
+
+		return rows;
+	}, [skuGroups]);
+
+	const [generatePickingList, { loading: generatingPickingList }] =
+		useMutation<GenerateDoPickingListMutationData>(
+			GENERATE_DO_PICKING_LIST_MUTATION,
+			{
+				onCompleted(data) {
+					const { pdfBase64, filename } = data.generateDoPickingList;
+					downloadPdfFromBase64(pdfBase64, filename);
+				},
+			},
+		);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -430,6 +588,48 @@ function EmpireSushiDOComponent() {
 					}
 				/>
 
+				{/* View toggle + print button */}
+				<div className="flex items-center justify-between print:hidden">
+					<div
+						className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1"
+						role="group"
+						aria-label="View mode"
+					>
+						<Button
+							variant={viewMode === "sku" ? "secondary" : "ghost"}
+							size="sm"
+							onClick={() => setViewMode("sku")}
+							className="h-7 text-xs gap-1.5"
+						>
+							<Layers className="h-3 w-3" aria-hidden />
+							By SKU
+						</Button>
+						<Button
+							variant={viewMode === "do" ? "secondary" : "ghost"}
+							size="sm"
+							onClick={() => setViewMode("do")}
+							className="h-7 text-xs gap-1.5"
+						>
+							By Delivery Order
+						</Button>
+						
+					</div>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => generatePickingList()}
+						disabled={generatingPickingList}
+						className="h-7 text-xs gap-1.5"
+					>
+						{generatingPickingList ? (
+							<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+						) : (
+							<Printer className="h-3 w-3" aria-hidden />
+						)}
+						{generatingPickingList ? "Generating…" : "Print Picking List"}
+					</Button>
+				</div>
+
 				{queryLoading && (
 					<div
 						className="flex items-center gap-2 text-muted-foreground text-sm"
@@ -459,8 +659,9 @@ function EmpireSushiDOComponent() {
 					</div>
 				)}
 
+				{viewMode === "do" && (
 				<section
-					className="relative"
+					className="relative print:hidden"
 					aria-label="Delivery order items work queue"
 					aria-busy={queryLoading}
 				>
@@ -653,7 +854,89 @@ function EmpireSushiDOComponent() {
 						</Table>
 					</div>
 				</section>
-			</main>
+				)}
+
+				{/* SKU summary view */}
+				{viewMode === "sku" && (
+				<section
+					className="relative print:hidden"
+					aria-label="SKU picking summary"
+					aria-busy={queryLoading}
+				>
+					<GlobalLoadingShadow />
+					<div className="overflow-x-auto rounded-lg border">
+						<Table aria-label="SKU picking summary — total quantities per SKU across all DOs">
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-10">#</TableHead>
+									<TableHead>SKU Code</TableHead>
+									<TableHead>Description &amp; DO Breakdown</TableHead>
+									<TableHead className="text-center">Total Required</TableHead>
+									<TableHead>Rack(s)</TableHead>
+									<TableHead>Completed Picking</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{!queryLoading && skuRackRows.length === 0 ? (
+									<TableRow>
+										<TableCell colSpan={6} className="py-16 text-center">
+											<div className="flex flex-col items-center gap-3">
+												<div className="rounded-full bg-muted p-3">
+													<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
+												</div>
+												<p className="font-medium text-foreground">No active delivery orders</p>
+											</div>
+										</TableCell>
+									</TableRow>
+								) : (
+									skuRackRows.map((row, idx) => {
+										return (
+											<TableRow
+												key={row.key}
+											>
+												<TableCell className="font-medium text-muted-foreground text-xs">
+													{idx + 1}
+												</TableCell>
+												<TableCell className="font-mono text-sm font-semibold">
+													{row.skuCode}
+												</TableCell>
+												<TableCell className="max-w-[240px]">
+													<div className="truncate text-sm">{row.skuDescription}</div>
+													<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+														{row.doBreakdown.map((d, i) => (
+															<span key={`${d.doId}-${i}`} className="text-xs text-muted-foreground">
+																{d.doNo}:{" "}
+																<span className="font-medium text-foreground">
+																	{formatQty(d.qtyRequired)}
+																</span>
+															</span>
+														))}
+													</div>
+												</TableCell>
+												<TableCell className="text-center font-semibold">
+													{formatQty(row.qtyRequired)}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{row.rackLabel}
+												</TableCell>
+												<TableCell className="text-center">
+													<Checkbox
+														checked={row.completedPicking}
+														disabled
+														aria-label={`Picking completed for ${row.skuCode}`}
+													/>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</section>
+				)}
+
+				</main>
 		</div>
 	);
 }

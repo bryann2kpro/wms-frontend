@@ -35,6 +35,7 @@ export interface StockCountItem {
 	countedLossQty: number | null;
 	action: "tally_to_opening" | "tally_to_stock_count" | "manual_key_in" | null;
 	notes: string | null;
+	imageUrl: string | null;
 	isApproved: boolean;
 	approvedBy: string | null;
 	approvedAt: string | null;
@@ -47,6 +48,7 @@ export interface UpdateStockCountItemInput {
 	countedQty?: number;
 	countedLossQty?: number;
 	notes?: string;
+	imageUrl?: string;
 	isApproved?: boolean;
 }
 
@@ -139,6 +141,7 @@ export const STOCK_COUNT_SESSION_ITEMS_QUERY = gql`
                 countedLossQty
                 action
                 notes
+                imageUrl
                 isApproved
                 approvedBy
                 approvedAt
@@ -193,6 +196,8 @@ export const UPDATE_STOCK_COUNT_ITEM_MUTATION = gql`
             action
             countedQty
             countedLossQty
+            notes
+            imageUrl
             isApproved
             approvedBy
             approvedAt
@@ -234,4 +239,14 @@ export const GENERATE_STOCK_COUNT_CHECKLIST_MUTATION = gql`
 
 export type GenerateStockCountChecklistData = {
 	generateStockCountChecklist: { pdfBase64: string; filename: string };
+};
+
+export const BULK_APPROVE_STOCK_COUNT_ITEMS_MUTATION = gql`
+    mutation BulkApproveStockCountItems($sessionId: ID!) {
+        bulkApproveStockCountItems(sessionId: $sessionId)
+    }
+`;
+
+export type BulkApproveStockCountItemsData = {
+	bulkApproveStockCountItems: number;
 };

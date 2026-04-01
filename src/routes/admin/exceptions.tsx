@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useMemo,
 	useEffect,
+	useRef,
 	type ReactNode,
 } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -45,7 +46,6 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Search,
 	ChevronLeft,
@@ -60,10 +60,12 @@ import {
 	TrendingUp,
 	Minus,
 	ShieldCheck,
-	ClipboardList,
 	HelpCircle,
 	ImageOff,
 	FileText,
+	Camera,
+	X,
+	MessageSquare,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { useStockUnitName } from "@/lib/hooks/use-stock-unit";
@@ -74,6 +76,7 @@ import {
 	UPDATE_STOCK_COUNT_ITEM_MUTATION,
 	CLOSE_STOCK_COUNT_SESSION_MUTATION,
 	GENERATE_STOCK_COUNT_CHECKLIST_MUTATION,
+	BULK_APPROVE_STOCK_COUNT_ITEMS_MUTATION,
 	type StockCountSession,
 	type StockCountItem,
 	type StockCountSessionsQueryData,
@@ -82,8 +85,11 @@ import {
 	type UpdateStockCountItemData,
 	type CloseStockCountSessionData,
 	type GenerateStockCountChecklistData,
+	type BulkApproveStockCountItemsData,
 } from "@/lib/graphql/stock-count-session";
 import { downloadPdfFromBase64 } from "@/lib/reports";
+import { env } from "@/env";
+import { getAccessToken } from "@/lib/auth/auth-storage";
 
 const ACTION_LABELS: Record<string, string> = {
 	tally_to_opening: "Tally to Opening",
@@ -103,8 +109,8 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 			<>
 				This page manages <strong>Stock Count Sessions</strong> — periodic
 				inventory audits that compare physical counts against system records.
-				Discrepancies are surfaced here as exceptions to be reviewed and
-				resolved before the session is closed.
+				Enter your counted quantities, resolve discrepancies, and approve items
+				before closing the session.
 			</>
 		),
 	},
@@ -121,38 +127,36 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		),
 	},
 	{
-		title: "Review discrepancies in the Stock Count tab",
+		title: "Enter physical counts",
 		image: "/help/exceptions/step-3.png",
 		description: (
 			<>
-				The <strong>Stock Count</strong> tab lists every SKU with a discrepancy
-				between the opening balance and the on-hand count. For each line, choose
-				an action: <strong>Tally to Opening</strong>,{" "}
-				<strong>Tally to Stock Count</strong>, or <strong>Manual Key-In</strong>{" "}
-				to enter a custom quantity.
+				For each SKU, enter the <strong>physical count</strong> in the Counted
+				column. The system calculates the difference automatically. You can also
+				add notes and upload damage photos for each line.
 			</>
 		),
 	},
 	{
-		title: "Approve exceptions in the Approval tab",
+		title: "Resolve discrepancies",
 		image: "/help/exceptions/step-4.png",
 		description: (
 			<>
-				Switch to the <strong>Approval</strong> tab to sign off on each resolved
-				line. Items must have an action selected before they can be approved.
-				The amber badge on the tab shows how many items still need approval.
+				Items with a difference need an <strong>action</strong>:{" "}
+				<strong>Tally to Opening</strong>,{" "}
+				<strong>Tally to Stock Count</strong>, or <strong>Manual Key-In</strong>.
+				Items with no difference are auto-resolved.
 			</>
 		),
 	},
 	{
-		title: "Close the session",
+		title: "Approve and close",
 		image: "/help/exceptions/step-5.png",
 		description: (
 			<>
-				Once all items are approved, the <strong>Close Session</strong> button
-				becomes available. Closing is irreversible — it finalises all approved
-				lines and locks the session from further editing. Closed sessions remain
-				visible in the dropdown for reference.
+				Use <strong>Approve All Ready</strong> to bulk-approve items that have
+				an action set or zero difference. You can also approve individually.
+				Once all items are approved, <strong>Close Session</strong> to finalise.
 			</>
 		),
 	},
@@ -193,6 +197,206 @@ function HelpStepImage({
 	);
 }
 
+// ─── Inline image upload button ──────────────────────────────────────────────
+
+function ImageUploadCell({
+	imageUrl,
+	disabled,
+	onUploaded,
+}: {
+	imageUrl: string | null;
+	disabled: boolean;
+	onUploaded: (url: string) => void;
+}) {
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [uploading, setUploading] = useState(false);
+	const [previewOpen, setPreviewOpen] = useState(false);
+
+	const handleUpload = async (file: File) => {
+		setUploading(true);
+		try {
+			const formData = new FormData();
+			formData.append("image", file);
+			const token = getAccessToken();
+			const res = await fetch(`${env.VITE_API_URL}/v1/upload`, {
+				method: "POST",
+				headers: token ? { Authorization: `Bearer ${token}` } : {},
+				body: formData,
+			});
+			if (!res.ok) throw new Error("Upload failed");
+			const body = (await res.json()) as {
+				success: boolean;
+				data: { url: string } | null;
+			};
+			if (body.success && body.data?.url) {
+				onUploaded(body.data.url);
+			}
+		} catch {
+			// Silently fail — user can retry
+		} finally {
+			setUploading(false);
+		}
+	};
+
+	return (
+		<>
+			<input
+				ref={inputRef}
+				type="file"
+				accept="image/*"
+				className="hidden"
+				disabled={disabled}
+				onChange={(e) => {
+					const file = e.target.files?.[0];
+					if (file) handleUpload(file);
+					e.target.value = "";
+				}}
+			/>
+			{imageUrl ? (
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						className="h-8 w-8 rounded-md overflow-hidden border border-border/50 hover:ring-2 hover:ring-amber-400/40 transition-all"
+						onClick={() => setPreviewOpen(true)}
+					>
+						<img
+							src={imageUrl}
+							alt="Evidence"
+							className="h-full w-full object-cover"
+						/>
+					</button>
+					{!disabled && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6"
+							onClick={() => inputRef.current?.click()}
+						>
+							<Camera className="h-3 w-3" />
+						</Button>
+					)}
+				</div>
+			) : (
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 text-muted-foreground/50 hover:text-muted-foreground"
+					disabled={disabled || uploading}
+					onClick={() => inputRef.current?.click()}
+				>
+					{uploading ? (
+						<div className="h-3.5 w-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+					) : (
+						<Camera className="h-3.5 w-3.5" />
+					)}
+				</Button>
+			)}
+
+			{/* Full-size image preview dialog */}
+			<Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+				<DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+					<DialogHeader className="px-4 pt-4 pb-2">
+						<DialogTitle className="text-sm">Damage Evidence</DialogTitle>
+					</DialogHeader>
+					{imageUrl && (
+						<div className="px-4 pb-4">
+							<img
+								src={imageUrl}
+								alt="Damage evidence"
+								className="w-full h-auto rounded-lg"
+							/>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+		</>
+	);
+}
+
+// ─── Inline notes popover ────────────────────────────────────────────────────
+
+function NotesCell({
+	notes,
+	disabled,
+	onSave,
+}: {
+	notes: string | null;
+	disabled: boolean;
+	onSave: (notes: string) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const [value, setValue] = useState(notes ?? "");
+
+	useEffect(() => {
+		setValue(notes ?? "");
+	}, [notes]);
+
+	const handleSave = () => {
+		onSave(value);
+		setOpen(false);
+	};
+
+	return (
+		<>
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className={`h-7 w-7 ${notes ? "text-amber-600" : "text-muted-foreground/50 hover:text-muted-foreground"}`}
+							onClick={() => setOpen(true)}
+							disabled={disabled && !notes}
+						>
+							<MessageSquare className="h-3.5 w-3.5" />
+						</Button>
+					</TooltipTrigger>
+					{notes && (
+						<TooltipContent side="top" className="max-w-[200px] text-xs">
+							{notes}
+						</TooltipContent>
+					)}
+				</Tooltip>
+			</TooltipProvider>
+
+			<Dialog open={open} onOpenChange={setOpen}>
+				<DialogContent className="sm:max-w-sm">
+					<DialogHeader>
+						<DialogTitle className="text-sm">Notes</DialogTitle>
+						<DialogDescription className="text-xs">
+							Add comments or observations for this item.
+						</DialogDescription>
+					</DialogHeader>
+					<textarea
+						className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none"
+						rows={3}
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						disabled={disabled}
+						placeholder="Enter notes..."
+					/>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setOpen(false)}
+						>
+							Cancel
+						</Button>
+						{!disabled && (
+							<Button size="sm" onClick={handleSave}>
+								Save
+							</Button>
+						)}
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
+	);
+}
+
+// ─── Route definition ────────────────────────────────────────────────────────
+
 export const Route = createFileRoute("/admin/exceptions")({
 	beforeLoad: async ({ context }) => {
 		await requirePermission(context.queryClient, ["Exception"]);
@@ -221,11 +425,11 @@ function ExceptionsComponent() {
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
 
-	// ─── Local optimistic overrides (action + manual amounts) ────
-	const [rowActions, setRowActions] = useState<Record<string, string>>({});
-	const [rowManualAmounts, setRowManualAmounts] = useState<
+	// ─── Local optimistic overrides ──────────────────────────────
+	const [rowCountedAmounts, setRowCountedAmounts] = useState<
 		Record<string, { dozen: number; loss: number }>
 	>({});
+	const [rowActions, setRowActions] = useState<Record<string, string>>({});
 
 	// ─── Queries ──────────────────────────────────────────────────
 	const {
@@ -241,8 +445,6 @@ function ExceptionsComponent() {
 	const selectedSession =
 		sessions.find((s) => s.id === selectedSessionId) ?? null;
 
-	// Keep selected session in sync even when Apollo serves cached data
-	// without running the onCompleted callback.
 	useEffect(() => {
 		if (sessions.length === 0) {
 			if (selectedSessionId !== null) setSelectedSessionId(null);
@@ -328,6 +530,17 @@ function ExceptionsComponent() {
 			},
 		);
 
+	const [bulkApprove, { loading: bulkApproving }] =
+		useApolloMutation<BulkApproveStockCountItemsData>(
+			BULK_APPROVE_STOCK_COUNT_ITEMS_MUTATION,
+			{
+				onCompleted() {
+					refetchItems();
+					refetchSessions();
+				},
+			},
+		);
+
 	// ─── Handlers ─────────────────────────────────────────────────
 	const handleCreateSession = () => {
 		const name = newSessionName.trim();
@@ -335,17 +548,9 @@ function ExceptionsComponent() {
 		createSession({ variables: { name } });
 	};
 
-	const handleActionChange = useCallback(
-		(itemId: string, action: string) => {
-			setRowActions((prev) => ({ ...prev, [itemId]: action }));
-			updateItem({ variables: { id: itemId, input: { action } } });
-		},
-		[updateItem],
-	);
-
-	const handleManualAmountChange = useCallback(
+	const handleCountedChange = useCallback(
 		(itemId: string, update: { dozen: number; loss: number }) => {
-			setRowManualAmounts((prev) => ({ ...prev, [itemId]: update }));
+			setRowCountedAmounts((prev) => ({ ...prev, [itemId]: update }));
 			updateItem({
 				variables: {
 					id: itemId,
@@ -359,12 +564,39 @@ function ExceptionsComponent() {
 		[updateItem],
 	);
 
+	const handleActionChange = useCallback(
+		(itemId: string, action: string) => {
+			setRowActions((prev) => ({ ...prev, [itemId]: action }));
+			updateItem({ variables: { id: itemId, input: { action } } });
+		},
+		[updateItem],
+	);
+
+	const handleNotesChange = useCallback(
+		(itemId: string, notes: string) => {
+			updateItem({ variables: { id: itemId, input: { notes } } });
+		},
+		[updateItem],
+	);
+
+	const handleImageUploaded = useCallback(
+		(itemId: string, imageUrl: string) => {
+			updateItem({ variables: { id: itemId, input: { imageUrl } } });
+		},
+		[updateItem],
+	);
+
 	const handleApprove = useCallback(
 		(itemId: string) => {
 			updateItem({ variables: { id: itemId, input: { isApproved: true } } });
 		},
 		[updateItem],
 	);
+
+	const handleBulkApprove = () => {
+		if (!selectedSessionId) return;
+		bulkApprove({ variables: { sessionId: selectedSessionId } });
+	};
 
 	const handleCloseSession = () => {
 		if (!selectedSessionId) return;
@@ -397,8 +629,8 @@ function ExceptionsComponent() {
 			{/* ── Page Header ─────────────────────────────────────────── */}
 			<AdminPageHeader
 				icon={PackageSearch}
-				title="Stock Count Exceptions"
-				description="Review and resolve discrepancies from stock count runs."
+				title="Stock Count"
+				description="Count inventory, resolve discrepancies, and approve before closing."
 				titleId="exceptions-title"
 				descriptionId="exceptions-description"
 				rightSlot={
@@ -411,11 +643,11 @@ function ExceptionsComponent() {
 									setPage(1);
 									setSearchTerm("");
 									setRowActions({});
-									setRowManualAmounts({});
+									setRowCountedAmounts({});
 								}}
 							>
 								<SelectTrigger className="h-9 w-64 text-sm border-border/60 bg-background/80">
-									<SelectValue placeholder="Select a session…" />
+									<SelectValue placeholder="Select a session..." />
 								</SelectTrigger>
 								<SelectContent>
 									{sessions.map((s) => (
@@ -461,7 +693,7 @@ function ExceptionsComponent() {
 										>
 											{summary && summary.pending > 0
 												? `${summary.pending} item${summary.pending > 1 ? "s" : ""} still pending approval`
-												: "Loading approval status…"}
+												: "Loading approval status..."}
 										</TooltipContent>
 									)}
 								</Tooltip>
@@ -490,7 +722,7 @@ function ExceptionsComponent() {
 								disabled={generatingChecklist}
 							>
 								<FileText className="h-3.5 w-3.5" />
-								{generatingChecklist ? "Generating…" : "Print Checklist"}
+								{generatingChecklist ? "Generating..." : "Print Checklist"}
 							</Button>
 						)}
 
@@ -699,7 +931,7 @@ function ExceptionsComponent() {
 										? new Date(selectedSession.countDate).toLocaleDateString(
 												"en-MY",
 											)
-										: "—"}
+										: "\u2014"}
 								</p>
 							</CardContent>
 						</Card>
@@ -722,7 +954,7 @@ function ExceptionsComponent() {
 				</div>
 			)}
 
-			{/* ── Exception Queue Table ─────────────────────────────────── */}
+			{/* ── Unified Stock Count Table ─────────────────────────────── */}
 			{selectedSession && (
 				<Card className="dashboard-card overflow-hidden border-border/60">
 					{/* Card header */}
@@ -734,7 +966,7 @@ function ExceptionsComponent() {
 										className="text-[0.9375rem] font-semibold"
 										style={{ fontFamily: "var(--dashboard-display)" }}
 									>
-										Exception Queue
+										Stock Count
 									</CardTitle>
 									<span className="text-muted-foreground font-normal text-sm">
 										— {selectedSession.name}
@@ -750,21 +982,36 @@ function ExceptionsComponent() {
 									<span className="font-mono tabular-nums font-medium text-foreground">
 										{totalItems}
 									</span>{" "}
-									line{totalItems !== 1 ? "s" : ""} with discrepancies
+									SKU{totalItems !== 1 ? "s" : ""} in this session
 								</p>
 							</div>
 
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-								<Input
-									placeholder="Search SKU or description…"
-									value={searchTerm}
-									onChange={(e) => {
-										setSearchTerm(e.target.value);
-										setPage(1);
-									}}
-									className="pl-8.5 h-9 text-sm sm:w-64 border-border/50 bg-muted/30 focus-visible:bg-background transition-colors"
-								/>
+							<div className="flex items-center gap-2">
+								{isSessionOpen && summary && summary.pending > 0 && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="gap-1.5 text-xs h-9 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400"
+										onClick={handleBulkApprove}
+										disabled={bulkApproving}
+									>
+										<ShieldCheck className="h-3.5 w-3.5" />
+										{bulkApproving ? "Approving..." : "Approve All Ready"}
+									</Button>
+								)}
+
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+									<Input
+										placeholder="Search SKU or description..."
+										value={searchTerm}
+										onChange={(e) => {
+											setSearchTerm(e.target.value);
+											setPage(1);
+										}}
+										className="pl-8.5 h-9 text-sm sm:w-64 border-border/50 bg-muted/30 focus-visible:bg-background transition-colors"
+									/>
+								</div>
 							</div>
 						</div>
 					</CardHeader>
@@ -772,537 +1019,336 @@ function ExceptionsComponent() {
 					{/* Thin divider */}
 					<div className="mx-5 mt-4 h-px bg-border/40" />
 
-					{/* ── Tabs ─────────────────────────────────────────────── */}
-					<Tabs defaultValue="count" className="w-full">
-						{/* Tab triggers */}
-						<div className="px-5 pt-4">
-							<TabsList className="h-8 bg-muted/40 border border-border/30 p-0.5 rounded-lg gap-0.5">
-								<TabsTrigger
-									value="count"
-									className="h-7 rounded-md text-xs px-3 gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground"
-								>
-									<ClipboardList className="h-3.5 w-3.5" />
-									Stock Count
-									<span className="rounded-full bg-muted px-1.5 py-px text-[0.65rem] font-mono tabular-nums leading-none">
-										{totalItems}
-									</span>
-								</TabsTrigger>
-								<TabsTrigger
-									value="approval"
-									className="h-7 rounded-md text-xs px-3 gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground"
-								>
-									<ShieldCheck className="h-3.5 w-3.5" />
-									Approval
-									{summary && summary.pending > 0 && (
-										<span className="rounded-full bg-amber-100 text-amber-700 px-1.5 py-px text-[0.65rem] font-mono tabular-nums leading-none">
-											{summary.pending}
-										</span>
+					<CardContent className="relative pt-4 px-5 pb-5">
+						<GlobalLoadingShadow />
+						<div className="overflow-x-auto rounded-xl border border-border/40 bg-white shadow-xs">
+							<Table>
+								<TableHeader>
+									<TableRow className="border-b border-border/50 bg-muted/20 hover:bg-muted/20">
+										<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											#
+										</TableHead>
+										<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											SKU
+										</TableHead>
+										<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Description
+										</TableHead>
+										<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Opening
+											<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+												{unitName} / Loss
+											</span>
+										</TableHead>
+										<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Counted
+											<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+												{unitName} / Loss
+											</span>
+										</TableHead>
+										<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Diff
+											<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
+												{unitName} / Loss
+											</span>
+										</TableHead>
+										<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Action
+										</TableHead>
+										<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70 w-20">
+											Notes / Photo
+										</TableHead>
+										<TableHead className="text-center pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+											Status
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{itemsLoading ? (
+										<TableRow>
+											<TableCell
+												colSpan={9}
+												className="h-28 text-center text-sm text-muted-foreground"
+											>
+												<div className="flex flex-col items-center gap-2">
+													<div className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+													<span>Loading inventory...</span>
+												</div>
+											</TableCell>
+										</TableRow>
+									) : items.length === 0 ? (
+										<TableRow>
+											<TableCell
+												colSpan={9}
+												className="h-28 text-center text-sm text-muted-foreground"
+											>
+												No items found.
+											</TableCell>
+										</TableRow>
+									) : (
+										items.map((item, index) => {
+											const displayDozen =
+												rowCountedAmounts[item.id]?.dozen ??
+												item.countedQty ??
+												item.onHandQty;
+											const displayLoss =
+												rowCountedAmounts[item.id]?.loss ??
+												item.countedLossQty ??
+												item.onHandLossQty;
+											const diffDozen = item.qtyDifference;
+											const diffLoss = item.lossQtyDifference;
+											const hasDiff = diffDozen !== 0 || diffLoss !== 0;
+											const isShortage = diffDozen > 0 || diffLoss > 0;
+											const selectedAction =
+												rowActions[item.id] ?? item.action ?? "";
+											const needsAction = hasDiff;
+											const canApprove =
+												isSessionOpen &&
+												!item.isApproved &&
+												(!needsAction || !!selectedAction);
+
+											return (
+												<TableRow
+													key={item.id}
+													className={`border-b border-border/30 transition-colors last:border-0 ${item.isApproved ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "bg-white hover:bg-muted/20"}`}
+												>
+													<TableCell className="pl-4 pr-2 w-12 py-3">
+														<span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted/50 text-[0.6875rem] font-mono font-medium text-muted-foreground">
+															{(page - 1) * pageSize + index + 1}
+														</span>
+													</TableCell>
+													<TableCell className="py-3">
+														<span className="inline-block rounded bg-slate-100/80 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-700 tracking-wide">
+															{item.skuCode}
+														</span>
+													</TableCell>
+													<TableCell className="max-w-[160px] py-3">
+														<span
+															className="block truncate text-sm text-foreground/80"
+															title={item.skuDescription}
+														>
+															{item.skuDescription}
+														</span>
+													</TableCell>
+													{/* Opening */}
+													<TableCell className="text-center py-3">
+														<span className="font-mono text-sm tabular-nums text-foreground/70">
+															{item.openingQty}
+															<span className="mx-1 text-border">/</span>
+															{item.openingLossQty}
+														</span>
+													</TableCell>
+													{/* Counted — always editable when session is open */}
+													<TableCell className="text-center py-3">
+														{isSessionOpen && !item.isApproved ? (
+															<div className="flex items-center justify-center gap-1">
+																<Input
+																	type="number"
+																	min={0}
+																	className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
+																	placeholder={String(item.onHandQty)}
+																	value={displayDozen}
+																	onChange={(e) => {
+																		const v = e.target.value;
+																		handleCountedChange(item.id, {
+																			dozen: v === "" ? 0 : Number(v),
+																			loss: displayLoss,
+																		});
+																	}}
+																/>
+																<span className="text-muted-foreground/50 text-xs">
+																	/
+																</span>
+																<Input
+																	type="number"
+																	min={0}
+																	className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
+																	placeholder={String(item.onHandLossQty)}
+																	value={displayLoss}
+																	onChange={(e) => {
+																		const v = e.target.value;
+																		handleCountedChange(item.id, {
+																			dozen: displayDozen,
+																			loss: v === "" ? 0 : Number(v),
+																		});
+																	}}
+																/>
+															</div>
+														) : (
+															<span className="font-mono text-sm tabular-nums text-foreground/70">
+																{item.countedQty ?? item.onHandQty}
+																<span className="mx-1 text-border">/</span>
+																{item.countedLossQty ?? item.onHandLossQty}
+															</span>
+														)}
+													</TableCell>
+													{/* Diff */}
+													<TableCell className="text-center py-3">
+														<span
+															className={[
+																"inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
+																hasDiff
+																	? isShortage
+																		? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+																		: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+																	: "bg-muted/40 text-muted-foreground ring-1 ring-border/40",
+															].join(" ")}
+														>
+															{hasDiff &&
+																(isShortage ? (
+																	<TrendingDown className="h-3 w-3 shrink-0" />
+																) : (
+																	<TrendingUp className="h-3 w-3 shrink-0" />
+																))}
+															{!hasDiff && (
+																<Minus className="h-3 w-3 shrink-0" />
+															)}
+															<span>
+																{diffDozen > 0
+																	? `-${diffDozen}`
+																	: diffDozen}
+															</span>
+															<span className="mx-0.5 opacity-40">/</span>
+															<span>
+																{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
+															</span>
+														</span>
+													</TableCell>
+													{/* Action — only shown/required when diff != 0 */}
+													<TableCell className="py-3">
+														{needsAction ? (
+															<Select
+																value={selectedAction}
+																onValueChange={(value) =>
+																	handleActionChange(item.id, value)
+																}
+																disabled={!isSessionOpen || item.isApproved}
+															>
+																<SelectTrigger
+																	className={`h-7 w-[154px] rounded-lg text-xs border-border/50 bg-muted/20 transition-colors ${selectedAction ? "text-foreground" : "text-muted-foreground"}`}
+																>
+																	<SelectValue placeholder="Select action..." />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem
+																		value="tally_to_opening"
+																		className="text-xs"
+																	>
+																		Tally to Opening
+																	</SelectItem>
+																	<SelectItem
+																		value="tally_to_stock_count"
+																		className="text-xs"
+																	>
+																		Tally to Stock Count
+																	</SelectItem>
+																	<SelectItem
+																		value="manual_key_in"
+																		className="text-xs"
+																	>
+																		Manual Key-In
+																	</SelectItem>
+																</SelectContent>
+															</Select>
+														) : (
+															<span className="text-xs text-muted-foreground/50 italic">
+																No diff
+															</span>
+														)}
+													</TableCell>
+													{/* Notes + Photo */}
+													<TableCell className="text-center py-3">
+														<div className="flex items-center justify-center gap-0.5">
+															<NotesCell
+																notes={item.notes}
+																disabled={!isSessionOpen || item.isApproved}
+																onSave={(notes) =>
+																	handleNotesChange(item.id, notes)
+																}
+															/>
+															<ImageUploadCell
+																imageUrl={item.imageUrl}
+																disabled={!isSessionOpen || item.isApproved}
+																onUploaded={(url) =>
+																	handleImageUploaded(item.id, url)
+																}
+															/>
+														</div>
+													</TableCell>
+													{/* Status / Approve */}
+													<TableCell className="text-center pr-4 py-3">
+														{item.isApproved ? (
+															<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700 ring-1 ring-emerald-300/50">
+																<CheckCircle2 className="h-3 w-3" />
+																Approved
+															</span>
+														) : (
+															<Button
+																variant="outline"
+																size="sm"
+																onClick={() => handleApprove(item.id)}
+																disabled={!canApprove}
+																className={`h-7 px-3 text-xs rounded-lg transition-all ${canApprove ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400" : ""}`}
+															>
+																<ShieldCheck className="h-3 w-3 mr-1" />
+																Approve
+															</Button>
+														)}
+													</TableCell>
+												</TableRow>
+											);
+										})
 									)}
-									{summary && summary.pending === 0 && summary.total > 0 && (
-										<span className="rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-px text-[0.65rem] font-mono leading-none">
-											✓
-										</span>
-									)}
-								</TabsTrigger>
-							</TabsList>
+								</TableBody>
+							</Table>
 						</div>
-
-						{/* ── Tab 1: Stock Count ─────────────────────────── */}
-						<TabsContent value="count" className="mt-0">
-							<CardContent className="relative pt-4 px-5 pb-5">
-								<GlobalLoadingShadow />
-								<div className="overflow-x-auto rounded-xl border border-border/40 bg-white shadow-xs">
-									<Table>
-										<TableHeader>
-											<TableRow className="border-b border-border/50 bg-muted/20 hover:bg-muted/20">
-												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													#
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													SKU
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Description
-												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Opening
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
-														{unitName} / Loss
-													</span>
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Count Date
-												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													On-Hand
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
-														{unitName} / Loss
-													</span>
-												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Reserved
-												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Diff
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
-														{unitName} / Loss
-													</span>
-												</TableHead>
-												<TableHead className="pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Action
-												</TableHead>
-											</TableRow>
-										</TableHeader>
-										<TableBody>
-											{itemsLoading ? (
-												<TableRow>
-													<TableCell
-														colSpan={9}
-														className="h-28 text-center text-sm text-muted-foreground"
-													>
-														<div className="flex flex-col items-center gap-2">
-															<div className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-															<span>Loading inventory…</span>
-														</div>
-													</TableCell>
-												</TableRow>
-											) : items.length === 0 ? (
-												<TableRow>
-													<TableCell
-														colSpan={9}
-														className="h-28 text-center text-sm text-muted-foreground"
-													>
-														No items found.
-													</TableCell>
-												</TableRow>
-											) : (
-												items.map((item, index) => {
-													const selectedAction =
-														rowActions[item.id] ?? item.action ?? "";
-													const isManualKeyIn =
-														selectedAction === "manual_key_in";
-													const displayDozen =
-														rowManualAmounts[item.id]?.dozen ??
-														item.countedQty ??
-														item.onHandQty;
-													const displayLoss =
-														rowManualAmounts[item.id]?.loss ??
-														item.countedLossQty ??
-														item.onHandLossQty;
-													const diffDozen = item.qtyDifference;
-													const diffLoss = item.lossQtyDifference;
-													const hasDiff = diffDozen !== 0 || diffLoss !== 0;
-													const isShortage = diffDozen > 0 || diffLoss > 0;
-													return (
-														<TableRow
-															key={item.id}
-															className="border-b border-border/30 transition-colors last:border-0 bg-white hover:bg-muted/20"
-														>
-															<TableCell className="pl-4 pr-2 w-12 py-3">
-																<span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted/50 text-[0.6875rem] font-mono font-medium text-muted-foreground">
-																	{(page - 1) * pageSize + index + 1}
-																</span>
-															</TableCell>
-															<TableCell className="py-3">
-																<span className="inline-block rounded bg-slate-100/80 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-700 tracking-wide">
-																	{item.skuCode}
-																</span>
-															</TableCell>
-															<TableCell className="max-w-[180px] py-3">
-																<span
-																	className="block truncate text-sm text-foreground/80"
-																	title={item.skuDescription}
-																>
-																	{item.skuDescription}
-																</span>
-															</TableCell>
-															<TableCell className="text-center py-3">
-																<span className="font-mono text-sm tabular-nums text-foreground/70">
-																	{item.openingQty}
-																	<span className="mx-1 text-border">/</span>
-																	{item.openingLossQty}
-																</span>
-															</TableCell>
-															<TableCell className="py-3">
-																<span className="text-xs text-muted-foreground font-mono">
-																	{new Date(
-																		selectedSession.countDate,
-																	).toLocaleDateString("en-MY")}
-																</span>
-															</TableCell>
-															<TableCell className="text-center py-3">
-																{isManualKeyIn ? (
-																	<div className="flex items-center justify-center gap-1">
-																		<Input
-																			type="number"
-																			min={0}
-																			className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
-																			placeholder={String(item.onHandQty)}
-																			value={displayDozen}
-																			onChange={(e) => {
-																				const v = e.target.value;
-																				handleManualAmountChange(item.id, {
-																					dozen: v === "" ? 0 : Number(v),
-																					loss: displayLoss,
-																				});
-																			}}
-																		/>
-																		<span className="text-muted-foreground/50 text-xs">
-																			/
-																		</span>
-																		<Input
-																			type="number"
-																			min={0}
-																			className="h-7 w-14 text-center text-xs font-mono px-1 border-amber-200 focus-visible:ring-amber-400/30"
-																			placeholder={String(item.onHandLossQty)}
-																			value={displayLoss}
-																			onChange={(e) => {
-																				const v = e.target.value;
-																				handleManualAmountChange(item.id, {
-																					dozen: displayDozen,
-																					loss: v === "" ? 0 : Number(v),
-																				});
-																			}}
-																		/>
-																	</div>
-																) : (
-																	<span className="font-mono text-sm tabular-nums text-foreground/70">
-																		{item.onHandQty}
-																		<span className="mx-1 text-border">/</span>
-																		{item.onHandLossQty}
-																	</span>
-																)}
-															</TableCell>
-															<TableCell className="text-center py-3">
-																<span className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-600">
-																	{item.reservedQty}
-																</span>
-															</TableCell>
-															<TableCell className="text-center py-3">
-																<span
-																	className={[
-																		"inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
-																		hasDiff
-																			? isShortage
-																				? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-																				: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-																			: "bg-muted/40 text-muted-foreground ring-1 ring-border/40",
-																	].join(" ")}
-																>
-																	{hasDiff &&
-																		(isShortage ? (
-																			<TrendingDown className="h-3 w-3 shrink-0" />
-																		) : (
-																			<TrendingUp className="h-3 w-3 shrink-0" />
-																		))}
-																	{!hasDiff && (
-																		<Minus className="h-3 w-3 shrink-0" />
-																	)}
-																	<span>
-																		{diffDozen > 0
-																			? `-${diffDozen}`
-																			: diffDozen}
-																	</span>
-																	<span className="mx-0.5 opacity-40">/</span>
-																	<span>
-																		{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
-																	</span>
-																</span>
-															</TableCell>
-															<TableCell className="pr-4 py-3">
-																<Select
-																	value={selectedAction}
-																	onValueChange={(value) =>
-																		handleActionChange(item.id, value)
-																	}
-																	disabled={!isSessionOpen}
-																>
-																	<SelectTrigger
-																		className={`h-7 w-[168px] rounded-lg text-xs border-border/50 bg-muted/20 transition-colors ${selectedAction ? "text-foreground" : "text-muted-foreground"}`}
-																	>
-																		<SelectValue placeholder="Select action…" />
-																	</SelectTrigger>
-																	<SelectContent>
-																		<SelectItem
-																			value="tally_to_opening"
-																			className="text-xs"
-																		>
-																			Tally to Opening
-																		</SelectItem>
-																		<SelectItem
-																			value="tally_to_stock_count"
-																			className="text-xs"
-																		>
-																			Tally to Stock Count
-																		</SelectItem>
-																		<SelectItem
-																			value="manual_key_in"
-																			className="text-xs"
-																		>
-																			Manual Key-In
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-															</TableCell>
-														</TableRow>
-													);
-												})
-											)}
-										</TableBody>
-									</Table>
-								</div>
-								{/* Pagination */}
-								<div className="mt-4 flex items-center justify-between">
-									<p className="text-[0.75rem] text-muted-foreground">
-										Showing{" "}
-										<span className="font-mono font-medium text-foreground">
-											{(page - 1) * pageSize + 1}
-										</span>
-										{"–"}
-										<span className="font-mono font-medium text-foreground">
-											{Math.min(page * pageSize, totalItems)}
-										</span>{" "}
-										of{" "}
-										<span className="font-mono font-medium text-foreground">
-											{totalItems}
-										</span>
-									</p>
-									<div className="flex items-center gap-1.5">
-										<Button
-											variant="outline"
-											size="icon"
-											className="h-7 w-7 rounded-lg border-border/50"
-											disabled={page === 1}
-											onClick={() => setPage((p) => Math.max(1, p - 1))}
-										>
-											<ChevronLeft className="h-3.5 w-3.5" />
-										</Button>
-										<span className="min-w-[5rem] text-center text-[0.75rem] text-muted-foreground">
-											<span className="font-mono font-medium text-foreground">
-												{page}
-											</span>
-											{" / "}
-											<span className="font-mono">{totalPages}</span>
-										</span>
-										<Button
-											variant="outline"
-											size="icon"
-											className="h-7 w-7 rounded-lg border-border/50"
-											disabled={page === totalPages}
-											onClick={() =>
-												setPage((p) => Math.min(totalPages, p + 1))
-											}
-										>
-											<ChevronRight className="h-3.5 w-3.5" />
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</TabsContent>
-
-						{/* ── Tab 2: Approval ────────────────────────────── */}
-						<TabsContent value="approval" className="mt-0">
-							<CardContent className="relative pt-4 px-5 pb-5">
-								<div className="overflow-x-auto rounded-xl border border-border/40 bg-white shadow-xs">
-									<Table>
-										<TableHeader>
-											<TableRow className="border-b border-border/50 bg-muted/20 hover:bg-muted/20">
-												<TableHead className="w-12 pl-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													#
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													SKU
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Description
-												</TableHead>
-												<TableHead className="text-center text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Diff
-													<span className="block font-normal normal-case tracking-normal text-muted-foreground/50">
-														{unitName} / Loss
-													</span>
-												</TableHead>
-												<TableHead className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Chosen Action
-												</TableHead>
-												<TableHead className="text-center pr-4 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
-													Status
-												</TableHead>
-											</TableRow>
-										</TableHeader>
-										<TableBody>
-											{itemsLoading ? (
-												<TableRow>
-													<TableCell
-														colSpan={6}
-														className="h-28 text-center text-sm text-muted-foreground"
-													>
-														<div className="flex flex-col items-center gap-2">
-															<div className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-															<span>Loading inventory…</span>
-														</div>
-													</TableCell>
-												</TableRow>
-											) : items.length === 0 ? (
-												<TableRow>
-													<TableCell
-														colSpan={6}
-														className="h-28 text-center text-sm text-muted-foreground"
-													>
-														No items found.
-													</TableCell>
-												</TableRow>
-											) : (
-												items.map((item, index) => {
-													const selectedAction =
-														rowActions[item.id] ?? item.action ?? "";
-													const diffDozen = item.qtyDifference;
-													const diffLoss = item.lossQtyDifference;
-													const hasDiff = diffDozen !== 0 || diffLoss !== 0;
-													const isShortage = diffDozen > 0 || diffLoss > 0;
-													const actionLabel = selectedAction
-														? ACTION_LABELS[selectedAction]
-														: null;
-													return (
-														<TableRow
-															key={item.id}
-															className={`border-b border-border/30 transition-colors last:border-0 ${item.isApproved ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "bg-white hover:bg-amber-50/30"}`}
-														>
-															<TableCell className="pl-4 pr-2 w-12 py-3.5">
-																<span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted/50 text-[0.6875rem] font-mono font-medium text-muted-foreground">
-																	{(page - 1) * pageSize + index + 1}
-																</span>
-															</TableCell>
-															<TableCell className="py-3.5">
-																<span className="inline-block rounded bg-slate-100/80 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-700 tracking-wide">
-																	{item.skuCode}
-																</span>
-															</TableCell>
-															<TableCell className="max-w-[200px] py-3.5">
-																<span
-																	className="block truncate text-sm text-foreground/80"
-																	title={item.skuDescription}
-																>
-																	{item.skuDescription}
-																</span>
-															</TableCell>
-															<TableCell className="text-center py-3.5">
-																<span
-																	className={[
-																		"inline-flex items-center gap-0.5 rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
-																		hasDiff
-																			? isShortage
-																				? "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-																				: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-																			: "bg-muted/40 text-muted-foreground ring-1 ring-border/40",
-																	].join(" ")}
-																>
-																	{hasDiff &&
-																		(isShortage ? (
-																			<TrendingDown className="h-3 w-3 shrink-0" />
-																		) : (
-																			<TrendingUp className="h-3 w-3 shrink-0" />
-																		))}
-																	{!hasDiff && (
-																		<Minus className="h-3 w-3 shrink-0" />
-																	)}
-																	<span>
-																		{diffDozen > 0
-																			? `-${diffDozen}`
-																			: diffDozen}
-																	</span>
-																	<span className="mx-0.5 opacity-40">/</span>
-																	<span>
-																		{diffLoss > 0 ? `-${diffLoss}` : diffLoss}
-																	</span>
-																</span>
-															</TableCell>
-															<TableCell className="py-3.5">
-																{actionLabel ? (
-																	<span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200/80">
-																		{actionLabel}
-																	</span>
-																) : (
-																	<span className="text-xs text-muted-foreground/50 italic">
-																		Not set
-																	</span>
-																)}
-															</TableCell>
-															<TableCell className="text-center pr-4 py-3.5">
-																{item.isApproved ? (
-																	<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700 ring-1 ring-emerald-300/50">
-																		<CheckCircle2 className="h-3 w-3" />
-																		Approved
-																	</span>
-																) : (
-																	<Button
-																		variant="outline"
-																		size="sm"
-																		onClick={() => handleApprove(item.id)}
-																		disabled={!selectedAction || !isSessionOpen}
-																		className={`h-7 px-3 text-xs rounded-lg transition-all ${selectedAction && isSessionOpen ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400" : ""}`}
-																	>
-																		<ShieldCheck className="h-3 w-3 mr-1" />
-																		Approve
-																	</Button>
-																)}
-															</TableCell>
-														</TableRow>
-													);
-												})
-											)}
-										</TableBody>
-									</Table>
-								</div>
-								{/* Pagination */}
-								<div className="mt-4 flex items-center justify-between">
-									<p className="text-[0.75rem] text-muted-foreground">
-										Showing{" "}
-										<span className="font-mono font-medium text-foreground">
-											{(page - 1) * pageSize + 1}
-										</span>
-										{"–"}
-										<span className="font-mono font-medium text-foreground">
-											{Math.min(page * pageSize, totalItems)}
-										</span>{" "}
-										of{" "}
-										<span className="font-mono font-medium text-foreground">
-											{totalItems}
-										</span>
-									</p>
-									<div className="flex items-center gap-1.5">
-										<Button
-											variant="outline"
-											size="icon"
-											className="h-7 w-7 rounded-lg border-border/50"
-											disabled={page === 1}
-											onClick={() => setPage((p) => Math.max(1, p - 1))}
-										>
-											<ChevronLeft className="h-3.5 w-3.5" />
-										</Button>
-										<span className="min-w-[5rem] text-center text-[0.75rem] text-muted-foreground">
-											<span className="font-mono font-medium text-foreground">
-												{page}
-											</span>
-											{" / "}
-											<span className="font-mono">{totalPages}</span>
-										</span>
-										<Button
-											variant="outline"
-											size="icon"
-											className="h-7 w-7 rounded-lg border-border/50"
-											disabled={page === totalPages}
-											onClick={() =>
-												setPage((p) => Math.min(totalPages, p + 1))
-											}
-										>
-											<ChevronRight className="h-3.5 w-3.5" />
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</TabsContent>
-					</Tabs>
+						{/* Pagination */}
+						<div className="mt-4 flex items-center justify-between">
+							<p className="text-[0.75rem] text-muted-foreground">
+								Showing{" "}
+								<span className="font-mono font-medium text-foreground">
+									{(page - 1) * pageSize + 1}
+								</span>
+								{"\u2013"}
+								<span className="font-mono font-medium text-foreground">
+									{Math.min(page * pageSize, totalItems)}
+								</span>{" "}
+								of{" "}
+								<span className="font-mono font-medium text-foreground">
+									{totalItems}
+								</span>
+							</p>
+							<div className="flex items-center gap-1.5">
+								<Button
+									variant="outline"
+									size="icon"
+									className="h-7 w-7 rounded-lg border-border/50"
+									disabled={page === 1}
+									onClick={() => setPage((p) => Math.max(1, p - 1))}
+								>
+									<ChevronLeft className="h-3.5 w-3.5" />
+								</Button>
+								<span className="min-w-[5rem] text-center text-[0.75rem] text-muted-foreground">
+									<span className="font-mono font-medium text-foreground">
+										{page}
+									</span>
+									{" / "}
+									<span className="font-mono">{totalPages}</span>
+								</span>
+								<Button
+									variant="outline"
+									size="icon"
+									className="h-7 w-7 rounded-lg border-border/50"
+									disabled={page === totalPages}
+									onClick={() =>
+										setPage((p) => Math.min(totalPages, p + 1))
+									}
+								>
+									<ChevronRight className="h-3.5 w-3.5" />
+								</Button>
+							</div>
+						</div>
+					</CardContent>
 				</Card>
 			)}
 
@@ -1356,7 +1402,7 @@ function ExceptionsComponent() {
 							{creatingSession ? (
 								<>
 									<div className="h-3.5 w-3.5 mr-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-									Creating…
+									Creating...
 								</>
 							) : (
 								"Create Session"
@@ -1403,7 +1449,7 @@ function ExceptionsComponent() {
 							{closingSession ? (
 								<>
 									<div className="h-3.5 w-3.5 mr-2 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-									Closing…
+									Closing...
 								</>
 							) : (
 								"Close Session"
@@ -1412,6 +1458,7 @@ function ExceptionsComponent() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
 			{/* ── Help Dialog ──────────────────────────────────────────── */}
 			<Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
 				<DialogContent className="sm:max-w-lg rounded-2xl border-2 border-border bg-background p-0 overflow-hidden shadow-xl">
@@ -1428,7 +1475,7 @@ function ExceptionsComponent() {
 									className="text-lg"
 									style={{ fontFamily: "var(--dashboard-display)" }}
 								>
-									Exceptions help
+									Stock Count help
 								</DialogTitle>
 								<DialogDescription
 									className="mt-0.5"

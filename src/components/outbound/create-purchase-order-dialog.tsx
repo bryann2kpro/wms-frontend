@@ -81,7 +81,7 @@ export function CreatePurchaseOrderDialog({
 						className="text-[22px] leading-tight font-semibold"
 						style={{ fontFamily: "var(--dashboard-display)" }}
 					>
-						Create New Purchase Order
+						Process New Purchase Order
 					</DialogTitle>
 					<DialogDescription
 						id="create-po-dialog-description"
@@ -113,7 +113,7 @@ export function CreatePurchaseOrderDialog({
 											aria-busy="true"
 											className="sr-only"
 										>
-											Creating purchase order...
+											Processing purchase order...
 										</div>
 										<div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[2px]">
 											<div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-4 shadow-sm">
@@ -122,7 +122,7 @@ export function CreatePurchaseOrderDialog({
 													aria-hidden
 												/>
 												<p className="text-sm font-medium text-foreground">
-													Creating purchase order...
+													Processing purchase order...
 												</p>
 												<p className="text-xs text-muted-foreground">
 													Please wait
@@ -509,7 +509,7 @@ export function CreatePurchaseOrderDialogTrigger({
 			trigger={
 				<Button className={triggerClassName}>
 					<Plus className="mr-2 h-4 w-4" />
-					Create Purchase Order
+					Process PO
 				</Button>
 			}
 		/>

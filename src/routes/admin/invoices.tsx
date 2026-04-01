@@ -101,7 +101,13 @@ function InvoicesComponent() {
 		invoiceNumber: inv.invoiceNo,
 		doNumber: inv.doNo,
 		toNumber: inv.poNo,
-		totalAmount: parseFloat(inv.totalInclTax ?? "0") || 0,
+		totalAmount: parseFloat(inv.poAmount ?? "0") || 0,
+		sstRate:
+			typeof inv.poAmountCalcSnapshot === "object" &&
+			inv.poAmountCalcSnapshot &&
+			"sstRate" in inv.poAmountCalcSnapshot
+				? Number(inv.poAmountCalcSnapshot.sstRate)
+				: null,
 	}));
 
 	const summary = data?.invoices.summary;
@@ -379,6 +385,9 @@ function InvoicesComponent() {
 												style={{ fontFamily: "var(--dashboard-display)" }}
 											>
 												{formatCurrency(invoice.totalAmount)}
+												<div className="text-[11px] font-normal text-muted-foreground">
+													{`${Math.round(((invoice.sstRate ?? 0.06) as number) * 100)}% SST included`}
+												</div>
 											</TableCell>
 											<TableCell className="text-sm text-muted-foreground">
 												{invoice.issuedDate

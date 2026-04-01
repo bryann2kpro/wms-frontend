@@ -464,7 +464,7 @@ function AsnPickerDialog({
 function GRNRouteComponent() {
 	const { user } = useCurrentUser();
 	const { data: profile } = useProfile();
-	const { hasPermission } = usePermissions(user);
+	const { create, update } = usePermissions(user);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [searchTerm, setSearchTerm] = useState("");
@@ -905,7 +905,7 @@ function GRNRouteComponent() {
 									</div>
 								</DialogContent>
 							</Dialog>
-							{hasPermission("grn:create") && (
+							{create("GRN") && (
 								<>
 									{/* Step 1: ASN Picker */}
 									<AsnPickerDialog
@@ -962,7 +962,7 @@ function GRNRouteComponent() {
 										}}
 										skuOptions={skuOptions}
 										stockUnits={stockUnits}
-										canCreate={hasPermission("grn:create")}
+										canCreate={create("GRN")}
 										trigger={
 											<Button
 												className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg"
@@ -1194,11 +1194,12 @@ function GRNRouteComponent() {
 									) : (
 										grns.map((grn: GrnDetailForList) => {
 											const showEdit =
-												hasPermission("grn:edit") &&
+												update("GRN") &&
 												grn.status &&
 												(grn.status === "Draft" || grn.status === "Submitted");
 											const showApprove =
 												canApproveGrn && grn.status === "Submitted";
+												console.log("")
 											const showSend =
 												canApproveGrn && grn.status === "Approved";
 											const showRetry = canApproveGrn && grn.status === "Failed";

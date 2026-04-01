@@ -52,7 +52,7 @@ function ExceptionDetailComponent() {
 	const { id } = useParams({ from: "/admin/exceptions/$id" });
 	const navigate = useNavigate();
 	const { user } = useCurrentUser();
-	const { hasPermission } = usePermissions(user);
+	const { approve } = usePermissions(user);
 	const queryClient = useQueryClient();
 	const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 	const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
@@ -297,7 +297,7 @@ function ExceptionDetailComponent() {
 			)}
 
 			{/* Action Buttons */}
-			{hasPermission("exception:approve") && exception.status === "pending" && (
+			{approve("Exception") && exception.status === "pending" && (
 				<Card>
 					<CardHeader>
 						<CardTitle>Actions</CardTitle>

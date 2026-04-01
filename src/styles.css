@@ -615,6 +615,14 @@ code {
 	--invoice-detail-surface: oklch(0.18 0.008 286);
 	--invoice-detail-doc-border: oklch(0.28 0.02 70);
 }
+.invoice-detail-page [data-slot="skeleton"] {
+	background-color: var(--invoice-detail-accent-muted);
+	opacity: 0.6;
+}
+.dark .invoice-detail-page [data-slot="skeleton"] {
+	background-color: var(--invoice-detail-accent-muted);
+	opacity: 0.35;
+}
 
 @keyframes invoice-detail-fade-up {
 	from {
@@ -641,6 +649,9 @@ code {
 }
 .invoice-detail-page .invoice-detail-meta-card:nth-child(4) {
 	animation-delay: 0.2s;
+}
+.invoice-detail-page .invoice-detail-meta-card:nth-child(5) {
+	animation-delay: 0.25s;
 }
 
 .invoice-detail-page .invoice-detail-items-card {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
 	Dialog,
@@ -22,6 +23,7 @@ import type { Region } from "@/lib/graphql/types";
 export interface OutletFormValues {
 	outletName: string;
 	outletCode: string;
+	address?: string;
 	regionId?: string;
 }
 
@@ -46,20 +48,23 @@ export function OutletFormDialog({
 }) {
 	const [outletName, setOutletName] = useState(initial?.outletName ?? "");
 	const [outletCode, setOutletCode] = useState(initial?.outletCode ?? "");
+	const [address, setAddressSnapshot] = useState(initial?.address ?? "");
 	const [regionId, setRegionId] = useState<string>(initial?.regionId ?? "");
 
 	useEffect(() => {
 		if (open) {
 			setOutletName(initial?.outletName ?? "");
 			setOutletCode(initial?.outletCode ?? "");
+			setAddressSnapshot(initial?.address ?? "");
 			setRegionId(initial?.regionId ?? "");
 		}
-	}, [open, initial?.outletName, initial?.outletCode, initial?.regionId]);
+	}, [open, initial?.outletName, initial?.outletCode, initial?.address, initial?.regionId]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			setOutletName(initial?.outletName ?? "");
 			setOutletCode(initial?.outletCode ?? "");
+			setAddressSnapshot(initial?.address ?? "");
 			setRegionId(initial?.regionId ?? "");
 		}
 		onOpenChange(next);
@@ -111,6 +116,22 @@ export function OutletFormDialog({
 						/>
 					</div>
 					<div className="grid gap-2">
+						<Label
+							htmlFor="outlet-address"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Address (optional)
+						</Label>
+						<Textarea
+							id="outlet-address"
+							value={address}
+							onChange={(e) => setAddressSnapshot(e.target.value)}
+							placeholder="Full delivery address"
+							className="rounded-lg border-muted-foreground/20 resize-none"
+							rows={3}
+						/>
+					</div>
+					<div className="grid gap-2">
 						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
 							Region (optional)
 						</Label>
@@ -146,10 +167,12 @@ export function OutletFormDialog({
 							onSubmit({
 								outletName: outletName.trim(),
 								outletCode: outletCode.trim(),
+								address: address.trim() || undefined,
 								regionId: regionId || undefined,
 							})
 						}
-						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+						className="rounded-lg text-white hover:opacity-90"
+						style={{ backgroundColor: "var(--dashboard-accent)" }}
 					>
 						{loading ? "Saving..." : "Save"}
 					</Button>
