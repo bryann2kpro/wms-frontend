@@ -105,8 +105,50 @@ interface SKUSummaryGroup {
 	allocations: DoItemAllocation[];
 }
 
-function AllocationGuide({ allocations }: { allocations: DoItemAllocation[] }) {
+interface SKURackRow {
+	key: string;
+	skuCode: string;
+	skuDescription: string;
+	doBreakdown: {
+		doNo: string;
+		doId: string;
+		qtyRequired: number;
+		qtyPicked: number;
+	}[];
+	qtyRequired: number;
+	rackLabel: string;
+	completedPicking: boolean;
+}
+
+interface AllocationGuideProps {
+	allocations: DoItemAllocation[];
+	compactRackOnly?: boolean;
+}
+
+function AllocationGuide({
+	allocations,
+	compactRackOnly = false,
+}: AllocationGuideProps) {
 	if (!allocations || allocations.length === 0) return null;
+
+	if (compactRackOnly) {
+		const uniqueRacks = Array.from(
+			new Set(
+				allocations
+					.map((alloc) => alloc.rackName?.trim())
+					.filter((rack): rack is string => Boolean(rack)),
+			),
+		);
+
+		return (
+			<div className="mt-1 text-xs text-muted-foreground">
+				{uniqueRacks.length > 0
+					? uniqueRacks.map((rack) => `Rack ${rack}`).join(", ")
+					: "Rack —"}
+			</div>
+		);
+	}
+
 	return (
 		<div className="mt-1 space-y-0.5">
 			{allocations.map((alloc) => (
@@ -122,7 +164,6 @@ function AllocationGuide({ allocations }: { allocations: DoItemAllocation[] }) {
 					)}
 					<span>
 						{alloc.rackName ? `Rack ${alloc.rackName} · ` : ""}
-						{alloc.grnNo ?? "—"}
 						{alloc.lotNo ? ` · Lot: ${alloc.lotNo}` : ""}
 						{alloc.expiryDate ? ` · Exp: ${formatDate(alloc.expiryDate)}` : ""}
 						{" · Qty: "}
@@ -148,7 +189,7 @@ function EmpireSushiDOComponent() {
 	);
 	const [advancingDOs, setAdvancingDOs] = useState<Set<string>>(new Set());
 	const [bulkPickingDOs, setBulkPickingDOs] = useState<Set<string>>(new Set());
-	const [viewMode, setViewMode] = useState<"do" | "sku">("do");
+	const [viewMode, setViewMode] = useState<"do" | "sku">("sku");
 
 	const { data: profile } = useProfile();
 	const canApprove =
@@ -264,6 +305,53 @@ function EmpireSushiDOComponent() {
 			a.skuCode.localeCompare(b.skuCode),
 		);
 	}, [allItems, optimisticPicked]);
+
+	const skuRackRows = useMemo<SKURackRow[]>(() => {
+		const rows: SKURackRow[] = [];
+
+		for (const group of skuGroups) {
+			const completedPicking = group.totalQtyPicked >= group.totalQtyRequired;
+			const rackQtyMap = new Map<string, number>();
+
+			for (const alloc of group.allocations) {
+				const rackLabel = alloc.rackName?.trim()
+					? `Rack ${alloc.rackName.trim()}`
+					: "Rack —";
+				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
+				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
+			}
+
+			if (rackQtyMap.size === 0) {
+				rows.push({
+					key: `${group.skuCode}-rack-none`,
+					skuCode: group.skuCode,
+					skuDescription: group.skuDescription,
+					doBreakdown: group.doBreakdown,
+					qtyRequired: group.totalQtyRequired,
+					rackLabel: "Rack —",
+					completedPicking,
+				});
+				continue;
+			}
+
+			const sortedRackRows = Array.from(rackQtyMap.entries()).sort(([a], [b]) =>
+				a.localeCompare(b),
+			);
+			for (const [rackLabel, qtyRequired] of sortedRackRows) {
+				rows.push({
+					key: `${group.skuCode}-${rackLabel}`,
+					skuCode: group.skuCode,
+					skuDescription: group.skuDescription,
+					doBreakdown: group.doBreakdown,
+					qtyRequired,
+					rackLabel,
+					completedPicking,
+				});
+			}
+		}
+
+		return rows;
+	}, [skuGroups]);
 
 	const [generatePickingList, { loading: generatingPickingList }] =
 		useMutation<GenerateDoPickingListMutationData>(
@@ -508,14 +596,6 @@ function EmpireSushiDOComponent() {
 						aria-label="View mode"
 					>
 						<Button
-							variant={viewMode === "do" ? "secondary" : "ghost"}
-							size="sm"
-							onClick={() => setViewMode("do")}
-							className="h-7 text-xs gap-1.5"
-						>
-							By Delivery Order
-						</Button>
-						<Button
 							variant={viewMode === "sku" ? "secondary" : "ghost"}
 							size="sm"
 							onClick={() => setViewMode("sku")}
@@ -524,6 +604,15 @@ function EmpireSushiDOComponent() {
 							<Layers className="h-3 w-3" aria-hidden />
 							By SKU
 						</Button>
+						<Button
+							variant={viewMode === "do" ? "secondary" : "ghost"}
+							size="sm"
+							onClick={() => setViewMode("do")}
+							className="h-7 text-xs gap-1.5"
+						>
+							By Delivery Order
+						</Button>
+						
 					</div>
 					<Button
 						variant="outline"
@@ -780,18 +869,17 @@ function EmpireSushiDOComponent() {
 							<TableHeader>
 								<TableRow>
 									<TableHead className="w-10">#</TableHead>
-									<TableHead>SKU</TableHead>
+									<TableHead>SKU Code</TableHead>
 									<TableHead>Description &amp; DO Breakdown</TableHead>
 									<TableHead className="text-center">Total Required</TableHead>
-									<TableHead className="text-center">Picked</TableHead>
-									<TableHead className="text-center">Remaining</TableHead>
-									<TableHead>Rack / Allocation</TableHead>
+									<TableHead>Rack(s)</TableHead>
+									<TableHead>Completed Picking</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{!queryLoading && skuGroups.length === 0 ? (
+								{!queryLoading && skuRackRows.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={7} className="py-16 text-center">
+										<TableCell colSpan={6} className="py-16 text-center">
 											<div className="flex flex-col items-center gap-3">
 												<div className="rounded-full bg-muted p-3">
 													<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -801,24 +889,21 @@ function EmpireSushiDOComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									skuGroups.map((group, idx) => {
-										const remaining = group.totalQtyRequired - group.totalQtyPicked;
-										const allPicked = remaining <= 0;
+									skuRackRows.map((row, idx) => {
 										return (
 											<TableRow
-												key={group.skuCode}
-												className={allPicked ? "bg-green-50/50 dark:bg-green-950/10" : ""}
+												key={row.key}
 											>
 												<TableCell className="font-medium text-muted-foreground text-xs">
 													{idx + 1}
 												</TableCell>
 												<TableCell className="font-mono text-sm font-semibold">
-													{group.skuCode}
+													{row.skuCode}
 												</TableCell>
 												<TableCell className="max-w-[240px]">
-													<div className="truncate text-sm">{group.skuDescription}</div>
+													<div className="truncate text-sm">{row.skuDescription}</div>
 													<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-														{group.doBreakdown.map((d, i) => (
+														{row.doBreakdown.map((d, i) => (
 															<span key={`${d.doId}-${i}`} className="text-xs text-muted-foreground">
 																{d.doNo}:{" "}
 																<span className="font-medium text-foreground">
@@ -829,24 +914,17 @@ function EmpireSushiDOComponent() {
 													</div>
 												</TableCell>
 												<TableCell className="text-center font-semibold">
-													{formatQty(group.totalQtyRequired)}
+													{formatQty(row.qtyRequired)}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{row.rackLabel}
 												</TableCell>
 												<TableCell className="text-center">
-													{formatQty(group.totalQtyPicked)}
-												</TableCell>
-												<TableCell className="text-center">
-													<span
-														className={
-															remaining > 0
-																? "font-bold text-amber-600"
-																: "font-medium text-green-600"
-														}
-													>
-														{remaining > 0 ? formatQty(remaining) : "Done"}
-													</span>
-												</TableCell>
-												<TableCell>
-													<AllocationGuide allocations={group.allocations} />
+													<Checkbox
+														checked={row.completedPicking}
+														disabled
+														aria-label={`Picking completed for ${row.skuCode}`}
+													/>
 												</TableCell>
 											</TableRow>
 										);
