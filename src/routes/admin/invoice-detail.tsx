@@ -742,6 +742,12 @@ function InvoiceDetailComponent() {
 													className="text-right text-sm tabular-nums"
 													style={{ fontFamily: "var(--invoice-detail-body)" }}
 												>
+													{formatCurrency(item.totalPrice)}
+												</TableCell>
+												<TableCell
+													className="text-right text-sm tabular-nums"
+													style={{ fontFamily: "var(--invoice-detail-body)" }}
+												>
 													{formatCurrency(item.totalPrice * lineItemsTaxRate)}
 												</TableCell>
 												<TableCell
@@ -755,6 +761,12 @@ function InvoiceDetailComponent() {
 														item.totalPrice +
 															item.totalPrice * lineItemsTaxRate,
 													)}
+												</TableCell>
+												<TableCell
+													className="text-right text-sm tabular-nums"
+													style={{ fontFamily: "var(--invoice-detail-body)" }}
+												>
+													{taxRatePercent > 0 ? `${taxRatePercent}%` : "—"}
 												</TableCell>
 											</TableRow>
 										))
