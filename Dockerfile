@@ -10,7 +10,7 @@ ARG VITE_GRAPHQL_ENDPOINT
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_GRAPHQL_ENDPOINT=$VITE_GRAPHQL_ENDPOINT
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml* ./
 
 RUN pnpm install --frozen-lockfile
 
