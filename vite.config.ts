@@ -22,7 +22,12 @@ const config = defineConfig({
       outdir: './src/paraglide',
       strategy: ['url'],
     }),
-    nitro(),
+    nitro({
+      // graphql has a complex exports map that Nitro externalizes by default,
+      // causing a missing-module error at runtime when node_modules isn't
+      // present in the container. noExternals bundles everything into the chunk.
+      noExternals: true,
+    }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],

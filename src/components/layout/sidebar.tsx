@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useLocation, useSearch } from "@tanstack/react-router";
+import { ClientOnly, Link, useLocation, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -162,28 +162,30 @@ export function Sidebar() {
 	}
 
 	return (
-		<SidebarUi
-			className="app-sidebar space-y-4 rounded-none border-r border-sidebar-border"
-			collapsible="icon"
-		>
-			<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-4 py-4">
-				<div className="relative z-20 flex items-center justify-center">
-					<div className="flex flex-col">
-						<img
-							src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
-							alt="SME Logo"
-							width={100}
-							height={100}
-							className="rounded-lg object-contain"
-						/>
+		<ClientOnly>
+			<SidebarUi
+				className="app-sidebar space-y-4 rounded-none border-r border-sidebar-border"
+				collapsible="icon"
+			>
+				<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-4 py-4">
+					<div className="relative z-20 flex items-center justify-center">
+						<div className="flex flex-col">
+							<img
+								src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
+								alt="SME Logo"
+								width={100}
+								height={100}
+								className="rounded-lg object-contain"
+							/>
+						</div>
 					</div>
-				</div>
-			</SidebarHeader>
-			<SidebarContent>
-				<ScrollArea className="flex-1 px-3 py-4">
-					<div className="flex flex-col gap-6">{navSections}</div>
-				</ScrollArea>
-			</SidebarContent>
-		</SidebarUi>
+				</SidebarHeader>
+				<SidebarContent>
+					<ScrollArea className="flex-1 px-3 py-4">
+						<div className="flex flex-col gap-6">{navSections}</div>
+					</ScrollArea>
+				</SidebarContent>
+			</SidebarUi>
+		</ClientOnly>
 	);
 }
