@@ -50,8 +50,6 @@ export function formatDateTime12h(
 }
 
 // Utility function to format dates (date only, no time)
-// Uses UTC methods and manual formatting to ensure identical output on the
-// Node.js SSR server and the browser, avoiding Intl locale-data mismatches.
 export function formatDateOnly(dateValue: string | number | Date): string {
 	try {
 		let date: Date;
@@ -80,10 +78,11 @@ export function formatDateOnly(dateValue: string | number | Date): string {
 			return String(dateValue);
 		}
 
-		const dd = String(date.getUTCDate()).padStart(2, "0");
-		const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-		const yyyy = date.getUTCFullYear();
-		return `${dd}/${mm}/${yyyy}`;
+		return new Intl.DateTimeFormat("en-MY", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(date);
 	} catch {
 		return String(dateValue);
 	}
@@ -185,16 +184,11 @@ export const permissionTypeColors: Record<string, string> = {
 	Delete: "bg-red-500/10 text-red-600 border-red-500/20",
 };
 
-// Uses manual formatting instead of Intl.NumberFormat to ensure identical
-// output on the Node.js SSR server and the browser. Node.js without full-icu
-// locale data formats MYR as "MYR 1,234.56" while browsers render "RM1,234.56",
-// which causes a React hydration mismatch (#418).
 export function formatCurrency(amount: number): string {
-	if (!Number.isFinite(amount)) return "RM0.00";
-	const negative = amount < 0;
-	const [intPart, decPart] = Math.abs(amount).toFixed(2).split(".");
-	const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	return `${negative ? "-" : ""}RM${formatted}.${decPart}`;
+	return new Intl.NumberFormat("en-MY", {
+		style: "currency",
+		currency: "MYR",
+	}).format(amount);
 }
 
 /**
