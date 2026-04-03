@@ -204,9 +204,9 @@ function EmpireSushiDOComponent() {
 	const advancedDOs = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
-		document.title = `${PAGE_TITLE} | SME Ederan`;
+		document.title = `${PAGE_TITLE} | SME Edaran`;
 		return () => {
-			document.title = "SME Ederan";
+			document.title = "SME Edaran";
 		};
 	}, []);
 

@@ -456,7 +456,7 @@ function CompanySettingsCard({
 }) {
 	const form = useForm({
 		defaultValues: {
-			companyName: "SME Ederan",
+			companyName: "SME Edaran",
 			defaultWarehouse: "Main Warehouse",
 			timezone: "Asia/Kuala Lumpur",
 		},

@@ -32,11 +32,11 @@ export const Route = createFileRoute("/forgot-password")({
 	component: RouteComponent,
 	head: () => ({
 		meta: [
-			{ title: "Reset password — SME Ederan WMS" },
+			{ title: "Reset password — SME Edaran WMS" },
 			{
 				name: "description",
 				content:
-					"Request a password reset link for your SME Ederan WMS account.",
+					"Request a password reset link for your SME Edaran WMS account.",
 			},
 		],
 	}),
@@ -645,7 +645,7 @@ function RouteComponent() {
 									color: "var(--foreground)",
 								}}
 							>
-								SME Ederan
+								SME Edaran
 							</span>
 							<span
 								className="text-[11px] tracking-wider"
@@ -729,7 +729,7 @@ function RouteComponent() {
 						className="text-[11px]"
 						style={{ color: "oklch(from var(--foreground) l c h / 0.3)" }}
 					>
-						© {new Date().getFullYear()} SME Ederan. All rights reserved.
+						© {new Date().getFullYear()} SME Edaran. All rights reserved.
 					</p>
 				</div>
 			</aside>
@@ -764,7 +764,7 @@ function RouteComponent() {
 								color: "var(--foreground)",
 							}}
 						>
-							SME Ederan
+							SME Edaran
 						</span>
 						<span
 							className="text-[11px] tracking-wider"
@@ -895,7 +895,7 @@ function RouteComponent() {
 												"0 0 6px 1px oklch(from var(--dashboard-accent) l c h / 0.5)",
 										}}
 									/>
-									SME Ederan WMS
+									SME Edaran WMS
 								</span>
 
 								<h1

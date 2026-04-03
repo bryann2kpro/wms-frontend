@@ -1,4 +1,4 @@
-# Design Alignment Guide — SME Ederan Admin Frontend
+# Design Alignment Guide — SME Edaran Admin Frontend
 
 **Context:** The `reports.tsx` page was redesigned with a cohesive visual language (amber accent, animated cards, staggered entry, help dialogs, loading overlay). This guide teaches another AI how to apply the same design to any other admin page.
 

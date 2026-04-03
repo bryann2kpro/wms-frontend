@@ -349,9 +349,9 @@ function OutboundRouteComponent() {
 
 	const pageTitle = "Outbound Delivery Orders";
 	useEffect(() => {
-		document.title = `${pageTitle} | SME Ederan`;
+		document.title = `${pageTitle} | SME Edaran`;
 		return () => {
-			document.title = "SME Ederan";
+			document.title = "SME Edaran";
 		};
 	}, []);
 
