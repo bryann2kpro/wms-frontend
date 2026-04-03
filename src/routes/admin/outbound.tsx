@@ -1,13 +1,29 @@
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import type { ComponentProps, ReactNode } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { requirePermission } from "@/lib/rbac";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+	ChevronLeft,
+	ChevronRight,
+	HelpCircle,
+	ImageOff,
+	RefreshCw,
+} from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import {
+	type CreatePurchaseOrderDialog,
+	CreatePurchaseOrderDialogTrigger,
+	ImportExcelDialog,
+	type ImportRowResult,
+	OutboundListCard,
+	RejectPurchaseOrderDialog,
+	useOutboundSummary,
+	ViewPurchaseOrderDialog,
+} from "@/components/outbound";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -15,42 +31,29 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { advanceDeliveryOrderStatus } from "@/data/delivery-orders";
+import { generateDeliveryOrderPdfUrl } from "@/data/documents";
 import {
-	RefreshCw,
-	HelpCircle,
-	ChevronLeft,
-	ChevronRight,
-	ImageOff,
-} from "lucide-react";
-import {
+	applyEmergencyDelivery,
+	type CreatePurchaseOrderInput,
+	createPurchaseOrder,
 	type PurchaseOrderDetail,
 	type PurchaseOrderStatus,
-	createPurchaseOrder,
 	updatePurchaseOrderStatus,
-	applyEmergencyDelivery,
 } from "@/data/purchase-orders";
-import { generateDeliveryOrderPdfUrl } from "@/data/documents";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import {
+	createPurchaseOrderSchema,
+	formatStatus,
+	purchaseOrderStatuses,
+} from "@/lib/outbound";
+import { usePermissions } from "@/lib/permissions";
+import { requirePermission } from "@/lib/rbac";
 import {
 	downloadPdfFromUrl,
 	sanitizePdfFilenameSegment,
 } from "@/lib/reports/report-pdf";
-import { advanceDeliveryOrderStatus } from "@/data/delivery-orders";
-import { usePermissions } from "@/lib/permissions";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
-import {
-	purchaseOrderStatuses,
-	createPurchaseOrderSchema,
-	formatStatus,
-} from "@/lib/outbound";
-import {
-	type CreatePurchaseOrderDialog,
-	CreatePurchaseOrderDialogTrigger,
-	ViewPurchaseOrderDialog,
-	RejectPurchaseOrderDialog,
-	OutboundListCard,
-	useOutboundSummary,
-} from "@/components/outbound";
-import { AdminPageHeader } from "@/components/admin-page-header";
 
 const STATUS_BORDER_COLOR: Record<string, string> = {
 	preparing: "border-l-yellow-500",
@@ -241,6 +244,34 @@ function OutboundRouteComponent() {
 		}
 	}, []);
 
+	const handleExcelImport = useCallback(
+		async (inputs: CreatePurchaseOrderInput[]): Promise<ImportRowResult[]> => {
+			const results: ImportRowResult[] = [];
+			for (const input of inputs) {
+				try {
+					await createPurchaseOrder(input);
+					results.push({
+						purchaseOrderNumber: input.purchaseOrderNumber,
+						success: true,
+					});
+				} catch (err) {
+					const message =
+						err instanceof Error
+							? err.message
+							: "Could not create purchase order.";
+					results.push({
+						purchaseOrderNumber: input.purchaseOrderNumber,
+						success: false,
+						error: message,
+					});
+				}
+			}
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			return results;
+		},
+		[queryClient],
+	);
+
 	const bulkDownloadDoPdf = useCallback(
 		async (orders: PurchaseOrderDetail[]) => {
 			setIsBulkDoPdfPending(true);
@@ -318,9 +349,9 @@ function OutboundRouteComponent() {
 
 	const pageTitle = "Outbound Delivery Orders";
 	useEffect(() => {
-		document.title = `${pageTitle} | SME Ederan`;
+		document.title = `${pageTitle} | SME Edaran`;
 		return () => {
-			document.title = "SME Ederan";
+			document.title = "SME Edaran";
 		};
 	}, []);
 
@@ -485,6 +516,7 @@ function OutboundRouteComponent() {
 									Refresh from NetSuite
 								</Button>
 							)}
+							<ImportExcelDialog onImport={handleExcelImport} />
 							<CreatePurchaseOrderDialogTrigger
 								open={isCreateOpen}
 								onOpenChange={setIsCreateOpen}

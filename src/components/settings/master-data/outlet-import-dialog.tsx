@@ -24,8 +24,10 @@ import {
 	FileSpreadsheet,
 	Upload,
 	CheckCheck,
+	Ban,
 } from "lucide-react";
-import { CREATE_OUTLET_MUTATION } from "@/lib/graphql/outlets";
+import { CREATE_OUTLET_MUTATION, OUTLETS_QUERY } from "@/lib/graphql/outlets";
+import type { OutletsQueryData, OutletsQueryVariables } from "@/lib/graphql/outlets";
 import type { Region } from "@/lib/graphql/types";
 
 type ImportRow = {
@@ -35,6 +37,7 @@ type ImportRow = {
 	regionCode?: string;
 	regionId?: string;
 	errors: string[];
+	duplicate?: boolean;
 };
 
 type ImportState = "idle" | "preview" | "importing" | "done";
@@ -71,7 +74,7 @@ export function OutletImportDialog({
 	function parseFile(file: File) {
 		setFileName(file.name);
 		const reader = new FileReader();
-		reader.onload = (e) => {
+		reader.onload = async (e) => {
 			const data = new Uint8Array(e.target?.result as ArrayBuffer);
 			const wb = XLSX.read(data, { type: "array" });
 			const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -106,9 +109,41 @@ export function OutletImportDialog({
 				};
 			});
 
-			setRows(parsed);
+			// Check for duplicates against existing outlets
+			const codesToCheck = parsed
+				.filter((r) => r.outletCode)
+				.map((r) => r.outletCode);
+
+			let existingCodes = new Set<string>();
+			if (codesToCheck.length > 0) {
+				try {
+					const { data: existingData } = await client.query<OutletsQueryData, OutletsQueryVariables>({
+						query: OUTLETS_QUERY,
+						variables: {
+							filter: { outletCodes: codesToCheck },
+							pageSize: codesToCheck.length,
+							pageNumber: 1,
+						},
+						fetchPolicy: "network-only",
+					});
+					existingCodes = new Set(
+						existingData.outlets.query.map((o) => o.outletCode?.toUpperCase() ?? ""),
+					);
+				} catch {
+					// If query fails, proceed without duplicate detection
+				}
+			}
+
+			const withDuplicates = parsed.map((row) => ({
+				...row,
+				duplicate: row.outletCode
+					? existingCodes.has(row.outletCode.toUpperCase())
+					: false,
+			}));
+
+			setRows(withDuplicates);
 			setState("preview");
-			setProgress({ done: 0, total: parsed.length });
+			setProgress({ done: 0, total: withDuplicates.length });
 			setResults({ success: 0, failed: 0 });
 		};
 		reader.readAsArrayBuffer(file);
@@ -127,8 +162,9 @@ export function OutletImportDialog({
 		if (file && file.name.endsWith(".xlsx")) parseFile(file);
 	}
 
-	const validRows = rows.filter((r) => r.errors.length === 0);
+	const validRows = rows.filter((r) => r.errors.length === 0 && !r.duplicate);
 	const invalidRows = rows.filter((r) => r.errors.length > 0);
+	const duplicateRows = rows.filter((r) => r.duplicate && r.errors.length === 0);
 
 	async function handleImport() {
 		setState("importing");
@@ -330,6 +366,18 @@ export function OutletImportDialog({
 									with errors
 								</div>
 							)}
+							{duplicateRows.length > 0 && (
+								<div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+									style={{
+										fontFamily: "var(--dashboard-body)",
+										backgroundColor: "oklch(0.75 0.15 60 / 0.15)",
+										color: "oklch(0.55 0.15 60)",
+									}}>
+									<Ban className="h-3 w-3" />
+									<span className="tabular-nums font-semibold">{duplicateRows.length}</span>
+									already in system
+								</div>
+							)}
 						</div>
 					)}
 
@@ -415,6 +463,16 @@ export function OutletImportDialog({
 											failed
 										</>
 									)}
+									{duplicateRows.length > 0 && (
+										<>
+											{" "}
+											·{" "}
+											<span className="font-semibold" style={{ color: "oklch(0.55 0.15 60)" }}>
+												{duplicateRows.length}
+											</span>{" "}
+											skipped (already in system)
+										</>
+									)}
 								</p>
 							</div>
 						</div>
@@ -459,15 +517,15 @@ export function OutletImportDialog({
 											key={i}
 											className="relative transition-colors"
 											style={
-												row.errors.length > 0
-													? {
-															backgroundColor: "oklch(0.628 0.2577 29.23 / 0.04)",
-														}
-													: {}
+												row.duplicate
+													? { backgroundColor: "oklch(0.75 0.15 60 / 0.06)" }
+													: row.errors.length > 0
+														? { backgroundColor: "oklch(0.628 0.2577 29.23 / 0.04)" }
+														: {}
 											}
 										>
 											{/* Accent left strip */}
-											{row.errors.length === 0 && (
+											{row.errors.length === 0 && !row.duplicate && (
 												<td
 													aria-hidden
 													className="absolute left-0 top-0 h-full w-0.5 rounded-l"
@@ -478,7 +536,9 @@ export function OutletImportDialog({
 												/>
 											)}
 											<TableCell className="px-4 w-10">
-												{row.errors.length === 0 ? (
+												{row.duplicate ? (
+													<Ban className="h-4 w-4" style={{ color: "oklch(0.55 0.15 60)" }} />
+												) : row.errors.length === 0 ? (
 													<CheckCircle2
 														className="h-4 w-4"
 														style={{ color: "var(--dashboard-accent)" }}
@@ -523,7 +583,17 @@ export function OutletImportDialog({
 												)}
 											</TableCell>
 											<TableCell className="px-4">
-												{row.errors.length > 0 ? (
+												{row.duplicate ? (
+													<span
+														className="text-xs font-medium"
+														style={{
+															color: "oklch(0.55 0.15 60)",
+															fontFamily: "var(--dashboard-body)",
+														}}
+													>
+														Not imported — already in system
+													</span>
+												) : row.errors.length > 0 ? (
 													<div className="flex flex-col gap-0.5">
 														{row.errors.map((err, j) => (
 															<span
