@@ -35,6 +35,7 @@ import {
 	getNetSuiteStatusColor,
 	getStatusColor,
 } from "@/lib/outbound";
+import { formatDate, formatDateOnly } from "@/lib/utils";
 
 interface ViewPurchaseOrderDialogProps {
 	open: boolean;
@@ -114,7 +115,7 @@ export function ViewPurchaseOrderDialog({
 										Scheduled Delivery
 									</Label>
 									<p className="text-sm font-medium">
-										{purchaseOrder.expectedDeliveryDate.toLocaleDateString()}
+										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
 									</p>
 								</div>
 								<div>
@@ -122,7 +123,7 @@ export function ViewPurchaseOrderDialog({
 										Created Date
 									</Label>
 									<p className="text-sm font-medium">
-										{purchaseOrder.createdDate.toLocaleDateString()}
+										{formatDateOnly(purchaseOrder.createdDate.toISOString())}
 									</p>
 								</div>
 								<div>
@@ -130,7 +131,7 @@ export function ViewPurchaseOrderDialog({
 										Expected Delivery
 									</Label>
 									<p className="text-sm font-medium">
-										{purchaseOrder.expectedDeliveryDate.toLocaleDateString()}
+										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
 									</p>
 								</div>
 								<div>
@@ -285,13 +286,13 @@ export function ViewPurchaseOrderDialog({
 								</div>
 							)}
 
-							<IntegrationLogPanel
+							{/* <IntegrationLogPanel
 								entityId={purchaseOrder.id}
 								entityType="po"
 								onRetry={(logId) => {
 									console.log("Retry log:", logId);
 								}}
-							/>
+							/> */}
 
 							{showEmergencyConfirm && (
 								<div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
