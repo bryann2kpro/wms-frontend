@@ -1,4 +1,4 @@
-import { type CSSProperties, useDeferredValue, useMemo, useState } from "react";
+import { type CSSProperties, useDeferredValue, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
 	useReactTable,
@@ -79,6 +79,7 @@ import { ConfirmDeleteDialog } from "./shared";
 import { SkusFormDialog } from "./skus-form-dialog";
 import { SkusSuppliersViewDialog } from "./skus-suppliers-view-dialog";
 import { ImportDialog } from "./import-dialog";
+import { toast } from "sonner";
 
 const SKUS_HELP_IMAGES_BASE = "/help/skus";
 
@@ -200,7 +201,7 @@ export function SkusSection() {
 
 	const { data, loading, refetch } = useQuery<SkusQueryData, SkusQueryVariables>(
 		SKUS_QUERY,
-		{ variables: {}, fetchPolicy: "cache-and-network" },
+		{ variables: {}, fetchPolicy: "no-cache" },
 	);
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	const deferredSearch = useDeferredValue(search);
@@ -272,25 +273,47 @@ export function SkusSection() {
 	);
 	const stockUnits = stockUnitsData?.stockUnits.query ?? [];
 
+	const createInFlightRef = useRef(false);
+	const updateInFlightRef = useRef(false);
+	const deleteInFlightRef = useRef(false);
+
 	const [createSkus, { loading: createLoading }] =
 		useMutation<CreateSkusMutationData>(CREATE_SKUS_MUTATION, {
-			refetchQueries: [{ query: SKUS_QUERY }],
-			awaitRefetchQueries: true,
-			onCompleted: () => { refetch(); setIsCreateOpen(false); },
+			onCompleted: async () => {
+				createInFlightRef.current = false;
+				await refetch();
+				setIsCreateOpen(false);
+			},
+			onError: (error) => {
+				createInFlightRef.current = false;
+				toast.error("Failed to create SKU", { description: error.message });
+			},
 		});
 
 	const [updateSkus, { loading: updateLoading }] =
 		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
-			refetchQueries: [{ query: SKUS_QUERY }],
-			awaitRefetchQueries: true,
-			onCompleted: () => { refetch(); setEditing(null); },
+			onCompleted: async () => {
+				updateInFlightRef.current = false;
+				await refetch();
+				setEditing(null);
+			},
+			onError: (error) => {
+				updateInFlightRef.current = false;
+				toast.error("Failed to update SKU", { description: error.message });
+			},
 		});
 
 	const [deleteSkus, { loading: deleteLoading }] =
 		useMutation<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, {
-			refetchQueries: [{ query: SKUS_QUERY }],
-			awaitRefetchQueries: true,
-			onCompleted: () => { refetch(); setDeleting(null); },
+			onCompleted: async () => {
+				deleteInFlightRef.current = false;
+				await refetch();
+				setDeleting(null);
+			},
+			onError: (error) => {
+				deleteInFlightRef.current = false;
+				toast.error("Failed to delete SKU", { description: error.message });
+			},
 		});
 
 	const columns = useMemo<ColumnDef<Skus>[]>(
@@ -418,6 +441,7 @@ export function SkusSection() {
 		data: paginatedList,
 		columns,
 		getCoreRowModel: getCoreRowModel(),
+		getRowId: (row) => row.skuId,
 		initialState: {
 			columnPinning: {
 				left: ["skuCode", "skuDescription"],
@@ -753,6 +777,9 @@ export function SkusSection() {
 				suppliers={suppliers}
 				stockUnits={stockUnits}
 				onSubmit={(values) => {
+					if (createInFlightRef.current || createLoading) return;
+					createInFlightRef.current = true;
+
 					const expiryDate = values.skuExpiryDate
 						? `${values.skuExpiryDate} 00:00:00.000000`
 						: "";
@@ -811,6 +838,9 @@ export function SkusSection() {
 						isActive: editing.isActive,
 					}}
 					onSubmit={(values) => {
+						if (updateInFlightRef.current || updateLoading) return;
+						updateInFlightRef.current = true;
+
 						const expiryDate = values.skuExpiryDate
 							? `${values.skuExpiryDate} 00:00:00.000000`
 							: "";
@@ -850,7 +880,11 @@ export function SkusSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.skuCode}
-					onConfirm={() => deleteSkus({ variables: { id: deleting.skuId } })}
+					onConfirm={() => {
+						if (deleteInFlightRef.current || deleteLoading) return;
+						deleteInFlightRef.current = true;
+						deleteSkus({ variables: { id: deleting.skuId } });
+					}}
 					loading={deleteLoading}
 				/>
 			)}

@@ -24,8 +24,14 @@ import {
 } from "@/components/ui/table";
 import {
 	CREATE_SKUS_MUTATION,
+	UPDATE_SKUS_MUTATION,
+	SKUS_QUERY,
 	type CreateSkusMutationData,
 	type CreateSkusMutationVariables,
+	type SkusQueryData,
+	type SkusQueryVariables,
+	type UpdateSkusMutationData,
+	type UpdateSkusMutationVariables,
 } from "@/lib/graphql/skus";
 import {
 	CREATE_RACK_MUTATION,
@@ -222,10 +228,23 @@ export function ImportDialog({
 		},
 	);
 
+	const {
+		data: skusData,
+		loading: skusLoading,
+	} = useQuery<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {
+		variables: {},
+		skip: mode !== "skus" || !open,
+		fetchPolicy: "no-cache",
+	});
+
 	const [createSku] = useMutation<
 		CreateSkusMutationData,
 		CreateSkusMutationVariables
 	>(CREATE_SKUS_MUTATION);
+
+	const [updateSku] = useMutation<UpdateSkusMutationData, UpdateSkusMutationVariables>(
+		UPDATE_SKUS_MUTATION,
+	);
 	const [createRack] = useMutation<
 		CreateRackMutationData,
 		CreateRackMutationVariables
@@ -594,6 +613,11 @@ export function ImportDialog({
 			return;
 		}
 
+		if (mode === "skus" && isStockTakeFormat && skusLoading) {
+			toast.error("Loading SKUs, please try again in a moment.");
+			return;
+		}
+
 		setIsImporting(true);
 		setProcessedCount(0);
 		const batchSize = 5;
@@ -606,6 +630,9 @@ export function ImportDialog({
 		}
 
 		try {
+			let createdCount = 0;
+			let updatedCount = 0;
+
 			if (mode === "skus" && isStockTakeFormat) {
 				for (const uomLabel of newUomsToCreate) {
 					if (uomLookup.has(normalizeKey(uomLabel))) continue;
@@ -669,9 +696,44 @@ export function ImportDialog({
 									initialOnHandQty: Number(skuRow.data.skuQuantity),
 								};
 							}
-							if (!payload) return { rowNumber: row.rowNumber, ok: false as const, error: "Missing payload" };
+							if (!payload)
+								return {
+									rowNumber: row.rowNumber,
+									ok: false as const,
+									error: "Missing payload",
+								};
+
+							if (isStockTakeFormat) {
+								const existing = (skusData?.skus?.query ?? []).find(
+									(s) => s.skuCode.toLowerCase() === payload.skuCode.toLowerCase(),
+								);
+
+								if (existing) {
+									await updateSku({
+										variables: {
+											id: existing.skuId,
+											input: {
+												skuQuantity: existing.skuQuantity + payload.skuQuantity,
+											},
+										},
+									});
+									return {
+										rowNumber: row.rowNumber,
+										ok: true as const,
+										action: "updated" as const,
+									};
+								}
+
+								await createSku({ variables: { input: payload } });
+								return {
+									rowNumber: row.rowNumber,
+									ok: true as const,
+									action: "created" as const,
+								};
+							}
+
 							await createSku({ variables: { input: payload } });
-							return { rowNumber: row.rowNumber, ok: true as const };
+							return { rowNumber: row.rowNumber, ok: true as const, action: "created" as const };
 						}
 						const payload = (
 							row as Extract<PreviewRow, { rackPayload?: unknown }>
@@ -684,7 +746,14 @@ export function ImportDialog({
 
 				for (const result of settled) {
 					setProcessedCount((c) => c + 1);
-					if (result.status === "fulfilled" && result.value.ok) continue;
+					if (result.status === "fulfilled" && result.value.ok) {
+						if (mode === "skus" && isStockTakeFormat && result.value.action === "updated") {
+							updatedCount += 1;
+						} else if (mode === "skus" && isStockTakeFormat && result.value.action === "created") {
+							createdCount += 1;
+						}
+						continue;
+					}
 					const rowNumber =
 						result.status === "fulfilled" ? result.value.rowNumber : -1;
 					const errorText =
@@ -701,7 +770,9 @@ export function ImportDialog({
 			const successCount = validRows.length - failedCount;
 			if (successCount > 0) {
 				toast.success(
-					`${mode === "skus" ? "SKU" : "Rack"} import complete: ${successCount} created, ${failedCount} failed.`,
+					mode === "skus" && isStockTakeFormat
+						? `SKU import complete: ${updatedCount} updated, ${createdCount} created, ${failedCount} failed.`
+						: `${mode === "skus" ? "SKU" : "Rack"} import complete: ${successCount} succeeded, ${failedCount} failed.`,
 				);
 				onImported?.();
 			} else {
