@@ -46,11 +46,11 @@ export const Route = createFileRoute("/login")({
 	component: RouteComponent,
 	head: () => ({
 		meta: [
-			{ title: "Sign in — SME Ederan WMS" },
+			{ title: "Sign in — SME Edaran WMS" },
 			{
 				name: "description",
 				content:
-					"Sign in to access the SME Ederan Warehouse Management System.",
+					"Sign in to access the SME Edaran Warehouse Management System.",
 			},
 		],
 	}),
@@ -691,7 +691,7 @@ function RouteComponent() {
 									color: "var(--foreground)",
 								}}
 							>
-								SME Ederan
+								SME Edaran
 							</span>
 							<span
 								className="text-[11px] tracking-wider"
@@ -783,7 +783,7 @@ function RouteComponent() {
 							color: "oklch(from var(--foreground) l c h / 0.3)",
 						}}
 					>
-						© {new Date().getFullYear()} SME Ederan. All rights reserved.
+						© {new Date().getFullYear()} SME Edaran. All rights reserved.
 					</p>
 				</div>
 			</aside>
@@ -818,7 +818,7 @@ function RouteComponent() {
 								color: "var(--foreground)",
 							}}
 						>
-							SME Ederan
+							SME Edaran
 						</span>
 						<span
 							className="text-[11px] tracking-wider"
@@ -850,7 +850,7 @@ function RouteComponent() {
 										"0 0 6px 1px oklch(from var(--dashboard-accent) l c h / 0.5)",
 								}}
 							/>
-							SME Ederan WMS
+							SME Edaran WMS
 						</span>
 
 						<h1

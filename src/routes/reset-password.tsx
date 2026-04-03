@@ -35,10 +35,10 @@ export const Route = createFileRoute("/reset-password")({
 	component: RouteComponent,
 	head: () => ({
 		meta: [
-			{ title: "Set new password — SME Ederan WMS" },
+			{ title: "Set new password — SME Edaran WMS" },
 			{
 				name: "description",
-				content: "Set a new password for your SME Ederan WMS account.",
+				content: "Set a new password for your SME Edaran WMS account.",
 			},
 		],
 	}),
@@ -98,7 +98,7 @@ function RouteComponent() {
 						<Package className="h-5 w-5 text-primary-foreground" />
 					</div>
 					<span className="text-base font-semibold tracking-tight">
-						SME Ederan WMS
+						SME Edaran WMS
 					</span>
 				</div>
 
@@ -127,7 +127,7 @@ function RouteComponent() {
 				</div>
 
 				<p className="text-[11px] text-primary-foreground/30">
-					© {new Date().getFullYear()} SME Ederan. All rights reserved.
+					© {new Date().getFullYear()} SME Edaran. All rights reserved.
 				</p>
 			</aside>
 
@@ -142,7 +142,7 @@ function RouteComponent() {
 						<Package className="h-4 w-4 text-primary-foreground" />
 					</div>
 					<span className="text-sm font-semibold text-foreground">
-						SME Ederan WMS
+						SME Edaran WMS
 					</span>
 				</div>
 

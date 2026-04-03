@@ -322,6 +322,7 @@ export interface createSkusInput {
 	skuUom: string;
 	pickingStrategy?: string;
 	isActive?: boolean;
+	initialOnHandQty?: number;
 }
 
 export interface UpdateSkusInput {
