@@ -410,6 +410,7 @@ export function ImportDialog({
 									skuUom: stockUnitId,
 									pickingStrategy: "FIFO",
 									isActive: true,
+									initialOnHandQty: item.skuQuantity,
 							  }
 							: undefined,
 				};
@@ -483,6 +484,7 @@ export function ImportDialog({
 							skuUom: stockUnitId,
 							pickingStrategy,
 							isActive: true,
+							initialOnHandQty: Number(skuQuantity),
 					  }
 					: undefined;
 
@@ -664,6 +666,7 @@ export function ImportDialog({
 									skuUom: stockUnitId,
 									pickingStrategy: skuRow.data.pickingStrategy || "FIFO",
 									isActive: true,
+									initialOnHandQty: Number(skuRow.data.skuQuantity),
 								};
 							}
 							if (!payload) return { rowNumber: row.rowNumber, ok: false as const, error: "Missing payload" };
