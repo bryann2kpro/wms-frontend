@@ -605,16 +605,17 @@ function GRNRouteComponent() {
 			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
-			items?: Array<{
-				sku: string;
-				description?: string;
-				carton: number;
-				loss: number;
-				uom?: string;
-				unitPrice?: number;
-				expiryDate?: string;
-				rackIds?: string[];
-			}>;
+		items?: Array<{
+			sku: string;
+			description?: string;
+			carton: number;
+			loss: number;
+			uom?: string;
+			unitPrice?: number;
+			expiryDate?: string;
+			lotNo?: string;
+			rackIds?: string[];
+		}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
 		}) => {
@@ -629,17 +630,18 @@ function GRNRouteComponent() {
 					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
-				return {
-					skuId:
-						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
-					skuCode: i.sku,
-					skuDescription: i.description ?? undefined,
-					qty: String(i.carton),
-					lossQty: String(i.loss ?? 0),
-					skuUom: uomId ?? undefined,
-					expiryDate: (i.expiryDate ?? "").trim() || undefined,
-					...(rackIds.length > 0 && { rackIds }),
-				};
+			return {
+				skuId:
+					skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+				skuCode: i.sku,
+				skuDescription: i.description ?? undefined,
+				qty: String(i.carton),
+				lossQty: String(i.loss ?? 0),
+				skuUom: uomId ?? undefined,
+				expiryDate: (i.expiryDate ?? "").trim() || undefined,
+				lotNo: (i.lotNo ?? "").trim() || undefined,
+				...(rackIds.length > 0 && { rackIds }),
+			};
 			});
 			const baseInput = {
 				grnNo: payload.grnNumber,
@@ -929,16 +931,17 @@ function GRNRouteComponent() {
 															u.unitCode.toLowerCase() ===
 															l.units.toLowerCase(),
 													);
-													return {
-														skuCode: l.itemid,
-														description: l.displayname ?? "",
-														carton: l.quantity,
-														loss: 0,
-														uom: unitMatch?.stockUnitId ?? l.units,
-														unitPrice: 0,
-														expiryDate: "",
-														rackIds: [],
-													};
+												return {
+													skuCode: l.itemid,
+													description: l.displayname ?? "",
+													carton: l.quantity,
+													loss: 0,
+													uom: unitMatch?.stockUnitId ?? l.units,
+													unitPrice: 0,
+													expiryDate: "",
+													lotNo: "",
+													rackIds: [],
+												};
 												}),
 											});
 											setIsAsnPickerOpen(false);
@@ -990,16 +993,17 @@ function GRNRouteComponent() {
 												warehouseId: payload.warehouseId || undefined,
 												submitIntent: payload.submitIntent,
 												advanceNoticeId: selectedAsnId ?? undefined,
-												items: payload.items.map((i) => ({
-													sku: i.skuCode,
-													description: i.description,
-													carton: i.carton,
-													loss: i.loss,
-													uom: i.uom,
-													unitPrice: i.unitPrice,
-													expiryDate: i.expiryDate ?? "",
-													rackIds: i.rackIds ?? [],
-												})),
+											items: payload.items.map((i) => ({
+												sku: i.skuCode,
+												description: i.description,
+												carton: i.carton,
+												loss: i.loss,
+												uom: i.uom,
+												unitPrice: i.unitPrice,
+												expiryDate: i.expiryDate ?? "",
+												lotNo: i.lotNo ?? "",
+												rackIds: i.rackIds ?? [],
+											})),
 											});
 										}}
 										onSuccess={() => refetchGRNs()}
