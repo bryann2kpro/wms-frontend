@@ -655,6 +655,9 @@ export interface DeliveryOrderItemFilterInput {
 	doStatus?: string | null;
 	doStatuses?: string[] | null;
 	search?: string | null;
+	regionId?: string | null;
+	scheduledDeliveryDateFrom?: string | null;
+	scheduledDeliveryDateTo?: string | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -202,19 +202,29 @@ export const ALLOCATE_PICK_LIST_MUTATION = gql`
 `;
 
 export const GENERATE_DO_PICKING_LIST_MUTATION = gql`
-	mutation GenerateDoPickingList {
-		generateDoPickingList {
+	mutation GenerateDoPickingList($filter: DoPickingListFilterInput) {
+		generateDoPickingList(filter: $filter) {
 			pdfBase64
 			filename
 		}
 	}
 `;
 
+export type DoPickingListFilterInput = {
+	regionId?: string | null;
+	scheduledDeliveryDateFrom?: string | null;
+	scheduledDeliveryDateTo?: string | null;
+};
+
 export type GenerateDoPickingListMutationData = {
 	generateDoPickingList: {
 		pdfBase64: string;
 		filename: string;
 	};
+};
+
+export type GenerateDoPickingListMutationVariables = {
+	filter?: DoPickingListFilterInput | null;
 };
 
 // ---------------------------------------------------------------------------
