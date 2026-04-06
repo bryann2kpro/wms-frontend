@@ -1,4 +1,4 @@
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import { CREATE_STOCK_ADJUSTMENT_MUTATION } from "@/lib/graphql/stock-adjustment";
 import { toUserFriendlyMessage } from "@/lib/utils";
 
@@ -40,10 +41,21 @@ import { toUserFriendlyMessage } from "@/lib/utils";
 type AdjustmentLineItem = {
 	key: number;
 	sku: SkuLineValue | null;
+	rackId: string;
+	lotNo: string;
+	expiryDate: string;
 	movementType: "ADJUSTMENT" | "DAMAGED";
 	quantity: string;
 	remarks: string;
 };
+
+/** Send date-only (YYYY-MM-DD) or existing ISO as UTC midnight for the API. */
+function expiryDateToApi(value: string): string | null {
+	const t = value.trim();
+	if (!t) return null;
+	if (t.includes("T")) return t;
+	return `${t}T00:00:00.000Z`;
+}
 
 type StockAdjustmentFormDialogProps = {
 	open: boolean;
@@ -88,6 +100,9 @@ function createEmptyLine(): AdjustmentLineItem {
 	return {
 		key: ++lineKeyCounter,
 		sku: null,
+		rackId: "",
+		lotNo: "",
+		expiryDate: "",
 		movementType: "ADJUSTMENT",
 		quantity: "",
 		remarks: "",
@@ -102,6 +117,12 @@ export function StockAdjustmentFormDialog({
 	const [reason, setReason] = useState("");
 	const [notes, setNotes] = useState("");
 	const [items, setItems] = useState<AdjustmentLineItem[]>([createEmptyLine()]);
+
+	const { data: racksData } = useQuery<RacksQueryData>(RACKS_QUERY, {
+		variables: { pageSize: 500, pageNumber: 1 },
+		fetchPolicy: "cache-first",
+	});
+	const racks = racksData?.racks?.query ?? [];
 
 	const [createMutation, { loading }] = useMutation(
 		CREATE_STOCK_ADJUSTMENT_MUTATION,
@@ -145,8 +166,10 @@ export function StockAdjustmentFormDialog({
 		for (let i = 0; i < items.length; i++) {
 			const item = items[i];
 			if (!item.sku) return `Row ${i + 1}: Please select a SKU.`;
+			if (!item.rackId.trim())
+				return `Row ${i + 1}: Please select a rack location.`;
 			const qty = Number(item.quantity);
-			if (isNaN(qty) || qty === 0)
+			if (Number.isNaN(qty) || qty === 0)
 				return `Row ${i + 1}: Quantity must be a non-zero number.`;
 			if (item.movementType === "DAMAGED" && qty < 0)
 				return `Row ${i + 1}: DAMAGED quantity must be positive.`;
@@ -161,28 +184,36 @@ export function StockAdjustmentFormDialog({
 			return;
 		}
 
+		const payloadItems = items.map((item) => {
+			if (!item.sku) {
+				throw new Error("Invalid form state: missing SKU after validation");
+			}
+			return {
+				skuId: item.sku.skuId,
+				rackId: item.rackId.trim(),
+				lotNo: item.lotNo.trim() || null,
+				expiryDate: expiryDateToApi(item.expiryDate),
+				movementType: item.movementType,
+				quantity: item.quantity,
+				remarks: item.remarks.trim() || null,
+			};
+		});
+
 		await createMutation({
 			variables: {
 				input: {
 					reason: reason.trim() || null,
 					notes: notes.trim() || null,
-					items: items.map((item) => ({
-						skuId: item.sku!.skuId,
-						movementType: item.movementType,
-						quantity: item.quantity,
-						remarks: item.remarks.trim() || null,
-					})),
+					items: payloadItems,
 				},
 			},
 		});
 	}
 
-	const usedSkuCodes = items.filter((i) => i.sku).map((i) => i.sku!.skuCode);
-
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent
-				className="w-[min(96vw,900px)] max-w-[900px] max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border sm:max-w-[900px]"
+				className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-border sm:max-w-[1100px]"
 				aria-busy={loading}
 			>
 				<DialogHeader className="border-b border-border/60 bg-muted/50 -mx-6 px-6 py-4">
@@ -190,9 +221,9 @@ export function StockAdjustmentFormDialog({
 						Create Stock Adjustment
 					</DialogTitle>
 					<DialogDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-						Adjust inventory quantities. ADJUSTMENT adds/subtracts from on-hand
-						stock. DAMAGED records broken items (reduces on-hand, increases
-						loss).
+						Adjust per rack with optional lot and expiry. The same SKU can
+						appear on multiple lines when lot or expiry differs. ADJUSTMENT
+						changes on-hand; DAMAGED moves quantity to loss.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -245,10 +276,13 @@ export function StockAdjustmentFormDialog({
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead className="w-[240px]">SKU</TableHead>
-										<TableHead className="w-[140px]">Type</TableHead>
-										<TableHead className="w-[120px]">Quantity</TableHead>
-										<TableHead>Remarks</TableHead>
+										<TableHead className="w-[220px]">SKU</TableHead>
+										<TableHead className="min-w-[180px]">Rack</TableHead>
+										<TableHead className="min-w-[120px]">Lot no.</TableHead>
+										<TableHead className="w-[140px]">Expiry</TableHead>
+										<TableHead className="w-[130px]">Type</TableHead>
+										<TableHead className="w-[100px]">Qty</TableHead>
+										<TableHead className="min-w-[100px]">Remarks</TableHead>
 										<TableHead className="w-[50px]" />
 									</TableRow>
 								</TableHeader>
@@ -260,7 +294,54 @@ export function StockAdjustmentFormDialog({
 													value={item.sku}
 													onChange={(val) => updateItem(item.key, { sku: val })}
 													placeholder="Select SKU..."
-													usedSkuCodes={usedSkuCodes}
+												/>
+											</TableCell>
+											<TableCell>
+												<Select
+													value={item.rackId || "__none__"}
+													onValueChange={(val) =>
+														updateItem(item.key, {
+															rackId: val === "__none__" ? "" : val,
+														})
+													}
+												>
+													<SelectTrigger className="w-full min-w-[180px]">
+														<SelectValue placeholder="Select rack…" />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="__none__">
+															Select rack…
+														</SelectItem>
+														{racks.map((r) => (
+															<SelectItem key={r.rackId} value={r.rackId}>
+																{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</TableCell>
+											<TableCell>
+												<Input
+													placeholder="Optional"
+													className="font-mono text-sm"
+													value={item.lotNo}
+													onChange={(e) =>
+														updateItem(item.key, { lotNo: e.target.value })
+													}
+													aria-label={`Row ${rowIndex + 1} lot number`}
+												/>
+											</TableCell>
+											<TableCell>
+												<Input
+													type="date"
+													className="min-w-[8rem]"
+													value={item.expiryDate}
+													onChange={(e) =>
+														updateItem(item.key, {
+															expiryDate: e.target.value,
+														})
+													}
+													aria-label={`Row ${rowIndex + 1} expiry date`}
 												/>
 											</TableCell>
 											<TableCell>

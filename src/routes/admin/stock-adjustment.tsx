@@ -44,7 +44,7 @@ import {
 } from "@/lib/graphql/stock-adjustment";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { requirePermission } from "@/lib/rbac";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/stock-adjustment")({
 	beforeLoad: async ({ context }) => {
@@ -287,6 +287,9 @@ function StockAdjustmentComponent() {
 									<TableHeader>
 										<TableRow>
 											<TableHead>SKU</TableHead>
+											<TableHead>Rack</TableHead>
+											<TableHead>Lot</TableHead>
+											<TableHead>Expiry</TableHead>
 											<TableHead>Type</TableHead>
 											<TableHead className="text-right">Qty</TableHead>
 											<TableHead>Remarks</TableHead>
@@ -306,6 +309,19 @@ function StockAdjustmentComponent() {
 															</p>
 														)}
 													</div>
+												</TableCell>
+												<TableCell className="font-mono text-sm whitespace-nowrap">
+													{item.rack
+														? `${item.rack.rackRow}-${item.rack.rackColumn}-${item.rack.rackLevel}`
+														: "-"}
+												</TableCell>
+												<TableCell className="font-mono text-sm">
+													{item.lotNo?.trim() ? item.lotNo : "-"}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+													{item.expiryDate
+														? formatDateOnly(item.expiryDate)
+														: "-"}
 												</TableCell>
 												<TableCell>
 													<Badge
