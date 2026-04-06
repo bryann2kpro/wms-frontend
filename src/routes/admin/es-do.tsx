@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -32,7 +39,9 @@ import {
 	type AllocatePickListMutationVariables,
 	type AllocatePickListMutationData,
 	type GenerateDoPickingListMutationData,
+	type GenerateDoPickingListMutationVariables,
 } from "@/lib/graphql/delivery-orders";
+import { REGIONS_QUERY, type RegionsQueryData } from "@/lib/graphql/regions";
 import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import type {
 	DeliveryOrderItemWithDetails,
@@ -180,6 +189,9 @@ const TABLE_COLS = 9;
 function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const trimmedSearchTerm = searchTerm.trim();
+	const [regionId, setRegionId] = useState<string>("");
+	const [dateFrom, setDateFrom] = useState<string>("");
+	const [dateTo, setDateTo] = useState<string>("");
 	// Optimistic picked state — items checked in this session before API confirms
 	const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(
 		new Set(),
@@ -210,6 +222,17 @@ function EmpireSushiDOComponent() {
 		};
 	}, []);
 
+	const { data: regionsData } = useQuery<RegionsQueryData>(REGIONS_QUERY, {
+		variables: { pageSize: 100, pageNumber: 1 },
+	});
+	const regions = regionsData?.regions?.query ?? [];
+
+	const pickingListFilter = {
+		regionId: regionId || null,
+		scheduledDeliveryDateFrom: dateFrom || null,
+		scheduledDeliveryDateTo: dateTo || null,
+	};
+
 	const {
 		data,
 		loading: queryLoading,
@@ -224,6 +247,9 @@ function EmpireSushiDOComponent() {
 				filter: {
 					doStatuses: Array.from(ACTIVE_DO_STATUSES),
 					search: trimmedSearchTerm || undefined,
+					regionId: regionId || undefined,
+					scheduledDeliveryDateFrom: dateFrom || undefined,
+					scheduledDeliveryDateTo: dateTo || undefined,
 				},
 			},
 			fetchPolicy: "cache-and-network",
@@ -354,7 +380,7 @@ function EmpireSushiDOComponent() {
 	}, [skuGroups]);
 
 	const [generatePickingList, { loading: generatingPickingList }] =
-		useMutation<GenerateDoPickingListMutationData>(
+		useMutation<GenerateDoPickingListMutationData, GenerateDoPickingListMutationVariables>(
 			GENERATE_DO_PICKING_LIST_MUTATION,
 			{
 				onCompleted(data) {
@@ -588,46 +614,98 @@ function EmpireSushiDOComponent() {
 					}
 				/>
 
-				{/* View toggle + print button */}
-				<div className="flex items-center justify-between print:hidden">
-					<div
-						className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1"
-						role="group"
-						aria-label="View mode"
-					>
-						<Button
-							variant={viewMode === "sku" ? "secondary" : "ghost"}
-							size="sm"
-							onClick={() => setViewMode("sku")}
-							className="h-7 text-xs gap-1.5"
+				{/* Filters + view toggle + print button */}
+				<div className="flex flex-col gap-3 print:hidden">
+					{/* Filter row */}
+					<div className="flex flex-wrap items-center gap-2">
+						<Select
+							value={regionId || "all"}
+							onValueChange={(v) => setRegionId(v === "all" ? "" : v)}
 						>
-							<Layers className="h-3 w-3" aria-hidden />
-							By SKU
-						</Button>
-						<Button
-							variant={viewMode === "do" ? "secondary" : "ghost"}
-							size="sm"
-							onClick={() => setViewMode("do")}
-							className="h-7 text-xs gap-1.5"
-						>
-							By Delivery Order
-						</Button>
-						
-					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => generatePickingList()}
-						disabled={generatingPickingList}
-						className="h-7 text-xs gap-1.5"
-					>
-						{generatingPickingList ? (
-							<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-						) : (
-							<Printer className="h-3 w-3" aria-hidden />
+							<SelectTrigger className="h-8 w-44 text-xs" aria-label="Filter by region">
+								<SelectValue placeholder="All regions" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All regions</SelectItem>
+								{regions.map((r) => (
+									<SelectItem key={r.regionId} value={r.regionId}>
+										{r.regionName}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+
+						<div className="flex items-center gap-1.5">
+							<label className="text-xs text-muted-foreground whitespace-nowrap">Delivery date:</label>
+							<input
+								type="date"
+								value={dateFrom}
+								onChange={(e) => setDateFrom(e.target.value)}
+								className="h-8 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label="Delivery date from"
+							/>
+							<span className="text-xs text-muted-foreground">–</span>
+							<input
+								type="date"
+								value={dateTo}
+								onChange={(e) => setDateTo(e.target.value)}
+								className="h-8 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label="Delivery date to"
+							/>
+						</div>
+
+						{(regionId || dateFrom || dateTo) && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-8 text-xs text-muted-foreground"
+								onClick={() => { setRegionId(""); setDateFrom(""); setDateTo(""); }}
+							>
+								Clear filters
+							</Button>
 						)}
-						{generatingPickingList ? "Generating…" : "Print Picking List"}
-					</Button>
+					</div>
+
+					{/* View toggle + print button */}
+					<div className="flex items-center justify-between">
+						<div
+							className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1"
+							role="group"
+							aria-label="View mode"
+						>
+							<Button
+								variant={viewMode === "sku" ? "secondary" : "ghost"}
+								size="sm"
+								onClick={() => setViewMode("sku")}
+								className="h-7 text-xs gap-1.5"
+							>
+								<Layers className="h-3 w-3" aria-hidden />
+								By SKU
+							</Button>
+							<Button
+								variant={viewMode === "do" ? "secondary" : "ghost"}
+								size="sm"
+								onClick={() => setViewMode("do")}
+								className="h-7 text-xs gap-1.5"
+							>
+								By Delivery Order
+							</Button>
+						</div>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => generatePickingList({ variables: { filter: pickingListFilter } })}
+							disabled={generatingPickingList}
+							className="h-7 text-xs gap-1.5"
+						>
+							{generatingPickingList ? (
+								<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+							) : (
+								<Printer className="h-3 w-3" aria-hidden />
+							)}
+							{generatingPickingList ? "Generating…" : "Print Picking List"}
+						</Button>
+					</div>
 				</div>
 
 				{queryLoading && (
