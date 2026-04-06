@@ -19,6 +19,7 @@ import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
+import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -99,6 +100,11 @@ const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
 const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
   id: '/user-management',
   path: '/user-management',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminStockAdjustmentRoute = AdminStockAdjustmentRouteImport.update({
+  id: '/stock-adjustment',
+  path: '/stock-adjustment',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSettlementRoute = AdminSettlementRouteImport.update({
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -326,6 +333,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
@@ -415,6 +424,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/stock-adjustment'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/stock-adjustment'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -501,6 +512,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/stock-adjustment'
     | '/admin/user-management'
     | '/demo/apollo-client'
     | '/demo/i18n'
@@ -611,6 +623,13 @@ declare module '@tanstack/react-router' {
       path: '/user-management'
       fullPath: '/admin/user-management'
       preLoaderRoute: typeof AdminUserManagementRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/stock-adjustment': {
+      id: '/admin/stock-adjustment'
+      path: '/stock-adjustment'
+      fullPath: '/admin/stock-adjustment'
+      preLoaderRoute: typeof AdminStockAdjustmentRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/settlement': {
@@ -866,6 +885,7 @@ interface AdminRouteRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
+  AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
 }
 
@@ -890,6 +910,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
+  AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
 }
 
