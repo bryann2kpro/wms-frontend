@@ -175,6 +175,8 @@ export type InvoicesQueryVariables = {
 		doId?: string;
 		dateIssuedFrom?: string;
 		dateIssuedTo?: string;
+		deliveryDateFrom?: string;
+		deliveryDateTo?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useLazyQuery } from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -88,6 +88,36 @@ function InvoicesComponent() {
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 	const { state: bulkPdfState, startBulkExport } = useBulkProformaPdf();
 	const isGenerating = bulkPdfState.status === "generating";
+	const [generatingGroupKey, setGeneratingGroupKey] = useState<string | null>(null);
+
+	const [fetchAllForDeliveryDate] = useLazyQuery<InvoicesQueryData, InvoicesQueryVariables>(
+		INVOICES_QUERY,
+		{ fetchPolicy: "network-only" },
+	);
+
+	async function generateAllForGroup(key: string) {
+		if (isGenerating || generatingGroupKey) return;
+		setGeneratingGroupKey(key);
+		try {
+			const { data: result } = await fetchAllForDeliveryDate({
+				variables: {
+					filter:
+						key === "__none__"
+							? {} // can't filter by null delivery date; fall back to visible IDs
+							: { deliveryDateFrom: key, deliveryDateTo: key },
+					pageSize: 500,
+					pageNumber: 1,
+				},
+			});
+			const ids =
+				key === "__none__"
+					? groupedInvoices[key].map((inv) => inv.id)
+					: (result?.invoices.query ?? []).map((inv) => inv.id);
+			if (ids.length > 0) await startBulkExport(ids);
+		} finally {
+			setGeneratingGroupKey(null);
+		}
+	}
 
 	useEffect(() => {
 		const handle = setTimeout(() => {
@@ -599,11 +629,11 @@ function InvoicesComponent() {
 																		borderColor: "var(--dashboard-accent)",
 																		color: "#fff",
 																	}}
-																	disabled={isGenerating}
-																	onClick={() => void startBulkExport(groupIds)}
+																	disabled={isGenerating || generatingGroupKey !== null}
+																	onClick={() => void generateAllForGroup(key)}
 																	aria-label={`Generate all invoices for ${label}`}
 																>
-																	{isGenerating ? (
+																	{generatingGroupKey === key ? (
 																		<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
 																	) : (
 																		<Printer className="h-3 w-3" aria-hidden />

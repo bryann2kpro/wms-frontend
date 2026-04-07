@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { getSocket } from "@/lib/socket";
@@ -72,52 +72,10 @@ export function useBulkProformaPdf() {
 		total: 0,
 	});
 
-	const jobIdRef = useRef<string | null>(null);
-
 	const [mutate] = useMutation<
 		BulkGenerateProformaInvoicesPdfData,
 		BulkGenerateProformaInvoicesPdfVariables
 	>(BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION);
-
-	// Register socket event listeners once on mount
-	useEffect(() => {
-		const socket = getSocket();
-
-		const onProgress = (data: BulkProgressEvent) => {
-			if (data.jobId !== jobIdRef.current) return;
-			setState((s) => ({ ...s, progress: data.completed, total: data.total }));
-		};
-
-		const onComplete = (data: BulkCompleteEvent) => {
-			if (data.jobId !== jobIdRef.current) return;
-			setState((s) => ({ ...s, status: "done" }));
-			downloadZip(data.zipBase64, data.zipFilename);
-			socket.emit("leave-room", `job:${data.jobId}`);
-			if (data.failedCount > 0) {
-				toast.warning(
-					`Downloaded ${data.successCount} PDF(s). ${data.failedCount} failed.`,
-				);
-			} else {
-				toast.success(`${data.successCount} Proforma PDF(s) downloaded`);
-			}
-		};
-
-		const onError = (data: BulkErrorEvent) => {
-			if (data.jobId !== jobIdRef.current) return;
-			setState((s) => ({ ...s, status: "error" }));
-			toast.error(`Bulk PDF export failed: ${data.message}`);
-		};
-
-		socket.on("bulk-pdf:progress", onProgress);
-		socket.on("bulk-pdf:complete", onComplete);
-		socket.on("bulk-pdf:error", onError);
-
-		return () => {
-			socket.off("bulk-pdf:progress", onProgress);
-			socket.off("bulk-pdf:complete", onComplete);
-			socket.off("bulk-pdf:error", onError);
-		};
-	}, []);
 
 	const startBulkExport = useCallback(
 		async (invoiceIds: string[]) => {
@@ -125,16 +83,53 @@ export function useBulkProformaPdf() {
 
 			setState({ status: "generating", progress: 0, total: invoiceIds.length });
 
-			try {
-				const socket = getSocket();
-				if (!socket.connected) socket.connect();
+			const socket = getSocket();
+			if (!socket.connected) socket.connect();
 
+			try {
 				const { data } = await mutate({ variables: { invoiceIds } });
 				const jobId = data!.bulkGenerateProformaInvoicesPdf.jobId;
-				jobIdRef.current = jobId;
 
-				// Join the job-specific room to receive progress events
 				socket.emit("join-room", `job:${jobId}`);
+
+				await new Promise<void>((resolve, reject) => {
+					const onProgress = (event: BulkProgressEvent) => {
+						if (event.jobId !== jobId) return;
+						setState((s) => ({ ...s, progress: event.completed }));
+					};
+
+					const cleanup = () => {
+						socket.off("bulk-pdf:progress", onProgress);
+						socket.off("bulk-pdf:complete", onComplete);
+						socket.off("bulk-pdf:error", onError);
+						socket.emit("leave-room", `job:${jobId}`);
+					};
+
+					const onComplete = (event: BulkCompleteEvent) => {
+						if (event.jobId !== jobId) return;
+						cleanup();
+						setState((s) => ({ ...s, status: "done" }));
+						downloadZip(event.zipBase64, event.zipFilename);
+						if (event.failedCount > 0) {
+							toast.warning(
+								`Downloaded ${event.successCount} PDF(s). ${event.failedCount} failed.`,
+							);
+						} else {
+							toast.success(`${event.successCount} Proforma PDF(s) downloaded`);
+						}
+						resolve();
+					};
+
+					const onError = (event: BulkErrorEvent) => {
+						if (event.jobId !== jobId) return;
+						cleanup();
+						reject(new Error(event.message));
+					};
+
+					socket.on("bulk-pdf:progress", onProgress);
+					socket.on("bulk-pdf:complete", onComplete);
+					socket.on("bulk-pdf:error", onError);
+				});
 			} catch (err: unknown) {
 				setState((s) => ({ ...s, status: "error" }));
 				toast.error(
