@@ -185,13 +185,14 @@ function AllocationGuide({
 }
 
 const TABLE_COLS = 9;
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const trimmedSearchTerm = searchTerm.trim();
 	const [regionId, setRegionId] = useState<string>("");
-	const [dateFrom, setDateFrom] = useState<string>("");
-	const [dateTo, setDateTo] = useState<string>("");
+	const [dateFrom, setDateFrom] = useState<string>(TODAY_ISO);
+	const [dateTo, setDateTo] = useState<string>(TODAY_ISO);
 	// Optimistic picked state — items checked in this session before API confirms
 	const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(
 		new Set(),
@@ -636,7 +637,7 @@ function EmpireSushiDOComponent() {
 						</Select>
 
 						<div className="flex items-center gap-1.5">
-							<label className="text-xs text-muted-foreground whitespace-nowrap">Delivery date:</label>
+							<label className="text-xs text-muted-foreground whitespace-nowrap">Scheduled delivery date:</label>
 							<input
 								type="date"
 								value={dateFrom}
@@ -654,14 +655,14 @@ function EmpireSushiDOComponent() {
 							/>
 						</div>
 
-						{(regionId || dateFrom || dateTo) && (
+						{(regionId || dateFrom !== TODAY_ISO || dateTo !== TODAY_ISO) && (
 							<Button
 								variant="ghost"
 								size="sm"
 								className="h-8 text-xs text-muted-foreground"
-								onClick={() => { setRegionId(""); setDateFrom(""); setDateTo(""); }}
+								onClick={() => { setRegionId(""); setDateFrom(TODAY_ISO); setDateTo(TODAY_ISO); }}
 							>
-								Clear filters
+								Reset filters
 							</Button>
 						)}
 					</div>
