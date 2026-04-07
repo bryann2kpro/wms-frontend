@@ -17,6 +17,7 @@ export const INVOICES_QUERY = gql`
 				poAmount
 				poAmountCalcSnapshot
 				dateIssued
+				deliveryDate
 				totalExclTax
 				taxAmount
 				totalInclTax
@@ -97,6 +98,14 @@ export const GENERATE_PROFORMA_INVOICE_PDF_MUTATION = gql`
 	}
 `;
 
+export const BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION = gql`
+	mutation BulkGenerateProformaInvoicesPdf($invoiceIds: [ID!]!) {
+		bulkGenerateProformaInvoicesPdf(invoiceIds: $invoiceIds) {
+			jobId
+		}
+	}
+`;
+
 // ---------------------------------------------------------------------------
 // TypeScript types (aligned with GraphQL schema)
 // ---------------------------------------------------------------------------
@@ -130,6 +139,7 @@ export interface InvoiceGQL {
 	poAmount?: string | null;
 	poAmountCalcSnapshot?: Record<string, unknown> | null;
 	dateIssued: string | null;
+	deliveryDate: string | null;
 	totalExclTax: string | null;
 	taxAmount: string | null;
 	totalInclTax: string | null;
@@ -165,6 +175,8 @@ export type InvoicesQueryVariables = {
 		doId?: string;
 		dateIssuedFrom?: string;
 		dateIssuedTo?: string;
+		deliveryDateFrom?: string;
+		deliveryDateTo?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;
@@ -188,6 +200,11 @@ export type GenerateProformaInvoicePdfData = {
 		pdfBase64: string;
 		filename: string;
 	};
+};
+
+export type BulkGenerateProformaInvoicesPdfVariables = { invoiceIds: string[] };
+export type BulkGenerateProformaInvoicesPdfData = {
+	bulkGenerateProformaInvoicesPdf: { jobId: string };
 };
 
 // ---------------------------------------------------------------------------

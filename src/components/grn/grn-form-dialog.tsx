@@ -743,6 +743,7 @@ export function GrnFormDialog({
 						uom: i.uom,
 						unitPrice: i.unitPrice,
 						expiryDate: i.expiryDate ?? "",
+						lotNo: i.lotNo ?? "",
 						rackIds: i.rackIds ?? [],
 					})),
 				};
