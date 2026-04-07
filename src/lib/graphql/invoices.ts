@@ -98,6 +98,14 @@ export const GENERATE_PROFORMA_INVOICE_PDF_MUTATION = gql`
 	}
 `;
 
+export const BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION = gql`
+	mutation BulkGenerateProformaInvoicesPdf($invoiceIds: [ID!]!) {
+		bulkGenerateProformaInvoicesPdf(invoiceIds: $invoiceIds) {
+			jobId
+		}
+	}
+`;
+
 // ---------------------------------------------------------------------------
 // TypeScript types (aligned with GraphQL schema)
 // ---------------------------------------------------------------------------
@@ -190,6 +198,11 @@ export type GenerateProformaInvoicePdfData = {
 		pdfBase64: string;
 		filename: string;
 	};
+};
+
+export type BulkGenerateProformaInvoicesPdfVariables = { invoiceIds: string[] };
+export type BulkGenerateProformaInvoicesPdfData = {
+	bulkGenerateProformaInvoicesPdf: { jobId: string };
 };
 
 // ---------------------------------------------------------------------------

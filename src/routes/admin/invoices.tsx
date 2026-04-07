@@ -32,7 +32,9 @@ import {
 	Printer,
 	FolderOpen,
 	Folder,
+	Loader2,
 } from "lucide-react";
+import { useBulkProformaPdf } from "@/hooks/useBulkProformaPdf";
 import {
 	INVOICES_QUERY,
 	type InvoicesQueryData,
@@ -84,6 +86,8 @@ function InvoicesComponent() {
 	const [issuedTo, setIssuedTo] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+	const { state: bulkPdfState, startBulkExport } = useBulkProformaPdf();
+	const isGenerating = bulkPdfState.status === "generating";
 
 	useEffect(() => {
 		const handle = setTimeout(() => {
@@ -436,12 +440,20 @@ function InvoicesComponent() {
 										borderColor: "var(--dashboard-accent)",
 										color: "#fff",
 									}}
-									onClick={() => {
-										// TODO: call bulk generate PDF API with Array.from(selectedIds)
-									}}
+									disabled={isGenerating}
+									onClick={() => void startBulkExport(Array.from(selectedIds))}
 								>
-									<Printer className="h-3 w-3" aria-hidden />
-									Generate Invoices
+									{isGenerating ? (
+										<>
+											<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+											{bulkPdfState.progress}/{bulkPdfState.total}
+										</>
+									) : (
+										<>
+											<Printer className="h-3 w-3" aria-hidden />
+											Generate PDFs
+										</>
+									)}
 								</Button>
 							</div>
 						</div>
@@ -587,12 +599,15 @@ function InvoicesComponent() {
 																		borderColor: "var(--dashboard-accent)",
 																		color: "#fff",
 																	}}
-																	onClick={() => {
-																		// TODO: call bulk generate PDF API with groupIds
-																	}}
+																	disabled={isGenerating}
+																	onClick={() => void startBulkExport(groupIds)}
 																	aria-label={`Generate all invoices for ${label}`}
 																>
-																	<Printer className="h-3 w-3" aria-hidden />
+																	{isGenerating ? (
+																		<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+																	) : (
+																		<Printer className="h-3 w-3" aria-hidden />
+																	)}
 																	Generate All
 																</Button>
 															</span>
