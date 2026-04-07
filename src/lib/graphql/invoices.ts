@@ -17,6 +17,7 @@ export const INVOICES_QUERY = gql`
 				poAmount
 				poAmountCalcSnapshot
 				dateIssued
+				deliveryDate
 				totalExclTax
 				taxAmount
 				totalInclTax
@@ -130,6 +131,7 @@ export interface InvoiceGQL {
 	poAmount?: string | null;
 	poAmountCalcSnapshot?: Record<string, unknown> | null;
 	dateIssued: string | null;
+	deliveryDate: string | null;
 	totalExclTax: string | null;
 	taxAmount: string | null;
 	totalInclTax: string | null;

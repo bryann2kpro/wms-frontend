@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useQuery } from "@apollo/client/react";
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Table,
 	TableBody,
@@ -28,6 +29,9 @@ import {
 	ChevronRight,
 	FileText,
 	Receipt,
+	Printer,
+	FolderOpen,
+	Folder,
 } from "lucide-react";
 import {
 	INVOICES_QUERY,
@@ -54,6 +58,21 @@ const invoiceStatuses: InvoiceStatusFilter[] = [
 	"Cancelled",
 ];
 
+/** Build an array of page numbers / ellipsis markers to render */
+function buildPageRange(current: number, total: number): (number | "…")[] {
+	if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+	const pages: (number | "…")[] = [];
+	const add = (n: number | "…") => {
+		if (pages[pages.length - 1] !== n) pages.push(n);
+	};
+	add(1);
+	if (current > 3) add("…");
+	for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) add(i);
+	if (current < total - 2) add("…");
+	add(total);
+	return pages;
+}
+
 function InvoicesComponent() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
@@ -63,6 +82,8 @@ function InvoicesComponent() {
 	const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>("ALL");
 	const [issuedFrom, setIssuedFrom] = useState("");
 	const [issuedTo, setIssuedTo] = useState("");
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		const handle = setTimeout(() => {
@@ -70,6 +91,11 @@ function InvoicesComponent() {
 		}, 300);
 		return () => clearTimeout(handle);
 	}, [searchTerm]);
+
+	// Clear selection whenever filters or page change
+	useEffect(() => {
+		setSelectedIds(new Set());
+	}, [debouncedSearch, statusFilter, issuedFrom, issuedTo, page]);
 
 	const { data, loading } = useQuery<InvoicesQueryData, InvoicesQueryVariables>(
 		INVOICES_QUERY,
@@ -98,6 +124,7 @@ function InvoicesComponent() {
 		...inv,
 		status: gqlStatusToUI(inv.status),
 		issuedDate: inv.dateIssued ? new Date(inv.dateIssued) : null,
+		deliveryDate: inv.deliveryDate ? new Date(inv.deliveryDate) : null,
 		invoiceNumber: inv.invoiceNo,
 		doNumber: inv.doNo,
 		toNumber: inv.poNo,
@@ -110,9 +137,78 @@ function InvoicesComponent() {
 				: null,
 	}));
 
+	// Group by delivery date
+	const groupedInvoices = useMemo(() => {
+		const groups: Record<string, typeof invoices> = {};
+		for (const inv of invoices) {
+			const key = inv.deliveryDate
+				? inv.deliveryDate.toISOString().slice(0, 10)
+				: "__none__";
+			(groups[key] ??= []).push(inv);
+		}
+		return groups;
+	}, [invoices]);
+
+	const groupKeys = useMemo(
+		() =>
+			Object.keys(groupedInvoices).sort((a, b) =>
+				a === "__none__" ? 1 : b === "__none__" ? -1 : a.localeCompare(b),
+			),
+		[groupedInvoices],
+	);
+
 	const summary = data?.invoices.summary;
 	const pagination = data?.invoices.pagination;
 	const totalPages = pagination ? Math.max(1, pagination.totalPages) : 1;
+
+	// Bulk-select helpers
+	const allIds = invoices.map((inv) => inv.id);
+	const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+	const someSelected = allIds.some((id) => selectedIds.has(id));
+
+	function toggleAll() {
+		if (allSelected) {
+			setSelectedIds(new Set());
+		} else {
+			setSelectedIds(new Set(allIds));
+		}
+	}
+
+	function toggleOne(id: string) {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}
+
+	function toggleGroup(key: string) {
+		setCollapsedGroups((prev) => {
+			const next = new Set(prev);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
+			return next;
+		});
+	}
+
+	function toggleGroupSelect(key: string) {
+		const groupIds = groupedInvoices[key].map((inv) => inv.id);
+		const allGroupSelected = groupIds.every((id) => selectedIds.has(id));
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (allGroupSelected) {
+				for (const id of groupIds) next.delete(id);
+			} else {
+				for (const id of groupIds) next.add(id);
+			}
+			return next;
+		});
+	}
+
+	function getGroupTotal(key: string) {
+		return (groupedInvoices[key] ?? []).reduce((sum, inv) => sum + inv.totalAmount, 0);
+	}
 
 	const getStatusColor = (status: string) => {
 		const colors: Record<string, string> = {
@@ -122,6 +218,8 @@ function InvoicesComponent() {
 		};
 		return colors[status] || "bg-gray-500/10 text-gray-600 border-gray-500/20";
 	};
+
+	const pageRange = buildPageRange(page, totalPages);
 
 	return (
 		<main
@@ -307,10 +405,62 @@ function InvoicesComponent() {
 				</CardHeader>
 				<CardContent className="relative pt-0">
 					<GlobalLoadingShadow />
+
+					{/* Bulk action bar */}
+					{selectedIds.size > 0 && (
+						<div
+							className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2.5 mb-3"
+							role="status"
+							aria-live="polite"
+						>
+							<span className="text-sm text-muted-foreground">
+								<span className="font-semibold text-foreground">
+									{selectedIds.size}
+								</span>{" "}
+								invoice{selectedIds.size !== 1 ? "s" : ""} selected
+							</span>
+							<div className="flex items-center gap-2">
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 text-xs"
+									onClick={() => setSelectedIds(new Set())}
+								>
+									Clear
+								</Button>
+								<Button
+									size="sm"
+									className="h-7 text-xs gap-1.5"
+									style={{
+										background: "var(--dashboard-accent)",
+										borderColor: "var(--dashboard-accent)",
+										color: "#fff",
+									}}
+									onClick={() => {
+										// TODO: call bulk generate PDF API with Array.from(selectedIds)
+									}}
+								>
+									<Printer className="h-3 w-3" aria-hidden />
+									Generate Invoices
+								</Button>
+							</div>
+						</div>
+					)}
+
 					<div className="overflow-x-auto rounded-lg border">
 						<Table>
 							<TableHeader>
 								<TableRow className="bg-muted/40">
+									<TableHead className="w-10">
+										<Checkbox
+											checked={
+												allSelected ? true : someSelected ? "indeterminate" : false
+											}
+											onCheckedChange={toggleAll}
+											aria-label="Select all invoices on this page"
+											disabled={invoices.length === 0}
+										/>
+									</TableHead>
 									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 										Invoice #
 									</TableHead>
@@ -338,7 +488,7 @@ function InvoicesComponent() {
 								{loading && invoices.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={7}
+											colSpan={8}
 											className="h-24 text-center text-muted-foreground text-sm"
 										>
 											Loading invoices…
@@ -346,7 +496,7 @@ function InvoicesComponent() {
 									</TableRow>
 								) : invoices.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={7} className="h-32 text-center">
+										<TableCell colSpan={8} className="h-32 text-center">
 											<div className="flex flex-col items-center gap-2 text-muted-foreground">
 												<FileText className="h-8 w-8 opacity-30" />
 												<p className="text-sm font-medium">No invoices found</p>
@@ -357,71 +507,185 @@ function InvoicesComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									invoices.map((invoice) => (
-										<TableRow
-											key={invoice.id}
-											className="invoice-row"
-											onClick={() =>
-												navigate({
-													to: "/admin/invoice-detail",
-													search: { id: invoice.id },
-												})
-											}
-										>
-											<TableCell
-												className="font-semibold text-sm"
-												style={{ fontFamily: "var(--dashboard-display)" }}
-											>
-												{invoice.invoiceNumber}
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{invoice.doNumber ?? "—"}
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{invoice.toNumber ?? "—"}
-											</TableCell>
-											<TableCell
-												className="text-sm font-semibold"
-												style={{ fontFamily: "var(--dashboard-display)" }}
-											>
-												{formatCurrency(invoice.totalAmount)}
-												<div className="text-[11px] font-normal text-muted-foreground">
-													{`${Math.round(((invoice.sstRate ?? 0.06) as number) * 100)}% SST included`}
-												</div>
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{invoice.issuedDate
-													? formatDateOnly(invoice.issuedDate)
-													: "—"}
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant="outline"
-													className={getStatusColor(invoice.status)}
+									groupKeys.map((key) => {
+										const isCollapsed = collapsedGroups.has(key);
+										const groupRows = groupedInvoices[key];
+										const groupIds = groupRows.map((inv) => inv.id);
+										const allGroupSelected = groupIds.length > 0 && groupIds.every((id) => selectedIds.has(id));
+										const someGroupSelected = groupIds.some((id) => selectedIds.has(id));
+										const label = key === "__none__"
+											? "No Delivery Date"
+											: `Delivery  ${formatDateOnly(new Date(key))}`;
+
+										return (
+											<>
+												{/* ── Folder header row ── */}
+												<TableRow
+													key={`group-${key}`}
+													className="border-t-0 hover:bg-transparent"
 												>
-													{invoice.status}
-												</Badge>
-											</TableCell>
-											<TableCell
-												className="text-right"
-												onClick={(e) => e.stopPropagation()}
-											>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-7 w-7 opacity-60 hover:opacity-100"
-													onClick={() =>
-														navigate({
-															to: "/admin/invoice-detail",
-															search: { id: invoice.id },
-														})
-													}
-												>
-													<Eye className="h-3.5 w-3.5" />
-												</Button>
-											</TableCell>
-										</TableRow>
-									))
+													<TableCell
+														colSpan={8}
+														className="py-1.5 px-2"
+													>
+														<div
+															className="group/folder flex items-center gap-2.5 rounded-md cursor-pointer select-none transition-colors"
+															style={{
+																background: "color-mix(in oklch, var(--muted) 60%, transparent)",
+																borderLeft: "3px solid var(--dashboard-accent)",
+																padding: "7px 12px 7px 10px",
+															}}
+															onClick={() => toggleGroup(key)}
+															role="button"
+															aria-expanded={!isCollapsed}
+															aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${label}`}
+														>
+															{/* Group checkbox — stops propagation so click doesn't toggle collapse */}
+															<span onClick={(e) => e.stopPropagation()}>
+																<Checkbox
+																	checked={allGroupSelected ? true : someGroupSelected ? "indeterminate" : false}
+																	onCheckedChange={() => toggleGroupSelect(key)}
+																	aria-label={`Select all invoices in ${label}`}
+																/>
+															</span>
+
+															{/* Folder icon — swaps on open/close */}
+															{isCollapsed
+																? <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--dashboard-accent)" }} aria-hidden />
+																: <FolderOpen className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--dashboard-accent)" }} aria-hidden />
+															}
+
+															{/* Date label */}
+															<span
+																className="text-sm font-semibold tracking-tight"
+																style={{ fontFamily: "var(--dashboard-display)" }}
+															>
+																{label}
+															</span>
+
+															<div className="flex-1" />
+
+															{/* Stats */}
+															<span className="text-[11px] text-muted-foreground tabular-nums">
+																{groupRows.length} invoice{groupRows.length !== 1 ? "s" : ""}
+															</span>
+															<span className="mx-1.5 text-muted-foreground/30 text-xs">·</span>
+															<span
+																className="text-[11px] font-semibold tabular-nums"
+																style={{ color: "var(--dashboard-accent)" }}
+															>
+																{formatCurrency(getGroupTotal(key))}
+															</span>
+
+															{/* Generate all for this day */}
+															<span onClick={(e) => e.stopPropagation()}>
+																<Button
+																	size="sm"
+																	className="h-6 text-[11px] gap-1 px-2 ml-2"
+																	style={{
+																		background: "var(--dashboard-accent)",
+																		borderColor: "var(--dashboard-accent)",
+																		color: "#fff",
+																	}}
+																	onClick={() => {
+																		// TODO: call bulk generate PDF API with groupIds
+																	}}
+																	aria-label={`Generate all invoices for ${label}`}
+																>
+																	<Printer className="h-3 w-3" aria-hidden />
+																	Generate All
+																</Button>
+															</span>
+
+															{/* Chevron */}
+															<ChevronRight
+																className="h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200 ml-1"
+																style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+																aria-hidden
+															/>
+														</div>
+													</TableCell>
+												</TableRow>
+
+												{/* ── Invoice rows (hidden when collapsed) ── */}
+												{!isCollapsed && groupRows.map((invoice) => (
+													<TableRow
+														key={invoice.id}
+														className="invoice-row border-l-0"
+														data-state={selectedIds.has(invoice.id) ? "selected" : undefined}
+														onClick={() =>
+															navigate({
+																to: "/admin/invoice-detail",
+																search: { id: invoice.id },
+															})
+														}
+													>
+														<TableCell
+															onClick={(e) => e.stopPropagation()}
+														>
+															<Checkbox
+																checked={selectedIds.has(invoice.id)}
+																onCheckedChange={() => toggleOne(invoice.id)}
+																aria-label={`Select invoice ${invoice.invoiceNumber}`}
+															/>
+														</TableCell>
+														<TableCell
+															className="font-semibold text-sm pl-8"
+															style={{ fontFamily: "var(--dashboard-display)" }}
+														>
+															{invoice.invoiceNumber}
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.doNumber ?? "—"}
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.toNumber ?? "—"}
+														</TableCell>
+														<TableCell
+															className="text-sm font-semibold"
+															style={{ fontFamily: "var(--dashboard-display)" }}
+														>
+															{formatCurrency(invoice.totalAmount)}
+															<div className="text-[11px] font-normal text-muted-foreground">
+																{`${Math.round(((invoice.sstRate ?? 0.06) as number) * 100)}% SST included`}
+															</div>
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.issuedDate
+																? formatDateOnly(invoice.issuedDate)
+																: "—"}
+														</TableCell>
+														<TableCell>
+															<Badge
+																variant="outline"
+																className={getStatusColor(invoice.status)}
+															>
+																{invoice.status}
+															</Badge>
+														</TableCell>
+														<TableCell
+															className="text-right"
+															onClick={(e) => e.stopPropagation()}
+														>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-7 w-7 opacity-60 hover:opacity-100"
+																onClick={() =>
+																	navigate({
+																		to: "/admin/invoice-detail",
+																		search: { id: invoice.id },
+																	})
+																}
+															>
+																<Eye className="h-3.5 w-3.5" />
+															</Button>
+														</TableCell>
+													</TableRow>
+												))}
+											</>
+										);
+									})
 								)}
 							</TableBody>
 						</Table>
@@ -447,25 +711,52 @@ function InvoicesComponent() {
 								</span>{" "}
 								invoices
 							</p>
-							<div className="flex items-center gap-1.5">
+							<div className="flex items-center gap-1">
 								<Button
 									variant="outline"
 									size="icon"
 									className="h-7 w-7"
 									disabled={!pagination.hasPrevPage}
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
+									aria-label="Previous page"
 								>
 									<ChevronLeft className="h-3.5 w-3.5" />
 								</Button>
-								<span className="text-xs text-muted-foreground px-1">
-									{page} / {totalPages}
-								</span>
+								{pageRange.map((entry, i) =>
+									entry === "…" ? (
+										<span
+											// biome-ignore lint/suspicious/noArrayIndexKey: ellipsis markers are positional
+											key={`ellipsis-${i}`}
+											className="px-1 text-xs text-muted-foreground select-none"
+										>
+											…
+										</span>
+									) : (
+										<Button
+											key={entry}
+											variant="outline"
+											size="icon"
+											className="h-7 w-7 text-xs transition-colors"
+											style={entry === page ? {
+												background: "var(--dashboard-accent)",
+												borderColor: "var(--dashboard-accent)",
+												color: "#fff",
+											} : undefined}
+											onClick={() => setPage(entry)}
+											aria-label={`Page ${entry}`}
+											aria-current={entry === page ? "page" : undefined}
+										>
+											{entry}
+										</Button>
+									),
+								)}
 								<Button
 									variant="outline"
 									size="icon"
 									className="h-7 w-7"
 									disabled={!pagination.hasNextPage}
 									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+									aria-label="Next page"
 								>
 									<ChevronRight className="h-3.5 w-3.5" />
 								</Button>
