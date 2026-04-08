@@ -91,6 +91,7 @@ export function OutboundListCard({
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
+	const [regionFilter, setRegionFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
 
@@ -110,8 +111,14 @@ export function OutboundListCard({
 	const { data, isLoading, isFetching, error, refetch } = usePurchaseOrders({
 		searchTerm,
 		statusFilter,
+		regionFilter,
 		activeTab,
 		page: 1,
+	});
+	const { data: regionData } = usePurchaseOrders({
+		activeTab,
+		page: 1,
+		regionFilter: "ALL",
 	});
 
 	const purchaseOrdersByDate = data?.purchaseOrdersByDate ?? {};
@@ -127,6 +134,20 @@ export function OutboundListCard({
 			),
 		[paginatedDateKeys, purchaseOrdersByDate],
 	);
+	const regionOptions = useMemo(() => {
+		const allPurchaseOrders = regionData?.purchaseOrders ?? [];
+		const seen = new Map<string, string>();
+		for (const po of allPurchaseOrders) {
+			if (!po.regionName) continue;
+			const label = po.regionCode
+				? `${po.regionName} (${po.regionCode})`
+				: po.regionName;
+			seen.set(po.regionName, label);
+		}
+		return Array.from(seen.entries())
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([value, label]) => ({ value, label }));
+	}, [regionData?.purchaseOrders]);
 
 	const selectableWithDo = useMemo(
 		() =>
@@ -139,6 +160,10 @@ export function OutboundListCard({
 
 	useEffect(() => {
 		setSelectedDoIds(new Set());
+	}, [activeTab, statusFilter, searchTerm, regionFilter]);
+
+	useEffect(() => {
+		setRegionFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
 	const loading = isLoading || isFetching;
@@ -224,6 +249,25 @@ export function OutboundListCard({
 											className={getPurchaseOrderStatusColor(status)}
 										>
 											{formatStatus(status)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select
+								value={regionFilter}
+								onValueChange={(value) => setRegionFilter(value)}
+							>
+								<SelectTrigger
+									className="sm:w-52 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									aria-label="Filter by region"
+								>
+									<SelectValue placeholder="Filter by region" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All Regions</SelectItem>
+									{regionOptions.map((region) => (
+										<SelectItem key={region.value} value={region.value}>
+											{region.label}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -552,6 +596,13 @@ export function OutboundListCard({
 												]
 											: []),
 										...datePurchaseOrders.map((purchaseOrder) => {
+											const deliveryOrderStatus =
+												purchaseOrder.deliveryOrder?.status ?? "";
+											const isAwaitingPicking = [
+												"NEW",
+												"CREATED",
+												"PICKING",
+											].includes(deliveryOrderStatus);
 											return (
 												<TableRow
 													key={purchaseOrder.id}
@@ -624,17 +675,12 @@ export function OutboundListCard({
 																		purchaseOrder.deliveryOrder.status,
 																	)}
 																</Badge>
-																{purchaseOrder.deliveryOrder.status === "NEW" ||
-																purchaseOrder.deliveryOrder.status ===
-																	"CREATED" ||
-																purchaseOrder.deliveryOrder.status ===
-																	"PICKING" ? (
+																{isAwaitingPicking ? (
 																	<span className="text-xs text-muted-foreground italic">
 																		Awaiting picking
 																	</span>
 																) : onAdvanceStep &&
-																	purchaseOrder.deliveryOrder.status ===
-																		"PACKING" &&
+																	deliveryOrderStatus === "PACKING" &&
 																	dateKey === todayKey ? (
 																	<Button
 																		variant="outline"
