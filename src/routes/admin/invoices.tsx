@@ -51,6 +51,15 @@ export const Route = createFileRoute("/admin/invoices")({
 		await requirePermission(context.queryClient, ["Invoice"]);
 	},
 	component: InvoicesComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Invoices - SME Edaran WMS",
+				description:
+					"Review and manage proforma invoices, statuses, and billing details across outlets.",
+			},
+		],
+	}),
 });
 
 const invoiceStatuses: InvoiceStatusFilter[] = [

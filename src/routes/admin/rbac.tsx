@@ -49,6 +49,15 @@ export const Route = createFileRoute("/admin/rbac")({
 		await requirePermission(context.queryClient, ["Role"]);
 	},
 	component: RbacComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "RBAC - SME Edaran WMS",
+				description:
+					"Manage role-based access, permission modules, and user role assignments.",
+			},
+		],
+	}),
 });
 
 // Tab type

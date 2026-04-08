@@ -129,6 +129,15 @@ export const Route = createFileRoute("/admin/grn")({
 		await requirePermission(context.queryClient, ["GRN"]);
 	},
 	component: GRNRouteComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Goods Receipt Notes - SME Edaran WMS",
+				description:
+					"Manage GRN submissions, approvals, and NetSuite sync status for inbound inventory.",
+			},
+		],
+	}),
 });
 
 const grnStatuses: GRNStatus[] = ["Submitted", "Failed"];

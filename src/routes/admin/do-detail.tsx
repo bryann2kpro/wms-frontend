@@ -74,6 +74,15 @@ export const Route = createFileRoute("/admin/do-detail")({
 		await requirePermission(context.queryClient, ["Delivery Order"]);
 	},
 	component: DODetailComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Delivery Order Detail - SME Edaran WMS",
+				description:
+					"View delivery order item details, status timeline, and fulfillment progress.",
+			},
+		],
+	}),
 });
 
 function DODetailComponent() {

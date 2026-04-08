@@ -62,6 +62,15 @@ export const Route = createFileRoute("/admin/es-do")({
 		await requirePermission(context.queryClient, ["Delivery Order"]);
 	},
 	component: EmpireSushiDOComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Work Queue - SME Edaran WMS",
+				description:
+					"Process Empire Sushi delivery order picking and packing tasks in the warehouse queue.",
+			},
+		],
+	}),
 });
 
 function formatQty(qty: string | number | null | undefined): string {

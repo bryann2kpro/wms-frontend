@@ -71,6 +71,15 @@ export const Route = createFileRoute("/admin/outbound")({
 		await requirePermission(context.queryClient, ["Delivery Order"]);
 	},
 	component: OutboundRouteComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Outbound - SME Edaran WMS",
+				description:
+					"Track outbound purchase orders and delivery orders from preparation to delivery.",
+			},
+		],
+	}),
 });
 
 /** Base path for Outbound help screenshots. Add step-1.png, step-2.png, etc. under public/help/outbound/ */

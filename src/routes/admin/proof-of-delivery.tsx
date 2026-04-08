@@ -43,6 +43,15 @@ export const Route = createFileRoute("/admin/proof-of-delivery")({
 		await requirePermission(context.queryClient, ["Settlement"]);
 	},
 	component: DeliveryProofComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Proof of Delivery - SME Edaran WMS",
+				description:
+					"Submit and manage proof of delivery records for completed outbound shipments.",
+			},
+		],
+	}),
 });
 
 /* ─── Helpers ─────────────────────────────────────────────── */

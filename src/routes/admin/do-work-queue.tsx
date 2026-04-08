@@ -36,6 +36,15 @@ export const Route = createFileRoute("/admin/do-work-queue")({
 		await requirePermission(context.queryClient, ["Supplier Delivery"]);
 	},
 	component: DOWorkQueueComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "DO Work Queue - SME Edaran WMS",
+				description:
+					"Handle inbound GRN movement tasks and rack allocation workflow in the storekeeper queue.",
+			},
+		],
+	}),
 });
 
 function formatQty(qty: string | null): string {

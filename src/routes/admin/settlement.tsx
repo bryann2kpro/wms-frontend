@@ -30,6 +30,15 @@ export const Route = createFileRoute("/admin/settlement")({
 		await requirePermission(context.queryClient, ["Settlement"]);
 	},
 	component: SettlementComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Settlement - SME Edaran WMS",
+				description:
+					"Review delivery settlement progress, checklist completion, and settlement outcomes.",
+			},
+		],
+	}),
 });
 
 interface SettlementChecklist {
