@@ -23,7 +23,7 @@ export interface PurchaseOrderItem {
 export interface DeliveryOrderStep {
 	id: string;
 	doNo: string;
-	status: "NEW" | "PACKING" | "SHIPPED" | "DELIVERED";
+	status: "CREATED" | "NEW" | "PICKING" | "PACKING" | "SHIPPED" | "DELIVERED";
 }
 
 export interface PurchaseOrderDetail {

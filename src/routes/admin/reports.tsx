@@ -56,6 +56,15 @@ export const Route = createFileRoute("/admin/reports")({
 		await requirePermission(context.queryClient, ["Report"]);
 	},
 	component: ReportsComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Reports - SME Edaran WMS",
+				description:
+					"Generate and export warehouse operational reports including movement and invoice summaries.",
+			},
+		],
+	}),
 });
 
 type ReportType = "Movement" | "InvoiceSummary";

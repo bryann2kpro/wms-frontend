@@ -20,12 +20,8 @@ import {
 	FieldLabel,
 } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
+import { RackCombobox } from "@/components/grn/rack-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
@@ -492,54 +488,22 @@ function GRNLineRow({
 									</Badge>
 								);
 							})}
-							<Popover>
-								<PopoverTrigger asChild>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="h-6 gap-1 rounded-lg px-2 text-xs border-dashed"
-									>
-										<Plus className="h-3 w-3" />
-										Rack
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent className="w-56 p-2 rounded-xl" align="start">
-									<div className="flex flex-col gap-1">
-										{racks
-											.filter((r) => !rackIds.includes(r.rackId))
-											.map((r) => (
-												<Button
-													key={r.rackId}
-													type="button"
-													variant="ghost"
-													size="sm"
-													className="justify-start font-mono font-normal rounded-lg text-sm"
-													onClick={() => {
-														const newItems = [...items];
-														newItems[index] = {
-															...newItems[index],
-															rackIds: [...rackIds, r.rackId],
-														};
-														onItemsChange(newItems);
-													}}
-												>
-													{r.rackRow}-{r.rackColumn}-{r.rackLevel}
-												</Button>
-											))}
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="justify-start gap-1 text-muted-foreground rounded-lg"
-											onClick={() => onOpenCreateRack?.(index)}
-										>
-											<Plus className="h-3.5 w-3.5" />
-											Create new rack
-										</Button>
-									</div>
-								</PopoverContent>
-							</Popover>
+							<RackCombobox
+								racks={racks}
+								selectedRackIds={rackIds}
+								onToggle={(rackId) => {
+									const newRackIds = rackIds.includes(rackId)
+										? rackIds.filter((id) => id !== rackId)
+										: [...rackIds, rackId];
+									const newItems = [...items];
+									newItems[index] = {
+										...newItems[index],
+										rackIds: newRackIds,
+									};
+									onItemsChange(newItems);
+								}}
+								onCreateRack={() => onOpenCreateRack?.(index)}
+							/>
 						</div>
 					</div>
 				</div>
