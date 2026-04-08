@@ -33,6 +33,7 @@ import {
 	type ApiKey,
 	type CreateApiKeyInput,
 } from "@/lib/api-keys/api-keys-api";
+import { formatDateMedium, timeAgo } from "@/lib/utils";
 
 // ============================================
 // ROUTE
@@ -40,6 +41,12 @@ import {
 
 export const Route = createFileRoute("/admin/api-keys")({
 	component: ApiKeysPage,
+	head: () => ({
+		meta: [{ 
+			title: 'API Keys - SME Edaran WMS',
+			description: 'Manage access tokens for third-party integrations. Keys are hashed — the raw value is shown only once on creation.',
+		 }],
+	}),
 });
 
 // ============================================
@@ -48,29 +55,6 @@ export const Route = createFileRoute("/admin/api-keys")({
 
 const QUERY_KEY = ["api-keys"] as const;
 
-// ============================================
-// HELPERS
-// ============================================
-
-function formatDate(dateStr: string | null): string {
-	if (!dateStr) return "—";
-	return new Intl.DateTimeFormat("en-MY", {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(new Date(dateStr));
-}
-
-function timeAgo(dateStr: string | null): string {
-	if (!dateStr) return "Never";
-	const diff = Date.now() - new Date(dateStr).getTime();
-	const mins = Math.floor(diff / 60_000);
-	const hours = Math.floor(diff / 3_600_000);
-	const days = Math.floor(diff / 86_400_000);
-	if (mins < 1) return "Just now";
-	if (mins < 60) return `${mins}m ago`;
-	if (hours < 24) return `${hours}h ago`;
-	return `${days}d ago`;
-}
 
 // ============================================
 // SUB-COMPONENTS
@@ -178,7 +162,7 @@ function KeyRow({
 			<td className="px-4 py-3.5">
 				<span
 					className="text-sm text-muted-foreground"
-					title={formatDate(apiKey.lastUsedAt)}
+					title={formatDateMedium(apiKey.lastUsedAt)}
 				>
 					{timeAgo(apiKey.lastUsedAt)}
 				</span>
@@ -187,14 +171,14 @@ function KeyRow({
 			{/* Expiry */}
 			<td className="px-4 py-3.5">
 				<span className="text-sm text-muted-foreground">
-					{apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "Never"}
+					{apiKey.expiresAt ? formatDateMedium(apiKey.expiresAt) : "Never"}
 				</span>
 			</td>
 
 			{/* Created */}
 			<td className="px-4 py-3.5">
 				<span className="text-sm text-muted-foreground">
-					{formatDate(apiKey.createdAt)}
+					{formatDateMedium(apiKey.createdAt)}
 				</span>
 			</td>
 
