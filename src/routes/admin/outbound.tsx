@@ -377,14 +377,6 @@ function OutboundRouteComponent() {
 		},
 	});
 
-	const pageTitle = "Outbound Delivery Orders";
-	useEffect(() => {
-		document.title = `${pageTitle} | SME Edaran`;
-		return () => {
-			document.title = "SME Edaran";
-		};
-	}, []);
-
 	useEffect(() => {
 		if (!isHelpOpen) return;
 		const handler = (e: KeyboardEvent) => {
