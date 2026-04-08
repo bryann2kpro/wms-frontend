@@ -29,6 +29,7 @@ export type PurchaseOrderStatusFilter = PurchaseOrderStatus | "ALL";
 export interface UsePurchaseOrdersOptions {
 	searchTerm?: string;
 	statusFilter?: PurchaseOrderStatusFilter;
+	regionFilter?: string;
 	activeTab?: DeliveryTab;
 	page?: number;
 	pageSize?: number;
@@ -60,6 +61,7 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 	const {
 		searchTerm = "",
 		statusFilter = "ALL",
+		regionFilter = "ALL",
 		activeTab = "current-week",
 		page = 1,
 		pageSize = 100,
@@ -80,7 +82,7 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 	type RawData = RawWeek | RawList;
 
 	return useQuery({
-		queryKey: ["purchase-orders-list", pageSize, activeTab],
+		queryKey: ["purchase-orders-list", pageSize, activeTab, regionFilter],
 		queryFn: async (): Promise<RawData> => {
 			const headers = getAuthHeaders();
 			if (activeTab === "current-week") {
@@ -104,7 +106,13 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		select: (raw: RawData): PurchaseOrdersResult => {
-			const options = { searchTerm, statusFilter, activeTab, page };
+			const options = {
+				searchTerm,
+				statusFilter,
+				regionFilter,
+				activeTab,
+				page,
+			};
 			if (raw.tab === "current-week") {
 				return processPurchaseOrdersFromWeek(raw.entries, options);
 			}
@@ -117,6 +125,7 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 interface ProcessOptions {
 	searchTerm: string;
 	statusFilter: PurchaseOrderStatusFilter;
+	regionFilter: string;
 	activeTab: DeliveryTab;
 	page: number;
 }
@@ -129,7 +138,7 @@ function processPurchaseOrdersFromWeek(
 	entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"],
 	options: ProcessOptions,
 ): PurchaseOrdersResult {
-	const { searchTerm, statusFilter, page } = options;
+	const { searchTerm, statusFilter, regionFilter, page } = options;
 
 	const purchaseOrdersByDate: Record<string, PurchaseOrderDetail[]> = {};
 	const allDetails: PurchaseOrderDetail[] = [];
@@ -148,7 +157,11 @@ function processPurchaseOrdersFromWeek(
 					false);
 			const matchesStatus =
 				statusFilter === "ALL" || po.status === statusFilter;
-			return matchesSearch && matchesStatus;
+			const matchesRegion =
+				regionFilter === "ALL" ||
+				po.regionName === regionFilter ||
+				po.regionCode === regionFilter;
+			return matchesSearch && matchesStatus && matchesRegion;
 		});
 		purchaseOrdersByDate[dateKey] = filtered;
 		allDetails.push(...filtered);
@@ -193,7 +206,7 @@ function processPurchaseOrders(
 	summary: PurchaseOrderSummary,
 	options: ProcessOptions,
 ): PurchaseOrdersResult {
-	const { searchTerm, statusFilter, activeTab, page } = options;
+	const { searchTerm, statusFilter, regionFilter, activeTab, page } = options;
 
 	const tabFilteredOrders = allPurchaseOrders.filter((po) => {
 		const deliveryDate = new Date(po.expectedDeliveryDate);
@@ -212,8 +225,12 @@ function processPurchaseOrders(
 				false);
 
 		const matchesStatus = statusFilter === "ALL" || po.status === statusFilter;
+		const matchesRegion =
+			regionFilter === "ALL" ||
+			po.regionName === regionFilter ||
+			po.regionCode === regionFilter;
 
-		return matchesSearch && matchesStatus;
+		return matchesSearch && matchesStatus && matchesRegion;
 	});
 
 	const purchaseOrdersByDate = purchaseOrders.reduce<

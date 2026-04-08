@@ -5,6 +5,28 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+/** Relative time from a nullable date string (e.g. "5m ago", "3h ago", "2d ago"). Returns "Never" for null/empty. */
+export function timeAgo(dateStr: string | null): string {
+	if (!dateStr) return "Never";
+	const diff = Date.now() - new Date(dateStr).getTime();
+	const mins = Math.floor(diff / 60_000);
+	const hours = Math.floor(diff / 3_600_000);
+	const days = Math.floor(diff / 86_400_000);
+	if (mins < 1) return "Just now";
+	if (mins < 60) return `${mins}m ago`;
+	if (hours < 24) return `${hours}h ago`;
+	return `${days}d ago`;
+}
+
+/** Format a nullable date string as medium date + short time (e.g. "8 Apr 2026, 10:30 am"). Returns "—" for null/empty. */
+export function formatDateMedium(dateStr: string | null): string {
+	if (!dateStr) return "—";
+	return new Intl.DateTimeFormat("en-MY", {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(dateStr));
+}
+
 // Utility function to format dates
 export function formatDate(dateString: string): string {
 	try {

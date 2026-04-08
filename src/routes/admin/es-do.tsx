@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation } from "@apollo/client/react";
@@ -62,6 +62,15 @@ export const Route = createFileRoute("/admin/es-do")({
 		await requirePermission(context.queryClient, ["Delivery Order"]);
 	},
 	component: EmpireSushiDOComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Work Queue - SME Edaran WMS",
+				description:
+					"Process Empire Sushi delivery order picking and packing tasks in the warehouse queue.",
+			},
+		],
+	}),
 });
 
 function formatQty(qty: string | number | null | undefined): string {
@@ -215,13 +224,6 @@ function EmpireSushiDOComponent() {
 	const allocatedDOs = useRef<Set<string>>(new Set());
 	/** DOs that have been auto-advanced to PACKING. */
 	const advancedDOs = useRef<Set<string>>(new Set());
-
-	useEffect(() => {
-		document.title = `${PAGE_TITLE} | SME Edaran`;
-		return () => {
-			document.title = "SME Edaran";
-		};
-	}, []);
 
 	const { data: regionsData } = useQuery<RegionsQueryData>(REGIONS_QUERY, {
 		variables: { pageSize: 100, pageNumber: 1 },

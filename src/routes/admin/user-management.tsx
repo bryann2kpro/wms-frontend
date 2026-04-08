@@ -81,6 +81,15 @@ export const Route = createFileRoute("/admin/user-management")({
 		await requirePermission(context.queryClient, ["User"]);
 	},
 	component: UserManagementComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "User Management - SME Edaran WMS",
+				description:
+					"Create, update, and manage users, roles, and account access across the system.",
+			},
+		],
+	}),
 });
 
 /** Hide Super Admin from create/update and filter dropdowns (do not assign via UI). */

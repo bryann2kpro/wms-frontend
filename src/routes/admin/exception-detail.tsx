@@ -46,6 +46,15 @@ export const Route = createFileRoute("/admin/exception-detail")({
 		await requirePermission(context.queryClient, ["Exception"]);
 	},
 	component: ExceptionDetailComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Exception Detail - SME Edaran WMS",
+				description:
+					"Inspect stock discrepancy details and take approval or rejection actions on exceptions.",
+			},
+		],
+	}),
 });
 
 function ExceptionDetailComponent() {

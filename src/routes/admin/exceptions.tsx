@@ -402,6 +402,15 @@ export const Route = createFileRoute("/admin/exceptions")({
 		await requirePermission(context.queryClient, ["Exception"]);
 	},
 	component: ExceptionsComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Exceptions - SME Edaran WMS",
+				description:
+					"Investigate stock count exceptions, review discrepancies, and manage follow-up actions.",
+			},
+		],
+	}),
 });
 
 function ExceptionsComponent() {

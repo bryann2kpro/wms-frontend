@@ -37,6 +37,15 @@ export const Route = createFileRoute("/admin/inventory")({
 		await requirePermission(context.queryClient, ["Inventory"]);
 	},
 	component: InventoryComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Inventory - SME Edaran WMS",
+				description:
+					"Monitor stock levels, inventory movement, and sync status across warehouse items.",
+			},
+		],
+	}),
 });
 
 function InventoryComponent() {

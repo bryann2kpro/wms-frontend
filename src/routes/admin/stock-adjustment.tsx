@@ -51,6 +51,15 @@ export const Route = createFileRoute("/admin/stock-adjustment")({
 		await requirePermission(context.queryClient, ["Inventory"]);
 	},
 	component: StockAdjustmentComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Stock Adjustment - SME Edaran WMS",
+				description:
+					"Review, create, and track inventory stock adjustment requests with approval visibility.",
+			},
+		],
+	}),
 });
 
 const SEARCH_DEBOUNCE_MS = 350;
