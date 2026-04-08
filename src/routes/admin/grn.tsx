@@ -567,6 +567,7 @@ function GRNRouteComponent() {
 			onCompleted: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
+				toast.success("GRN created");
 			},
 		},
 	);
@@ -576,6 +577,7 @@ function GRNRouteComponent() {
 			onCompleted: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
+				toast.success("GRN created");
 			},
 		});
 	const useCreateInbound = true; // set false to use createGrn (no userId)
@@ -583,14 +585,23 @@ function GRNRouteComponent() {
 		? createInboundLoading
 		: createGrnLoading;
 
+	const [pendingStatusAction, setPendingStatusAction] = useState<
+		GRNStatus | null
+	>(null);
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
 		{
 			onError: (err) => {
 				toast.error(getGrnErrorMessage(err));
+				setPendingStatusAction(null);
 			},
 			onCompleted: () => {
 				refetchGRNs();
+				const action = pendingStatusAction;
+				setPendingStatusAction(null);
+				if (action === "Approved") toast.success("GRN approved");
+				else if (action === "Sent-to-ES") toast.success("GRN sent to ES");
+				else toast.success("GRN status updated");
 			},
 		},
 	);
@@ -761,6 +772,7 @@ function GRNRouteComponent() {
 	};
 
 	const handleUpdateStatus = (id: string, status: GRNStatus) => {
+		setPendingStatusAction(status);
 		statusMutation.mutate({ id, status });
 		if (isViewOpen) {
 			setIsViewOpen(false);
@@ -1024,8 +1036,27 @@ function GRNRouteComponent() {
 						{grnStatuses.map((status, i) => (
 							<Card
 								key={status}
-								className="dashboard-card shadow-md hover:shadow-lg"
+								className={`dashboard-card shadow-md hover:shadow-lg cursor-pointer transition-all ${statusFilter === status ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""}`}
 								style={{ animationDelay: `${summaryDelays[i]}ms` }}
+								onClick={() => {
+									setStatusFilter((prev) =>
+										prev === status ? "ALL" : status,
+									);
+									setPage(1);
+								}}
+								role="button"
+								tabIndex={0}
+								aria-pressed={statusFilter === status}
+								aria-label={`Filter by ${formatStatus(status)}`}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										setStatusFilter((prev) =>
+											prev === status ? "ALL" : status,
+										);
+										setPage(1);
+									}
+								}}
 							>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle
@@ -1556,7 +1587,9 @@ function GRNRouteComponent() {
 										}}
 										disabled={statusMutation.status === "pending"}
 									>
-										Approve
+										{statusMutation.status === "pending"
+											? "Approving…"
+											: "Approve"}
 									</Button>
 								)}
 							{canApproveGrn && selectedGRN?.status === "Approved" && (
@@ -1567,7 +1600,9 @@ function GRNRouteComponent() {
 										disabled={statusMutation.status === "pending"}
 									>
 										<Send className="mr-2 h-4 w-4" />
-										Send to ES
+										{statusMutation.status === "pending"
+											? "Sending…"
+											: "Send to ES"}
 									</Button>
 								)}
 							{canApproveGrn && selectedGRN?.status === "Failed" && (
@@ -1577,8 +1612,10 @@ function GRNRouteComponent() {
 										}}
 										disabled={statusMutation.status === "pending"}
 									>
-										<RotateCcw className="mr-2 h-4 w-4" />
-										Retry
+										<RotateCcw className={`mr-2 h-4 w-4 ${statusMutation.status === "pending" ? "animate-spin" : ""}`} />
+										{statusMutation.status === "pending"
+											? "Retrying…"
+											: "Retry"}
 									</Button>
 								)}
 						</DialogFooter>

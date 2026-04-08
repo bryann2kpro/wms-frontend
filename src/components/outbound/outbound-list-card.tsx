@@ -70,6 +70,8 @@ interface OutboundListCardProps {
 	/** Download PDFs for all selected rows (sequential). */
 	onBulkDownloadDoPdf?: (purchaseOrders: PurchaseOrderDetail[]) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
+	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
+	initialStatusFilter?: PurchaseOrderStatusFilter;
 }
 
 export function OutboundListCard({
@@ -84,12 +86,19 @@ export function OutboundListCard({
 	pendingDoPdfDeliveryOrderId,
 	onBulkDownloadDoPdf,
 	isBulkDoPdfPending,
+	initialStatusFilter,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
+
+	useEffect(() => {
+		if (initialStatusFilter !== undefined) {
+			setStatusFilter(initialStatusFilter);
+		}
+	}, [initialStatusFilter]);
 
 	/** Today's date key in YYYY-MM-DD format, using UTC+8 business timezone. */
 	const todayKey = useMemo(() => {
