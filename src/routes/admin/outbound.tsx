@@ -43,6 +43,7 @@ import {
 	updatePurchaseOrderStatus,
 } from "@/data/purchase-orders";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
+import type { PurchaseOrderStatusFilter } from "@/lib/hooks/use-purchase-orders";
 import {
 	createPurchaseOrderSchema,
 	formatStatus,
@@ -54,6 +55,7 @@ import {
 	downloadPdfFromUrl,
 	sanitizePdfFilenameSegment,
 } from "@/lib/reports/report-pdf";
+import { getErrorMessage } from "@/lib/utils";
 
 const STATUS_BORDER_COLOR: Record<string, string> = {
 	preparing: "border-l-yellow-500",
@@ -69,6 +71,15 @@ export const Route = createFileRoute("/admin/outbound")({
 		await requirePermission(context.queryClient, ["Delivery Order"]);
 	},
 	component: OutboundRouteComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Outbound - SME Edaran WMS",
+				description:
+					"Track outbound purchase orders and delivery orders from preparation to delivery.",
+			},
+		],
+	}),
 });
 
 /** Base path for Outbound help screenshots. Add step-1.png, step-2.png, etc. under public/help/outbound/ */
@@ -190,6 +201,9 @@ function OutboundRouteComponent() {
 	const [pendingDoPdfDeliveryOrderId, setPendingDoPdfDeliveryOrderId] =
 		useState<string | null>(null);
 	const [isBulkDoPdfPending, setIsBulkDoPdfPending] = useState(false);
+	const [isRefreshing, setIsRefreshing] = useState(false);
+	const [activeStatusFilter, setActiveStatusFilter] =
+		useState<PurchaseOrderStatusFilter>("ALL");
 
 	const queryClient = useQueryClient();
 	const { summary, isLoading: isSummaryLoading } = useOutboundSummary();
@@ -199,15 +213,23 @@ function OutboundRouteComponent() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
 			setIsCreateOpen(false);
+			toast.success("Purchase order created");
 		},
+		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
 
 	const statusMutation = useMutation({
 		mutationFn: ({ id, status }: { id: string; status: PurchaseOrderStatus }) =>
 			updatePurchaseOrderStatus(id, status),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			toast.success(
+				variables.status === "cancel"
+					? "Purchase order rejected"
+					: "Purchase order accepted",
+			);
 		},
+		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
 
 	const advanceStepMutation = useMutation({
@@ -215,14 +237,22 @@ function OutboundRouteComponent() {
 			advanceDeliveryOrderStatus(deliveryOrderId),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			toast.success("Delivery order advanced to next step");
+			setIsViewOpen(false);
+			setSelectedPurchaseOrder(null);
 		},
+		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
 
 	const emergencyDeliveryMutation = useMutation({
 		mutationFn: (poId: string) => applyEmergencyDelivery(poId),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			toast.success("Emergency delivery applied");
+			setIsViewOpen(false);
+			setSelectedPurchaseOrder(null);
 		},
+		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
 
 	const downloadDoPdf = useCallback(async (po: PurchaseOrderDetail) => {
@@ -346,14 +376,6 @@ function OutboundRouteComponent() {
 			form.reset();
 		},
 	});
-
-	const pageTitle = "Outbound Delivery Orders";
-	useEffect(() => {
-		document.title = `${pageTitle} | SME Edaran`;
-		return () => {
-			document.title = "SME Edaran";
-		};
-	}, []);
 
 	useEffect(() => {
 		if (!isHelpOpen) return;
@@ -505,15 +527,22 @@ function OutboundRouteComponent() {
 								<Button
 									variant="outline"
 									className="rounded-lg"
-									onClick={() => {
-										queryClient.invalidateQueries({
+									disabled={isRefreshing}
+									onClick={async () => {
+										setIsRefreshing(true);
+										await queryClient.invalidateQueries({
 											queryKey: ["purchase-orders-list"],
 										});
+										setIsRefreshing(false);
+										toast.success("Refreshed from NetSuite");
 									}}
 									aria-label="Refresh purchase orders from NetSuite"
 								>
-									<RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-									Refresh from NetSuite
+									<RefreshCw
+										className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+										aria-hidden
+									/>
+									{isRefreshing ? "Refreshing…" : "Refresh from NetSuite"}
 								</Button>
 							)}
 							<ImportExcelDialog onImport={handleExcelImport} />
@@ -556,9 +585,26 @@ function OutboundRouteComponent() {
 						: purchaseOrderStatuses.map((status, i) => (
 								<Card
 									key={status}
-									className={`dashboard-card border-l-4 transition-colors hover:bg-muted/30 ${i === 0 ? "border-l-[var(--dashboard-accent)]" : (STATUS_BORDER_COLOR[status] ?? "border-l-gray-400")}`}
+									className={`dashboard-card border-l-4 transition-colors hover:bg-muted/30 cursor-pointer ${activeStatusFilter === status ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""} ${i === 0 ? "border-l-[var(--dashboard-accent)]" : (STATUS_BORDER_COLOR[status] ?? "border-l-gray-400")}`}
 									style={{
 										animationDelay: `${i * 60}ms`,
+									}}
+									onClick={() =>
+										setActiveStatusFilter((prev) =>
+											prev === status ? "ALL" : status,
+										)
+									}
+									role="button"
+									tabIndex={0}
+									aria-pressed={activeStatusFilter === status}
+									aria-label={`Filter by ${formatStatus(status)}`}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											setActiveStatusFilter((prev) =>
+												prev === status ? "ALL" : status,
+											);
+										}
 									}}
 								>
 									<CardHeader className="pb-2">
@@ -583,6 +629,7 @@ function OutboundRouteComponent() {
 
 				<OutboundListCard
 					cardClassName="dashboard-card"
+					initialStatusFilter={activeStatusFilter}
 					onViewPurchaseOrder={(purchaseOrder) => {
 						setSelectedPurchaseOrder(purchaseOrder);
 						setIsViewOpen(true);

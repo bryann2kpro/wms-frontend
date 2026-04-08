@@ -39,6 +39,15 @@ import { formatDate, formatDateOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/dashboard")({
 	component: DashboardComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Dashboard - SME Edaran WMS",
+				description:
+					"View warehouse operations highlights, recent activity, and key performance indicators.",
+			},
+		],
+	}),
 });
 
 function DashboardComponent() {

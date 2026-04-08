@@ -72,6 +72,15 @@ export const Route = createFileRoute("/admin/deliveries")({
 		await requirePermission(context.queryClient, ["Supplier Delivery"]);
 	},
 	component: DeliveriesRouteComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Deliveries - SME Edaran WMS",
+				description:
+					"Manage supplier deliveries, track statuses, and monitor inbound delivery execution.",
+			},
+		],
+	}),
 });
 
 const deliveryStatuses: DeliveryStatus[] = [

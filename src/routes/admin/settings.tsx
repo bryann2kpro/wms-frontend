@@ -85,6 +85,15 @@ const securitySchema = z
 
 export const Route = createFileRoute("/admin/settings")({
 	component: SettingsPage,
+	head: () => ({
+		meta: [
+			{
+				title: "Settings - SME Edaran WMS",
+				description:
+					"Configure account preferences, system settings, and integration options for warehouse operations.",
+			},
+		],
+	}),
 });
 
 function SettingsPage() {

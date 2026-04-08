@@ -60,6 +60,15 @@ export const Route = createFileRoute("/admin/audit-log")({
 		await requirePermission(context.queryClient, ["Audit Log"]);
 	},
 	component: RouteComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Audit Log - SME Edaran WMS",
+				description:
+					"Review user activity history, system changes, and operational audit trail records.",
+			},
+		],
+	}),
 });
 
 function RouteComponent() {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle, Loader2, PackageOpen, Search, Truck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,15 @@ export const Route = createFileRoute("/admin/do-work-queue")({
 		await requirePermission(context.queryClient, ["Supplier Delivery"]);
 	},
 	component: DOWorkQueueComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "DO Work Queue - SME Edaran WMS",
+				description:
+					"Handle inbound GRN movement tasks and rack allocation workflow in the storekeeper queue.",
+			},
+		],
+	}),
 });
 
 function formatQty(qty: string | null): string {
@@ -95,13 +104,6 @@ function DOWorkQueueComponent() {
 	const canApprove =
 		profile?.roles.some((r) => r.toLowerCase() === "super admin") ||
 		(profile?.approvePermission ?? []).includes("Supplier Delivery");
-
-	useEffect(() => {
-		document.title = `${PAGE_TITLE} | SME Edaran`;
-		return () => {
-			document.title = "SME Edaran";
-		};
-	}, []);
 
 	const {
 		data,

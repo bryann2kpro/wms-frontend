@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/admin/forbidden")({
 	component: ForbiddenComponent,
+	head: () => ({
+		meta: [
+			{
+				title: "Access Denied - SME Edaran WMS",
+				description:
+					"You do not have permission to access this page in SME Edaran WMS.",
+			},
+		],
+	}),
 });
 
 function ForbiddenComponent() {
