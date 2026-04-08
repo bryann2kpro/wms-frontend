@@ -143,9 +143,9 @@ const EXCEPTIONS_HELP_STEPS: Array<{
 		description: (
 			<>
 				Items with a difference need an <strong>action</strong>:{" "}
-				<strong>Tally to Opening</strong>,{" "}
-				<strong>Tally to Stock Count</strong>, or <strong>Manual Key-In</strong>.
-				Items with no difference are auto-resolved.
+				<strong>Tally to Opening</strong>, <strong>Tally to Stock Count</strong>
+				, or <strong>Manual Key-In</strong>. Items with no difference are
+				auto-resolved.
 			</>
 		),
 	},
@@ -376,11 +376,7 @@ function NotesCell({
 						placeholder="Enter notes..."
 					/>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setOpen(false)}
-						>
+						<Button variant="outline" size="sm" onClick={() => setOpen(false)}>
 							Cancel
 						</Button>
 						{!disabled && (
@@ -1213,9 +1209,7 @@ function ExceptionsComponent() {
 																<Minus className="h-3 w-3 shrink-0" />
 															)}
 															<span>
-																{diffDozen > 0
-																	? `-${diffDozen}`
-																	: diffDozen}
+																{diffDozen > 0 ? `-${diffDozen}` : diffDozen}
 															</span>
 															<span className="mx-0.5 opacity-40">/</span>
 															<span>
@@ -1349,9 +1343,7 @@ function ExceptionsComponent() {
 									size="icon"
 									className="h-7 w-7 rounded-lg border-border/50"
 									disabled={page === totalPages}
-									onClick={() =>
-										setPage((p) => Math.min(totalPages, p + 1))
-									}
+									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 								>
 									<ChevronRight className="h-3.5 w-3.5" />
 								</Button>
