@@ -35,6 +35,7 @@ import {
 	PackageOpen,
 	AlertCircle,
 	ChevronRight,
+	ChevronDown,
 	Download,
 	Loader2,
 } from "lucide-react";
@@ -74,6 +75,8 @@ interface OutboundListCardProps {
 		purchaseOrders: PurchaseOrderDetail[],
 	) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
+	bulkDoPdfProgress?: number;
+	bulkDoPdfTotal?: number;
 	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
 	initialStatusFilter?: PurchaseOrderStatusFilter;
 }
@@ -90,6 +93,8 @@ export function OutboundListCard({
 	pendingDoPdfDeliveryOrderId,
 	onBulkDownloadDoPdf,
 	isBulkDoPdfPending,
+	bulkDoPdfProgress,
+	bulkDoPdfTotal,
 	initialStatusFilter,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -99,6 +104,7 @@ export function OutboundListCard({
 	const [dateFilter, setDateFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
+	const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		if (initialStatusFilter !== undefined) {
@@ -412,7 +418,9 @@ export function OutboundListCard({
 											className="h-4 w-4 animate-spin shrink-0"
 											aria-hidden
 										/>
-										Downloading PDFs…
+										{bulkDoPdfTotal && bulkDoPdfTotal > 0
+											? `${bulkDoPdfProgress ?? 0} / ${bulkDoPdfTotal} PDFs…`
+											: "Generating PDFs…"}
 									</>
 								) : (
 									<>
@@ -598,28 +606,87 @@ export function OutboundListCard({
 										purchaseOrdersByDate[dateKey] ?? [];
 									const deliveryDate = new Date(dateKey + "T12:00:00");
 									const headerLabel = formatDeliveryDateHeader(deliveryDate);
+
+									const dateSelectableIds = datePurchaseOrders
+										.filter((p) => Boolean(p.deliveryOrder?.id))
+										.map((p) => p.deliveryOrder!.id);
+									const allDateSelected =
+										dateSelectableIds.length > 0 &&
+										dateSelectableIds.every((id) => selectedDoIds.has(id));
+									const someDateSelected = dateSelectableIds.some((id) =>
+										selectedDoIds.has(id),
+									);
+
+									const isCollapsed = collapsedDates.has(dateKey);
+
 									return [
 										<TableRow
 											key={dateKey}
-											className="hover:bg-transparent bg-muted/50 border-l-4 border-l-primary/30"
+											className="hover:bg-muted/70 bg-muted/50 border-l-4 border-l-primary/30 cursor-pointer select-none"
+											onClick={() =>
+												setCollapsedDates((prev) => {
+													const next = new Set(prev);
+													if (next.has(dateKey)) next.delete(dateKey);
+													else next.add(dateKey);
+													return next;
+												})
+											}
+											aria-expanded={!isCollapsed}
 										>
 											<TableCell
 												colSpan={tableColCount}
 												className="px-6 font-semibold text-foreground py-3"
 											>
-												{headerLabel}
-												{datePurchaseOrders.length > 0 && (
-													<span className="ml-2 text-muted-foreground font-normal">
-														({datePurchaseOrders.length}{" "}
-														{datePurchaseOrders.length === 1
-															? "order"
-															: "orders"}
-														)
+												<div className="flex items-center gap-3">
+													<ChevronDown
+														className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+														aria-hidden
+													/>
+													{showBulkPdf && dateSelectableIds.length > 0 ? (
+														<Checkbox
+															checked={
+																allDateSelected
+																	? true
+																	: someDateSelected
+																		? "indeterminate"
+																		: false
+															}
+															onCheckedChange={(checked) => {
+																setSelectedDoIds((prev) => {
+																	const next = new Set(prev);
+																	if (checked === true) {
+																		dateSelectableIds.forEach((id) =>
+																			next.add(id),
+																		);
+																	} else {
+																		dateSelectableIds.forEach((id) =>
+																			next.delete(id),
+																		);
+																	}
+																	return next;
+																});
+															}}
+															onClick={(e) => e.stopPropagation()}
+															disabled={isBulkDoPdfPending}
+															aria-label={`Select all orders for ${headerLabel}`}
+														/>
+													) : null}
+													<span>
+														{headerLabel}
+														{datePurchaseOrders.length > 0 && (
+															<span className="ml-2 text-muted-foreground font-normal">
+																({datePurchaseOrders.length}{" "}
+																{datePurchaseOrders.length === 1
+																	? "order"
+																	: "orders"}
+																)
+															</span>
+														)}
 													</span>
-												)}
+												</div>
 											</TableCell>
 										</TableRow>,
-										...(datePurchaseOrders.length === 0
+										...(!isCollapsed && datePurchaseOrders.length === 0
 											? [
 													<TableRow key={`${dateKey}-empty`}>
 														<TableCell
@@ -631,7 +698,7 @@ export function OutboundListCard({
 													</TableRow>,
 												]
 											: []),
-										...datePurchaseOrders.map((purchaseOrder) => {
+										...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
 											const deliveryOrderStatus =
 												purchaseOrder.deliveryOrder?.status ?? "";
 											const isAwaitingPicking = [

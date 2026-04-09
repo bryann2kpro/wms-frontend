@@ -49,23 +49,11 @@ import {
 	Plus,
 	Edit,
 	Trash2,
-	X,
-	Mail,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WMSRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { useApolloClient } from "@apollo/client/react";
-import {
-	ADVANCE_NOTICE_SETTING_KEY,
-	EMAIL_NOTIFICATION_SETTINGS_QUERY,
-	UPDATE_EMAIL_NOTIFICATION_SETTINGS_MUTATION,
-	type EmailNotificationSettingsQueryData,
-	type EmailNotificationSettingsQueryVariables,
-	type UpdateEmailNotificationSettingsMutationData,
-	type UpdateEmailNotificationSettingsMutationVariables,
-} from "@/lib/graphql/email-settings";
 
 // Zod schemas for validation
 const userProfileSchema = z.object({
@@ -181,8 +169,8 @@ function SettingsPage() {
 			? [
 					{
 						id: "integration" as const,
-						label: "Email Settings",
-						icon: Mail,
+						label: "Integration Status",
+						icon: Plug,
 					},
 				]
 			: []),
@@ -313,7 +301,7 @@ function SettingsPage() {
 					)}
 
 					{activeTab === "integration" && showIntegrationTab && (
-						<EmailNotificationsSettingsCard />
+						<IntegrationStatusCard />
 					)}
 				</div>
 			</div>
@@ -1037,252 +1025,112 @@ function UsersRolesCard() {
 	);
 }
 
-function EmailNotificationsSettingsCard() {
-	const apolloClient = useApolloClient();
-	const queryClient = useQueryClient();
-	const [toInput, setToInput] = useState("");
-	const [ccInput, setCcInput] = useState("");
-	const [saveError, setSaveError] = useState<string | null>(null);
-	const [saveSuccess, setSaveSuccess] = useState(false);
-
-	const { data, isLoading } = useQuery({
-		queryKey: ["emailNotificationSettings", ADVANCE_NOTICE_SETTING_KEY],
-		queryFn: async () => {
-			const result = await apolloClient.query<
-				EmailNotificationSettingsQueryData,
-				EmailNotificationSettingsQueryVariables
-			>({
-				query: EMAIL_NOTIFICATION_SETTINGS_QUERY,
-				variables: { settingKey: ADVANCE_NOTICE_SETTING_KEY },
-				fetchPolicy: "network-only",
-			});
-			return result.data?.emailNotificationSettings;
-		},
-	});
-
-	const [toEmails, setToEmails] = useState<string[]>([]);
-	const [ccEmails, setCcEmails] = useState<string[]>([]);
-
-	useEffect(() => {
-		if (data) {
-			setToEmails(data.toEmails);
-			setCcEmails(data.ccEmails);
-		}
-	}, [data]);
-
-	const saveMutation = useMutation({
-		mutationFn: async () => {
-			await apolloClient.mutate<
-				UpdateEmailNotificationSettingsMutationData,
-				UpdateEmailNotificationSettingsMutationVariables
-			>({
-				mutation: UPDATE_EMAIL_NOTIFICATION_SETTINGS_MUTATION,
-				variables: {
-					settingKey: ADVANCE_NOTICE_SETTING_KEY,
-					input: { toEmails, ccEmails },
-				},
-			});
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: ["emailNotificationSettings", ADVANCE_NOTICE_SETTING_KEY],
-			});
-			setSaveSuccess(true);
-			setSaveError(null);
-			setTimeout(() => setSaveSuccess(false), 3000);
-		},
-		onError: (err: Error) => {
-			setSaveError(err.message);
-		},
-	});
-
-	function addEmail(
-		list: string[],
-		setList: (v: string[]) => void,
-		input: string,
-		setInput: (v: string) => void,
-	) {
-		const trimmed = input.trim().toLowerCase();
-		if (!trimmed || list.includes(trimmed)) return;
-		setList([...list, trimmed]);
-		setInput("");
-	}
-
-	function removeEmail(
-		list: string[],
-		setList: (v: string[]) => void,
-		email: string,
-	) {
-		setList(list.filter((e) => e !== email));
-	}
+function IntegrationStatusCard() {
+	const [syncSchedule, setSyncSchedule] = useState("12:00");
 
 	return (
-		<Card className="dashboard-card">
-			<CardHeader>
-				<CardTitle
-					className="flex items-center gap-2 text-xl"
-					style={{ fontFamily: "var(--dashboard-display)" }}
-				>
-					<Mail className="h-5 w-5" />
-					Advance Notice Email Recipients
-				</CardTitle>
-				<CardDescription
-					className="text-muted-foreground"
-					style={{ fontFamily: "var(--dashboard-body)" }}
-				>
-					Configure who receives email notifications when a new advance notice
-					(PO) is received from NetSuite.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-6">
-				{isLoading ? (
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<Loader2 className="h-4 w-4 animate-spin" />
-						Loading settings...
-					</div>
-				) : (
-					<>
-						{/* To Emails */}
-						<div className="space-y-3">
-							<Label style={{ fontFamily: "var(--dashboard-body)" }}>
-								To (Recipients)
-							</Label>
-							<div className="flex gap-2">
-								<Input
-									type="email"
-									placeholder="email@example.com"
-									value={toInput}
-									onChange={(e) => setToInput(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											addEmail(toEmails, setToEmails, toInput, setToInput);
-										}
-									}}
-									className="rounded-lg border-muted-foreground/20"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-lg shrink-0"
-									onClick={() =>
-										addEmail(toEmails, setToEmails, toInput, setToInput)
-									}
-								>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							{toEmails.length > 0 && (
-								<div className="flex flex-wrap gap-2">
-									{toEmails.map((email) => (
-										<Badge
-											key={email}
-											variant="secondary"
-											className="flex items-center gap-1.5 pl-3 pr-1.5 py-1"
-										>
-											{email}
-											<button
-												type="button"
-												onClick={() =>
-													removeEmail(toEmails, setToEmails, email)
-												}
-												className="rounded hover:bg-muted-foreground/20 p-0.5"
-											>
-												<X className="h-3 w-3" />
-											</button>
-										</Badge>
-									))}
-								</div>
-							)}
-						</div>
-
-						<Separator />
-
-						{/* CC Emails */}
-						<div className="space-y-3">
-							<Label style={{ fontFamily: "var(--dashboard-body)" }}>
-								CC (Carbon Copy)
-							</Label>
-							<div className="flex gap-2">
-								<Input
-									type="email"
-									placeholder="email@example.com"
-									value={ccInput}
-									onChange={(e) => setCcInput(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											addEmail(ccEmails, setCcEmails, ccInput, setCcInput);
-										}
-									}}
-									className="rounded-lg border-muted-foreground/20"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-lg shrink-0"
-									onClick={() =>
-										addEmail(ccEmails, setCcEmails, ccInput, setCcInput)
-									}
-								>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							{ccEmails.length > 0 && (
-								<div className="flex flex-wrap gap-2">
-									{ccEmails.map((email) => (
-										<Badge
-											key={email}
-											variant="secondary"
-											className="flex items-center gap-1.5 pl-3 pr-1.5 py-1"
-										>
-											{email}
-											<button
-												type="button"
-												onClick={() =>
-													removeEmail(ccEmails, setCcEmails, email)
-												}
-												className="rounded hover:bg-muted-foreground/20 p-0.5"
-											>
-												<X className="h-3 w-3" />
-											</button>
-										</Badge>
-									))}
-								</div>
-							)}
-						</div>
-
-						{saveError && (
-							<p className="text-sm text-destructive">{saveError}</p>
-						)}
-
-						{saveSuccess && (
-							<p className="text-sm text-green-600">
-								Email settings saved successfully.
-							</p>
-						)}
-
-						<Button
-							onClick={() => saveMutation.mutate()}
-							disabled={saveMutation.isPending}
-							className="rounded-lg text-white disabled:opacity-50"
-							style={{
-								background: "var(--dashboard-accent)",
-								borderColor: "var(--dashboard-accent)",
-							}}
+		<div className="grid gap-6 md:grid-cols-2">
+			<Card className="dashboard-card">
+				<CardHeader>
+					<CardTitle
+						className="text-xl"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						NetSuite Connection
+					</CardTitle>
+					<CardDescription
+						className="text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
+						Integration connection status
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="flex items-center justify-between">
+						<span
+							className="text-sm"
+							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
-							{saveMutation.isPending ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Saving...
-								</>
-							) : (
-								"Save Settings"
-							)}
-						</Button>
-					</>
-				)}
-			</CardContent>
-		</Card>
+							Connection Status
+						</span>
+						<Badge
+							variant="outline"
+							className="bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-950/30 dark:border-green-500/30"
+						>
+							Connected
+						</Badge>
+					</div>
+					<div className="flex items-center justify-between">
+						<span
+							className="text-sm"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Last Test
+						</span>
+						<span className="text-sm text-muted-foreground">
+							{new Date().toLocaleString()}
+						</span>
+					</div>
+					<Button variant="outline" className="w-full rounded-lg">
+						Test Connection
+					</Button>
+				</CardContent>
+			</Card>
+			<Card className="dashboard-card">
+				<CardHeader>
+					<CardTitle
+						className="text-xl"
+						style={{ fontFamily: "var(--dashboard-display)" }}
+					>
+						Sync Schedules
+					</CardTitle>
+					<CardDescription
+						className="text-muted-foreground"
+						style={{ fontFamily: "var(--dashboard-body)" }}
+					>
+						Configure automated sync schedules
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label style={{ fontFamily: "var(--dashboard-body)" }}>
+							TO Pull Schedule
+						</Label>
+						<Input
+							type="time"
+							value={syncSchedule}
+							onChange={(e) => setSyncSchedule(e.target.value)}
+							className="rounded-lg border-muted-foreground/20"
+						/>
+						<p className="text-xs text-muted-foreground">
+							Daily TO pull from NetSuite (12pm default)
+						</p>
+					</div>
+					<div className="space-y-2">
+						<Label style={{ fontFamily: "var(--dashboard-body)" }}>
+							Stock Sync Schedule
+						</Label>
+						<Input
+							type="time"
+							value="12:00"
+							disabled
+							className="rounded-lg border-muted-foreground/20"
+						/>
+						<p className="text-xs text-muted-foreground">
+							Daily stock sync to NetSuite
+						</p>
+					</div>
+					<Button
+						className="w-full rounded-lg text-white disabled:opacity-50"
+						style={{
+							background: "var(--dashboard-accent)",
+							borderColor: "var(--dashboard-accent)",
+						}}
+					>
+						Save Schedule
+					</Button>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

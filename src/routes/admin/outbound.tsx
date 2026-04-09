@@ -51,6 +51,7 @@ import {
 } from "@/lib/outbound";
 import { usePermissions } from "@/lib/permissions";
 import { requirePermission } from "@/lib/rbac";
+import { useBulkDeliveryOrderPdf } from "@/hooks/useBulkDeliveryOrderPdf";
 import {
 	downloadPdfFromUrl,
 	sanitizePdfFilenameSegment,
@@ -200,7 +201,8 @@ function OutboundRouteComponent() {
 	const [helpStep, setHelpStep] = useState(0);
 	const [pendingDoPdfDeliveryOrderId, setPendingDoPdfDeliveryOrderId] =
 		useState<string | null>(null);
-	const [isBulkDoPdfPending, setIsBulkDoPdfPending] = useState(false);
+	const { state: bulkDoPdfState, startBulkExport: startBulkDoPdfExport } =
+		useBulkDeliveryOrderPdf();
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [activeStatusFilter, setActiveStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
@@ -304,39 +306,12 @@ function OutboundRouteComponent() {
 
 	const bulkDownloadDoPdf = useCallback(
 		async (orders: PurchaseOrderDetail[]) => {
-			setIsBulkDoPdfPending(true);
-			let ok = 0;
-			let fail = 0;
-			for (const po of orders) {
-				const doId = po.deliveryOrder?.id;
-				if (!doId) continue;
-				try {
-					const url = await generateDeliveryOrderPdfUrl(doId);
-					const doNo = po.deliveryOrder?.doNo?.trim();
-					const filenameBase = doNo || po.purchaseOrderNumber.trim();
-					const filenamePrefix = doNo ? "" : "DO-";
-					const filename = `${filenamePrefix}${sanitizePdfFilenameSegment(filenameBase)}.pdf`;
-					await downloadPdfFromUrl(url, filename);
-					ok++;
-					await new Promise((r) => setTimeout(r, 400));
-				} catch {
-					fail++;
-				}
-			}
-			setIsBulkDoPdfPending(false);
-			if (fail === 0) {
-				toast.success(
-					ok === 1
-						? "Downloaded 1 delivery order PDF"
-						: `Downloaded ${ok} delivery order PDFs`,
-				);
-			} else if (ok === 0) {
-				toast.error("Could not download delivery order PDFs");
-			} else {
-				toast.warning(`Downloaded ${ok} PDF(s); ${fail} failed.`);
-			}
+			const deliveryOrderIds = orders
+				.map((po) => po.deliveryOrder?.id)
+				.filter((id): id is string => Boolean(id));
+			await startBulkDoPdfExport(deliveryOrderIds);
 		},
-		[],
+		[startBulkDoPdfExport],
 	);
 
 	const form = useForm({
@@ -644,7 +619,9 @@ function OutboundRouteComponent() {
 					onDownloadDoPdf={downloadDoPdf}
 					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
 					onBulkDownloadDoPdf={bulkDownloadDoPdf}
-					isBulkDoPdfPending={isBulkDoPdfPending}
+					isBulkDoPdfPending={bulkDoPdfState.status === "generating"}
+					bulkDoPdfProgress={bulkDoPdfState.progress}
+					bulkDoPdfTotal={bulkDoPdfState.total}
 				/>
 
 				<ViewPurchaseOrderDialog
