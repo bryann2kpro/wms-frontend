@@ -40,6 +40,8 @@ import {
 	createPurchaseOrder,
 	type PurchaseOrderDetail,
 	type PurchaseOrderStatus,
+	type UpdatePurchaseOrderInput,
+	updatePurchaseOrder,
 	updatePurchaseOrderStatus,
 } from "@/data/purchase-orders";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -253,6 +255,17 @@ function OutboundRouteComponent() {
 			toast.success("Emergency delivery applied");
 			setIsViewOpen(false);
 			setSelectedPurchaseOrder(null);
+		},
+		onError: (err) => toast.error(getErrorMessage(err as Error)),
+	});
+
+	const editMutation = useMutation({
+		mutationFn: ({ id, input }: { id: string; input: UpdatePurchaseOrderInput }) =>
+			updatePurchaseOrder(id, input),
+		onSuccess: (updated) => {
+			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			setSelectedPurchaseOrder(updated);
+			toast.success("Purchase order updated");
 		},
 		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
@@ -657,6 +670,8 @@ function OutboundRouteComponent() {
 						pendingDoPdfDeliveryOrderId ===
 							selectedPurchaseOrder?.deliveryOrder?.id
 					}
+					onEdit={(id, input) => editMutation.mutate({ id, input })}
+					isEditPending={editMutation.isPending}
 				/>
 
 				<RejectPurchaseOrderDialog
