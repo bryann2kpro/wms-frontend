@@ -40,8 +40,6 @@ import {
 	createPurchaseOrder,
 	type PurchaseOrderDetail,
 	type PurchaseOrderStatus,
-	type UpdatePurchaseOrderInput,
-	updatePurchaseOrder,
 	updatePurchaseOrderStatus,
 } from "@/data/purchase-orders";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -53,7 +51,6 @@ import {
 } from "@/lib/outbound";
 import { usePermissions } from "@/lib/permissions";
 import { requirePermission } from "@/lib/rbac";
-import { useBulkDeliveryOrderPdf } from "@/hooks/useBulkDeliveryOrderPdf";
 import {
 	downloadPdfFromUrl,
 	sanitizePdfFilenameSegment,
@@ -203,8 +200,7 @@ function OutboundRouteComponent() {
 	const [helpStep, setHelpStep] = useState(0);
 	const [pendingDoPdfDeliveryOrderId, setPendingDoPdfDeliveryOrderId] =
 		useState<string | null>(null);
-	const { state: bulkDoPdfState, startBulkExport: startBulkDoPdfExport } =
-		useBulkDeliveryOrderPdf();
+	const [isBulkDoPdfPending, setIsBulkDoPdfPending] = useState(false);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [activeStatusFilter, setActiveStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
@@ -259,17 +255,6 @@ function OutboundRouteComponent() {
 		onError: (err) => toast.error(getErrorMessage(err as Error)),
 	});
 
-	const editMutation = useMutation({
-		mutationFn: ({ id, input }: { id: string; input: UpdatePurchaseOrderInput }) =>
-			updatePurchaseOrder(id, input),
-		onSuccess: (updated) => {
-			queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
-			setSelectedPurchaseOrder(updated);
-			toast.success("Purchase order updated");
-		},
-		onError: (err) => toast.error(getErrorMessage(err as Error)),
-	});
-
 	const downloadDoPdf = useCallback(async (po: PurchaseOrderDetail) => {
 		const doId = po.deliveryOrder?.id;
 		if (!doId) return;
@@ -319,12 +304,39 @@ function OutboundRouteComponent() {
 
 	const bulkDownloadDoPdf = useCallback(
 		async (orders: PurchaseOrderDetail[]) => {
-			const deliveryOrderIds = orders
-				.map((po) => po.deliveryOrder?.id)
-				.filter((id): id is string => Boolean(id));
-			await startBulkDoPdfExport(deliveryOrderIds);
+			setIsBulkDoPdfPending(true);
+			let ok = 0;
+			let fail = 0;
+			for (const po of orders) {
+				const doId = po.deliveryOrder?.id;
+				if (!doId) continue;
+				try {
+					const url = await generateDeliveryOrderPdfUrl(doId);
+					const doNo = po.deliveryOrder?.doNo?.trim();
+					const filenameBase = doNo || po.purchaseOrderNumber.trim();
+					const filenamePrefix = doNo ? "" : "DO-";
+					const filename = `${filenamePrefix}${sanitizePdfFilenameSegment(filenameBase)}.pdf`;
+					await downloadPdfFromUrl(url, filename);
+					ok++;
+					await new Promise((r) => setTimeout(r, 400));
+				} catch {
+					fail++;
+				}
+			}
+			setIsBulkDoPdfPending(false);
+			if (fail === 0) {
+				toast.success(
+					ok === 1
+						? "Downloaded 1 delivery order PDF"
+						: `Downloaded ${ok} delivery order PDFs`,
+				);
+			} else if (ok === 0) {
+				toast.error("Could not download delivery order PDFs");
+			} else {
+				toast.warning(`Downloaded ${ok} PDF(s); ${fail} failed.`);
+			}
 		},
-		[startBulkDoPdfExport],
+		[],
 	);
 
 	const form = useForm({
@@ -632,9 +644,7 @@ function OutboundRouteComponent() {
 					onDownloadDoPdf={downloadDoPdf}
 					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
 					onBulkDownloadDoPdf={bulkDownloadDoPdf}
-					isBulkDoPdfPending={bulkDoPdfState.status === "generating"}
-					bulkDoPdfProgress={bulkDoPdfState.progress}
-					bulkDoPdfTotal={bulkDoPdfState.total}
+					isBulkDoPdfPending={isBulkDoPdfPending}
 				/>
 
 				<ViewPurchaseOrderDialog
@@ -670,8 +680,6 @@ function OutboundRouteComponent() {
 						pendingDoPdfDeliveryOrderId ===
 							selectedPurchaseOrder?.deliveryOrder?.id
 					}
-					onEdit={(id, input) => editMutation.mutate({ id, input })}
-					isEditPending={editMutation.isPending}
 				/>
 
 				<RejectPurchaseOrderDialog

@@ -3,13 +3,10 @@ import {
 	ChevronRight,
 	Download,
 	Loader2,
-	Pencil,
-	Plus,
-	Trash2,
 	Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useState } from "react";
+import { IntegrationLogPanel } from "@/components/integration-log-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +17,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -31,9 +27,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { OutletCombobox } from "@/components/outbound/outlet-combobox";
-import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import type { PurchaseOrderDetail, UpdatePurchaseOrderInput } from "@/data/purchase-orders.types";
+import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
 	formatDeliveryOrderStepStatus,
 	formatStatus,
@@ -41,13 +35,7 @@ import {
 	getNetSuiteStatusColor,
 	getStatusColor,
 } from "@/lib/outbound";
-import { formatDateOnly } from "@/lib/utils";
-import {
-	OUTLETS_QUERY,
-	type OutletsQueryData,
-	type OutletsQueryVariables,
-} from "@/lib/graphql/outlets";
-import type { Outlet } from "@/lib/graphql/types";
+import { formatDate, formatDateOnly } from "@/lib/utils";
 
 interface ViewPurchaseOrderDialogProps {
 	open: boolean;
@@ -59,8 +47,6 @@ interface ViewPurchaseOrderDialogProps {
 	isEmergencyDeliveryPending?: boolean;
 	onDownloadDoPdf?: () => void;
 	isDownloadDoPdfPending?: boolean;
-	onEdit?: (id: string, input: UpdatePurchaseOrderInput) => void;
-	isEditPending?: boolean;
 }
 
 export function ViewPurchaseOrderDialog({
@@ -73,129 +59,14 @@ export function ViewPurchaseOrderDialog({
 	isEmergencyDeliveryPending,
 	onDownloadDoPdf,
 	isDownloadDoPdfPending,
-	onEdit,
-	isEditPending,
 }: ViewPurchaseOrderDialogProps) {
 	const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
-	const [isEditMode, setIsEditMode] = useState(false);
-	const [editDeliveryDate, setEditDeliveryDate] = useState("");
-	const [editOutletId, setEditOutletId] = useState("");
-	const [editOutlet, setEditOutlet] = useState<Outlet | null>(null);
-	const [editItemQtys, setEditItemQtys] = useState<Record<string, number>>({});
-
-	type NewItemRow = { key: number; skuId: string; skuCode: string; description: string; qtyRequired: number };
-	const [editNewItems, setEditNewItems] = useState<NewItemRow[]>([]);
-	const [editRemovedItemIds, setEditRemovedItemIds] = useState<Set<string>>(new Set());
-
-	const { data: outletsData, refetch: refetchOutlets } = useQuery<
-		OutletsQueryData,
-		OutletsQueryVariables
-	>(OUTLETS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-		skip: !isEditMode,
-	});
-
-	const outlets = outletsData?.outlets?.query ?? [];
-
-	// Reset edit state whenever the dialog opens with a new PO
-	useEffect(() => {
-		if (!open || !purchaseOrder) {
-			setIsEditMode(false);
-			return;
-		}
-		setEditDeliveryDate(
-			purchaseOrder.expectedDeliveryDate.toISOString().split("T")[0],
-		);
-		setEditOutletId(purchaseOrder.outletId ?? "");
-		setEditOutlet(null);
-		setEditItemQtys(
-			Object.fromEntries(purchaseOrder.items.map((i) => [i.id, i.quantity])),
-		);
-		setEditNewItems([]);
-		setEditRemovedItemIds(new Set());
-	}, [open, purchaseOrder]);
-
-	// Sync editOutlet whenever outlet list loads or editOutletId changes
-	useEffect(() => {
-		if (!outlets.length || !editOutletId) return;
-		const found = outlets.find((o) => o.outletId === editOutletId) ?? null;
-		setEditOutlet(found);
-	}, [outlets, editOutletId]);
-
-	const handleOutletChange = (outletId: string) => {
-		setEditOutletId(outletId);
-		const found = outlets.find((o) => o.outletId === outletId) ?? null;
-		setEditOutlet(found);
-	};
-
-	const handleSave = () => {
-		if (!purchaseOrder) return;
-		const input: UpdatePurchaseOrderInput = {};
-		const originalDate = purchaseOrder.expectedDeliveryDate
-			.toISOString()
-			.split("T")[0];
-		if (editDeliveryDate !== originalDate)
-			input.scheduledDeliveryDate = new Date(editDeliveryDate).toISOString();
-		if (editOutletId && editOutletId !== (purchaseOrder.outletId ?? ""))
-			input.outletId = editOutletId;
-		const changedItems = purchaseOrder.items
-			.filter((item) => !editRemovedItemIds.has(item.id) && editItemQtys[item.id] !== item.quantity)
-			.map((item) => ({ id: item.id, qtyRequired: editItemQtys[item.id] ?? item.quantity }));
-		if (changedItems.length > 0) input.items = changedItems;
-		const newItems = editNewItems
-			.filter((i) => i.skuId && i.qtyRequired > 0)
-			.map(({ skuId, skuCode, qtyRequired }) => ({ skuId, skuCode, qtyRequired }));
-		if (newItems.length > 0) input.newItems = newItems;
-		const removedItemIds = [...editRemovedItemIds];
-		if (removedItemIds.length > 0) input.removedItemIds = removedItemIds;
-		onEdit?.(purchaseOrder.id, input);
-	};
-
-	const handleCancelEdit = () => {
-		if (!purchaseOrder) return;
-		setEditDeliveryDate(
-			purchaseOrder.expectedDeliveryDate.toISOString().split("T")[0],
-		);
-		setEditOutletId(purchaseOrder.outletId ?? "");
-		setEditOutlet(null);
-		setEditItemQtys(
-			Object.fromEntries(purchaseOrder.items.map((i) => [i.id, i.quantity])),
-		);
-		setEditNewItems([]);
-		setEditRemovedItemIds(new Set());
-		setIsEditMode(false);
-	};
 
 	const canApplyEmergency =
 		onEmergencyDelivery &&
 		purchaseOrder &&
 		purchaseOrder.status !== "cancel" &&
 		purchaseOrder.status !== "return";
-
-	const canEdit =
-		onEdit &&
-		purchaseOrder &&
-		purchaseOrder.status !== "cancel" &&
-		purchaseOrder.status !== "return";
-
-	// Item qty / add / remove are blocked once DO picking has started
-	const canEditItems =
-		!purchaseOrder?.deliveryOrder ||
-		purchaseOrder.deliveryOrder.status === "NEW" ||
-		purchaseOrder.deliveryOrder.status === "CREATED";
-
-	// SKU codes already on the PO (to show "Added" badge in SkuCombobox for new-item rows)
-	const existingSkuCodes = purchaseOrder?.items
-		.filter((i) => !editRemovedItemIds.has(i.id))
-		.map((i) => i.sku) ?? [];
-
-	// For region display in edit mode: prefer the selected outlet's data
-	const displayRegionName = isEditMode && editOutlet
-		? editOutlet.regionName
-		: purchaseOrder?.regionName;
-	const displayRegionCode = isEditMode && editOutlet
-		? editOutlet.regionCode
-		: purchaseOrder?.regionCode;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,9 +77,7 @@ export function ViewPurchaseOrderDialog({
 				<DialogHeader>
 					<DialogTitle>Purchase Order Details</DialogTitle>
 					<DialogDescription>
-						{isEditMode
-							? "Edit purchase order information. Status, DO status, and creator cannot be changed."
-							: "View and manage purchase order information"}
+						View and manage purchase order information
 					</DialogDescription>
 				</DialogHeader>
 				{purchaseOrder && (
@@ -227,31 +96,17 @@ export function ViewPurchaseOrderDialog({
 									<Label className="text-xs text-muted-foreground">
 										Outlet
 									</Label>
-									{isEditMode ? (
-										<OutletCombobox
-											value={editOutletId}
-											onChange={handleOutletChange}
-											outlets={outlets.map((o) => ({
-												outletId: o.outletId,
-												outletName: o.outletName,
-												outletCode: o.outletCode,
-											}))}
-											onOutletCreated={() => { refetchOutlets(); }}
-											placeholder="Select outlet…"
-										/>
-									) : (
-										<p className="text-sm font-medium">
-											{purchaseOrder.toLocation}
-										</p>
-									)}
+									<p className="text-sm font-medium">
+										{purchaseOrder.toLocation}
+									</p>
 								</div>
 								<div>
 									<Label className="text-xs text-muted-foreground">
 										Region
 									</Label>
 									<p className="text-sm font-medium">
-										{displayRegionName
-											? `${displayRegionName}${displayRegionCode ? ` (${displayRegionCode})` : ""}`
+										{purchaseOrder.regionName
+											? `${purchaseOrder.regionName}${purchaseOrder.regionCode ? ` (${purchaseOrder.regionCode})` : ""}`
 											: "—"}
 									</p>
 								</div>
@@ -259,20 +114,9 @@ export function ViewPurchaseOrderDialog({
 									<Label className="text-xs text-muted-foreground">
 										Scheduled Delivery
 									</Label>
-									{isEditMode ? (
-										<Input
-											type="date"
-											value={editDeliveryDate}
-											onChange={(e) => setEditDeliveryDate(e.target.value)}
-											className="mt-1 h-8 text-sm"
-										/>
-									) : (
-										<p className="text-sm font-medium">
-											{formatDateOnly(
-												purchaseOrder.expectedDeliveryDate.toISOString(),
-											)}
-										</p>
-									)}
+									<p className="text-sm font-medium">
+										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
+									</p>
 								</div>
 								<div>
 									<Label className="text-xs text-muted-foreground">
@@ -280,6 +124,14 @@ export function ViewPurchaseOrderDialog({
 									</Label>
 									<p className="text-sm font-medium">
 										{formatDateOnly(purchaseOrder.createdDate.toISOString())}
+									</p>
+								</div>
+								<div>
+									<Label className="text-xs text-muted-foreground">
+										Expected Delivery
+									</Label>
+									<p className="text-sm font-medium">
+										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
 									</p>
 								</div>
 								<div>
@@ -376,25 +228,15 @@ export function ViewPurchaseOrderDialog({
 												<TableHead>SKU</TableHead>
 												<TableHead>Description</TableHead>
 												<TableHead>Qty</TableHead>
-												{!isEditMode && (
-													<>
-														<TableHead>Available Qty</TableHead>
-														<TableHead>Status</TableHead>
-													</>
-												)}
-												{isEditMode && canEditItems && <TableHead />}
+												<TableHead>Available Qty</TableHead>
+												<TableHead>Status</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
-											{purchaseOrder.items
-												.filter((item) => !editRemovedItemIds.has(item.id))
-												.map((item) => {
+											{purchaseOrder.items.map((item) => {
 												const availableQty =
 													item.quantity + Math.floor(Math.random() * 10);
 												const canFulfill = availableQty >= item.quantity;
-												const visibleCount =
-													purchaseOrder.items.filter((i) => !editRemovedItemIds.has(i.id)).length +
-													editNewItems.length;
 
 												return (
 													<TableRow key={item.id}>
@@ -402,166 +244,39 @@ export function ViewPurchaseOrderDialog({
 															{item.sku}
 														</TableCell>
 														<TableCell>{item.description}</TableCell>
+														<TableCell>{item.quantity}</TableCell>
 														<TableCell>
-															{isEditMode && canEditItems ? (
-																<Input
-																	type="number"
-																	min={1}
-																	value={editItemQtys[item.id] ?? item.quantity}
-																	onChange={(e) =>
-																		setEditItemQtys((prev) => ({
-																			...prev,
-																			[item.id]: Number(e.target.value),
-																		}))
-																	}
-																	className="h-7 w-20 text-sm"
-																/>
+															<span
+																className={
+																	canFulfill ? "text-green-600" : "text-red-600"
+																}
+															>
+																{availableQty}
+															</span>
+														</TableCell>
+														<TableCell>
+															{canFulfill ? (
+																<Badge
+																	variant="outline"
+																	className="bg-green-500/10 text-green-600 border-green-500/20"
+																>
+																	Available
+																</Badge>
 															) : (
-																editItemQtys[item.id] ?? item.quantity
+																<Badge
+																	variant="outline"
+																	className="bg-red-500/10 text-red-600 border-red-500/20"
+																>
+																	Insufficient
+																</Badge>
 															)}
 														</TableCell>
-														{!isEditMode && (
-															<>
-																<TableCell>
-																	<span
-																		className={
-																			canFulfill
-																				? "text-green-600"
-																				: "text-red-600"
-																		}
-																	>
-																		{availableQty}
-																	</span>
-																</TableCell>
-																<TableCell>
-																	{canFulfill ? (
-																		<Badge
-																			variant="outline"
-																			className="bg-green-500/10 text-green-600 border-green-500/20"
-																		>
-																			Available
-																		</Badge>
-																	) : (
-																		<Badge
-																			variant="outline"
-																			className="bg-red-500/10 text-red-600 border-red-500/20"
-																		>
-																			Insufficient
-																		</Badge>
-																	)}
-																</TableCell>
-															</>
-														)}
-														{isEditMode && canEditItems && (
-															<TableCell className="w-10">
-																<Button
-																	type="button"
-																	variant="ghost"
-																	size="icon"
-																	className="h-7 w-7"
-																	disabled={visibleCount <= 1}
-																	title="Remove item"
-																	onClick={() =>
-																		setEditRemovedItemIds(
-																			(prev) => new Set([...prev, item.id]),
-																		)
-																	}
-																>
-																	<Trash2 className="h-4 w-4 text-destructive" />
-																</Button>
-															</TableCell>
-														)}
 													</TableRow>
 												);
 											})}
-											{isEditMode && editNewItems.map((newItem, idx) => (
-												<TableRow key={newItem.key}>
-													<TableCell colSpan={2} className="py-2">
-														<SkuCombobox
-															value={
-																newItem.skuId
-																	? {
-																			skuId: newItem.skuId,
-																			skuCode: newItem.skuCode,
-																			description: newItem.description,
-																			sku: newItem.skuCode,
-																			uom: "",
-																			isActive: true,
-																		}
-																	: null
-															}
-															onChange={(v: SkuLineValue) =>
-																setEditNewItems((prev) =>
-																	prev.map((r, i) =>
-																		i === idx
-																			? { ...r, skuId: v.skuId, skuCode: v.skuCode, description: v.description }
-																			: r,
-																	),
-																)
-															}
-															excludedSkuCodes={[
-																...existingSkuCodes,
-																...editNewItems
-																	.filter((_, i) => i !== idx)
-																	.map((r) => r.skuCode)
-																	.filter(Boolean),
-															]}
-														/>
-													</TableCell>
-													<TableCell className="py-2">
-														<Input
-															type="number"
-															min={1}
-															value={newItem.qtyRequired}
-															onChange={(e) =>
-																setEditNewItems((prev) =>
-																	prev.map((r, i) =>
-																		i === idx
-																			? { ...r, qtyRequired: Number(e.target.value) || 1 }
-																			: r,
-																	),
-																)
-															}
-															className="h-7 w-20 text-sm"
-														/>
-													</TableCell>
-													<TableCell className="w-10 py-2">
-														<Button
-															type="button"
-															variant="ghost"
-															size="icon"
-															className="h-7 w-7"
-															onClick={() =>
-																setEditNewItems((prev) =>
-																	prev.filter((_, i) => i !== idx),
-																)
-															}
-														>
-															<Trash2 className="h-4 w-4 text-destructive" />
-														</Button>
-													</TableCell>
-												</TableRow>
-											))}
 										</TableBody>
 									</Table>
 								</div>
-								{isEditMode && canEditItems && (
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										className="mt-2"
-										onClick={() =>
-											setEditNewItems((prev) => [
-												...prev,
-												{ key: Date.now(), skuId: "", skuCode: "", description: "", qtyRequired: 1 },
-											])
-										}
-									>
-										<Plus className="mr-2 h-4 w-4" />
-										Add line
-									</Button>
-								)}
 							</div>
 
 							{purchaseOrder.notes && (
@@ -570,6 +285,14 @@ export function ViewPurchaseOrderDialog({
 									<p className="text-sm">{purchaseOrder.notes}</p>
 								</div>
 							)}
+
+							{/* <IntegrationLogPanel
+								entityId={purchaseOrder.id}
+								entityType="po"
+								onRetry={(logId) => {
+									console.log("Retry log:", logId);
+								}}
+							/> */}
 
 							{showEmergencyConfirm && (
 								<div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -628,56 +351,19 @@ export function ViewPurchaseOrderDialog({
 											: "Download DO PDF"}
 									</Button>
 								) : null}
-
-								{isEditMode ? (
-									<>
-										<Button
-											variant="outline"
-											onClick={handleCancelEdit}
-											disabled={isEditPending}
-										>
-											Cancel
-										</Button>
-										<Button
-											onClick={handleSave}
-											disabled={isEditPending}
-										>
-											{isEditPending ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													Saving…
-												</>
-											) : (
-												"Save"
-											)}
-										</Button>
-									</>
-								) : (
-									<>
-										<Button variant="outline" onClick={() => onOpenChange(false)}>
-											Close
-										</Button>
-										{canEdit && !showEmergencyConfirm && (
-											<Button
-												variant="outline"
-												onClick={() => setIsEditMode(true)}
-											>
-												<Pencil className="mr-2 h-4 w-4" />
-												Edit
-											</Button>
-										)}
-										{canApplyEmergency && !showEmergencyConfirm && (
-											<Button
-												variant="outline"
-												className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
-												onClick={() => setShowEmergencyConfirm(true)}
-												disabled={isEmergencyDeliveryPending}
-											>
-												<Zap className="mr-2 h-4 w-4" />
-												Emergency Delivery
-											</Button>
-										)}
-									</>
+								<Button variant="outline" onClick={() => onOpenChange(false)}>
+									Close
+								</Button>
+								{canApplyEmergency && !showEmergencyConfirm && (
+									<Button
+										variant="outline"
+										className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+										onClick={() => setShowEmergencyConfirm(true)}
+										disabled={isEmergencyDeliveryPending}
+									>
+										<Zap className="mr-2 h-4 w-4" />
+										Emergency Delivery
+									</Button>
 								)}
 							</DialogFooter>
 						</div>

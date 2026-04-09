@@ -78,12 +78,7 @@ function buildPageRange(current: number, total: number): (number | "…")[] {
 	};
 	add(1);
 	if (current > 3) add("…");
-	for (
-		let i = Math.max(2, current - 1);
-		i <= Math.min(total - 1, current + 1);
-		i++
-	)
-		add(i);
+	for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) add(i);
 	if (current < total - 2) add("…");
 	add(total);
 	return pages;
@@ -99,19 +94,15 @@ function InvoicesComponent() {
 	const [issuedFrom, setIssuedFrom] = useState("");
 	const [issuedTo, setIssuedTo] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-		new Set(),
-	);
+	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 	const { state: bulkPdfState, startBulkExport } = useBulkProformaPdf();
 	const isGenerating = bulkPdfState.status === "generating";
-	const [generatingGroupKey, setGeneratingGroupKey] = useState<string | null>(
-		null,
-	);
+	const [generatingGroupKey, setGeneratingGroupKey] = useState<string | null>(null);
 
-	const [fetchAllForDeliveryDate] = useLazyQuery<
-		InvoicesQueryData,
-		InvoicesQueryVariables
-	>(INVOICES_QUERY, { fetchPolicy: "network-only" });
+	const [fetchAllForDeliveryDate] = useLazyQuery<InvoicesQueryData, InvoicesQueryVariables>(
+		INVOICES_QUERY,
+		{ fetchPolicy: "network-only" },
+	);
 
 	async function generateAllForGroup(key: string) {
 		if (isGenerating || generatingGroupKey) return;
@@ -215,8 +206,7 @@ function InvoicesComponent() {
 
 	// Bulk-select helpers
 	const allIds = invoices.map((inv) => inv.id);
-	const allSelected =
-		allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+	const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
 	const someSelected = allIds.some((id) => selectedIds.has(id));
 
 	function toggleAll() {
@@ -260,10 +250,7 @@ function InvoicesComponent() {
 	}
 
 	function getGroupTotal(key: string) {
-		return (groupedInvoices[key] ?? []).reduce(
-			(sum, inv) => sum + inv.totalAmount,
-			0,
-		);
+		return (groupedInvoices[key] ?? []).reduce((sum, inv) => sum + inv.totalAmount, 0);
 	}
 
 	const getStatusColor = (status: string) => {
@@ -518,11 +505,7 @@ function InvoicesComponent() {
 									<TableHead className="w-10">
 										<Checkbox
 											checked={
-												allSelected
-													? true
-													: someSelected
-														? "indeterminate"
-														: false
+												allSelected ? true : someSelected ? "indeterminate" : false
 											}
 											onCheckedChange={toggleAll}
 											aria-label="Select all invoices on this page"
@@ -579,16 +562,11 @@ function InvoicesComponent() {
 										const isCollapsed = collapsedGroups.has(key);
 										const groupRows = groupedInvoices[key];
 										const groupIds = groupRows.map((inv) => inv.id);
-										const allGroupSelected =
-											groupIds.length > 0 &&
-											groupIds.every((id) => selectedIds.has(id));
-										const someGroupSelected = groupIds.some((id) =>
-											selectedIds.has(id),
-										);
-										const label =
-											key === "__none__"
-												? "No Delivery Date"
-												: `Delivery  ${formatDateOnly(new Date(key))}`;
+										const allGroupSelected = groupIds.length > 0 && groupIds.every((id) => selectedIds.has(id));
+										const someGroupSelected = groupIds.some((id) => selectedIds.has(id));
+										const label = key === "__none__"
+											? "No Delivery Date"
+											: `Delivery  ${formatDateOnly(new Date(key))}`;
 
 										return (
 											<>
@@ -597,12 +575,14 @@ function InvoicesComponent() {
 													key={`group-${key}`}
 													className="border-t-0 hover:bg-transparent"
 												>
-													<TableCell colSpan={8} className="py-1.5 px-2">
+													<TableCell
+														colSpan={8}
+														className="py-1.5 px-2"
+													>
 														<div
 															className="group/folder flex items-center gap-2.5 rounded-md cursor-pointer select-none transition-colors"
 															style={{
-																background:
-																	"color-mix(in oklch, var(--muted) 60%, transparent)",
+																background: "color-mix(in oklch, var(--muted) 60%, transparent)",
 																borderLeft: "3px solid var(--dashboard-accent)",
 																padding: "7px 12px 7px 10px",
 															}}
@@ -614,39 +594,22 @@ function InvoicesComponent() {
 															{/* Group checkbox — stops propagation so click doesn't toggle collapse */}
 															<span onClick={(e) => e.stopPropagation()}>
 																<Checkbox
-																	checked={
-																		allGroupSelected
-																			? true
-																			: someGroupSelected
-																				? "indeterminate"
-																				: false
-																	}
+																	checked={allGroupSelected ? true : someGroupSelected ? "indeterminate" : false}
 																	onCheckedChange={() => toggleGroupSelect(key)}
 																	aria-label={`Select all invoices in ${label}`}
 																/>
 															</span>
 
 															{/* Folder icon — swaps on open/close */}
-															{isCollapsed ? (
-																<Folder
-																	className="h-3.5 w-3.5 shrink-0"
-																	style={{ color: "var(--dashboard-accent)" }}
-																	aria-hidden
-																/>
-															) : (
-																<FolderOpen
-																	className="h-3.5 w-3.5 shrink-0"
-																	style={{ color: "var(--dashboard-accent)" }}
-																	aria-hidden
-																/>
-															)}
+															{isCollapsed
+																? <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--dashboard-accent)" }} aria-hidden />
+																: <FolderOpen className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--dashboard-accent)" }} aria-hidden />
+															}
 
 															{/* Date label */}
 															<span
 																className="text-sm font-semibold tracking-tight"
-																style={{
-																	fontFamily: "var(--dashboard-display)",
-																}}
+																style={{ fontFamily: "var(--dashboard-display)" }}
 															>
 																{label}
 															</span>
@@ -655,12 +618,9 @@ function InvoicesComponent() {
 
 															{/* Stats */}
 															<span className="text-[11px] text-muted-foreground tabular-nums">
-																{groupRows.length} invoice
-																{groupRows.length !== 1 ? "s" : ""}
+																{groupRows.length} invoice{groupRows.length !== 1 ? "s" : ""}
 															</span>
-															<span className="mx-1.5 text-muted-foreground/30 text-xs">
-																·
-															</span>
+															<span className="mx-1.5 text-muted-foreground/30 text-xs">·</span>
 															<span
 																className="text-[11px] font-semibold tabular-nums"
 																style={{ color: "var(--dashboard-accent)" }}
@@ -678,17 +638,12 @@ function InvoicesComponent() {
 																		borderColor: "var(--dashboard-accent)",
 																		color: "#fff",
 																	}}
-																	disabled={
-																		isGenerating || generatingGroupKey !== null
-																	}
+																	disabled={isGenerating || generatingGroupKey !== null}
 																	onClick={() => void generateAllForGroup(key)}
 																	aria-label={`Generate all invoices for ${label}`}
 																>
 																	{generatingGroupKey === key ? (
-																		<Loader2
-																			className="h-3 w-3 animate-spin"
-																			aria-hidden
-																		/>
+																		<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
 																	) : (
 																		<Printer className="h-3 w-3" aria-hidden />
 																	)}
@@ -699,11 +654,7 @@ function InvoicesComponent() {
 															{/* Chevron */}
 															<ChevronRight
 																className="h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200 ml-1"
-																style={{
-																	transform: isCollapsed
-																		? "rotate(0deg)"
-																		: "rotate(90deg)",
-																}}
+																style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}
 																aria-hidden
 															/>
 														</div>
@@ -711,88 +662,81 @@ function InvoicesComponent() {
 												</TableRow>
 
 												{/* ── Invoice rows (hidden when collapsed) ── */}
-												{!isCollapsed &&
-													groupRows.map((invoice) => (
-														<TableRow
-															key={invoice.id}
-															className="invoice-row border-l-0"
-															data-state={
-																selectedIds.has(invoice.id)
-																	? "selected"
-																	: undefined
-															}
-															onClick={() =>
-																navigate({
-																	to: "/admin/invoice-detail",
-																	search: { id: invoice.id },
-																})
-															}
+												{!isCollapsed && groupRows.map((invoice) => (
+													<TableRow
+														key={invoice.id}
+														className="invoice-row border-l-0"
+														data-state={selectedIds.has(invoice.id) ? "selected" : undefined}
+														onClick={() =>
+															navigate({
+																to: "/admin/invoice-detail",
+																search: { id: invoice.id },
+															})
+														}
+													>
+														<TableCell
+															onClick={(e) => e.stopPropagation()}
 														>
-															<TableCell onClick={(e) => e.stopPropagation()}>
-																<Checkbox
-																	checked={selectedIds.has(invoice.id)}
-																	onCheckedChange={() => toggleOne(invoice.id)}
-																	aria-label={`Select invoice ${invoice.invoiceNumber}`}
-																/>
-															</TableCell>
-															<TableCell
-																className="font-semibold text-sm pl-8"
-																style={{
-																	fontFamily: "var(--dashboard-display)",
-																}}
+															<Checkbox
+																checked={selectedIds.has(invoice.id)}
+																onCheckedChange={() => toggleOne(invoice.id)}
+																aria-label={`Select invoice ${invoice.invoiceNumber}`}
+															/>
+														</TableCell>
+														<TableCell
+															className="font-semibold text-sm pl-8"
+															style={{ fontFamily: "var(--dashboard-display)" }}
+														>
+															{invoice.invoiceNumber}
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.doNumber ?? "—"}
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.toNumber ?? "—"}
+														</TableCell>
+														<TableCell
+															className="text-sm font-semibold"
+															style={{ fontFamily: "var(--dashboard-display)" }}
+														>
+															{formatCurrency(invoice.totalAmount)}
+															<div className="text-[11px] font-normal text-muted-foreground">
+																{`${Math.round(((invoice.sstRate ?? 0.06) as number) * 100)}% SST included`}
+															</div>
+														</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{invoice.issuedDate
+																? formatDateOnly(invoice.issuedDate)
+																: "—"}
+														</TableCell>
+														<TableCell>
+															<Badge
+																variant="outline"
+																className={getStatusColor(invoice.status)}
 															>
-																{invoice.invoiceNumber}
-															</TableCell>
-															<TableCell className="text-sm text-muted-foreground">
-																{invoice.doNumber ?? "—"}
-															</TableCell>
-															<TableCell className="text-sm text-muted-foreground">
-																{invoice.toNumber ?? "—"}
-															</TableCell>
-															<TableCell
-																className="text-sm font-semibold"
-																style={{
-																	fontFamily: "var(--dashboard-display)",
-																}}
+																{invoice.status}
+															</Badge>
+														</TableCell>
+														<TableCell
+															className="text-right"
+															onClick={(e) => e.stopPropagation()}
+														>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-7 w-7 opacity-60 hover:opacity-100"
+																onClick={() =>
+																	navigate({
+																		to: "/admin/invoice-detail",
+																		search: { id: invoice.id },
+																	})
+																}
 															>
-																{formatCurrency(invoice.totalAmount)}
-																<div className="text-[11px] font-normal text-muted-foreground">
-																	{`${Math.round(((invoice.sstRate ?? 0.06) as number) * 100)}% SST included`}
-																</div>
-															</TableCell>
-															<TableCell className="text-sm text-muted-foreground">
-																{invoice.issuedDate
-																	? formatDateOnly(invoice.issuedDate)
-																	: "—"}
-															</TableCell>
-															<TableCell>
-																<Badge
-																	variant="outline"
-																	className={getStatusColor(invoice.status)}
-																>
-																	{invoice.status}
-																</Badge>
-															</TableCell>
-															<TableCell
-																className="text-right"
-																onClick={(e) => e.stopPropagation()}
-															>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-7 w-7 opacity-60 hover:opacity-100"
-																	onClick={() =>
-																		navigate({
-																			to: "/admin/invoice-detail",
-																			search: { id: invoice.id },
-																		})
-																	}
-																>
-																	<Eye className="h-3.5 w-3.5" />
-																</Button>
-															</TableCell>
-														</TableRow>
-													))}
+																<Eye className="h-3.5 w-3.5" />
+															</Button>
+														</TableCell>
+													</TableRow>
+												))}
 											</>
 										);
 									})
@@ -847,15 +791,11 @@ function InvoicesComponent() {
 											variant="outline"
 											size="icon"
 											className="h-7 w-7 text-xs transition-colors"
-											style={
-												entry === page
-													? {
-															background: "var(--dashboard-accent)",
-															borderColor: "var(--dashboard-accent)",
-															color: "#fff",
-														}
-													: undefined
-											}
+											style={entry === page ? {
+												background: "var(--dashboard-accent)",
+												borderColor: "var(--dashboard-accent)",
+												color: "#fff",
+											} : undefined}
 											onClick={() => setPage(entry)}
 											aria-label={`Page ${entry}`}
 											aria-current={entry === page ? "page" : undefined}

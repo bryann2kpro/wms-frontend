@@ -22,15 +22,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import {
-	Search,
-	Loader2,
-	Truck,
-	PackageOpen,
-	AlertCircle,
-	Printer,
-	Layers,
-} from "lucide-react";
+import { Search, Loader2, Truck, PackageOpen, AlertCircle, Printer, Layers } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
 	DELIVERY_ORDER_ITEMS_QUERY,
@@ -320,9 +312,10 @@ function EmpireSushiDOComponent() {
 			}
 			const group = grouped.get(key)!;
 			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
-			const pickedQty = optimisticPicked.has(item.id)
-				? req
-				: parseFloat(String(item.qtyPicked ?? 0)) || 0;
+			const pickedQty =
+				optimisticPicked.has(item.id)
+					? req
+					: parseFloat(String(item.qtyPicked ?? 0)) || 0;
 			group.totalQtyRequired += req;
 			group.totalQtyPicked += pickedQty;
 			group.doBreakdown.push({
@@ -389,15 +382,16 @@ function EmpireSushiDOComponent() {
 		return rows;
 	}, [skuGroups]);
 
-	const [generatePickingList, { loading: generatingPickingList }] = useMutation<
-		GenerateDoPickingListMutationData,
-		GenerateDoPickingListMutationVariables
-	>(GENERATE_DO_PICKING_LIST_MUTATION, {
-		onCompleted(data) {
-			const { pdfBase64, filename } = data.generateDoPickingList;
-			downloadPdfFromBase64(pdfBase64, filename);
-		},
-	});
+	const [generatePickingList, { loading: generatingPickingList }] =
+		useMutation<GenerateDoPickingListMutationData, GenerateDoPickingListMutationVariables>(
+			GENERATE_DO_PICKING_LIST_MUTATION,
+			{
+				onCompleted(data) {
+					const { pdfBase64, filename } = data.generateDoPickingList;
+					downloadPdfFromBase64(pdfBase64, filename);
+				},
+			},
+		);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -631,10 +625,7 @@ function EmpireSushiDOComponent() {
 							value={regionId || "all"}
 							onValueChange={(v) => setRegionId(v === "all" ? "" : v)}
 						>
-							<SelectTrigger
-								className="h-8 w-44 text-xs"
-								aria-label="Filter by region"
-							>
+							<SelectTrigger className="h-8 w-44 text-xs" aria-label="Filter by region">
 								<SelectValue placeholder="All regions" />
 							</SelectTrigger>
 							<SelectContent>
@@ -648,9 +639,7 @@ function EmpireSushiDOComponent() {
 						</Select>
 
 						<div className="flex items-center gap-1.5">
-							<label className="text-xs text-muted-foreground whitespace-nowrap">
-								Scheduled delivery date:
-							</label>
+							<label className="text-xs text-muted-foreground whitespace-nowrap">Scheduled delivery date:</label>
 							<input
 								type="date"
 								value={dateFrom}
@@ -673,11 +662,7 @@ function EmpireSushiDOComponent() {
 								variant="ghost"
 								size="sm"
 								className="h-8 text-xs text-muted-foreground"
-								onClick={() => {
-									setRegionId("");
-									setDateFrom(TODAY_ISO);
-									setDateTo(TODAY_ISO);
-								}}
+								onClick={() => { setRegionId(""); setDateFrom(TODAY_ISO); setDateTo(TODAY_ISO); }}
 							>
 								Reset filters
 							</Button>
@@ -712,11 +697,7 @@ function EmpireSushiDOComponent() {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() =>
-								generatePickingList({
-									variables: { filter: pickingListFilter },
-								})
-							}
+							onClick={() => generatePickingList({ variables: { filter: pickingListFilter } })}
 							disabled={generatingPickingList}
 							className="h-7 text-xs gap-1.5"
 						>
@@ -760,303 +741,283 @@ function EmpireSushiDOComponent() {
 				)}
 
 				{viewMode === "do" && (
-					<section
-						className="relative print:hidden"
-						aria-label="Delivery order items work queue"
-						aria-busy={queryLoading}
-					>
-						<GlobalLoadingShadow />
-						<div className="overflow-x-auto rounded-lg border">
-							<Table aria-label="Empire Sushi DO work queue — items grouped by delivery order">
-								<TableHeader>
+				<section
+					className="relative print:hidden"
+					aria-label="Delivery order items work queue"
+					aria-busy={queryLoading}
+				>
+					<GlobalLoadingShadow />
+					<div className="overflow-x-auto rounded-lg border">
+						<Table aria-label="Empire Sushi DO work queue — items grouped by delivery order">
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-10">#</TableHead>
+									<TableHead>SKU</TableHead>
+									<TableHead>Description</TableHead>
+									<TableHead>PO</TableHead>
+									<TableHead className="text-center">Qty Required</TableHead>
+									<TableHead className="text-center">Qty Picked</TableHead>
+									<TableHead className="text-center">On Hand</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="text-center">Picked</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{!queryLoading && groups.length === 0 ? (
 									<TableRow>
-										<TableHead className="w-10">#</TableHead>
-										<TableHead>SKU</TableHead>
-										<TableHead>Description</TableHead>
-										<TableHead>PO</TableHead>
-										<TableHead className="text-center">Qty Required</TableHead>
-										<TableHead className="text-center">Qty Picked</TableHead>
-										<TableHead className="text-center">On Hand</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead className="text-center">Picked</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{!queryLoading && groups.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={TABLE_COLS}
-												className="py-16 text-center"
-											>
-												<div className="flex flex-col items-center gap-3">
-													<div className="rounded-full bg-muted p-3">
-														<PackageOpen
-															className="h-8 w-8 text-muted-foreground"
-															aria-hidden
-														/>
-													</div>
-													<p className="font-medium text-foreground">
-														No active delivery orders
-													</p>
-													<p className="text-sm text-muted-foreground">
-														Items from DOs with status NEW or PICKING will
-														appear here.
-													</p>
+										<TableCell
+											colSpan={TABLE_COLS}
+											className="py-16 text-center"
+										>
+											<div className="flex flex-col items-center gap-3">
+												<div className="rounded-full bg-muted p-3">
+													<PackageOpen
+														className="h-8 w-8 text-muted-foreground"
+														aria-hidden
+													/>
 												</div>
-											</TableCell>
-										</TableRow>
-									) : (
-										groups.flatMap((group) => {
-											const pickedCount =
-												group.items.filter(isItemPicked).length;
-											const totalCount = group.items.length;
-											const allPicked = pickedCount === totalCount;
+												<p className="font-medium text-foreground">
+													No active delivery orders
+												</p>
+												<p className="text-sm text-muted-foreground">
+													Items from DOs with status NEW or PICKING will appear
+													here.
+												</p>
+											</div>
+										</TableCell>
+									</TableRow>
+								) : (
+									groups.flatMap((group) => {
+										const pickedCount = group.items.filter(isItemPicked).length;
+										const totalCount = group.items.length;
+										const allPicked = pickedCount === totalCount;
 
-											return [
-												// DO group header row
-												<TableRow
-													key={`group-${group.doId}`}
-													className="bg-muted/50 hover:bg-muted/60 border-l-4 border-l-primary/40"
-												>
-													<TableCell
-														colSpan={TABLE_COLS}
-														className="px-4 py-2.5"
-													>
-														<div className="flex items-center gap-3">
-															<span className="font-semibold text-sm">
-																{group.doNo}
-															</span>
-															<Badge
-																variant={getStatusBadgeVariant(group.doStatus)}
-																className="text-xs"
-															>
-																{group.doStatus}
-															</Badge>
-															<span
-																className={`text-xs font-medium ${allPicked ? "text-green-600" : "text-muted-foreground"}`}
-															>
-																{pickedCount}/{totalCount} picked
-															</span>
-															{allPicked && group.doStatus !== "PACKING" && (
-																<span className="text-xs text-green-600 font-medium">
-																	· Advancing to Packing…
-																</span>
-															)}
-															{(group.doStatus === "NEW" ||
-																group.doStatus === "CREATED") && (
-																<Button
-																	size="sm"
-																	variant="secondary"
-																	onClick={() => handleBulkPickAll(group)}
-																	disabled={
-																		bulkPickingDOs.has(group.doId) ||
-																		!canApprove
-																	}
-																	className="ml-auto text-xs h-7"
-																>
-																	{bulkPickingDOs.has(group.doId) ? (
-																		<Loader2
-																			className="h-3 w-3 animate-spin mr-1"
-																			aria-hidden
-																		/>
-																	) : null}
-																	Mark all as Picked
-																</Button>
-															)}
-															{group.doStatus === "PACKING" && (
-																<Button
-																	size="sm"
-																	variant="default"
-																	onClick={() =>
-																		handleAdvanceToShipped(group.doId)
-																	}
-																	disabled={
-																		advancingDOs.has(group.doId) || !canApprove
-																	}
-																	className="ml-auto text-xs h-7"
-																>
-																	{advancingDOs.has(group.doId) ? (
-																		<Loader2
-																			className="h-3 w-3 animate-spin mr-1"
-																			aria-hidden
-																		/>
-																	) : null}
-																	Mark as Shipped
-																</Button>
-															)}
-														</div>
-													</TableCell>
-												</TableRow>,
-
-												// Item rows
-												...group.items.map((item, idx) => {
-													const picked = isItemPicked(item);
-													const isProcessing = processingItems.has(item.id);
-
-													return (
-														<TableRow
-															key={item.id}
-															className={
-																picked
-																	? "bg-green-50/50 dark:bg-green-950/10"
-																	: ""
-															}
+										return [
+											// DO group header row
+											<TableRow
+												key={`group-${group.doId}`}
+												className="bg-muted/50 hover:bg-muted/60 border-l-4 border-l-primary/40"
+											>
+												<TableCell colSpan={TABLE_COLS} className="px-4 py-2.5">
+													<div className="flex items-center gap-3">
+														<span className="font-semibold text-sm">
+															{group.doNo}
+														</span>
+														<Badge
+															variant={getStatusBadgeVariant(group.doStatus)}
+															className="text-xs"
 														>
-															<TableCell className="font-medium text-muted-foreground text-xs">
-																{idx + 1}
-															</TableCell>
-															<TableCell className="font-mono text-sm">
-																{item.skuCode ?? "—"}
-															</TableCell>
-															<TableCell className="max-w-[220px]">
-																<div className="truncate text-sm">
-																	{item.skuDescription ?? "—"}
-																</div>
-																<AllocationGuide
-																	allocations={item.allocations}
-																/>
-															</TableCell>
-															<TableCell className="font-mono text-xs text-muted-foreground">
-																{item.purchaseOrderNo}
-															</TableCell>
-															<TableCell className="text-center">
-																{formatQty(item.qtyRequired)}
-															</TableCell>
-															<TableCell className="text-center">
-																{formatQty(item.qtyPicked)}
-															</TableCell>
-															<TableCell className="text-center text-sm text-muted-foreground">
-																{formatQty(item.onHandQty)}
-															</TableCell>
-															<TableCell>
-																<Badge
-																	variant={getStatusBadgeVariant(item.doStatus)}
-																	className="text-xs"
-																>
-																	{item.doStatus ?? "—"}
-																</Badge>
-															</TableCell>
-															<TableCell className="text-center">
-																{isProcessing ? (
+															{group.doStatus}
+														</Badge>
+														<span
+															className={`text-xs font-medium ${allPicked ? "text-green-600" : "text-muted-foreground"}`}
+														>
+															{pickedCount}/{totalCount} picked
+														</span>
+														{allPicked && group.doStatus !== "PACKING" && (
+															<span className="text-xs text-green-600 font-medium">
+																· Advancing to Packing…
+															</span>
+														)}
+														{(group.doStatus === "NEW" ||
+															group.doStatus === "CREATED") && (
+															<Button
+																size="sm"
+																variant="secondary"
+																onClick={() => handleBulkPickAll(group)}
+																disabled={
+																	bulkPickingDOs.has(group.doId) || !canApprove
+																}
+																className="ml-auto text-xs h-7"
+															>
+																{bulkPickingDOs.has(group.doId) ? (
 																	<Loader2
-																		className="h-4 w-4 animate-spin mx-auto text-muted-foreground"
+																		className="h-3 w-3 animate-spin mr-1"
 																		aria-hidden
 																	/>
-																) : (
-																	<Checkbox
-																		checked={picked}
-																		disabled={
-																			picked || !item.doId || !canApprove
-																		}
-																		onCheckedChange={() =>
-																			handleCheckItem(item)
-																		}
-																		aria-label={`Mark ${item.skuCode ?? "item"} as picked`}
+																) : null}
+																Mark all as Picked
+															</Button>
+														)}
+														{group.doStatus === "PACKING" && (
+															<Button
+																size="sm"
+																variant="default"
+																onClick={() =>
+																	handleAdvanceToShipped(group.doId)
+																}
+																disabled={
+																	advancingDOs.has(group.doId) || !canApprove
+																}
+																className="ml-auto text-xs h-7"
+															>
+																{advancingDOs.has(group.doId) ? (
+																	<Loader2
+																		className="h-3 w-3 animate-spin mr-1"
+																		aria-hidden
 																	/>
-																)}
-															</TableCell>
-														</TableRow>
-													);
-												}),
-											];
-										})
-									)}
-								</TableBody>
-							</Table>
-						</div>
-					</section>
+																) : null}
+																Mark as Shipped
+															</Button>
+														)}
+													</div>
+												</TableCell>
+											</TableRow>,
+
+											// Item rows
+											...group.items.map((item, idx) => {
+												const picked = isItemPicked(item);
+												const isProcessing = processingItems.has(item.id);
+
+												return (
+													<TableRow
+														key={item.id}
+														className={
+															picked
+																? "bg-green-50/50 dark:bg-green-950/10"
+																: ""
+														}
+													>
+														<TableCell className="font-medium text-muted-foreground text-xs">
+															{idx + 1}
+														</TableCell>
+														<TableCell className="font-mono text-sm">
+															{item.skuCode ?? "—"}
+														</TableCell>
+														<TableCell className="max-w-[220px]">
+															<div className="truncate text-sm">
+																{item.skuDescription ?? "—"}
+															</div>
+															<AllocationGuide allocations={item.allocations} />
+														</TableCell>
+														<TableCell className="font-mono text-xs text-muted-foreground">
+															{item.purchaseOrderNo}
+														</TableCell>
+														<TableCell className="text-center">
+															{formatQty(item.qtyRequired)}
+														</TableCell>
+														<TableCell className="text-center">
+															{formatQty(item.qtyPicked)}
+														</TableCell>
+														<TableCell className="text-center text-sm text-muted-foreground">
+															{formatQty(item.onHandQty)}
+														</TableCell>
+														<TableCell>
+															<Badge
+																variant={getStatusBadgeVariant(item.doStatus)}
+																className="text-xs"
+															>
+																{item.doStatus ?? "—"}
+															</Badge>
+														</TableCell>
+														<TableCell className="text-center">
+															{isProcessing ? (
+																<Loader2
+																	className="h-4 w-4 animate-spin mx-auto text-muted-foreground"
+																	aria-hidden
+																/>
+															) : (
+																<Checkbox
+																	checked={picked}
+																	disabled={picked || !item.doId || !canApprove}
+																	onCheckedChange={() => handleCheckItem(item)}
+																	aria-label={`Mark ${item.skuCode ?? "item"} as picked`}
+																/>
+															)}
+														</TableCell>
+													</TableRow>
+												);
+											}),
+										];
+									})
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</section>
 				)}
 
 				{/* SKU summary view */}
 				{viewMode === "sku" && (
-					<section
-						className="relative print:hidden"
-						aria-label="SKU picking summary"
-						aria-busy={queryLoading}
-					>
-						<GlobalLoadingShadow />
-						<div className="overflow-x-auto rounded-lg border">
-							<Table aria-label="SKU picking summary — total quantities per SKU across all DOs">
-								<TableHeader>
+				<section
+					className="relative print:hidden"
+					aria-label="SKU picking summary"
+					aria-busy={queryLoading}
+				>
+					<GlobalLoadingShadow />
+					<div className="overflow-x-auto rounded-lg border">
+						<Table aria-label="SKU picking summary — total quantities per SKU across all DOs">
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-10">#</TableHead>
+									<TableHead>SKU Code</TableHead>
+									<TableHead>Description &amp; DO Breakdown</TableHead>
+									<TableHead className="text-center">Total Required</TableHead>
+									<TableHead>Rack(s)</TableHead>
+									<TableHead>Completed Picking</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{!queryLoading && skuRackRows.length === 0 ? (
 									<TableRow>
-										<TableHead className="w-10">#</TableHead>
-										<TableHead>SKU Code</TableHead>
-										<TableHead>Description &amp; DO Breakdown</TableHead>
-										<TableHead className="text-center">
-											Total Required
-										</TableHead>
-										<TableHead>Rack(s)</TableHead>
-										<TableHead>Completed Picking</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{!queryLoading && skuRackRows.length === 0 ? (
-										<TableRow>
-											<TableCell colSpan={6} className="py-16 text-center">
-												<div className="flex flex-col items-center gap-3">
-													<div className="rounded-full bg-muted p-3">
-														<PackageOpen
-															className="h-8 w-8 text-muted-foreground"
-															aria-hidden
-														/>
-													</div>
-													<p className="font-medium text-foreground">
-														No active delivery orders
-													</p>
+										<TableCell colSpan={6} className="py-16 text-center">
+											<div className="flex flex-col items-center gap-3">
+												<div className="rounded-full bg-muted p-3">
+													<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
 												</div>
-											</TableCell>
-										</TableRow>
-									) : (
-										skuRackRows.map((row, idx) => {
-											return (
-												<TableRow key={row.key}>
-													<TableCell className="font-medium text-muted-foreground text-xs">
-														{idx + 1}
-													</TableCell>
-													<TableCell className="font-mono text-sm font-semibold">
-														{row.skuCode}
-													</TableCell>
-													<TableCell className="max-w-[240px]">
-														<div className="truncate text-sm">
-															{row.skuDescription}
-														</div>
-														<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-															{row.doBreakdown.map((d, i) => (
-																<span
-																	key={`${d.doId}-${i}`}
-																	className="text-xs text-muted-foreground"
-																>
-																	{d.doNo}:{" "}
-																	<span className="font-medium text-foreground">
-																		{formatQty(d.qtyRequired)}
-																	</span>
+												<p className="font-medium text-foreground">No active delivery orders</p>
+											</div>
+										</TableCell>
+									</TableRow>
+								) : (
+									skuRackRows.map((row, idx) => {
+										return (
+											<TableRow
+												key={row.key}
+											>
+												<TableCell className="font-medium text-muted-foreground text-xs">
+													{idx + 1}
+												</TableCell>
+												<TableCell className="font-mono text-sm font-semibold">
+													{row.skuCode}
+												</TableCell>
+												<TableCell className="max-w-[240px]">
+													<div className="truncate text-sm">{row.skuDescription}</div>
+													<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+														{row.doBreakdown.map((d, i) => (
+															<span key={`${d.doId}-${i}`} className="text-xs text-muted-foreground">
+																{d.doNo}:{" "}
+																<span className="font-medium text-foreground">
+																	{formatQty(d.qtyRequired)}
 																</span>
-															))}
-														</div>
-													</TableCell>
-													<TableCell className="text-center font-semibold">
-														{formatQty(row.qtyRequired)}
-													</TableCell>
-													<TableCell className="text-sm text-muted-foreground">
-														{row.rackLabel}
-													</TableCell>
-													<TableCell className="text-center">
-														<Checkbox
-															checked={row.completedPicking}
-															disabled
-															aria-label={`Picking completed for ${row.skuCode}`}
-														/>
-													</TableCell>
-												</TableRow>
-											);
-										})
-									)}
-								</TableBody>
-							</Table>
-						</div>
-					</section>
+															</span>
+														))}
+													</div>
+												</TableCell>
+												<TableCell className="text-center font-semibold">
+													{formatQty(row.qtyRequired)}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{row.rackLabel}
+												</TableCell>
+												<TableCell className="text-center">
+													<Checkbox
+														checked={row.completedPicking}
+														disabled
+														aria-label={`Picking completed for ${row.skuCode}`}
+													/>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</section>
 				)}
-			</main>
+
+				</main>
 		</div>
 	);
 }

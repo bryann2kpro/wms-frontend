@@ -73,8 +73,6 @@ type SkuComboboxProps = {
 	stockUnitCodes?: string[];
 	/** SKU codes already used in other rows. These are shown with an "Added" badge but can still be selected (same SKU is valid with different expiry date / rack). */
 	usedSkuCodes?: string[];
-	/** SKU codes to fully exclude from the dropdown (cannot be selected at all). */
-	excludedSkuCodes?: string[];
 };
 
 type StockUnit = {
@@ -88,7 +86,6 @@ export function SkuCombobox({
 	placeholder = "Search or select SKU...",
 	className,
 	usedSkuCodes,
-	excludedSkuCodes,
 }: SkuComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -180,18 +177,15 @@ export function SkuCombobox({
 	});
 
 	const filtered = useMemo(() => {
-		let list = skus;
-		if (excludedSkuCodes?.length) {
-			list = list.filter((s: Skus) => !excludedSkuCodes.includes(s.skuCode));
-		}
-		if (!search.trim()) return list;
+		// All SKUs remain selectable — same SKU can appear in multiple rows with different expiry dates or racks
+		if (!search.trim()) return skus;
 		const q = search.toLowerCase();
-		return list.filter(
+		return skus.filter(
 			(s: Skus) =>
 				s.skuCode.toLowerCase().includes(q) ||
 				s.skuDescription?.toLowerCase().includes(q),
 		);
-	}, [skus, search, excludedSkuCodes]);
+	}, [skus, search]);
 
 	function handleSelect(sku: Sku) {
 		const s = sku as unknown as Skus;

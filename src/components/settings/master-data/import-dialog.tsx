@@ -89,10 +89,7 @@ type PreviewRow =
 
 function isSkuRow(
 	row: PreviewRow,
-): row is Extract<
-	PreviewRow,
-	{ skuPayload?: CreateSkusMutationVariables["input"] }
-> {
+): row is Extract<PreviewRow, { skuPayload?: CreateSkusMutationVariables["input"] }> {
 	return "skuPayload" in row;
 }
 
@@ -101,10 +98,7 @@ function normalize(value: unknown): string {
 }
 
 function normalizeKey(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, " ")
-		.trim();
+	return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function rowToHeaders(row: Record<string, unknown>): Record<string, string> {
@@ -166,10 +160,7 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 						"Errors",
 					],
 					...failed.map((row) => {
-						const data = row.data as Extract<
-							PreviewRow,
-							{ skuPayload?: unknown }
-						>["data"];
+						const data = row.data as Extract<PreviewRow, { skuPayload?: unknown }>["data"];
 						return [
 							row.rowNumber,
 							data.skuCode,
@@ -186,10 +177,7 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 			: [
 					["Row", "Row", "Column", "Level", "Errors"],
 					...failed.map((row) => {
-						const data = row.data as Extract<
-							PreviewRow,
-							{ rackPayload?: unknown }
-						>["data"];
+						const data = row.data as Extract<PreviewRow, { rackPayload?: unknown }>["data"];
 						return [
 							row.rowNumber,
 							data.rackRow,
@@ -240,10 +228,10 @@ export function ImportDialog({
 		},
 	);
 
-	const { data: skusData, loading: skusLoading } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, {
+	const {
+		data: skusData,
+		loading: skusLoading,
+	} = useQuery<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {
 		variables: {},
 		skip: mode !== "skus" || !open,
 		fetchPolicy: "no-cache",
@@ -254,10 +242,9 @@ export function ImportDialog({
 		CreateSkusMutationVariables
 	>(CREATE_SKUS_MUTATION);
 
-	const [updateSku] = useMutation<
-		UpdateSkusMutationData,
-		UpdateSkusMutationVariables
-	>(UPDATE_SKUS_MUTATION);
+	const [updateSku] = useMutation<UpdateSkusMutationData, UpdateSkusMutationVariables>(
+		UPDATE_SKUS_MUTATION,
+	);
 	const [createRack] = useMutation<
 		CreateRackMutationData,
 		CreateRackMutationVariables
@@ -274,13 +261,8 @@ export function ImportDialog({
 					return row.errors.length === 0;
 				}
 				return mode === "skus"
-					? Boolean(
-							(row as Extract<PreviewRow, { skuPayload?: unknown }>).skuPayload,
-						)
-					: Boolean(
-							(row as Extract<PreviewRow, { rackPayload?: unknown }>)
-								.rackPayload,
-						);
+					? Boolean((row as Extract<PreviewRow, { skuPayload?: unknown }>).skuPayload)
+					: Boolean((row as Extract<PreviewRow, { rackPayload?: unknown }>).rackPayload);
 			}),
 		[rows, mode, isStockTakeFormat],
 	);
@@ -336,10 +318,7 @@ export function ImportDialog({
 					normalizeKey(`${rack.rackRow}|${rack.rackColumn}|${rack.rackLevel}`),
 				),
 			);
-			const newRackMap = new Map<
-				string,
-				CreateRackMutationVariables["input"]
-			>();
+			const newRackMap = new Map<string, CreateRackMutationVariables["input"]>();
 			const newUomSet = new Set<string>();
 			const aggregate = new Map<
 				string,
@@ -354,21 +333,15 @@ export function ImportDialog({
 			for (const rawRow of rawRows) {
 				const headers = rowToHeaders(rawRow);
 				const binCode = headers["storage bin code"] ?? "";
-				const skuCodeRaw =
-					headers["item code"] ?? headers["sku code"] ?? headers.code ?? "";
+				const skuCodeRaw = headers["item code"] ?? headers["sku code"] ?? headers.code ?? "";
 				const skuCode = skuCodeRaw.replace(/\s*\(f\)\s*$/i, "").trim();
 				const skuDescription = headers.description ?? "";
 				const quantityRaw = headers["unit qty"] ?? headers.quantity ?? "";
 				const skuUomLabel =
-					headers["loose uom"] ??
-					headers["unit of measure"] ??
-					headers.uom ??
-					headers.unit ??
-					"";
+					headers["loose uom"] ?? headers["unit of measure"] ?? headers.uom ?? headers.unit ?? "";
 
 				const isSubtotalRow =
-					!skuCode &&
-					(!quantityRaw || String(quantityRaw).trim().startsWith("="));
+					!skuCode && (!quantityRaw || String(quantityRaw).trim().startsWith("="));
 				if (isSubtotalRow) continue;
 				if (!skuCode) continue;
 
@@ -457,7 +430,7 @@ export function ImportDialog({
 									pickingStrategy: "FIFO",
 									isActive: true,
 									initialOnHandQty: item.skuQuantity,
-								}
+							  }
 							: undefined,
 				};
 			});
@@ -471,25 +444,17 @@ export function ImportDialog({
 			const headers = rowToHeaders(row);
 			const skuCode = headers["sku code"] ?? headers.code ?? "";
 			if (!skuCode) continue;
-			counts.set(
-				skuCode.toLowerCase(),
-				(counts.get(skuCode.toLowerCase()) ?? 0) + 1,
-			);
+			counts.set(skuCode.toLowerCase(), (counts.get(skuCode.toLowerCase()) ?? 0) + 1);
 		}
 
 		return rawRows.map((row, index) => {
 			const headers = rowToHeaders(row);
-			const skuCode =
-				headers["sku code"] ?? headers["item code"] ?? headers.code ?? "";
+			const skuCode = headers["sku code"] ?? headers["item code"] ?? headers.code ?? "";
 			const skuDescription = headers.description ?? "";
 			const skuPrice = headers.price ?? "";
 			const skuQuantity = headers.quantity ?? headers["unit qty"] ?? "";
 			const skuUomLabel =
-				headers["unit of measure"] ??
-				headers["loose uom"] ??
-				headers.uom ??
-				headers.unit ??
-				"";
+				headers["unit of measure"] ?? headers["loose uom"] ?? headers.uom ?? headers.unit ?? "";
 			const pickingStrategy =
 				(headers["picking strategy"] ?? "FIFO").toUpperCase().trim() || "FIFO";
 			const expiryInput = headers["expiry date"] ?? "";
@@ -503,10 +468,7 @@ export function ImportDialog({
 			} else if (Number(skuQuantity) < 0) {
 				errors.push("Quantity must be >= 0");
 			}
-			if (
-				skuPrice &&
-				(Number.isNaN(Number(skuPrice)) || Number(skuPrice) < 0)
-			) {
+			if (skuPrice && (Number.isNaN(Number(skuPrice)) || Number(skuPrice) < 0)) {
 				errors.push("Price must be a number >= 0");
 			}
 			if (!skuUomLabel) {
@@ -542,7 +504,7 @@ export function ImportDialog({
 							pickingStrategy,
 							isActive: true,
 							initialOnHandQty: Number(skuQuantity),
-						}
+					  }
 					: undefined;
 
 			return {
@@ -603,7 +565,7 @@ export function ImportDialog({
 								rackLevel,
 								createdBy,
 								updatedBy: createdBy,
-							}
+						  }
 						: undefined,
 			};
 		});
@@ -662,10 +624,7 @@ export function ImportDialog({
 		const mutableRows = [...rows];
 		const uomLookup = new Map<string, string>();
 		for (const unit of stockUnitsData?.stockUnits.query ?? []) {
-			uomLookup.set(
-				normalizeKey(`${unit.unitName} ${unit.unitCode}`),
-				unit.stockUnitId,
-			);
+			uomLookup.set(normalizeKey(`${unit.unitName} ${unit.unitCode}`), unit.stockUnitId);
 			uomLookup.set(normalizeKey(unit.unitName), unit.stockUnitId);
 			uomLookup.set(normalizeKey(unit.unitCode), unit.stockUnitId);
 		}
@@ -713,10 +672,7 @@ export function ImportDialog({
 								row as Extract<PreviewRow, { skuPayload?: unknown }>
 							).skuPayload;
 							if (isStockTakeFormat) {
-								const skuRow = row as Extract<
-									PreviewRow,
-									{ skuPayload?: unknown }
-								>;
+								const skuRow = row as Extract<PreviewRow, { skuPayload?: unknown }>;
 								const stockUnitId = uomLookup.get(
 									normalizeKey(skuRow.data.skuUomLabel),
 								);
@@ -749,8 +705,7 @@ export function ImportDialog({
 
 							if (isStockTakeFormat) {
 								const existing = (skusData?.skus?.query ?? []).find(
-									(s) =>
-										s.skuCode.toLowerCase() === payload.skuCode.toLowerCase(),
+									(s) => s.skuCode.toLowerCase() === payload.skuCode.toLowerCase(),
 								);
 
 								if (existing) {
@@ -778,21 +733,12 @@ export function ImportDialog({
 							}
 
 							await createSku({ variables: { input: payload } });
-							return {
-								rowNumber: row.rowNumber,
-								ok: true as const,
-								action: "created" as const,
-							};
+							return { rowNumber: row.rowNumber, ok: true as const, action: "created" as const };
 						}
 						const payload = (
 							row as Extract<PreviewRow, { rackPayload?: unknown }>
 						).rackPayload;
-						if (!payload)
-							return {
-								rowNumber: row.rowNumber,
-								ok: false as const,
-								error: "Missing payload",
-							};
+						if (!payload) return { rowNumber: row.rowNumber, ok: false as const, error: "Missing payload" };
 						await createRack({ variables: { input: payload } });
 						return { rowNumber: row.rowNumber, ok: true as const };
 					}),
@@ -801,17 +747,9 @@ export function ImportDialog({
 				for (const result of settled) {
 					setProcessedCount((c) => c + 1);
 					if (result.status === "fulfilled" && result.value.ok) {
-						if (
-							mode === "skus" &&
-							isStockTakeFormat &&
-							result.value.action === "updated"
-						) {
+						if (mode === "skus" && isStockTakeFormat && result.value.action === "updated") {
 							updatedCount += 1;
-						} else if (
-							mode === "skus" &&
-							isStockTakeFormat &&
-							result.value.action === "created"
-						) {
+						} else if (mode === "skus" && isStockTakeFormat && result.value.action === "created") {
 							createdCount += 1;
 						}
 						continue;
@@ -821,22 +759,14 @@ export function ImportDialog({
 					const errorText =
 						result.status === "fulfilled"
 							? result.value.error
-							: (result.reason?.message ?? "Import failed");
-					const idx = mutableRows.findIndex(
-						(row) => row.rowNumber === rowNumber,
-					);
-					if (idx >= 0)
-						mutableRows[idx] = {
-							...mutableRows[idx],
-							errors: [errorText],
-						} as PreviewRow;
+							: result.reason?.message ?? "Import failed";
+					const idx = mutableRows.findIndex((row) => row.rowNumber === rowNumber);
+					if (idx >= 0) mutableRows[idx] = { ...mutableRows[idx], errors: [errorText] } as PreviewRow;
 				}
 				setRows([...mutableRows]);
 			}
 
-			const failedCount = mutableRows.filter(
-				(row) => row.errors.length > 0,
-			).length;
+			const failedCount = mutableRows.filter((row) => row.errors.length > 0).length;
 			const successCount = validRows.length - failedCount;
 			if (successCount > 0) {
 				toast.success(
@@ -896,20 +826,16 @@ export function ImportDialog({
 							>
 								Ready: {validRows.length}
 							</span>
-							{mode === "skus" &&
-								isStockTakeFormat &&
-								newRacksToCreate.length > 0 && (
-									<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
-										+{newRacksToCreate.length} new racks
-									</span>
-								)}
-							{mode === "skus" &&
-								isStockTakeFormat &&
-								newUomsToCreate.length > 0 && (
-									<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
-										+{newUomsToCreate.length} new UOMs
-									</span>
-								)}
+							{mode === "skus" && isStockTakeFormat && newRacksToCreate.length > 0 && (
+								<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
+									+{newRacksToCreate.length} new racks
+								</span>
+							)}
+							{mode === "skus" && isStockTakeFormat && newUomsToCreate.length > 0 && (
+								<span className="rounded-md border border-border bg-background px-2 py-1 text-foreground">
+									+{newUomsToCreate.length} new UOMs
+								</span>
+							)}
 						</div>
 					</div>
 				</DialogHeader>
@@ -959,8 +885,7 @@ export function ImportDialog({
 						{mode === "skus" && (
 							<p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
 								<CalendarDays className="h-3.5 w-3.5" />
-								Expiry supports `YYYY-MM-DD`, `MM/DD/YYYY`, and Excel serial
-								dates (e.g. 46387).
+								Expiry supports `YYYY-MM-DD`, `MM/DD/YYYY`, and Excel serial dates (e.g. 46387).
 							</p>
 						)}
 					</div>
@@ -969,9 +894,7 @@ export function ImportDialog({
 						<div className="space-y-2 rounded-lg border bg-[var(--dashboard-accent-muted)]/25 p-3">
 							<div className="flex items-center justify-between text-sm">
 								<span>Import progress</span>
-								<span>
-									{processedCount} / {validRows.length}
-								</span>
+								<span>{processedCount} / {validRows.length}</span>
 							</div>
 							<Progress
 								value={progress}
@@ -1019,9 +942,7 @@ export function ImportDialog({
 									rows.map((row) => (
 										<TableRow
 											key={`${mode}-${row.rowNumber}`}
-											className={
-												row.errors.length > 0 ? "bg-destructive/10" : ""
-											}
+											className={row.errors.length > 0 ? "bg-destructive/10" : ""}
 										>
 											<TableCell>{row.rowNumber}</TableCell>
 											{isSkuRow(row) ? (

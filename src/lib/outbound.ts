@@ -76,17 +76,9 @@ export function formatStatus(status: string): string {
 
 /** Delivery order step status labels (NEW -> PACKING -> SHIPPED -> DELIVERED). */
 export function formatDeliveryOrderStepStatus(
-	status:
-		| "CREATED"
-		| "NEW"
-		| "PICKING"
-		| "PACKING"
-		| "SHIPPED"
-		| "DELIVERED",
+	status: "NEW" | "PACKING" | "SHIPPED" | "DELIVERED",
 ): string {
-	if (status === "CREATED") return "Created";
 	if (status === "NEW") return "New";
-	if (status === "PICKING") return "Picking";
 	if (status === "PACKING") return "Packing";
 	if (status === "SHIPPED") return "Shipped";
 	if (status === "DELIVERED") return "Delivered";
@@ -95,21 +87,10 @@ export function formatDeliveryOrderStepStatus(
 
 /** Tailwind classes for delivery order step badge. */
 export function getDeliveryOrderStepStatusColor(
-	status:
-		| "CREATED"
-		| "NEW"
-		| "PICKING"
-		| "PACKING"
-		| "SHIPPED"
-		| "DELIVERED",
+	status: "NEW" | "PACKING" | "SHIPPED" | "DELIVERED",
 ): string {
-	const colors: Record<
-		"CREATED" | "NEW" | "PICKING" | "PACKING" | "SHIPPED" | "DELIVERED",
-		string
-	> = {
-		CREATED: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+	const colors: Record<"NEW" | "PACKING" | "SHIPPED" | "DELIVERED", string> = {
 		NEW: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-		PICKING: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 		PACKING: "bg-blue-500/10 text-blue-600 border-blue-500/20",
 		SHIPPED: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
 		DELIVERED: "bg-green-500/10 text-green-600 border-green-500/20",

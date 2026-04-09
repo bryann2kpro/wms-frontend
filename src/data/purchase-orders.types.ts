@@ -31,8 +31,6 @@ export interface PurchaseOrderDetail {
 	purchaseOrderNumber: string;
 	fromLocation: string;
 	toLocation: string;
-	/** Raw outlet UUID, used by the edit form to pre-select the current outlet. */
-	outletId?: string;
 	status: PurchaseOrderStatus;
 	createdDate: Date;
 	expectedDeliveryDate: Date;
@@ -45,14 +43,6 @@ export interface PurchaseOrderDetail {
 	regionCode?: string | null;
 	/** When present, the purchase order has an associated delivery order; use for step button. */
 	deliveryOrder?: DeliveryOrderStep | null;
-}
-
-export interface UpdatePurchaseOrderInput {
-	scheduledDeliveryDate?: string;
-	outletId?: string;
-	items?: Array<{ id: string; qtyRequired: number }>;
-	newItems?: Array<{ skuId: string; skuCode: string; qtyRequired: number }>;
-	removedItemIds?: string[];
 }
 
 export type PurchaseOrderStatusFilter = PurchaseOrderStatus | "ALL";

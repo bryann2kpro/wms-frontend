@@ -58,13 +58,7 @@ export function OutletFormDialog({
 			setAddressSnapshot(initial?.address ?? "");
 			setRegionId(initial?.regionId ?? "");
 		}
-	}, [
-		open,
-		initial?.outletName,
-		initial?.outletCode,
-		initial?.address,
-		initial?.regionId,
-	]);
+	}, [open, initial?.outletName, initial?.outletCode, initial?.address, initial?.regionId]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {

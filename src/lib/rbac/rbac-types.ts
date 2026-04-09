@@ -8,7 +8,13 @@ import type { Pagination } from "../pagination/pagination";
 export interface ModulePermission {
 	moduleId: string;
 	permissionId: string;
-	permissionType: "View" | "Read" | "Create" | "Update" | "Delete" | "Approve";
+	permissionType:
+		| "View"
+		| "Read"
+		| "Create"
+		| "Update"
+		| "Delete"
+		| "Approve";
 	description: string;
 }
 
@@ -174,7 +180,13 @@ export interface RolePermissionDetail {
 	id: string;
 	roleId: string;
 	permissionId: string;
-	permissionType: "View" | "Read" | "Create" | "Update" | "Delete" | "Approve";
+	permissionType:
+		| "View"
+		| "Read"
+		| "Create"
+		| "Update"
+		| "Delete"
+		| "Approve";
 	moduleId: string;
 	moduleName: string;
 	hasPermission: boolean;
