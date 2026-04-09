@@ -371,8 +371,8 @@ function GRNLineRow({
 						</div>
 					) : null}
 
-					{/* Row 2: Carton + Loss + Expiry */}
-					<div className="grid grid-cols-3 gap-2">
+				{/* Row 2: Carton + Loss + Expiry + Lot No. */}
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
 						<div className="space-y-1">
 							<label
 								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -1121,10 +1121,10 @@ export function GrnFormDialog({
 									}}
 								</form.Field>
 							</div>
-							<form.Field name="items">
-								{(field) => {
-									const items = (field.state.value ?? []) as GRNLineItemForm[];
-									updateItemsWithRackRef.current = (lineIndex, rackId) => {
+						<form.Field name="items">
+							{(field) => {
+								const items = (field.state.value ?? []) as GRNLineItemForm[];
+								updateItemsWithRackRef.current = (lineIndex, rackId) => {
 										const current = (field.state.value ??
 											[]) as GRNLineItemForm[];
 										if (current[lineIndex] == null) return;
