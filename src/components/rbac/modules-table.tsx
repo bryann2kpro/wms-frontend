@@ -237,20 +237,22 @@ function ModulesTable({
 												{[...module.permission]
 													.sort((a, b) => {
 														const aOrder =
-															permissionOrder[a.permissionType.toLowerCase()] ?? 99;
+															permissionOrder[a.permissionType.toLowerCase()] ??
+															99;
 														const bOrder =
-															permissionOrder[b.permissionType.toLowerCase()] ?? 99;
+															permissionOrder[b.permissionType.toLowerCase()] ??
+															99;
 														return aOrder - bOrder;
 													})
 													.map((perm) => (
-													<Badge
-														key={perm.permissionId}
-														variant="outline"
-														className={`text-xs ${permissionTypeColors[perm.permissionType] || ""}`}
-														title={perm.description}
-													>
-														{perm.permissionType}
-													</Badge>
+														<Badge
+															key={perm.permissionId}
+															variant="outline"
+															className={`text-xs ${permissionTypeColors[perm.permissionType] || ""}`}
+															title={perm.description}
+														>
+															{perm.permissionType}
+														</Badge>
 													))}
 											</div>
 										</TableCell>

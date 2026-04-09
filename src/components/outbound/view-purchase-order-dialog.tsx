@@ -115,7 +115,9 @@ export function ViewPurchaseOrderDialog({
 										Scheduled Delivery
 									</Label>
 									<p className="text-sm font-medium">
-										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
+										{formatDateOnly(
+											purchaseOrder.expectedDeliveryDate.toISOString(),
+										)}
 									</p>
 								</div>
 								<div>
@@ -131,7 +133,9 @@ export function ViewPurchaseOrderDialog({
 										Expected Delivery
 									</Label>
 									<p className="text-sm font-medium">
-										{formatDateOnly(purchaseOrder.expectedDeliveryDate.toISOString())}
+										{formatDateOnly(
+											purchaseOrder.expectedDeliveryDate.toISOString(),
+										)}
 									</p>
 								</div>
 								<div>

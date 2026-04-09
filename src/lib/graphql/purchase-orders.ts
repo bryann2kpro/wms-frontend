@@ -278,7 +278,11 @@ export function mapGqlToPurchaseOrderDetail(
 				: "NEW";
 	const deliveryOrderStep =
 		po.deliveryOrder?.id && rawDoStatus != null
-			? { id: po.deliveryOrder.id, doNo: po.deliveryOrder.doNo, status: doStepStatus }
+			? {
+					id: po.deliveryOrder.id,
+					doNo: po.deliveryOrder.doNo,
+					status: doStepStatus,
+				}
 			: null;
 
 	return {

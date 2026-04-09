@@ -65,10 +65,14 @@ interface OutboundListCardProps {
 	hasAcceptPermission?: boolean;
 	cardClassName?: string;
 	/** Generate and download DO PDF for one row. */
-	onDownloadDoPdf?: (purchaseOrder: PurchaseOrderDetail) => void | Promise<void>;
+	onDownloadDoPdf?: (
+		purchaseOrder: PurchaseOrderDetail,
+	) => void | Promise<void>;
 	pendingDoPdfDeliveryOrderId?: string | null;
 	/** Download PDFs for all selected rows (sequential). */
-	onBulkDownloadDoPdf?: (purchaseOrders: PurchaseOrderDetail[]) => void | Promise<void>;
+	onBulkDownloadDoPdf?: (
+		purchaseOrders: PurchaseOrderDetail[],
+	) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
 	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
 	initialStatusFilter?: PurchaseOrderStatusFilter;
@@ -92,6 +96,7 @@ export function OutboundListCard({
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [regionFilter, setRegionFilter] = useState<string>("ALL");
+	const [dateFilter, setDateFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
 
@@ -125,14 +130,22 @@ export function OutboundListCard({
 	const allDateKeys = data?.paginatedDateKeys ?? [];
 	const dateKeys = data?.dateKeys ?? [];
 
-	const paginatedDateKeys = allDateKeys;
+	const paginatedDateKeys =
+		dateFilter === "ALL"
+			? allDateKeys
+			: allDateKeys.filter((dk) => dk === dateFilter);
 
 	const visiblePurchaseOrders = useMemo(
-		() =>
-			paginatedDateKeys.flatMap(
-				(dk) => purchaseOrdersByDate[dk] ?? [],
-			),
+		() => paginatedDateKeys.flatMap((dk) => purchaseOrdersByDate[dk] ?? []),
 		[paginatedDateKeys, purchaseOrdersByDate],
+	);
+	const dateOptions = useMemo(
+		() =>
+			allDateKeys.map((dk) => {
+				const label = formatDeliveryDateHeader(new Date(dk + "T12:00:00"));
+				return { value: dk, label };
+			}),
+		[allDateKeys],
 	);
 	const regionOptions = useMemo(() => {
 		const allPurchaseOrders = regionData?.purchaseOrders ?? [];
@@ -160,10 +173,11 @@ export function OutboundListCard({
 
 	useEffect(() => {
 		setSelectedDoIds(new Set());
-	}, [activeTab, statusFilter, searchTerm, regionFilter]);
+	}, [activeTab, statusFilter, searchTerm, regionFilter, dateFilter]);
 
 	useEffect(() => {
 		setRegionFilter("ALL");
+		setDateFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
 	const loading = isLoading || isFetching;
@@ -272,6 +286,28 @@ export function OutboundListCard({
 									))}
 								</SelectContent>
 							</Select>
+							<Select
+								value={dateFilter}
+								onValueChange={setDateFilter}
+							>
+								<SelectTrigger
+									className="sm:w-60 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									aria-label="Filter by date"
+								>
+									<SelectValue placeholder="Filter by date" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All Dates</SelectItem>
+									{dateOptions.map((dateOption) => (
+										<SelectItem
+											key={dateOption.value}
+											value={dateOption.value}
+										>
+											{dateOption.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 							{/* <div
 								className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30 px-3 py-1.5"
 								title="Testing mode: show all scheduled dates, not just today"
@@ -351,8 +387,8 @@ export function OutboundListCard({
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
 								{selectedDoIds.size}{" "}
-								{selectedDoIds.size === 1 ? "order" : "orders"} selected for bulk
-								DO PDF
+								{selectedDoIds.size === 1 ? "order" : "orders"} selected for
+								bulk DO PDF
 							</span>
 							<Button
 								type="button"
@@ -616,8 +652,7 @@ export function OutboundListCard({
 																		purchaseOrder.deliveryOrder.id,
 																	)}
 																	onCheckedChange={(c) => {
-																		const id =
-																			purchaseOrder.deliveryOrder?.id;
+																		const id = purchaseOrder.deliveryOrder?.id;
 																		if (!id) return;
 																		setSelectedDoIds((prev) => {
 																			const next = new Set(prev);
@@ -630,7 +665,9 @@ export function OutboundListCard({
 																	aria-label={`Select ${purchaseOrder.purchaseOrderNumber} for bulk DO PDF download`}
 																/>
 															) : (
-																<span className="text-muted-foreground/50">—</span>
+																<span className="text-muted-foreground/50">
+																	—
+																</span>
 															)}
 														</TableCell>
 													) : null}
@@ -737,35 +774,32 @@ export function OutboundListCard({
 																<Eye className="h-4 w-4" aria-hidden="true" />
 															</Button>
 															{showRowPdfDownload &&
-																purchaseOrder.deliveryOrder?.id ? (
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		onClick={() =>
-																			void onDownloadDoPdf?.(purchaseOrder)
-																		}
-																		disabled={
-																			pendingDoPdfDeliveryOrderId ===
-																				purchaseOrder.deliveryOrder.id ||
-																			isBulkDoPdfPending
-																		}
-																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
-																	>
-																		{pendingDoPdfDeliveryOrderId ===
-																		purchaseOrder.deliveryOrder.id ? (
-																			<Loader2
-																				className="h-4 w-4 animate-spin"
-																				aria-hidden
-																			/>
-																		) : (
-																			<Download
-																				className="h-4 w-4"
-																				aria-hidden
-																			/>
-																		)}
-																	</Button>
-																) : null}
+															purchaseOrder.deliveryOrder?.id ? (
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	onClick={() =>
+																		void onDownloadDoPdf?.(purchaseOrder)
+																	}
+																	disabled={
+																		pendingDoPdfDeliveryOrderId ===
+																			purchaseOrder.deliveryOrder.id ||
+																		isBulkDoPdfPending
+																	}
+																	className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+																	aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
+																>
+																	{pendingDoPdfDeliveryOrderId ===
+																	purchaseOrder.deliveryOrder.id ? (
+																		<Loader2
+																			className="h-4 w-4 animate-spin"
+																			aria-hidden
+																		/>
+																	) : (
+																		<Download className="h-4 w-4" aria-hidden />
+																	)}
+																</Button>
+															) : null}
 															{hasAcceptPermission &&
 																purchaseOrder.status === "preparing" && (
 																	<Button
