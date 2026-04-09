@@ -5,7 +5,7 @@
  */
 
 /** Module name for the Email Settings tab */
-export const SETTINGS_INTEGRATION_STATUS_MODULE = "Email Settings";
+export const SETTINGS_EMAIL_SETTINGS_MODULE = "Email Settings";
 
 /**
  * Master Data sub-tabs: each key is the sub-tab id, value is the RBAC module name.
@@ -97,8 +97,8 @@ export function canSeeMasterDataTab(
 /**
  * True if the user can see the Integration Status tab.
  */
-export function canSeeIntegrationStatusTab(
+export function canSeeEmailSettingsTab(
 	user: { readPermission?: string[]; createPermission?: string[] } | null,
 ): boolean {
-	return hasModulePermission(user, SETTINGS_INTEGRATION_STATUS_MODULE);
+	return hasModulePermission(user, SETTINGS_EMAIL_SETTINGS_MODULE);
 }

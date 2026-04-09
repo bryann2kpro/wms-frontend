@@ -32,7 +32,7 @@ import {
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
 import {
-	canSeeIntegrationStatusTab,
+	canSeeEmailSettingsTab,
 	canSeeMasterDataTab,
 	getAllowedMasterDataSubTabs,
 } from "@/lib/settings-permissions";
@@ -113,12 +113,12 @@ function SettingsPage() {
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<
-		"profile" | "users" | "master-data" | "integration"
+		"profile" | "master-data" | "email-settings"
 	>("profile");
 
 	const allowedMasterDataSubTabs = getAllowedMasterDataSubTabs(user);
 	const showMasterDataTab = canSeeMasterDataTab(user);
-	const showIntegrationTab = canSeeIntegrationStatusTab(user);
+	const showEmailSettingsTab = canSeeEmailSettingsTab(user);
 
 	// Mock mutation functions
 	const updateUserProfile = useMutation({
@@ -177,10 +177,10 @@ function SettingsPage() {
 		...(showMasterDataTab
 			? [{ id: "master-data" as const, label: "Master Data", icon: Database }]
 			: []),
-		...(showIntegrationTab
+		...(showEmailSettingsTab
 			? [
 					{
-						id: "integration" as const,
+						id: "email-settings" as const,
 						label: "Email Settings",
 						icon: Mail,
 					},
@@ -193,7 +193,7 @@ function SettingsPage() {
 		if (visibleTabIds.length > 0 && !visibleTabIds.includes(activeTab)) {
 			setActiveTab(visibleTabIds[0]);
 		}
-	}, [activeTab, showMasterDataTab, showIntegrationTab]);
+	}, [activeTab, showMasterDataTab, showEmailSettingsTab]);
 
 	return (
 		<main
@@ -312,7 +312,7 @@ function SettingsPage() {
 						<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
 					)}
 
-					{activeTab === "integration" && showIntegrationTab && (
+					{activeTab === "email-settings" && showEmailSettingsTab && (
 						<EmailNotificationsSettingsCard />
 					)}
 				</div>
