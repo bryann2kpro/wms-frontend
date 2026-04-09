@@ -219,6 +219,9 @@ export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
 				quantity
 				units
 				custrecord_r2o_order_code
+				islotitem
+				lotNo
+				expiryDate
 			}
 		}
 	}
@@ -306,6 +309,12 @@ export type AdvanceNoticeLine = {
 	quantity: number;
 	units: string;
 	custrecord_r2o_order_code: string | null;
+	/** NetSuite lot-tracked flag (e.g. "T"). */
+	islotitem: string | null;
+	/** From ASN lots[0].serialNumbers when present. */
+	lotNo: string | null;
+	/** From ASN lots[0].expiryDate when present. */
+	expiryDate: string | null;
 };
 
 export type AdvanceNotice = {

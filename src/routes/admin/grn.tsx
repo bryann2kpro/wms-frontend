@@ -951,6 +951,8 @@ function GRNRouteComponent() {
 															u.unitCode.toLowerCase() ===
 															l.units.toLowerCase(),
 													);
+													const lotTracked =
+														l.islotitem?.trim().toUpperCase() === "T";
 													return {
 														skuCode: l.itemid,
 														description: l.displayname ?? "",
@@ -958,9 +960,12 @@ function GRNRouteComponent() {
 														loss: 0,
 														uom: unitMatch?.stockUnitId ?? l.units,
 														unitPrice: 0,
-														expiryDate: "",
-														lotNo: "",
+														expiryDate: lotTracked
+															? (l.expiryDate ?? "").trim()
+															: "",
+														lotNo: lotTracked ? (l.lotNo ?? "").trim() : "",
 														rackIds: [],
+														...(lotTracked ? { asnLotTracked: true } : {}),
 													};
 												}),
 											});
