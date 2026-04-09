@@ -14,6 +14,7 @@ import {
 	Settings,
 	Shield,
 	KeyRound,
+	Boxes,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -130,6 +131,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/exceptions",
 		icon: PackageSearch,
 		allowedPermission: ["Exception"],
+		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-inventory",
+		title: "Inventory",
+		href: "/admin/inventory",
+		icon: Boxes,
+		allowedPermission: ["Inventory"],
 		variant: "default",
 		group: "operations",
 	},
