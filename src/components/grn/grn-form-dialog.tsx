@@ -429,20 +429,20 @@ function GRNLineRow({
 								<CalendarDays className="h-2.5 w-2.5" />
 								Expiry
 							</label>
-							<Input
-								type="date"
-								value={item.expiryDate ?? ""}
-								onChange={(e) => {
-									const newItems = [...items];
-									newItems[index] = {
-										...newItems[index],
-										expiryDate: e.target.value,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="YYYY-MM-DD"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
+						<Input
+							type="text"
+							value={item.expiryDate ?? ""}
+							onChange={(e) => {
+								const newItems = [...items];
+								newItems[index] = {
+									...newItems[index],
+									expiryDate: e.target.value,
+								};
+								onItemsChange(newItems);
+							}}
+							placeholder="YYYY-MM-DD"
+							className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+						/>
 						</div>
 						<div className="space-y-1">
 							<label
@@ -663,6 +663,7 @@ export function GrnFormDialog({
 		},
 		validators: {
 			onSubmit: ({ value }) => {
+				console.log("value", value);
 				const fields: Partial<Record<string, string>> = {};
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
@@ -681,11 +682,12 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingLotFields = items.find(
-							(i) =>
-								i.asnLotTracked &&
-								(!i.lotNo?.trim() || !i.expiryDate?.trim()),
-						);
+					const missingLotFields = items.find(
+						(i) =>
+							i.asnLotTracked &&
+							(!i.lotNo?.trim() || !i.expiryDate?.trim()),
+					);
+						console.log("missingLotFields", missingLotFields);
 						if (missingLotFields) {
 							fields.items =
 								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";
@@ -742,6 +744,8 @@ export function GrnFormDialog({
 						rackIds: i.rackIds ?? [],
 					})),
 				};
+
+
 				try {
 					await onCreateSubmit?.(payload);
 					form.reset();
