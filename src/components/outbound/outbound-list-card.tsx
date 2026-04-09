@@ -568,6 +568,17 @@ export function OutboundListCard({
 										purchaseOrdersByDate[dateKey] ?? [];
 									const deliveryDate = new Date(dateKey + "T12:00:00");
 									const headerLabel = formatDeliveryDateHeader(deliveryDate);
+
+									const dateSelectableIds = datePurchaseOrders
+										.filter((p) => Boolean(p.deliveryOrder?.id))
+										.map((p) => p.deliveryOrder!.id);
+									const allDateSelected =
+										dateSelectableIds.length > 0 &&
+										dateSelectableIds.every((id) => selectedDoIds.has(id));
+									const someDateSelected = dateSelectableIds.some((id) =>
+										selectedDoIds.has(id),
+									);
+
 									return [
 										<TableRow
 											key={dateKey}
@@ -577,16 +588,48 @@ export function OutboundListCard({
 												colSpan={tableColCount}
 												className="px-6 font-semibold text-foreground py-3"
 											>
-												{headerLabel}
-												{datePurchaseOrders.length > 0 && (
-													<span className="ml-2 text-muted-foreground font-normal">
-														({datePurchaseOrders.length}{" "}
-														{datePurchaseOrders.length === 1
-															? "order"
-															: "orders"}
-														)
+												<div className="flex items-center gap-3">
+													{showBulkPdf && dateSelectableIds.length > 0 ? (
+														<Checkbox
+															checked={
+																allDateSelected
+																	? true
+																	: someDateSelected
+																		? "indeterminate"
+																		: false
+															}
+															onCheckedChange={(checked) => {
+																setSelectedDoIds((prev) => {
+																	const next = new Set(prev);
+																	if (checked === true) {
+																		dateSelectableIds.forEach((id) =>
+																			next.add(id),
+																		);
+																	} else {
+																		dateSelectableIds.forEach((id) =>
+																			next.delete(id),
+																		);
+																	}
+																	return next;
+																});
+															}}
+															disabled={isBulkDoPdfPending}
+															aria-label={`Select all orders for ${headerLabel}`}
+														/>
+													) : null}
+													<span>
+														{headerLabel}
+														{datePurchaseOrders.length > 0 && (
+															<span className="ml-2 text-muted-foreground font-normal">
+																({datePurchaseOrders.length}{" "}
+																{datePurchaseOrders.length === 1
+																	? "order"
+																	: "orders"}
+																)
+															</span>
+														)}
 													</span>
-												)}
+												</div>
 											</TableCell>
 										</TableRow>,
 										...(datePurchaseOrders.length === 0
