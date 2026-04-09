@@ -96,6 +96,7 @@ export function OutboundListCard({
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [regionFilter, setRegionFilter] = useState<string>("ALL");
+	const [dateFilter, setDateFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
 
@@ -129,11 +130,22 @@ export function OutboundListCard({
 	const allDateKeys = data?.paginatedDateKeys ?? [];
 	const dateKeys = data?.dateKeys ?? [];
 
-	const paginatedDateKeys = allDateKeys;
+	const paginatedDateKeys =
+		dateFilter === "ALL"
+			? allDateKeys
+			: allDateKeys.filter((dk) => dk === dateFilter);
 
 	const visiblePurchaseOrders = useMemo(
 		() => paginatedDateKeys.flatMap((dk) => purchaseOrdersByDate[dk] ?? []),
 		[paginatedDateKeys, purchaseOrdersByDate],
+	);
+	const dateOptions = useMemo(
+		() =>
+			allDateKeys.map((dk) => {
+				const label = formatDeliveryDateHeader(new Date(dk + "T12:00:00"));
+				return { value: dk, label };
+			}),
+		[allDateKeys],
 	);
 	const regionOptions = useMemo(() => {
 		const allPurchaseOrders = regionData?.purchaseOrders ?? [];
@@ -161,10 +173,11 @@ export function OutboundListCard({
 
 	useEffect(() => {
 		setSelectedDoIds(new Set());
-	}, [activeTab, statusFilter, searchTerm, regionFilter]);
+	}, [activeTab, statusFilter, searchTerm, regionFilter, dateFilter]);
 
 	useEffect(() => {
 		setRegionFilter("ALL");
+		setDateFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
 	const loading = isLoading || isFetching;
@@ -269,6 +282,28 @@ export function OutboundListCard({
 									{regionOptions.map((region) => (
 										<SelectItem key={region.value} value={region.value}>
 											{region.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select
+								value={dateFilter}
+								onValueChange={setDateFilter}
+							>
+								<SelectTrigger
+									className="sm:w-60 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									aria-label="Filter by date"
+								>
+									<SelectValue placeholder="Filter by date" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="ALL">All Dates</SelectItem>
+									{dateOptions.map((dateOption) => (
+										<SelectItem
+											key={dateOption.value}
+											value={dateOption.value}
+										>
+											{dateOption.label}
 										</SelectItem>
 									))}
 								</SelectContent>
