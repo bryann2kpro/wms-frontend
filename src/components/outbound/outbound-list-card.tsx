@@ -67,9 +67,11 @@ interface OutboundListCardProps {
 	/** Generate and download DO PDF for one row. */
 	onDownloadDoPdf?: (purchaseOrder: PurchaseOrderDetail) => void | Promise<void>;
 	pendingDoPdfDeliveryOrderId?: string | null;
-	/** Download PDFs for all selected rows (sequential). */
+	/** Download PDFs for all selected rows as a zip. */
 	onBulkDownloadDoPdf?: (purchaseOrders: PurchaseOrderDetail[]) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
+	bulkDoPdfProgress?: number;
+	bulkDoPdfTotal?: number;
 	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
 	initialStatusFilter?: PurchaseOrderStatusFilter;
 }
@@ -86,6 +88,8 @@ export function OutboundListCard({
 	pendingDoPdfDeliveryOrderId,
 	onBulkDownloadDoPdf,
 	isBulkDoPdfPending,
+	bulkDoPdfProgress,
+	bulkDoPdfTotal,
 	initialStatusFilter,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -376,7 +380,9 @@ export function OutboundListCard({
 											className="h-4 w-4 animate-spin shrink-0"
 											aria-hidden
 										/>
-										Downloading PDFs…
+										{bulkDoPdfTotal && bulkDoPdfTotal > 0
+											? `${bulkDoPdfProgress ?? 0} / ${bulkDoPdfTotal} PDFs…`
+											: "Generating PDFs…"}
 									</>
 								) : (
 									<>

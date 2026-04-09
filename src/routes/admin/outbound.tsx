@@ -620,6 +620,8 @@ function OutboundRouteComponent() {
 					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
 					onBulkDownloadDoPdf={bulkDownloadDoPdf}
 					isBulkDoPdfPending={bulkDoPdfState.status === "generating"}
+					bulkDoPdfProgress={bulkDoPdfState.progress}
+					bulkDoPdfTotal={bulkDoPdfState.total}
 				/>
 
 				<ViewPurchaseOrderDialog
