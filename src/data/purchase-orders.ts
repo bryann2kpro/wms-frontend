@@ -8,13 +8,10 @@ import { getAccessToken } from "@/lib/auth/auth-storage";
 import {
 	CREATE_PURCHASE_ORDER_MUTATION,
 	APPLY_EMERGENCY_DELIVERY_MUTATION,
-	UPDATE_PURCHASE_ORDER_MUTATION,
 	mapGqlToPurchaseOrderDetail,
 	type CreatePurchaseOrderMutationData,
 	type CreatePurchaseOrderMutationVariables,
 	type ApplyEmergencyDeliveryMutationData,
-	type UpdatePurchaseOrderMutationData,
-	type UpdatePurchaseOrderMutationVariables,
 } from "@/lib/graphql/purchase-orders";
 import type {
 	PurchaseOrderDetail,
@@ -23,7 +20,6 @@ import type {
 	PurchaseOrderStatus,
 	PurchaseOrderSummary,
 	CreatePurchaseOrderInput,
-	UpdatePurchaseOrderInput,
 } from "./purchase-orders.types";
 
 const emptySummary: PurchaseOrderSummary = {
@@ -44,7 +40,6 @@ export type {
 	PurchaseOrderStatusFilter,
 	CreatePurchaseOrderInput,
 	CreatePurchaseOrderLineItemInput,
-	UpdatePurchaseOrderInput,
 } from "./purchase-orders.types";
 
 /** List purchase orders. Use GraphQL via usePurchaseOrders hook; this is for legacy/custom filters. */
@@ -97,27 +92,6 @@ export async function updatePurchaseOrderStatus(
 	_status: PurchaseOrderStatus,
 ): Promise<PurchaseOrderDetail | undefined> {
 	return undefined;
-}
-
-/** Update editable fields of a purchase order (notes, delivery date, outlet, item quantities). */
-export async function updatePurchaseOrder(
-	id: string,
-	input: UpdatePurchaseOrderInput,
-): Promise<PurchaseOrderDetail> {
-	const headers = new Headers();
-	const token = getAccessToken();
-	if (token) headers.set("Authorization", `Bearer ${token}`);
-
-	const variables: UpdatePurchaseOrderMutationVariables = { id, input };
-
-	const data = await request<UpdatePurchaseOrderMutationData>(
-		env.VITE_GRAPHQL_ENDPOINT,
-		UPDATE_PURCHASE_ORDER_MUTATION,
-		variables,
-		headers,
-	);
-
-	return mapGqlToPurchaseOrderDetail(data.updatePurchaseOrder);
 }
 
 /** Apply emergency delivery to a PO: re-computes scheduledDeliveryDate ignoring cutoff rules. */

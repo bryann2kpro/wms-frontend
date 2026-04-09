@@ -1,10 +1,4 @@
-import {
-	type CSSProperties,
-	useDeferredValue,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { type CSSProperties, useDeferredValue, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
 	useReactTable,
@@ -205,10 +199,10 @@ export function SkusSection() {
 	const [sortField, setSortField] = useState<SkuSortField>("CODE");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 
-	const { data, loading, refetch } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, { variables: {}, fetchPolicy: "no-cache" });
+	const { data, loading, refetch } = useQuery<SkusQueryData, SkusQueryVariables>(
+		SKUS_QUERY,
+		{ variables: {}, fetchPolicy: "no-cache" },
+	);
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	const deferredSearch = useDeferredValue(search);
 
@@ -243,17 +237,10 @@ export function SkusSection() {
 				case "PRICE":
 					return ((a.skuPrice ?? 0) - (b.skuPrice ?? 0)) * direction;
 				case "QUANTITY":
-					return (
-						(Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) *
-						direction
-					);
+					return (Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) * direction;
 				case "EXPIRY_DATE": {
-					const aVal = a.skuExpiryDate
-						? new Date(a.skuExpiryDate).getTime()
-						: 0;
-					const bVal = b.skuExpiryDate
-						? new Date(b.skuExpiryDate).getTime()
-						: 0;
+					const aVal = a.skuExpiryDate ? new Date(a.skuExpiryDate).getTime() : 0;
+					const bVal = b.skuExpiryDate ? new Date(b.skuExpiryDate).getTime() : 0;
 					return (aVal - bVal) * direction;
 				}
 				default:
@@ -274,16 +261,16 @@ export function SkusSection() {
 
 	const createdBy = user?.id ?? "";
 
-	const { data: suppliersData } = useQuery<
-		SuppliersQueryData,
-		SuppliersQueryVariables
-	>(SUPPLIERS_QUERY, { variables: {} });
+	const { data: suppliersData } = useQuery<SuppliersQueryData, SuppliersQueryVariables>(
+		SUPPLIERS_QUERY,
+		{ variables: {} },
+	);
 	const suppliers = suppliersData?.suppliers.query ?? [];
 
-	const { data: stockUnitsData } = useQuery<
-		StockUnitsQueryData,
-		StockUnitsQueryVariables
-	>(STOCK_UNITS_QUERY, { variables: {} });
+	const { data: stockUnitsData } = useQuery<StockUnitsQueryData, StockUnitsQueryVariables>(
+		STOCK_UNITS_QUERY,
+		{ variables: {} },
+	);
 	const stockUnits = stockUnitsData?.stockUnits.query ?? [];
 
 	const createInFlightRef = useRef(false);
@@ -344,10 +331,7 @@ export function SkusSection() {
 				header: "Description",
 				size: 280,
 				cell: (info) => (
-					<span
-						className="block max-w-[280px] truncate"
-						title={info.getValue<string>()}
-					>
+					<span className="block max-w-[280px] truncate" title={info.getValue<string>()}>
 						{info.getValue<string>()}
 					</span>
 				),
@@ -374,8 +358,7 @@ export function SkusSection() {
 				accessorKey: "lossQuantity",
 				header: "Loss",
 				size: 90,
-				cell: (info) =>
-					Number(info.getValue<string | number>() ?? 0).toFixed(2),
+				cell: (info) => Number(info.getValue<string | number>() ?? 0).toFixed(2),
 			},
 			{
 				id: "skuExpiryDate",
@@ -394,9 +377,7 @@ export function SkusSection() {
 				size: 150,
 				cell: (info) => {
 					const uomId = info.getValue<string>();
-					const uom = stockUnits.find(
-						(u: StockUnit) => u.stockUnitId === uomId,
-					);
+					const uom = stockUnits.find((u: StockUnit) => u.stockUnitId === uomId);
 					return uom ? `${uom.unitName} (${uom.unitCode})` : uomId;
 				},
 			},
@@ -492,10 +473,7 @@ export function SkusSection() {
 							variant="outline"
 							size="icon"
 							aria-label="Open help for SKUs"
-							onClick={() => {
-								setIsHelpOpen(true);
-								setHelpStep(0);
-							}}
+							onClick={() => { setIsHelpOpen(true); setHelpStep(0); }}
 							className="rounded-lg"
 						>
 							<HelpCircle className="h-4 w-4" />
@@ -509,9 +487,7 @@ export function SkusSection() {
 									>
 										SKU Management help
 									</DialogTitle>
-									<DialogDescription
-										style={{ fontFamily: '"Figtree", sans-serif' }}
-									>
+									<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
 										Step {helpStep + 1} of {SKUS_HELP_STEPS.length}
 									</DialogDescription>
 								</DialogHeader>
@@ -592,10 +568,7 @@ export function SkusSection() {
 							<Input
 								placeholder="Search by code or description..."
 								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setPage(1);
-								}}
+								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
 								className="w-52 pl-9 rounded-lg border-muted-foreground/20"
 								aria-label="Search SKUs by code or description"
 							/>
@@ -603,26 +576,17 @@ export function SkusSection() {
 						<Button
 							variant={showLowStockOnly ? "secondary" : "outline"}
 							size="sm"
-							onClick={() => {
-								setShowLowStockOnly((v) => !v);
-								setPage(1);
-							}}
+							onClick={() => { setShowLowStockOnly((v) => !v); setPage(1); }}
 							aria-pressed={showLowStockOnly}
 							className="rounded-lg"
 						>
 							Low stock only
 						</Button>
 						<div className="flex items-center gap-1.5">
-							<ArrowUpDown
-								className="h-4 w-4 text-muted-foreground"
-								aria-hidden
-							/>
+							<ArrowUpDown className="h-4 w-4 text-muted-foreground" aria-hidden />
 							<Select
 								value={sortField}
-								onValueChange={(value: SkuSortField) => {
-									setSortField(value);
-									setPage(1);
-								}}
+								onValueChange={(value: SkuSortField) => { setSortField(value); setPage(1); }}
 							>
 								<SelectTrigger
 									className="w-36 rounded-lg border-muted-foreground/20"
@@ -640,10 +604,7 @@ export function SkusSection() {
 							</Select>
 							<Select
 								value={sortDirection}
-								onValueChange={(value: "ASC" | "DESC") => {
-									setSortDirection(value);
-									setPage(1);
-								}}
+								onValueChange={(value: "ASC" | "DESC") => { setSortDirection(value); setPage(1); }}
 							>
 								<SelectTrigger
 									className="w-32 rounded-lg border-muted-foreground/20"
@@ -743,10 +704,7 @@ export function SkusSection() {
 												}}
 												className="px-4"
 											>
-												{flexRender(
-													cell.column.columnDef.cell,
-													cell.getContext(),
-												)}
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
 											</TableCell>
 										))}
 									</TableRow>
@@ -808,9 +766,7 @@ export function SkusSection() {
 
 			<SkusSuppliersViewDialog
 				open={viewingSuppliers !== null}
-				onOpenChange={(open) => {
-					if (!open) setViewingSuppliers(null);
-				}}
+				onOpenChange={(open) => { if (!open) setViewingSuppliers(null); }}
 				sku={viewingSuppliers}
 				suppliers={suppliers}
 			/>
@@ -860,9 +816,7 @@ export function SkusSection() {
 				onOpenChange={setIsImportOpen}
 				mode="skus"
 				createdBy={createdBy}
-				onImported={() => {
-					void refetch();
-				}}
+				onImported={() => { void refetch(); }}
 			/>
 
 			{editing && (

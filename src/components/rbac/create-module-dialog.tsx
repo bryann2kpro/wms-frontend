@@ -83,15 +83,12 @@ function CreateModuleDialog({
 			return;
 		}
 
-		onSubmit(
-			{
-				moduleName: moduleName.trim(),
-				status,
-				createdBy: currentUserIdentifier,
-				updatedBy: currentUserIdentifier,
-			},
-			addPermissionTypes,
-		);
+		onSubmit({
+			moduleName: moduleName.trim(),
+			status,
+			createdBy: currentUserIdentifier,
+			updatedBy: currentUserIdentifier,
+		}, addPermissionTypes);
 	};
 
 	const handleClose = () => {
@@ -183,15 +180,9 @@ function CreateModuleDialog({
 													}`}
 												>
 													{checked ? (
-														<CheckCircle2
-															className="h-3.5 w-3.5"
-															aria-hidden="true"
-														/>
+														<CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
 													) : (
-														<ShieldCheck
-															className="h-3.5 w-3.5"
-															aria-hidden="true"
-														/>
+														<ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
 													)}
 												</span>
 												<span className="min-w-0">

@@ -42,13 +42,10 @@ import { formatDateMedium, timeAgo } from "@/lib/utils";
 export const Route = createFileRoute("/admin/api-keys")({
 	component: ApiKeysPage,
 	head: () => ({
-		meta: [
-			{
-				title: "API Keys - SME Edaran WMS",
-				description:
-					"Manage access tokens for third-party integrations. Keys are hashed — the raw value is shown only once on creation.",
-			},
-		],
+		meta: [{ 
+			title: 'API Keys - SME Edaran WMS',
+			description: 'Manage access tokens for third-party integrations. Keys are hashed — the raw value is shown only once on creation.',
+		 }],
 	}),
 });
 
@@ -57,6 +54,7 @@ export const Route = createFileRoute("/admin/api-keys")({
 // ============================================
 
 const QUERY_KEY = ["api-keys"] as const;
+
 
 // ============================================
 // SUB-COMPONENTS

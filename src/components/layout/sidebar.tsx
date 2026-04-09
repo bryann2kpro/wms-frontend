@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
-import {
-	ClientOnly,
-	Link,
-	useLocation,
-	useSearch,
-} from "@tanstack/react-router";
+import { ClientOnly, Link, useLocation, useSearch } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {

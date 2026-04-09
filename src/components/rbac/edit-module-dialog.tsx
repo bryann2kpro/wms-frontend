@@ -117,15 +117,12 @@ function EditModuleDialog({
 			return;
 		}
 
-		onSubmit(
-			{
-				moduleId,
-				moduleName: moduleName.trim(),
-				status,
-				updatedBy: currentUserIdentifier,
-			},
-			addPermissionTypes,
-		);
+		onSubmit({
+			moduleId,
+			moduleName: moduleName.trim(),
+			status,
+			updatedBy: currentUserIdentifier,
+		}, addPermissionTypes);
 	};
 
 	const handleClose = () => {
@@ -227,15 +224,9 @@ function EditModuleDialog({
 														}`}
 													>
 														{checked ? (
-															<CheckCircle2
-																className="h-3.5 w-3.5"
-																aria-hidden="true"
-															/>
+															<CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
 														) : (
-															<ShieldCheck
-																className="h-3.5 w-3.5"
-																aria-hidden="true"
-															/>
+															<ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
 														)}
 													</span>
 													<span className="min-w-0">

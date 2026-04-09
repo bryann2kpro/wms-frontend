@@ -35,7 +35,6 @@ import {
 	PackageOpen,
 	AlertCircle,
 	ChevronRight,
-	ChevronDown,
 	Download,
 	Loader2,
 } from "lucide-react";
@@ -66,17 +65,11 @@ interface OutboundListCardProps {
 	hasAcceptPermission?: boolean;
 	cardClassName?: string;
 	/** Generate and download DO PDF for one row. */
-	onDownloadDoPdf?: (
-		purchaseOrder: PurchaseOrderDetail,
-	) => void | Promise<void>;
+	onDownloadDoPdf?: (purchaseOrder: PurchaseOrderDetail) => void | Promise<void>;
 	pendingDoPdfDeliveryOrderId?: string | null;
 	/** Download PDFs for all selected rows (sequential). */
-	onBulkDownloadDoPdf?: (
-		purchaseOrders: PurchaseOrderDetail[],
-	) => void | Promise<void>;
+	onBulkDownloadDoPdf?: (purchaseOrders: PurchaseOrderDetail[]) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
-	bulkDoPdfProgress?: number;
-	bulkDoPdfTotal?: number;
 	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
 	initialStatusFilter?: PurchaseOrderStatusFilter;
 }
@@ -93,18 +86,14 @@ export function OutboundListCard({
 	pendingDoPdfDeliveryOrderId,
 	onBulkDownloadDoPdf,
 	isBulkDoPdfPending,
-	bulkDoPdfProgress,
-	bulkDoPdfTotal,
 	initialStatusFilter,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [statusFilter, setStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
 	const [regionFilter, setRegionFilter] = useState<string>("ALL");
-	const [dateFilter, setDateFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
-	const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		if (initialStatusFilter !== undefined) {
@@ -136,22 +125,14 @@ export function OutboundListCard({
 	const allDateKeys = data?.paginatedDateKeys ?? [];
 	const dateKeys = data?.dateKeys ?? [];
 
-	const paginatedDateKeys =
-		dateFilter === "ALL"
-			? allDateKeys
-			: allDateKeys.filter((dk) => dk === dateFilter);
+	const paginatedDateKeys = allDateKeys;
 
 	const visiblePurchaseOrders = useMemo(
-		() => paginatedDateKeys.flatMap((dk) => purchaseOrdersByDate[dk] ?? []),
-		[paginatedDateKeys, purchaseOrdersByDate],
-	);
-	const dateOptions = useMemo(
 		() =>
-			allDateKeys.map((dk) => {
-				const label = formatDeliveryDateHeader(new Date(dk + "T12:00:00"));
-				return { value: dk, label };
-			}),
-		[allDateKeys],
+			paginatedDateKeys.flatMap(
+				(dk) => purchaseOrdersByDate[dk] ?? [],
+			),
+		[paginatedDateKeys, purchaseOrdersByDate],
 	);
 	const regionOptions = useMemo(() => {
 		const allPurchaseOrders = regionData?.purchaseOrders ?? [];
@@ -179,11 +160,10 @@ export function OutboundListCard({
 
 	useEffect(() => {
 		setSelectedDoIds(new Set());
-	}, [activeTab, statusFilter, searchTerm, regionFilter, dateFilter]);
+	}, [activeTab, statusFilter, searchTerm, regionFilter]);
 
 	useEffect(() => {
 		setRegionFilter("ALL");
-		setDateFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
 	const loading = isLoading || isFetching;
@@ -292,28 +272,6 @@ export function OutboundListCard({
 									))}
 								</SelectContent>
 							</Select>
-							<Select
-								value={dateFilter}
-								onValueChange={setDateFilter}
-							>
-								<SelectTrigger
-									className="sm:w-60 rounded-lg border-muted-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-									aria-label="Filter by date"
-								>
-									<SelectValue placeholder="Filter by date" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="ALL">All Dates</SelectItem>
-									{dateOptions.map((dateOption) => (
-										<SelectItem
-											key={dateOption.value}
-											value={dateOption.value}
-										>
-											{dateOption.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 							{/* <div
 								className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30 px-3 py-1.5"
 								title="Testing mode: show all scheduled dates, not just today"
@@ -393,8 +351,8 @@ export function OutboundListCard({
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
 								{selectedDoIds.size}{" "}
-								{selectedDoIds.size === 1 ? "order" : "orders"} selected for
-								bulk DO PDF
+								{selectedDoIds.size === 1 ? "order" : "orders"} selected for bulk
+								DO PDF
 							</span>
 							<Button
 								type="button"
@@ -418,9 +376,7 @@ export function OutboundListCard({
 											className="h-4 w-4 animate-spin shrink-0"
 											aria-hidden
 										/>
-										{bulkDoPdfTotal && bulkDoPdfTotal > 0
-											? `${bulkDoPdfProgress ?? 0} / ${bulkDoPdfTotal} PDFs…`
-											: "Generating PDFs…"}
+										Downloading PDFs…
 									</>
 								) : (
 									<>
@@ -606,87 +562,28 @@ export function OutboundListCard({
 										purchaseOrdersByDate[dateKey] ?? [];
 									const deliveryDate = new Date(dateKey + "T12:00:00");
 									const headerLabel = formatDeliveryDateHeader(deliveryDate);
-
-									const dateSelectableIds = datePurchaseOrders
-										.filter((p) => Boolean(p.deliveryOrder?.id))
-										.map((p) => p.deliveryOrder!.id);
-									const allDateSelected =
-										dateSelectableIds.length > 0 &&
-										dateSelectableIds.every((id) => selectedDoIds.has(id));
-									const someDateSelected = dateSelectableIds.some((id) =>
-										selectedDoIds.has(id),
-									);
-
-									const isCollapsed = collapsedDates.has(dateKey);
-
 									return [
 										<TableRow
 											key={dateKey}
-											className="hover:bg-muted/70 bg-muted/50 border-l-4 border-l-primary/30 cursor-pointer select-none"
-											onClick={() =>
-												setCollapsedDates((prev) => {
-													const next = new Set(prev);
-													if (next.has(dateKey)) next.delete(dateKey);
-													else next.add(dateKey);
-													return next;
-												})
-											}
-											aria-expanded={!isCollapsed}
+											className="hover:bg-transparent bg-muted/50 border-l-4 border-l-primary/30"
 										>
 											<TableCell
 												colSpan={tableColCount}
 												className="px-6 font-semibold text-foreground py-3"
 											>
-												<div className="flex items-center gap-3">
-													<ChevronDown
-														className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
-														aria-hidden
-													/>
-													{showBulkPdf && dateSelectableIds.length > 0 ? (
-														<Checkbox
-															checked={
-																allDateSelected
-																	? true
-																	: someDateSelected
-																		? "indeterminate"
-																		: false
-															}
-															onCheckedChange={(checked) => {
-																setSelectedDoIds((prev) => {
-																	const next = new Set(prev);
-																	if (checked === true) {
-																		dateSelectableIds.forEach((id) =>
-																			next.add(id),
-																		);
-																	} else {
-																		dateSelectableIds.forEach((id) =>
-																			next.delete(id),
-																		);
-																	}
-																	return next;
-																});
-															}}
-															onClick={(e) => e.stopPropagation()}
-															disabled={isBulkDoPdfPending}
-															aria-label={`Select all orders for ${headerLabel}`}
-														/>
-													) : null}
-													<span>
-														{headerLabel}
-														{datePurchaseOrders.length > 0 && (
-															<span className="ml-2 text-muted-foreground font-normal">
-																({datePurchaseOrders.length}{" "}
-																{datePurchaseOrders.length === 1
-																	? "order"
-																	: "orders"}
-																)
-															</span>
-														)}
+												{headerLabel}
+												{datePurchaseOrders.length > 0 && (
+													<span className="ml-2 text-muted-foreground font-normal">
+														({datePurchaseOrders.length}{" "}
+														{datePurchaseOrders.length === 1
+															? "order"
+															: "orders"}
+														)
 													</span>
-												</div>
+												)}
 											</TableCell>
 										</TableRow>,
-										...(!isCollapsed && datePurchaseOrders.length === 0
+										...(datePurchaseOrders.length === 0
 											? [
 													<TableRow key={`${dateKey}-empty`}>
 														<TableCell
@@ -698,7 +595,7 @@ export function OutboundListCard({
 													</TableRow>,
 												]
 											: []),
-										...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
+										...datePurchaseOrders.map((purchaseOrder) => {
 											const deliveryOrderStatus =
 												purchaseOrder.deliveryOrder?.status ?? "";
 											const isAwaitingPicking = [
@@ -719,7 +616,8 @@ export function OutboundListCard({
 																		purchaseOrder.deliveryOrder.id,
 																	)}
 																	onCheckedChange={(c) => {
-																		const id = purchaseOrder.deliveryOrder?.id;
+																		const id =
+																			purchaseOrder.deliveryOrder?.id;
 																		if (!id) return;
 																		setSelectedDoIds((prev) => {
 																			const next = new Set(prev);
@@ -732,9 +630,7 @@ export function OutboundListCard({
 																	aria-label={`Select ${purchaseOrder.purchaseOrderNumber} for bulk DO PDF download`}
 																/>
 															) : (
-																<span className="text-muted-foreground/50">
-																	—
-																</span>
+																<span className="text-muted-foreground/50">—</span>
 															)}
 														</TableCell>
 													) : null}
@@ -841,32 +737,35 @@ export function OutboundListCard({
 																<Eye className="h-4 w-4" aria-hidden="true" />
 															</Button>
 															{showRowPdfDownload &&
-															purchaseOrder.deliveryOrder?.id ? (
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	onClick={() =>
-																		void onDownloadDoPdf?.(purchaseOrder)
-																	}
-																	disabled={
-																		pendingDoPdfDeliveryOrderId ===
-																			purchaseOrder.deliveryOrder.id ||
-																		isBulkDoPdfPending
-																	}
-																	className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																	aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
-																>
-																	{pendingDoPdfDeliveryOrderId ===
-																	purchaseOrder.deliveryOrder.id ? (
-																		<Loader2
-																			className="h-4 w-4 animate-spin"
-																			aria-hidden
-																		/>
-																	) : (
-																		<Download className="h-4 w-4" aria-hidden />
-																	)}
-																</Button>
-															) : null}
+																purchaseOrder.deliveryOrder?.id ? (
+																	<Button
+																		variant="ghost"
+																		size="icon"
+																		onClick={() =>
+																			void onDownloadDoPdf?.(purchaseOrder)
+																		}
+																		disabled={
+																			pendingDoPdfDeliveryOrderId ===
+																				purchaseOrder.deliveryOrder.id ||
+																			isBulkDoPdfPending
+																		}
+																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+																		aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
+																	>
+																		{pendingDoPdfDeliveryOrderId ===
+																		purchaseOrder.deliveryOrder.id ? (
+																			<Loader2
+																				className="h-4 w-4 animate-spin"
+																				aria-hidden
+																			/>
+																		) : (
+																			<Download
+																				className="h-4 w-4"
+																				aria-hidden
+																			/>
+																		)}
+																	</Button>
+																) : null}
 															{hasAcceptPermission &&
 																purchaseOrder.status === "preparing" && (
 																	<Button
