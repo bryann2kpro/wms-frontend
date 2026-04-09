@@ -35,6 +35,7 @@ import {
 	PackageOpen,
 	AlertCircle,
 	ChevronRight,
+	ChevronDown,
 	Download,
 	Loader2,
 } from "lucide-react";
@@ -98,6 +99,7 @@ export function OutboundListCard({
 	const [regionFilter, setRegionFilter] = useState<string>("ALL");
 	const [activeTab, setActiveTab] = useState<DeliveryTab>("current-week");
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
+	const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		if (initialStatusFilter !== undefined) {
@@ -579,16 +581,31 @@ export function OutboundListCard({
 										selectedDoIds.has(id),
 									);
 
+									const isCollapsed = collapsedDates.has(dateKey);
+
 									return [
 										<TableRow
 											key={dateKey}
-											className="hover:bg-transparent bg-muted/50 border-l-4 border-l-primary/30"
+											className="hover:bg-muted/70 bg-muted/50 border-l-4 border-l-primary/30 cursor-pointer select-none"
+											onClick={() =>
+												setCollapsedDates((prev) => {
+													const next = new Set(prev);
+													if (next.has(dateKey)) next.delete(dateKey);
+													else next.add(dateKey);
+													return next;
+												})
+											}
+											aria-expanded={!isCollapsed}
 										>
 											<TableCell
 												colSpan={tableColCount}
 												className="px-6 font-semibold text-foreground py-3"
 											>
 												<div className="flex items-center gap-3">
+													<ChevronDown
+														className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+														aria-hidden
+													/>
 													{showBulkPdf && dateSelectableIds.length > 0 ? (
 														<Checkbox
 															checked={
@@ -613,6 +630,7 @@ export function OutboundListCard({
 																	return next;
 																});
 															}}
+															onClick={(e) => e.stopPropagation()}
 															disabled={isBulkDoPdfPending}
 															aria-label={`Select all orders for ${headerLabel}`}
 														/>
@@ -632,7 +650,7 @@ export function OutboundListCard({
 												</div>
 											</TableCell>
 										</TableRow>,
-										...(datePurchaseOrders.length === 0
+										...(!isCollapsed && datePurchaseOrders.length === 0
 											? [
 													<TableRow key={`${dateKey}-empty`}>
 														<TableCell
@@ -644,7 +662,7 @@ export function OutboundListCard({
 													</TableRow>,
 												]
 											: []),
-										...datePurchaseOrders.map((purchaseOrder) => {
+										...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
 											const deliveryOrderStatus =
 												purchaseOrder.deliveryOrder?.status ?? "";
 											const isAwaitingPicking = [
