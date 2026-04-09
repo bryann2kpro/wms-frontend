@@ -239,6 +239,34 @@ export type ApplyEmergencyDeliveryMutationData = {
 };
 
 // ---------------------------------------------------------------------------
+// Update Purchase Order mutation
+// ---------------------------------------------------------------------------
+
+export const UPDATE_PURCHASE_ORDER_MUTATION = gql`
+	mutation UpdatePurchaseOrder($id: ID!, $input: UpdatePurchaseOrderInput!) {
+		updatePurchaseOrder(id: $id, input: $input) {
+			...PurchaseOrderWithOutletFields
+		}
+	}
+	${PURCHASE_ORDER_WITH_OUTLET_FRAGMENT}
+`;
+
+export type UpdatePurchaseOrderMutationVariables = {
+	id: string;
+	input: {
+		scheduledDeliveryDate?: string;
+		outletId?: string;
+		items?: Array<{ id: string; qtyRequired: number }>;
+		newItems?: Array<{ skuId: string; skuCode: string; qtyRequired: number }>;
+		removedItemIds?: string[];
+	};
+};
+
+export type UpdatePurchaseOrderMutationData = {
+	updatePurchaseOrder: PurchaseOrder;
+};
+
+// ---------------------------------------------------------------------------
 // Mapping helper – GraphQL PurchaseOrder -> PurchaseOrderDetail (for UI)
 // ---------------------------------------------------------------------------
 
@@ -278,7 +306,11 @@ export function mapGqlToPurchaseOrderDetail(
 				: "NEW";
 	const deliveryOrderStep =
 		po.deliveryOrder?.id && rawDoStatus != null
-			? { id: po.deliveryOrder.id, doNo: po.deliveryOrder.doNo, status: doStepStatus }
+			? {
+					id: po.deliveryOrder.id,
+					doNo: po.deliveryOrder.doNo,
+					status: doStepStatus,
+				}
 			: null;
 
 	return {
@@ -286,11 +318,11 @@ export function mapGqlToPurchaseOrderDetail(
 		purchaseOrderNumber: po.purchaseOrderNo,
 		fromLocation: "NetSuite",
 		toLocation: outlet?.outletName ?? "Unknown outlet",
+		outletId: outlet?.outletId ?? undefined,
 		status,
 		createdDate,
 		expectedDeliveryDate,
 		createdBy: po.createdByUser?.displayName ?? po.createdBy ?? "System",
-		notes: undefined,
 		items: (po.items ?? []).map((item) => ({
 			id: item.id,
 			sku: item.skuCode,

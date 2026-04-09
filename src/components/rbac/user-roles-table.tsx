@@ -194,7 +194,9 @@ function UserRolesTable({
 							) : (
 								userRoles.map((userRole) => (
 									<TableRow key={userRole.id}>
-										<TableCell className="text-sm">{userRole.userName}</TableCell>
+										<TableCell className="text-sm">
+											{userRole.userName}
+										</TableCell>
 										<TableCell>
 											<Badge
 												variant="outline"

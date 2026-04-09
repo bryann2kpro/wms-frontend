@@ -212,92 +212,102 @@ export function StockAdjustmentFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-		<DialogContent
-			className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border-2 border-border sm:max-w-[1100px] p-0"
-			aria-busy={loading}
-		>
-			<DialogHeader className="border-b border-border/60 bg-muted/50 px-6 py-4 shrink-0">
-				<DialogTitle style={{ fontFamily: "var(--dashboard-display)" }}>
-					Create Stock Adjustment
-				</DialogTitle>
-				<DialogDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-					Adjust per rack with optional lot and expiry. The same SKU can
-					appear on multiple lines when lot or expiry differs. ADJUSTMENT
-					changes on-hand; DAMAGED moves quantity to loss.
-				</DialogDescription>
-			</DialogHeader>
+			<DialogContent
+				className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border-2 border-border sm:max-w-[1100px] p-0"
+				aria-busy={loading}
+			>
+				<DialogHeader className="border-b border-border/60 bg-muted/50 px-6 py-4 shrink-0">
+					<DialogTitle style={{ fontFamily: "var(--dashboard-display)" }}>
+						Create Stock Adjustment
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+						Adjust per rack with optional lot and expiry. The same SKU can
+						appear on multiple lines when lot or expiry differs. ADJUSTMENT
+						changes on-hand; DAMAGED moves quantity to loss.
+					</DialogDescription>
+				</DialogHeader>
 
-			<div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
-				{/* Header fields */}
-				<div className="grid gap-4 sm:grid-cols-2">
-					<div className="space-y-2">
-						<Label htmlFor="adj-reason">Reason</Label>
-						<Input
-							id="adj-reason"
-							placeholder="e.g., Stock count correction"
-							value={reason}
-							onChange={(e) => setReason(e.target.value)}
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="adj-notes">Notes</Label>
-						<Textarea
-							id="adj-notes"
-							placeholder="Additional notes (optional)"
-							value={notes}
-							onChange={(e) => setNotes(e.target.value)}
-							rows={1}
-						/>
-					</div>
-				</div>
-
-				{/* Line items */}
-				<div className="space-y-3">
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-						<h3
-							className="text-sm font-semibold text-foreground"
-							style={{ fontFamily: "var(--dashboard-display)" }}
-						>
-							Line items
-						</h3>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="gap-1 shrink-0 w-fit border-[color-mix(in_oklab,var(--dashboard-accent)_32%,transparent)] hover:bg-[var(--dashboard-accent-muted)]/35"
-							onClick={addItem}
-						>
-							<Plus className="h-4 w-4" aria-hidden />
-							Add item
-						</Button>
+				<div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
+					{/* Header fields */}
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-2">
+							<Label htmlFor="adj-reason">Reason</Label>
+							<Input
+								id="adj-reason"
+								placeholder="e.g., Stock count correction"
+								value={reason}
+								onChange={(e) => setReason(e.target.value)}
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="adj-notes">Notes</Label>
+							<Textarea
+								id="adj-notes"
+								placeholder="Additional notes (optional)"
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+								rows={1}
+							/>
+						</div>
 					</div>
 
-					<div className="overflow-x-auto rounded-lg border">
-						<Table>
+					{/* Line items */}
+					<div className="space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<h3
+								className="text-sm font-semibold text-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Line items
+							</h3>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="gap-1 shrink-0 w-fit border-[color-mix(in_oklab,var(--dashboard-accent)_32%,transparent)] hover:bg-[var(--dashboard-accent-muted)]/35"
+								onClick={addItem}
+							>
+								<Plus className="h-4 w-4" aria-hidden />
+								Add item
+							</Button>
+						</div>
+
+						<div className="overflow-x-auto rounded-lg border">
+							<Table>
 								<TableHeader>
-							<TableRow>
-									<TableHead className="w-[200px] min-w-[160px]">SKU</TableHead>
-									<TableHead className="w-[140px] min-w-[120px]">Rack</TableHead>
-									<TableHead className="w-[100px] min-w-[80px]">Lot no.</TableHead>
-									<TableHead className="w-[120px] min-w-[110px]">Expiry</TableHead>
-									<TableHead className="w-[115px] min-w-[100px]">Type</TableHead>
-									<TableHead className="w-[80px] min-w-[72px]">Qty</TableHead>
-									<TableHead className="min-w-[80px]">Remarks</TableHead>
-									<TableHead className="w-[40px]" />
-								</TableRow>
+									<TableRow>
+										<TableHead className="w-[200px] min-w-[160px]">
+											SKU
+										</TableHead>
+										<TableHead className="w-[140px] min-w-[120px]">
+											Rack
+										</TableHead>
+										<TableHead className="w-[100px] min-w-[80px]">
+											Lot no.
+										</TableHead>
+										<TableHead className="w-[120px] min-w-[110px]">
+											Expiry
+										</TableHead>
+										<TableHead className="w-[115px] min-w-[100px]">
+											Type
+										</TableHead>
+										<TableHead className="w-[80px] min-w-[72px]">Qty</TableHead>
+										<TableHead className="min-w-[80px]">Remarks</TableHead>
+										<TableHead className="w-[40px]" />
+									</TableRow>
 								</TableHeader>
 								<TableBody>
-								{items.map((item, rowIndex) => (
-									<TableRow key={item.key}>
-										<TableCell className="p-1.5">
-											<SkuCombobox
-												value={item.sku}
-												onChange={(val) => updateItem(item.key, { sku: val })}
-												placeholder="Select SKU..."
-											/>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Select
+									{items.map((item, rowIndex) => (
+										<TableRow key={item.key}>
+											<TableCell className="p-1.5">
+												<SkuCombobox
+													value={item.sku}
+													onChange={(val) => updateItem(item.key, { sku: val })}
+													placeholder="Select SKU..."
+												/>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Select
 													value={item.rackId || "__none__"}
 													onValueChange={(val) =>
 														updateItem(item.key, {
@@ -305,9 +315,9 @@ export function StockAdjustmentFormDialog({
 														})
 													}
 												>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select rack…" />
-												</SelectTrigger>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select rack…" />
+													</SelectTrigger>
 													<SelectContent>
 														<SelectItem value="__none__">
 															Select rack…
@@ -318,80 +328,80 @@ export function StockAdjustmentFormDialog({
 															</SelectItem>
 														))}
 													</SelectContent>
-										</Select>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Input
-												placeholder="Optional"
-												className="font-mono text-sm"
-												value={item.lotNo}
-												onChange={(e) =>
-													updateItem(item.key, { lotNo: e.target.value })
-												}
-												aria-label={`Row ${rowIndex + 1} lot number`}
-											/>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Input
-												type="date"
-												className="w-full"
-												value={item.expiryDate}
-												onChange={(e) =>
-													updateItem(item.key, {
-														expiryDate: e.target.value,
-													})
-												}
-												aria-label={`Row ${rowIndex + 1} expiry date`}
-											/>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Select
-												value={item.movementType}
-												onValueChange={(val) =>
-													updateItem(item.key, {
-														movementType: val as "ADJUSTMENT" | "DAMAGED",
-													})
-												}
-											>
-												<SelectTrigger className="w-full">
-													<SelectValue />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="ADJUSTMENT">
-														Adjustment
-													</SelectItem>
-													<SelectItem value="DAMAGED">Damaged</SelectItem>
-												</SelectContent>
-											</Select>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Input
-												type="number"
-												placeholder={
-													item.movementType === "DAMAGED" ? "+5" : "±5"
-												}
-												value={item.quantity}
-												onChange={(e) =>
-													updateItem(item.key, {
-														quantity: e.target.value,
-													})
-												}
-												step="0.01"
-											/>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Input
-												placeholder="Optional"
-												value={item.remarks}
-												onChange={(e) =>
-													updateItem(item.key, {
-														remarks: e.target.value,
-													})
-												}
-											/>
-										</TableCell>
-										<TableCell className="p-1.5">
-											<Button
+												</Select>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Input
+													placeholder="Optional"
+													className="font-mono text-sm"
+													value={item.lotNo}
+													onChange={(e) =>
+														updateItem(item.key, { lotNo: e.target.value })
+													}
+													aria-label={`Row ${rowIndex + 1} lot number`}
+												/>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Input
+													type="date"
+													className="w-full"
+													value={item.expiryDate}
+													onChange={(e) =>
+														updateItem(item.key, {
+															expiryDate: e.target.value,
+														})
+													}
+													aria-label={`Row ${rowIndex + 1} expiry date`}
+												/>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Select
+													value={item.movementType}
+													onValueChange={(val) =>
+														updateItem(item.key, {
+															movementType: val as "ADJUSTMENT" | "DAMAGED",
+														})
+													}
+												>
+													<SelectTrigger className="w-full">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="ADJUSTMENT">
+															Adjustment
+														</SelectItem>
+														<SelectItem value="DAMAGED">Damaged</SelectItem>
+													</SelectContent>
+												</Select>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Input
+													type="number"
+													placeholder={
+														item.movementType === "DAMAGED" ? "+5" : "±5"
+													}
+													value={item.quantity}
+													onChange={(e) =>
+														updateItem(item.key, {
+															quantity: e.target.value,
+														})
+													}
+													step="0.01"
+												/>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Input
+													placeholder="Optional"
+													value={item.remarks}
+													onChange={(e) =>
+														updateItem(item.key, {
+															remarks: e.target.value,
+														})
+													}
+												/>
+											</TableCell>
+											<TableCell className="p-1.5">
+												<Button
 													type="button"
 													variant="ghost"
 													size="icon"
@@ -409,15 +419,15 @@ export function StockAdjustmentFormDialog({
 							</Table>
 						</div>
 
-					{items.length === 0 && (
-						<p className="text-sm text-muted-foreground text-center py-4">
-							No line items yet. Use the Add item button above.
-						</p>
-					)}
+						{items.length === 0 && (
+							<p className="text-sm text-muted-foreground text-center py-4">
+								No line items yet. Use the Add item button above.
+							</p>
+						)}
+					</div>
 				</div>
-			</div>
 
-			<DialogFooter className="border-t border-border/60 px-6 pt-4 pb-4 gap-2 shrink-0">
+				<DialogFooter className="border-t border-border/60 px-6 pt-4 pb-4 gap-2 shrink-0">
 					<Button
 						variant="outline"
 						onClick={() => handleOpenChange(false)}
