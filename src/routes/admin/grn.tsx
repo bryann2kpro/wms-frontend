@@ -54,8 +54,10 @@ import {
 	Send,
 	HelpCircle,
 	ImageOff,
+	ClipboardList,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { Separator } from "@/components/ui/separator";
 import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -1401,64 +1403,109 @@ function GRNRouteComponent() {
 						className="max-h-[90vh] overflow-y-auto rounded-xl"
 						style={{ maxWidth: "min(95vw, 1400px)" }}
 					>
-						<DialogHeader>
-							<DialogTitle
-								className="text-lg"
-								style={{ fontFamily: "var(--dashboard-display)" }}
-							>
-								GRN Details
-							</DialogTitle>
-							<DialogDescription
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								View detailed information about this goods receipt note
-							</DialogDescription>
+						{/* Accent strip */}
+						<div
+							className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+							style={{ background: "linear-gradient(to right, var(--dashboard-accent), transparent)" }}
+						/>
+
+						<DialogHeader className="pb-0">
+							<div className="flex items-center gap-3">
+								<div
+									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+									style={{ background: "var(--dashboard-accent)" }}
+								>
+									<ClipboardList className="h-4.5 w-4.5 text-white" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center gap-2.5">
+										<DialogTitle
+											className="text-xl font-bold tracking-tight"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{selectedGRN?.grnNo || "GRN Details"}
+										</DialogTitle>
+										{selectedGRN?.status && (
+											<Badge
+												variant="outline"
+												className={getStatusColor(selectedGRN.status)}
+											>
+												{formatStatus(selectedGRN.status)}
+											</Badge>
+										)}
+									</div>
+									<DialogDescription
+										className="text-sm"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										Goods Receipt Note
+									</DialogDescription>
+								</div>
+							</div>
 						</DialogHeader>
+
 						{selectedGRN && (
 							<div className="grid gap-6 lg:grid-cols-3">
-								<div className="lg:col-span-2 space-y-6">
+								<div className="lg:col-span-2 space-y-5">
 									<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-										<div className="space-y-6">
-											<div className="grid gap-4 sm:grid-cols-2">
+										<div className="space-y-5">
+											{/* Metadata grid */}
+											<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
 												<div>
-													<Label className="text-xs text-muted-foreground">
-														GRN Number
-													</Label>
-													<p className="text-sm font-medium">
-														{selectedGRN.grnNo}
-													</p>
-												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														End User PO
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.poNo || "-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Supplier DO
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{(selectedGRN.supplierDeliveryNo ??
 															selectedGRN.supplierDeliveryId) ||
 															"-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Received Date
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{formatGrnDate(selectedGRN.receivedAt) ?? "-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Warehouse
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.warehouse?.warehouseName
 															? [
 																	selectedGRN.warehouse.warehouseName,
@@ -1471,40 +1518,44 @@ function GRNRouteComponent() {
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
-														Status
-													</Label>
-													{selectedGRN.status ? (
-														<Badge
-															variant="outline"
-															className={getStatusColor(selectedGRN.status)}
-														>
-															{formatStatus(selectedGRN.status)}
-														</Badge>
-													) : (
-														<span className="text-sm text-muted-foreground">
-															-
-														</span>
-													)}
-												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Created By
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.createdBy}
 													</p>
 												</div>
 											</div>
 
+											<Separator />
+
+											{/* Items table */}
 											<div>
-												<Label className="mb-2 block text-sm font-medium">
-													Items
-												</Label>
-												<div className="rounded-lg border">
+												<div className="flex items-center gap-2 mb-3">
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														Line Items
+													</p>
+													<Badge
+														variant="secondary"
+														className="text-[10px] px-1.5 py-0"
+														style={{ background: "var(--dashboard-accent-muted)", color: "var(--dashboard-accent)" }}
+													>
+														{selectedGRN.items.length} items
+													</Badge>
+												</div>
+												<div className="rounded-xl border bg-card overflow-hidden">
 													<Table>
 														<TableHeader>
-															<TableRow>
+															<TableRow className="bg-muted/50">
 																<TableHead>SKU</TableHead>
 																<TableHead>Description</TableHead>
 																<TableHead>Carton</TableHead>
@@ -1516,8 +1567,8 @@ function GRNRouteComponent() {
 														</TableHeader>
 														<TableBody>
 															{selectedGRN.items.map((item) => (
-																<TableRow key={item.id}>
-																	<TableCell className="font-medium">
+																<TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+																	<TableCell className="font-mono text-xs font-medium">
 																		{item.skuCode}
 																	</TableCell>
 																	<TableCell>{item.skuDescription}</TableCell>
@@ -1539,11 +1590,18 @@ function GRNRouteComponent() {
 												</div>
 											</div>
 
+											{/* Notes */}
 											{selectedGRN.notes && (
-												<div>
-													<Label className="text-xs text-muted-foreground">
+												<div
+													className="rounded-lg bg-muted/30 p-3"
+													style={{ borderLeft: "3px solid var(--dashboard-accent)" }}
+												>
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Notes
-													</Label>
+													</p>
 													<p className="text-sm">{selectedGRN.notes}</p>
 												</div>
 											)}
@@ -1552,17 +1610,19 @@ function GRNRouteComponent() {
 								</div>
 
 								{/* Right Panel: Audit Trail + Integration Status */}
-								<div className="space-y-4">
-									<Card className="rounded-xl border bg-muted/30">
-										<CardHeader>
-											<CardTitle
-												className="text-sm font-semibold"
-												style={{ fontFamily: "var(--dashboard-display)" }}
-											>
-												Audit Trail
-											</CardTitle>
-										</CardHeader>
-										<CardContent className="text-xs space-y-2">
+								<div className="space-y-5">
+									{/* Audit Trail */}
+									<div
+										className="space-y-2.5 pl-3"
+										style={{ borderLeft: "2px solid oklch(0.706 0.158 70.697 / 0.3)" }}
+									>
+										<p
+											className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											Audit Trail
+										</p>
+										<div className="text-xs space-y-2">
 											<div>
 												<p className="text-muted-foreground">Created By</p>
 												<p className="font-medium">{selectedGRN.createdBy}</p>
@@ -1573,8 +1633,12 @@ function GRNRouteComponent() {
 													{formatGrnDate(selectedGRN.createdAt) ?? "-"}
 												</p>
 											</div>
-										</CardContent>
-									</Card>
+										</div>
+									</div>
+
+									<Separator />
+
+									{/* Integration */}
 									<IntegrationLogPanel
 										entityId={selectedGRN.id}
 										entityType="grn"
@@ -1585,28 +1649,34 @@ function GRNRouteComponent() {
 								</div>
 							</div>
 						)}
-						<DialogFooter>
+
+						<DialogFooter className="flex justify-between sm:justify-between">
 							<Button variant="outline" onClick={() => setIsViewOpen(false)}>
 								Close
 							</Button>
-							{canApproveGrn && selectedGRN?.status === "Submitted" && (
+							<div className="flex gap-2">
+								{canApproveGrn && selectedGRN?.status === "Submitted" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Approved");
 										}}
 										disabled={statusMutation.status === "pending"}
+										style={{ background: "var(--dashboard-accent)" }}
+										className="text-white hover:opacity-90"
 									>
 										{statusMutation.status === "pending"
 											? "Approving…"
 											: "Approve"}
 									</Button>
 								)}
-							{canApproveGrn && selectedGRN?.status === "Approved" && (
+								{canApproveGrn && selectedGRN?.status === "Approved" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
 										}}
 										disabled={statusMutation.status === "pending"}
+										variant="outline"
+										style={{ borderColor: "var(--dashboard-accent)", color: "var(--dashboard-accent)" }}
 									>
 										<Send className="mr-2 h-4 w-4" />
 										{statusMutation.status === "pending"
@@ -1614,7 +1684,7 @@ function GRNRouteComponent() {
 											: "Send to ES"}
 									</Button>
 								)}
-							{canApproveGrn && selectedGRN?.status === "Failed" && (
+								{canApproveGrn && selectedGRN?.status === "Failed" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Approved");
@@ -1627,6 +1697,7 @@ function GRNRouteComponent() {
 											: "Retry"}
 									</Button>
 								)}
+							</div>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
