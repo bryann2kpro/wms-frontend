@@ -371,8 +371,30 @@ function GRNLineRow({
 						</div>
 					) : null}
 
+					{item.asnLotTracked ? (
+						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
+							<Badge
+								variant="outline"
+								className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
+							>
+								Lot-tracked (ASN)
+							</Badge>
+					<p
+							className="text-[10px] text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-body)" }}
+						>
+							Lot-tracked — Lot No. and Expiry Date are required before saving.
+						</p>
+						</div>
+					) : null}
+
+<<<<<<< HEAD
 				{/* Row 2: Carton + Loss + Expiry + Lot No. */}
 				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+=======
+					{/* Row 2: Carton + Loss + Expiry */}
+					<div className="grid grid-cols-3 gap-2">
+>>>>>>> parent of d8dfe93 (Revert "Merge pull request #86 from United-Private-Ship/dev")
 						<div className="space-y-1">
 							<label
 								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -688,6 +710,7 @@ export function GrnFormDialog({
 							(!i.lotNo?.trim() || !i.expiryDate?.trim()),
 					);
 						console.log("missingLotFields", missingLotFields);
+
 						if (missingLotFields) {
 							fields.items =
 								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";

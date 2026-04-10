@@ -13,8 +13,8 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { createAvatar } from '@dicebear/core';
-import { glass } from '@dicebear/collection';
+import { createAvatar } from "@dicebear/core";
+import { glass } from "@dicebear/collection";
 import { useMemo } from "react";
 
 export function Header() {
@@ -57,12 +57,12 @@ export function Header() {
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" className="relative h-10 w-10 rounded-full">
+							<Button
+								variant="ghost"
+								className="relative h-10 w-10 rounded-full"
+							>
 								<Avatar className="h-10 w-10">
-									<AvatarImage
-										src={iconSvg}
-										alt={user?.displayName ?? ""}
-									/>
+									<AvatarImage src={iconSvg} alt={user?.displayName ?? ""} />
 									<AvatarFallback>
 										{user?.displayName?.charAt(0) ?? (
 											<UserIcon className="h-4 w-4" />

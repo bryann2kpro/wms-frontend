@@ -80,7 +80,8 @@ function RolePermissionsDialog({
 		refetch,
 	} = useQuery({
 		queryKey: ["rbac-role-permissions", role?.roleId],
-		queryFn: () => fetchRolePermissions({ roleId: role!.roleId, pageSize: 100 }),
+		queryFn: () =>
+			fetchRolePermissions({ roleId: role!.roleId, pageSize: 100 }),
 		enabled: open && !!role?.roleId,
 		staleTime: 30_000,
 	});
@@ -400,7 +401,10 @@ function PermissionModuleCard({
 									>
 										<div className="w-6 h-6 rounded-full flex items-center justify-center mb-1 bg-amber-500 text-white">
 											{isAddingThisModule ? (
-												<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+												<Loader2
+													className="h-4 w-4 animate-spin"
+													aria-hidden="true"
+												/>
 											) : (
 												<PlusCircle className="h-4 w-4" aria-hidden="true" />
 											)}

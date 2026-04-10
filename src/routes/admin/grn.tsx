@@ -310,8 +310,8 @@ function AsnPickerDialog({
 								className="text-sm text-muted-foreground mt-0.5"
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Pick a pending ASN to prefill End User PO, due date, and expected
-								line items.
+								Pick a pending ASN to prefill End User PO, due date, and
+								expected line items.
 							</DialogDescription>
 						</div>
 						{selectedAsn && (
@@ -594,9 +594,8 @@ function GRNRouteComponent() {
 		? createInboundLoading
 		: createGrnLoading;
 
-	const [pendingStatusAction, setPendingStatusAction] = useState<
-		GRNStatus | null
-	>(null);
+	const [pendingStatusAction, setPendingStatusAction] =
+		useState<GRNStatus | null>(null);
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
 		{
@@ -625,17 +624,17 @@ function GRNRouteComponent() {
 			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
-		items?: Array<{
-			sku: string;
-			description?: string;
-			carton: number;
-			loss: number;
-			uom?: string;
-			unitPrice?: number;
-			expiryDate?: string;
-			lotNo?: string;
-			rackIds?: string[];
-		}>;
+			items?: Array<{
+				sku: string;
+				description?: string;
+				carton: number;
+				loss: number;
+				uom?: string;
+				unitPrice?: number;
+				expiryDate?: string;
+				lotNo?: string;
+				rackIds?: string[];
+			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
 		}) => {
@@ -650,18 +649,18 @@ function GRNRouteComponent() {
 					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
-			return {
-				skuId:
-					skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
-				skuCode: i.sku,
-				skuDescription: i.description ?? undefined,
-				qty: String(i.carton),
-				lossQty: String(i.loss ?? 0),
-				skuUom: uomId ?? undefined,
-				expiryDate: (i.expiryDate ?? "").trim() || undefined,
-				lotNo: (i.lotNo ?? "").trim() || undefined,
-				...(rackIds.length > 0 && { rackIds }),
-			};
+				return {
+					skuId:
+						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+					skuCode: i.sku,
+					skuDescription: i.description ?? undefined,
+					qty: String(i.carton),
+					lossQty: String(i.loss ?? 0),
+					skuUom: uomId ?? undefined,
+					expiryDate: (i.expiryDate ?? "").trim() || undefined,
+					lotNo: (i.lotNo ?? "").trim() || undefined,
+					...(rackIds.length > 0 && { rackIds }),
+				};
 			});
 			const baseInput = {
 				grnNo: payload.grnNumber,
@@ -952,17 +951,22 @@ function GRNRouteComponent() {
 															u.unitCode.toLowerCase() ===
 															l.units.toLowerCase(),
 													);
-												return {
-													skuCode: l.itemid,
-													description: l.displayname ?? "",
-													carton: l.quantity,
-													loss: 0,
-													uom: unitMatch?.stockUnitId ?? l.units,
-													unitPrice: 0,
-													expiryDate: "",
-													lotNo: "",
-													rackIds: [],
-												};
+													const lotTracked =
+														l.islotitem?.trim().toUpperCase() === "T";
+													return {
+														skuCode: l.itemid,
+														description: l.displayname ?? "",
+														carton: l.quantity,
+														loss: 0,
+														uom: unitMatch?.stockUnitId ?? l.units,
+														unitPrice: 0,
+														expiryDate: lotTracked
+															? (l.expiryDate ?? "").trim()
+															: "",
+														lotNo: lotTracked ? (l.lotNo ?? "").trim() : "",
+														rackIds: [],
+														...(lotTracked ? { asnLotTracked: true } : {}),
+													};
 												}),
 											});
 											setIsAsnPickerOpen(false);
@@ -1014,17 +1018,17 @@ function GRNRouteComponent() {
 												warehouseId: payload.warehouseId || undefined,
 												submitIntent: payload.submitIntent,
 												advanceNoticeId: selectedAsnId ?? undefined,
-											items: payload.items.map((i) => ({
-												sku: i.skuCode,
-												description: i.description,
-												carton: i.carton,
-												loss: i.loss,
-												uom: i.uom,
-												unitPrice: i.unitPrice,
-												expiryDate: i.expiryDate ?? "",
-												lotNo: i.lotNo ?? "",
-												rackIds: i.rackIds ?? [],
-											})),
+												items: payload.items.map((i) => ({
+													sku: i.skuCode,
+													description: i.description,
+													carton: i.carton,
+													loss: i.loss,
+													uom: i.uom,
+													unitPrice: i.unitPrice,
+													expiryDate: i.expiryDate ?? "",
+													lotNo: i.lotNo ?? "",
+													rackIds: i.rackIds ?? [],
+												})),
 											});
 										}}
 										onSuccess={() => refetchGRNs()}
@@ -1048,9 +1052,7 @@ function GRNRouteComponent() {
 								className={`dashboard-card shadow-md hover:shadow-lg cursor-pointer transition-all ${statusFilter === status ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""}`}
 								style={{ animationDelay: `${summaryDelays[i]}ms` }}
 								onClick={() => {
-									setStatusFilter((prev) =>
-										prev === status ? "ALL" : status,
-									);
+									setStatusFilter((prev) => (prev === status ? "ALL" : status));
 									setPage(1);
 								}}
 								role="button"
@@ -1243,10 +1245,11 @@ function GRNRouteComponent() {
 												(grn.status === "Draft" || grn.status === "Submitted");
 											const showApprove =
 												canApproveGrn && grn.status === "Submitted";
-												console.log("")
+											console.log("");
 											const showSend =
 												canApproveGrn && grn.status === "Approved";
-											const showRetry = canApproveGrn && grn.status === "Failed";
+											const showRetry =
+												canApproveGrn && grn.status === "Failed";
 											return (
 												<TableRow
 													key={grn.id}
@@ -1590,43 +1593,43 @@ function GRNRouteComponent() {
 								Close
 							</Button>
 							{canApproveGrn && selectedGRN?.status === "Submitted" && (
-									<Button
-										onClick={() => {
-											handleUpdateStatus(selectedGRN.id, "Approved");
-										}}
-										disabled={statusMutation.status === "pending"}
-									>
-										{statusMutation.status === "pending"
-											? "Approving…"
-											: "Approve"}
-									</Button>
-								)}
+								<Button
+									onClick={() => {
+										handleUpdateStatus(selectedGRN.id, "Approved");
+									}}
+									disabled={statusMutation.status === "pending"}
+								>
+									{statusMutation.status === "pending"
+										? "Approving…"
+										: "Approve"}
+								</Button>
+							)}
 							{canApproveGrn && selectedGRN?.status === "Approved" && (
-									<Button
-										onClick={() => {
-											handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
-										}}
-										disabled={statusMutation.status === "pending"}
-									>
-										<Send className="mr-2 h-4 w-4" />
-										{statusMutation.status === "pending"
-											? "Sending…"
-											: "Send to ES"}
-									</Button>
-								)}
+								<Button
+									onClick={() => {
+										handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
+									}}
+									disabled={statusMutation.status === "pending"}
+								>
+									<Send className="mr-2 h-4 w-4" />
+									{statusMutation.status === "pending"
+										? "Sending…"
+										: "Send to ES"}
+								</Button>
+							)}
 							{canApproveGrn && selectedGRN?.status === "Failed" && (
-									<Button
-										onClick={() => {
-											handleUpdateStatus(selectedGRN.id, "Approved");
-										}}
-										disabled={statusMutation.status === "pending"}
-									>
-										<RotateCcw className={`mr-2 h-4 w-4 ${statusMutation.status === "pending" ? "animate-spin" : ""}`} />
-										{statusMutation.status === "pending"
-											? "Retrying…"
-											: "Retry"}
-									</Button>
-								)}
+								<Button
+									onClick={() => {
+										handleUpdateStatus(selectedGRN.id, "Approved");
+									}}
+									disabled={statusMutation.status === "pending"}
+								>
+									<RotateCcw
+										className={`mr-2 h-4 w-4 ${statusMutation.status === "pending" ? "animate-spin" : ""}`}
+									/>
+									{statusMutation.status === "pending" ? "Retrying…" : "Retry"}
+								</Button>
+							)}
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

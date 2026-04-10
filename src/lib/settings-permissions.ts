@@ -27,7 +27,7 @@ export type SettingsMasterDataSubTabId =
 	keyof typeof SETTINGS_MASTER_DATA_MODULES;
 
 const MODULE_NAME_ALIASES: Record<string, string[]> = {
-	"Email Settings": ["Email Settings", "Integration Status", "Integration"],
+	"Integration Status": ["Integration Status", "Integration"],
 	Supplier: ["Supplier", "Suppliers"],
 	Warehouse: ["Warehouse", "Warehouses"],
 	Region: ["Region", "Regions"],
