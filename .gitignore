@@ -16,3 +16,9 @@ todos.json
 
 .cursor/
 
+
+# Playwright E2E
+/e2e/.auth/
+/playwright-report/
+/test-results/
+.env.e2e
