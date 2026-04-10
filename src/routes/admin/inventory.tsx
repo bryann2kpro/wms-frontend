@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { requirePermission } from "@/lib/rbac";
 import {
@@ -28,7 +28,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
 	INVENTORY_BALANCES_QUERY,
@@ -69,6 +69,7 @@ const ALL_ITEMS_PAGE_SIZE = 9999;
 const DEFAULT_LOW_STOCK_THRESHOLD = 20;
 
 function InventoryComponent() {
+	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearch = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
@@ -285,13 +286,14 @@ function InventoryComponent() {
 									<TableHead>Unit</TableHead>
 									<TableHead>Last Updated</TableHead>
 									<TableHead>Status</TableHead>
+									<TableHead className="text-center">View</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{loading && items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading inventory...
@@ -300,7 +302,7 @@ function InventoryComponent() {
 								) : items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={11}
 											className="h-24 text-center text-muted-foreground"
 										>
 											{lowStockOnly
@@ -316,13 +318,13 @@ function InventoryComponent() {
 										return (
 											<TableRow
 												key={item.id}
-												className={
+												className={`${
 													outOfStock
 														? "bg-red-50/60 dark:bg-red-950/20"
 														: reserved
 															? "bg-amber-50/40 dark:bg-amber-950/10"
-															: undefined
-												}
+															: ""
+												}`}
 											>
 												<TableCell className="font-mono text-xs font-semibold">
 													{item.skuCode}
@@ -423,6 +425,26 @@ function InventoryComponent() {
 															Available
 														</Badge>
 													)}
+												</TableCell>
+												<TableCell
+													className="text-right"
+													onClick={(e) => e.stopPropagation()}
+												>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 opacity-60 hover:opacity-100"
+														aria-label={`View details for ${item.skuCode}`}
+														onClick={() =>
+															navigate({
+																to: "/admin/inventory-detail",
+																search: { skuId: item.skuId },
+															})
+														}
+													>
+														<Eye className="h-3.5 w-3.5" />
+													</Button>
 												</TableCell>
 											</TableRow>
 										);
