@@ -27,7 +27,10 @@ import {
 	Ban,
 } from "lucide-react";
 import { CREATE_OUTLET_MUTATION, OUTLETS_QUERY } from "@/lib/graphql/outlets";
-import type { OutletsQueryData, OutletsQueryVariables } from "@/lib/graphql/outlets";
+import type {
+	OutletsQueryData,
+	OutletsQueryVariables,
+} from "@/lib/graphql/outlets";
 import type { Region } from "@/lib/graphql/types";
 
 type ImportRow = {
@@ -87,7 +90,9 @@ export function OutletImportDialog({
 				const outletCode = String(r.outletCode ?? "").trim();
 				// Accept both column name variants from the spreadsheet
 				const address = String(r.outletAddress ?? r.address ?? "").trim();
-				const regionCode = String(r.regionCode ?? "").trim().toUpperCase();
+				const regionCode = String(r.regionCode ?? "")
+					.trim()
+					.toUpperCase();
 				const errors: string[] = [];
 
 				if (!outletName) errors.push("outletName is required");
@@ -117,7 +122,10 @@ export function OutletImportDialog({
 			let existingCodes = new Set<string>();
 			if (codesToCheck.length > 0) {
 				try {
-					const { data: existingData } = await client.query<OutletsQueryData, OutletsQueryVariables>({
+					const { data: existingData } = await client.query<
+						OutletsQueryData,
+						OutletsQueryVariables
+					>({
 						query: OUTLETS_QUERY,
 						variables: {
 							filter: { outletCodes: codesToCheck },
@@ -127,7 +135,9 @@ export function OutletImportDialog({
 						fetchPolicy: "network-only",
 					});
 					existingCodes = new Set(
-						existingData.outlets.query.map((o) => o.outletCode?.toUpperCase() ?? ""),
+						existingData.outlets.query.map(
+							(o) => o.outletCode?.toUpperCase() ?? "",
+						),
 					);
 				} catch {
 					// If query fails, proceed without duplicate detection
@@ -164,7 +174,9 @@ export function OutletImportDialog({
 
 	const validRows = rows.filter((r) => r.errors.length === 0 && !r.duplicate);
 	const invalidRows = rows.filter((r) => r.errors.length > 0);
-	const duplicateRows = rows.filter((r) => r.duplicate && r.errors.length === 0);
+	const duplicateRows = rows.filter(
+		(r) => r.duplicate && r.errors.length === 0,
+	);
 
 	async function handleImport() {
 		setState("importing");
@@ -209,9 +221,7 @@ export function OutletImportDialog({
 	}
 
 	const pct =
-		progress.total > 0
-			? Math.round((progress.done / progress.total) * 100)
-			: 0;
+		progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
 	return (
 		<Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
@@ -264,7 +274,9 @@ export function OutletImportDialog({
 							role="button"
 							tabIndex={0}
 							onClick={() => fileInputRef.current?.click()}
-							onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+							onKeyDown={(e) =>
+								e.key === "Enter" && fileInputRef.current?.click()
+							}
 							onDragOver={(e) => {
 								e.preventDefault();
 								setIsDragging(true);
@@ -273,9 +285,7 @@ export function OutletImportDialog({
 							onDrop={handleDrop}
 							className="relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 cursor-pointer transition-all duration-200 select-none"
 							style={{
-								borderColor: isDragging
-									? "var(--dashboard-accent)"
-									: undefined,
+								borderColor: isDragging ? "var(--dashboard-accent)" : undefined,
 								backgroundColor: isDragging
 									? "oklch(from var(--dashboard-accent) l c h / 0.05)"
 									: undefined,
@@ -341,40 +351,57 @@ export function OutletImportDialog({
 					{/* Stats bar after parsing */}
 					{rows.length > 0 && state !== "idle" && state !== "done" && (
 						<div className="flex items-center gap-2 flex-wrap">
-							<div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}>
-								<span className="tabular-nums font-semibold text-foreground">{rows.length}</span>
+							<div
+								className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								<span className="tabular-nums font-semibold text-foreground">
+									{rows.length}
+								</span>
 								rows total
 							</div>
 							{validRows.length > 0 && (
-								<div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+								<div
+									className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
 									style={{
 										fontFamily: "var(--dashboard-body)",
-										backgroundColor: "oklch(from var(--dashboard-accent) l c h / 0.1)",
+										backgroundColor:
+											"oklch(from var(--dashboard-accent) l c h / 0.1)",
 										color: "var(--dashboard-accent)",
-									}}>
+									}}
+								>
 									<CheckCircle2 className="h-3 w-3" />
-									<span className="tabular-nums font-semibold">{validRows.length}</span>
+									<span className="tabular-nums font-semibold">
+										{validRows.length}
+									</span>
 									ready to import
 								</div>
 							)}
 							{invalidRows.length > 0 && (
-								<div className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive"
-									style={{ fontFamily: "var(--dashboard-body)" }}>
+								<div
+									className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
 									<XCircle className="h-3 w-3" />
-									<span className="tabular-nums font-semibold">{invalidRows.length}</span>
+									<span className="tabular-nums font-semibold">
+										{invalidRows.length}
+									</span>
 									with errors
 								</div>
 							)}
 							{duplicateRows.length > 0 && (
-								<div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+								<div
+									className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
 									style={{
 										fontFamily: "var(--dashboard-body)",
 										backgroundColor: "oklch(0.75 0.15 60 / 0.15)",
 										color: "oklch(0.55 0.15 60)",
-									}}>
+									}}
+								>
 									<Ban className="h-3 w-3" />
-									<span className="tabular-nums font-semibold">{duplicateRows.length}</span>
+									<span className="tabular-nums font-semibold">
+										{duplicateRows.length}
+									</span>
 									already in system
 								</div>
 							)}
@@ -467,7 +494,10 @@ export function OutletImportDialog({
 										<>
 											{" "}
 											·{" "}
-											<span className="font-semibold" style={{ color: "oklch(0.55 0.15 60)" }}>
+											<span
+												className="font-semibold"
+												style={{ color: "oklch(0.55 0.15 60)" }}
+											>
 												{duplicateRows.length}
 											</span>{" "}
 											skipped (already in system)
@@ -520,7 +550,10 @@ export function OutletImportDialog({
 												row.duplicate
 													? { backgroundColor: "oklch(0.75 0.15 60 / 0.06)" }
 													: row.errors.length > 0
-														? { backgroundColor: "oklch(0.628 0.2577 29.23 / 0.04)" }
+														? {
+																backgroundColor:
+																	"oklch(0.628 0.2577 29.23 / 0.04)",
+															}
 														: {}
 											}
 										>
@@ -537,7 +570,10 @@ export function OutletImportDialog({
 											)}
 											<TableCell className="px-4 w-10">
 												{row.duplicate ? (
-													<Ban className="h-4 w-4" style={{ color: "oklch(0.55 0.15 60)" }} />
+													<Ban
+														className="h-4 w-4"
+														style={{ color: "oklch(0.55 0.15 60)" }}
+													/>
 												) : row.errors.length === 0 ? (
 													<CheckCircle2
 														className="h-4 w-4"
@@ -579,7 +615,9 @@ export function OutletImportDialog({
 														{row.regionCode}
 													</span>
 												) : (
-													<span className="text-muted-foreground text-xs">—</span>
+													<span className="text-muted-foreground text-xs">
+														—
+													</span>
 												)}
 											</TableCell>
 											<TableCell className="px-4">

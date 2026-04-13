@@ -28,6 +28,7 @@ import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-o
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
+import { Route as AdminInventoryDetailRouteImport } from './routes/admin/inventory-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
 import { Route as AdminForbiddenRouteImport } from './routes/admin/forbidden'
@@ -145,6 +146,11 @@ const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
 const AdminInvoiceDetailRoute = AdminInvoiceDetailRouteImport.update({
   id: '/invoice-detail',
   path: '/invoice-detail',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInventoryDetailRoute = AdminInventoryDetailRouteImport.update({
+  id: '/inventory-detail',
+  path: '/inventory-detail',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInventoryRoute = AdminInventoryRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/outbound': typeof AdminOutboundRoute
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/outbound': typeof AdminOutboundRoute
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/outbound': typeof AdminOutboundRoute
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
+    | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
     | '/admin/outbound'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
+    | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
     | '/admin/outbound'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/admin/forbidden'
     | '/admin/grn'
     | '/admin/inventory'
+    | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
     | '/admin/outbound'
@@ -686,6 +698,13 @@ declare module '@tanstack/react-router' {
       path: '/invoice-detail'
       fullPath: '/admin/invoice-detail'
       preLoaderRoute: typeof AdminInvoiceDetailRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/inventory-detail': {
+      id: '/admin/inventory-detail'
+      path: '/inventory-detail'
+      fullPath: '/admin/inventory-detail'
+      preLoaderRoute: typeof AdminInventoryDetailRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/inventory': {
@@ -877,6 +896,7 @@ interface AdminRouteRouteChildren {
   AdminForbiddenRoute: typeof AdminForbiddenRoute
   AdminGrnRoute: typeof AdminGrnRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminInventoryDetailRoute: typeof AdminInventoryDetailRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
@@ -902,6 +922,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminForbiddenRoute: AdminForbiddenRoute,
   AdminGrnRoute: AdminGrnRoute,
   AdminInventoryRoute: AdminInventoryRoute,
+  AdminInventoryDetailRoute: AdminInventoryDetailRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
   AdminOutboundRoute: AdminOutboundRoute,

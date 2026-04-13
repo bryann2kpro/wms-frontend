@@ -54,8 +54,10 @@ import {
 	Send,
 	HelpCircle,
 	ImageOff,
+	ClipboardList,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { Separator } from "@/components/ui/separator";
 import type { GRNStatus, GRNStatusFilter } from "@/data/grn.mock-data";
 import { usePermissions } from "@/lib/permissions";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -169,53 +171,53 @@ const GRN_HELP_STEPS: Array<{
 	description: ReactNode;
 	image: string;
 }> = [
-	{
-		title: "What this page does",
-		image: `${HELP_IMAGES_BASE}/step-1.png`,
-		description: (
-			<>
-				Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
-				counts by status (Submitted, Failed), and create new GRNs. Use this page
-				to record incoming inventory and track receipts.
-			</>
-		),
-	},
-	{
-		title: "Search, filter, and sort",
-		image: `${HELP_IMAGES_BASE}/step-2.png`,
-		description: (
-			<>
-				Search by <strong>GRN number</strong>, <strong>End User PO</strong>, or{" "}
-				<strong>Supplier DO</strong> (debounced). Filter by{" "}
-				<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
-				<strong>Order</strong>. Pagination is at the bottom.
-			</>
-		),
-	},
-	{
-		title: "Create GRN",
-		image: `${HELP_IMAGES_BASE}/step-3.png`,
-		description: (
-			<>
-				Click <strong>Create GRN</strong>, then enter GRN number, PO reference,
-				supplier DO, received date, and line items (SKU, carton, loss, etc.).
-				Save as <strong>Draft</strong> or <strong>Submit</strong> for approval.
-			</>
-		),
-	},
-	{
-		title: "View, edit, and approve",
-		image: `${HELP_IMAGES_BASE}/step-4.png`,
-		description: (
-			<>
-				Use the <strong>eye</strong> icon to view details. From the view dialog
-				you can <strong>Approve</strong> a Submitted GRN, or{" "}
-				<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
-				icon to change Draft or Submitted GRNs.
-			</>
-		),
-	},
-];
+		{
+			title: "What this page does",
+			image: `${HELP_IMAGES_BASE}/step-1.png`,
+			description: (
+				<>
+					Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
+					counts by status (Submitted, Failed), and create new GRNs. Use this page
+					to record incoming inventory and track receipts.
+				</>
+			),
+		},
+		{
+			title: "Search, filter, and sort",
+			image: `${HELP_IMAGES_BASE}/step-2.png`,
+			description: (
+				<>
+					Search by <strong>GRN number</strong>, <strong>End User PO</strong>, or{" "}
+					<strong>Supplier DO</strong> (debounced). Filter by{" "}
+					<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
+					<strong>Order</strong>. Pagination is at the bottom.
+				</>
+			),
+		},
+		{
+			title: "Create GRN",
+			image: `${HELP_IMAGES_BASE}/step-3.png`,
+			description: (
+				<>
+					Click <strong>Create GRN</strong>, then enter GRN number, PO reference,
+					supplier DO, received date, and line items (SKU, carton, loss, etc.).
+					Save as <strong>Draft</strong> or <strong>Submit</strong> for approval.
+				</>
+			),
+		},
+		{
+			title: "View, edit, and approve",
+			image: `${HELP_IMAGES_BASE}/step-4.png`,
+			description: (
+				<>
+					Use the <strong>eye</strong> icon to view details. From the view dialog
+					you can <strong>Approve</strong> a Submitted GRN, or{" "}
+					<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
+					icon to change Draft or Submitted GRNs.
+				</>
+			),
+		},
+	];
 
 /** Renders step screenshot with a placeholder when the image is missing or fails to load. */
 function HelpStepImage({
@@ -487,10 +489,10 @@ function GRNRouteComponent() {
 	const [selectedAsnId, setSelectedAsnId] = useState<string | null>(null);
 	const [asnInitialValues, setAsnInitialValues] = useState<
 		| {
-				poReference?: string;
-				receivedDate?: string;
-				items?: GRNLineItemForm[];
-		  }
+			poReference?: string;
+			receivedDate?: string;
+			items?: GRNLineItemForm[];
+		}
 		| undefined
 	>(undefined);
 	const [isViewOpen, setIsViewOpen] = useState(false);
@@ -625,17 +627,17 @@ function GRNRouteComponent() {
 			warehouseId?: string;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
-		items?: Array<{
-			sku: string;
-			description?: string;
-			carton: number;
-			loss: number;
-			uom?: string;
-			unitPrice?: number;
-			expiryDate?: string;
-			lotNo?: string;
-			rackIds?: string[];
-		}>;
+			items?: Array<{
+				sku: string;
+				description?: string;
+				carton: number;
+				loss: number;
+				uom?: string;
+				unitPrice?: number;
+				expiryDate?: string;
+				lotNo?: string;
+				rackIds?: string[];
+			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
 		}) => {
@@ -650,18 +652,18 @@ function GRNRouteComponent() {
 					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
-			return {
-				skuId:
-					skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
-				skuCode: i.sku,
-				skuDescription: i.description ?? undefined,
-				qty: String(i.carton),
-				lossQty: String(i.loss ?? 0),
-				skuUom: uomId ?? undefined,
-				expiryDate: (i.expiryDate ?? "").trim() || undefined,
-				lotNo: (i.lotNo ?? "").trim() || undefined,
-				...(rackIds.length > 0 && { rackIds }),
-			};
+				return {
+					skuId:
+						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
+					skuCode: i.sku,
+					skuDescription: i.description ?? undefined,
+					qty: String(i.carton),
+					lossQty: String(i.loss ?? 0),
+					skuUom: uomId ?? undefined,
+					expiryDate: (i.expiryDate ?? "").trim() || undefined,
+					lotNo: (i.lotNo ?? "").trim() || undefined,
+					...(rackIds.length > 0 && { rackIds }),
+				};
 			});
 			const baseInput = {
 				grnNo: payload.grnNumber,
@@ -885,11 +887,10 @@ function GRNRouteComponent() {
 														aria-selected={i === helpStep}
 														aria-label={`Step ${i + 1}: ${GRN_HELP_STEPS[i].title}`}
 														onClick={() => setHelpStep(i)}
-														className={`h-2 rounded-full transition-all duration-200 ${
-															i === helpStep
+														className={`h-2 rounded-full transition-all duration-200 ${i === helpStep
 																? "w-6 bg-amber-600"
 																: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
-														}`}
+															}`}
 													/>
 												))}
 											</div>
@@ -952,17 +953,17 @@ function GRNRouteComponent() {
 															u.unitCode.toLowerCase() ===
 															l.units.toLowerCase(),
 													);
-												return {
-													skuCode: l.itemid,
-													description: l.displayname ?? "",
-													carton: l.quantity,
-													loss: 0,
-													uom: unitMatch?.stockUnitId ?? l.units,
-													unitPrice: 0,
-													expiryDate: "",
-													lotNo: "",
-													rackIds: [],
-												};
+													return {
+														skuCode: l.itemid,
+														description: l.displayname ?? "",
+														carton: l.quantity,
+														loss: 0,
+														uom: unitMatch?.stockUnitId ?? l.units,
+														unitPrice: 0,
+														expiryDate: "",
+														lotNo: "",
+														rackIds: [],
+													};
 												}),
 											});
 											setIsAsnPickerOpen(false);
@@ -1014,17 +1015,17 @@ function GRNRouteComponent() {
 												warehouseId: payload.warehouseId || undefined,
 												submitIntent: payload.submitIntent,
 												advanceNoticeId: selectedAsnId ?? undefined,
-											items: payload.items.map((i) => ({
-												sku: i.skuCode,
-												description: i.description,
-												carton: i.carton,
-												loss: i.loss,
-												uom: i.uom,
-												unitPrice: i.unitPrice,
-												expiryDate: i.expiryDate ?? "",
-												lotNo: i.lotNo ?? "",
-												rackIds: i.rackIds ?? [],
-											})),
+												items: payload.items.map((i) => ({
+													sku: i.skuCode,
+													description: i.description,
+													carton: i.carton,
+													loss: i.loss,
+													uom: i.uom,
+													unitPrice: i.unitPrice,
+													expiryDate: i.expiryDate ?? "",
+													lotNo: i.lotNo ?? "",
+													rackIds: i.rackIds ?? [],
+												})),
 											});
 										}}
 										onSuccess={() => refetchGRNs()}
@@ -1187,14 +1188,14 @@ function GRNRouteComponent() {
 										fontFamily: "var(--dashboard-body)",
 										...(statusFilter === value
 											? {
-													background: "var(--dashboard-accent)",
-													borderColor: "var(--dashboard-accent)",
-													color: "white",
-												}
+												background: "var(--dashboard-accent)",
+												borderColor: "var(--dashboard-accent)",
+												color: "white",
+											}
 											: {
-													background: "transparent",
-													color: "inherit",
-												}),
+												background: "transparent",
+												color: "inherit",
+											}),
 									}}
 								>
 									{value === "ALL" ? "All" : formatStatus(value)}
@@ -1243,7 +1244,7 @@ function GRNRouteComponent() {
 												(grn.status === "Draft" || grn.status === "Submitted");
 											const showApprove =
 												canApproveGrn && grn.status === "Submitted";
-												console.log("")
+											console.log("")
 											const showSend =
 												canApproveGrn && grn.status === "Approved";
 											const showRetry = canApproveGrn && grn.status === "Failed";
@@ -1401,110 +1402,159 @@ function GRNRouteComponent() {
 						className="max-h-[90vh] overflow-y-auto rounded-xl"
 						style={{ maxWidth: "min(95vw, 1400px)" }}
 					>
-						<DialogHeader>
-							<DialogTitle
-								className="text-lg"
-								style={{ fontFamily: "var(--dashboard-display)" }}
-							>
-								GRN Details
-							</DialogTitle>
-							<DialogDescription
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								View detailed information about this goods receipt note
-							</DialogDescription>
+						{/* Accent strip */}
+						<div
+							className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+							style={{ background: "linear-gradient(to right, var(--dashboard-accent), transparent)" }}
+						/>
+
+						<DialogHeader className="pb-0">
+							<div className="flex items-center gap-3">
+								<div
+									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+									style={{ background: "var(--dashboard-accent)" }}
+								>
+									<ClipboardList className="h-4.5 w-4.5 text-white" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center gap-2.5">
+										<DialogTitle
+											className="text-xl font-bold tracking-tight"
+											style={{ fontFamily: "var(--dashboard-display)" }}
+										>
+											{selectedGRN?.grnNo || "GRN Details"}
+										</DialogTitle>
+										{selectedGRN?.status && (
+											<Badge
+												variant="outline"
+												className={getStatusColor(selectedGRN.status)}
+											>
+												{formatStatus(selectedGRN.status)}
+											</Badge>
+										)}
+									</div>
+									<DialogDescription
+										className="text-sm"
+										style={{ fontFamily: "var(--dashboard-body)" }}
+									>
+										Goods Receipt Note
+									</DialogDescription>
+								</div>
+							</div>
 						</DialogHeader>
+
 						{selectedGRN && (
 							<div className="grid gap-6 lg:grid-cols-3">
-								<div className="lg:col-span-2 space-y-6">
+								<div className="lg:col-span-2 space-y-5">
 									<ScrollArea className="max-h-[calc(90vh-8rem)] pr-4">
-										<div className="space-y-6">
-											<div className="grid gap-4 sm:grid-cols-2">
+										<div className="space-y-5">
+											{/* Metadata grid */}
+											<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
 												<div>
-													<Label className="text-xs text-muted-foreground">
-														GRN Number
-													</Label>
-													<p className="text-sm font-medium">
-														{selectedGRN.grnNo}
-													</p>
-												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														End User PO
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.poNo || "-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Supplier DO
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{(selectedGRN.supplierDeliveryNo ??
 															selectedGRN.supplierDeliveryId) ||
 															"-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Received Date
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{formatGrnDate(selectedGRN.receivedAt) ?? "-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Warehouse
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.warehouse?.warehouseName
 															? [
-																	selectedGRN.warehouse.warehouseName,
-																	selectedGRN.warehouse.warehouseCode,
-																]
-																	.filter(Boolean)
-																	.join(" · ") ||
-																selectedGRN.warehouse.warehouseName
+																selectedGRN.warehouse.warehouseName,
+																selectedGRN.warehouse.warehouseCode,
+															]
+																.filter(Boolean)
+																.join(" · ") ||
+															selectedGRN.warehouse.warehouseName
 															: "-"}
 													</p>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">
-														Status
-													</Label>
-													{selectedGRN.status ? (
-														<Badge
-															variant="outline"
-															className={getStatusColor(selectedGRN.status)}
-														>
-															{formatStatus(selectedGRN.status)}
-														</Badge>
-													) : (
-														<span className="text-sm text-muted-foreground">
-															-
-														</span>
-													)}
-												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Created By
-													</Label>
-													<p className="text-sm font-medium">
+													</p>
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
 														{selectedGRN.createdBy}
 													</p>
 												</div>
 											</div>
 
+											<Separator />
+
+											{/* Items table */}
 											<div>
-												<Label className="mb-2 block text-sm font-medium">
-													Items
-												</Label>
-												<div className="rounded-lg border">
+												<div className="flex items-center gap-2 mb-3">
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														Line Items
+													</p>
+													<Badge
+														variant="secondary"
+														className="text-[10px] px-1.5 py-0"
+														style={{ background: "var(--dashboard-accent-muted)", color: "var(--dashboard-accent)" }}
+													>
+														{selectedGRN.items.length} items
+													</Badge>
+												</div>
+												<div className="rounded-xl border bg-card overflow-hidden">
 													<Table>
 														<TableHeader>
-															<TableRow>
+															<TableRow className="bg-muted/50">
 																<TableHead>SKU</TableHead>
 																<TableHead>Description</TableHead>
 																<TableHead>Carton</TableHead>
@@ -1516,8 +1566,8 @@ function GRNRouteComponent() {
 														</TableHeader>
 														<TableBody>
 															{selectedGRN.items.map((item) => (
-																<TableRow key={item.id}>
-																	<TableCell className="font-medium">
+																<TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+																	<TableCell className="font-mono text-xs font-medium">
 																		{item.skuCode}
 																	</TableCell>
 																	<TableCell>{item.skuDescription}</TableCell>
@@ -1539,11 +1589,18 @@ function GRNRouteComponent() {
 												</div>
 											</div>
 
+											{/* Notes */}
 											{selectedGRN.notes && (
-												<div>
-													<Label className="text-xs text-muted-foreground">
+												<div
+													className="rounded-lg bg-muted/30 p-3"
+													style={{ borderLeft: "3px solid var(--dashboard-accent)" }}
+												>
+													<p
+														className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
 														Notes
-													</Label>
+													</p>
 													<p className="text-sm">{selectedGRN.notes}</p>
 												</div>
 											)}
@@ -1552,17 +1609,19 @@ function GRNRouteComponent() {
 								</div>
 
 								{/* Right Panel: Audit Trail + Integration Status */}
-								<div className="space-y-4">
-									<Card className="rounded-xl border bg-muted/30">
-										<CardHeader>
-											<CardTitle
-												className="text-sm font-semibold"
-												style={{ fontFamily: "var(--dashboard-display)" }}
-											>
-												Audit Trail
-											</CardTitle>
-										</CardHeader>
-										<CardContent className="text-xs space-y-2">
+								<div className="space-y-5">
+									{/* Audit Trail */}
+									<div
+										className="space-y-2.5 pl-3"
+										style={{ borderLeft: "2px solid oklch(0.706 0.158 70.697 / 0.3)" }}
+									>
+										<p
+											className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											Audit Trail
+										</p>
+										<div className="text-xs space-y-2">
 											<div>
 												<p className="text-muted-foreground">Created By</p>
 												<p className="font-medium">{selectedGRN.createdBy}</p>
@@ -1573,11 +1632,16 @@ function GRNRouteComponent() {
 													{formatGrnDate(selectedGRN.createdAt) ?? "-"}
 												</p>
 											</div>
-										</CardContent>
-									</Card>
+										</div>
+									</div>
+
+									<Separator />
+
+									{/* Integration */}
 									<IntegrationLogPanel
 										entityId={selectedGRN.id}
 										entityType="grn"
+										poNo={selectedGRN.poNo}
 										onRetry={(logId) => {
 											console.log("Retry log:", logId);
 										}}
@@ -1585,28 +1649,34 @@ function GRNRouteComponent() {
 								</div>
 							</div>
 						)}
-						<DialogFooter>
+
+						<DialogFooter className="flex justify-between sm:justify-between">
 							<Button variant="outline" onClick={() => setIsViewOpen(false)}>
 								Close
 							</Button>
-							{canApproveGrn && selectedGRN?.status === "Submitted" && (
+							<div className="flex gap-2">
+								{canApproveGrn && selectedGRN?.status === "Submitted" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Approved");
 										}}
 										disabled={statusMutation.status === "pending"}
+										style={{ background: "var(--dashboard-accent)" }}
+										className="text-white hover:opacity-90"
 									>
 										{statusMutation.status === "pending"
 											? "Approving…"
 											: "Approve"}
 									</Button>
 								)}
-							{canApproveGrn && selectedGRN?.status === "Approved" && (
+								{canApproveGrn && selectedGRN?.status === "Approved" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
 										}}
 										disabled={statusMutation.status === "pending"}
+										variant="outline"
+										style={{ borderColor: "var(--dashboard-accent)", color: "var(--dashboard-accent)" }}
 									>
 										<Send className="mr-2 h-4 w-4" />
 										{statusMutation.status === "pending"
@@ -1614,7 +1684,7 @@ function GRNRouteComponent() {
 											: "Send to ES"}
 									</Button>
 								)}
-							{canApproveGrn && selectedGRN?.status === "Failed" && (
+								{canApproveGrn && selectedGRN?.status === "Failed" && (
 									<Button
 										onClick={() => {
 											handleUpdateStatus(selectedGRN.id, "Approved");
@@ -1627,6 +1697,7 @@ function GRNRouteComponent() {
 											: "Retry"}
 									</Button>
 								)}
+							</div>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

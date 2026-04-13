@@ -106,6 +106,8 @@ export type GRNLineItemForm = {
 	lotNo: string;
 	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
 	rackIds: string[];
+	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
+	asnLotTracked?: boolean;
 };
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
@@ -352,8 +354,25 @@ function GRNLineRow({
 						</Button>
 					</div>
 
-					{/* Row 2: Carton + Loss + Expiry */}
-					<div className="grid grid-cols-3 gap-2">
+					{item.asnLotTracked ? (
+						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
+							<Badge
+								variant="outline"
+								className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
+							>
+								Lot-tracked (ASN)
+							</Badge>
+							<p
+								className="text-[10px] text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Lot-tracked — Lot No. and Expiry Date are required before saving.
+							</p>
+						</div>
+					) : null}
+
+					{/* Row 2: Carton + Loss + Expiry + Lot No. */}
+					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
 						<div className="space-y-1">
 							<label
 								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -411,7 +430,7 @@ function GRNLineRow({
 								Expiry
 							</label>
 							<Input
-								type="date"
+								type="text"
 								value={item.expiryDate ?? ""}
 								onChange={(e) => {
 									const newItems = [...items];
@@ -461,7 +480,7 @@ function GRNLineRow({
 							{rackIds.map((rid) => {
 								const r = racks.find((x) => x.rackId === rid);
 								const label = r
-									? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+									? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`
 									: rid;
 								return (
 									<Badge
@@ -644,6 +663,7 @@ export function GrnFormDialog({
 		},
 		validators: {
 			onSubmit: ({ value }) => {
+				console.log("value", value);
 				const fields: Partial<Record<string, string>> = {};
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
@@ -662,20 +682,33 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingRack = items.find((i) => !(i.rackIds ?? []).length);
-						if (missingRack) {
-							fields.items = "Each line item must have at least one rack.";
+						const missingLotFields = items.find(
+							(i) =>
+								i.asnLotTracked &&
+								(!i.lotNo?.trim() || !i.expiryDate?.trim()),
+						);
+						console.log("missingLotFields", missingLotFields);
+						if (missingLotFields) {
+							fields.items =
+								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";
 						} else {
-							const seen = new Set<string>();
-							const hasDuplicate = items.some((i) => {
-								const key = `${i.skuCode}::${i.expiryDate?.trim() || ""}`;
-								if (seen.has(key)) return true;
-								seen.add(key);
-								return false;
-							});
-							if (hasDuplicate) {
-								fields.items =
-									"Duplicate line items: two or more rows share the same SKU and expiry date. Use a different expiry date or merge the quantities into one row.";
+							const missingRack = items.find(
+								(i) => !(i.rackIds ?? []).length,
+							);
+							if (missingRack) {
+								fields.items = "Each line item must have at least one rack.";
+							} else {
+								const seen = new Set<string>();
+								const hasDuplicate = items.some((i) => {
+									const key = `${i.skuCode}::${i.expiryDate?.trim() || ""}`;
+									if (seen.has(key)) return true;
+									seen.add(key);
+									return false;
+								});
+								if (hasDuplicate) {
+									fields.items =
+										"Duplicate line items: two or more rows share the same SKU and expiry date. Use a different expiry date or merge the quantities into one row.";
+								}
 							}
 						}
 					}
@@ -711,6 +744,8 @@ export function GrnFormDialog({
 						rackIds: i.rackIds ?? [],
 					})),
 				};
+
+
 				try {
 					await onCreateSubmit?.(payload);
 					form.reset();
@@ -744,7 +779,7 @@ export function GrnFormDialog({
 							items: (value.items ?? []).map((i) => {
 								const uomId = i.uom
 									? (stockUnits.find((u) => u.unitCode === i.uom)
-											?.stockUnitId ?? i.uom)
+										?.stockUnitId ?? i.uom)
 									: undefined;
 								const rackIds = (i.rackIds ?? []).filter((id) =>
 									(id ?? "").trim(),
@@ -779,8 +814,8 @@ export function GrnFormDialog({
 				const sku = skuOptions.find((s) => s.skuCode === it.skuCode);
 				const uomUnit = sku
 					? stockUnits.find(
-							(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
-						)
+						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
+					)
 					: undefined;
 				const rack = it.rack;
 				const rackIds =
@@ -1149,7 +1184,7 @@ export function GrnFormDialog({
 															typeof e === "string"
 																? e
 																: (e as unknown as { message?: string })
-																		.message,
+																	.message,
 														)
 														.filter(Boolean)
 														.join(" ")}
