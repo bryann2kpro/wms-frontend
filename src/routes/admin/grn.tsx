@@ -1641,6 +1641,7 @@ function GRNRouteComponent() {
 									<IntegrationLogPanel
 										entityId={selectedGRN.id}
 										entityType="grn"
+										poNo={selectedGRN.poNo}
 										onRetry={(logId) => {
 											console.log("Retry log:", logId);
 										}}
