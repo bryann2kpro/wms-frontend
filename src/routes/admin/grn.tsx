@@ -171,53 +171,53 @@ const GRN_HELP_STEPS: Array<{
 	description: ReactNode;
 	image: string;
 }> = [
-	{
-		title: "What this page does",
-		image: `${HELP_IMAGES_BASE}/step-1.png`,
-		description: (
-			<>
-				Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
-				counts by status (Submitted, Failed), and create new GRNs. Use this page
-				to record incoming inventory and track receipts.
-			</>
-		),
-	},
-	{
-		title: "Search, filter, and sort",
-		image: `${HELP_IMAGES_BASE}/step-2.png`,
-		description: (
-			<>
-				Search by <strong>GRN number</strong>, <strong>End User PO</strong>, or{" "}
-				<strong>Supplier DO</strong> (debounced). Filter by{" "}
-				<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
-				<strong>Order</strong>. Pagination is at the bottom.
-			</>
-		),
-	},
-	{
-		title: "Create GRN",
-		image: `${HELP_IMAGES_BASE}/step-3.png`,
-		description: (
-			<>
-				Click <strong>Create GRN</strong>, then enter GRN number, PO reference,
-				supplier DO, received date, and line items (SKU, carton, loss, etc.).
-				Save as <strong>Draft</strong> or <strong>Submit</strong> for approval.
-			</>
-		),
-	},
-	{
-		title: "View, edit, and approve",
-		image: `${HELP_IMAGES_BASE}/step-4.png`,
-		description: (
-			<>
-				Use the <strong>eye</strong> icon to view details. From the view dialog
-				you can <strong>Approve</strong> a Submitted GRN, or{" "}
-				<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
-				icon to change Draft or Submitted GRNs.
-			</>
-		),
-	},
-];
+		{
+			title: "What this page does",
+			image: `${HELP_IMAGES_BASE}/step-1.png`,
+			description: (
+				<>
+					Manage <strong>Goods Receipt Notes (GRN)</strong>: view the list, see
+					counts by status (Submitted, Failed), and create new GRNs. Use this page
+					to record incoming inventory and track receipts.
+				</>
+			),
+		},
+		{
+			title: "Search, filter, and sort",
+			image: `${HELP_IMAGES_BASE}/step-2.png`,
+			description: (
+				<>
+					Search by <strong>GRN number</strong>, <strong>End User PO</strong>, or{" "}
+					<strong>Supplier DO</strong> (debounced). Filter by{" "}
+					<strong>Status</strong>. Use <strong>Sort by</strong> and{" "}
+					<strong>Order</strong>. Pagination is at the bottom.
+				</>
+			),
+		},
+		{
+			title: "Create GRN",
+			image: `${HELP_IMAGES_BASE}/step-3.png`,
+			description: (
+				<>
+					Click <strong>Create GRN</strong>, then enter GRN number, PO reference,
+					supplier DO, received date, and line items (SKU, carton, loss, etc.).
+					Save as <strong>Draft</strong> or <strong>Submit</strong> for approval.
+				</>
+			),
+		},
+		{
+			title: "View, edit, and approve",
+			image: `${HELP_IMAGES_BASE}/step-4.png`,
+			description: (
+				<>
+					Use the <strong>eye</strong> icon to view details. From the view dialog
+					you can <strong>Approve</strong> a Submitted GRN, or{" "}
+					<strong>Send to ES</strong> when Approved. Use the <strong>edit</strong>{" "}
+					icon to change Draft or Submitted GRNs.
+				</>
+			),
+		},
+	];
 
 /** Renders step screenshot with a placeholder when the image is missing or fails to load. */
 function HelpStepImage({
@@ -312,8 +312,8 @@ function AsnPickerDialog({
 								className="text-sm text-muted-foreground mt-0.5"
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Pick a pending ASN to prefill End User PO, due date, and
-								expected line items.
+								Pick a pending ASN to prefill End User PO, due date, and expected
+								line items.
 							</DialogDescription>
 						</div>
 						{selectedAsn && (
@@ -489,10 +489,10 @@ function GRNRouteComponent() {
 	const [selectedAsnId, setSelectedAsnId] = useState<string | null>(null);
 	const [asnInitialValues, setAsnInitialValues] = useState<
 		| {
-				poReference?: string;
-				receivedDate?: string;
-				items?: GRNLineItemForm[];
-		  }
+			poReference?: string;
+			receivedDate?: string;
+			items?: GRNLineItemForm[];
+		}
 		| undefined
 	>(undefined);
 	const [isViewOpen, setIsViewOpen] = useState(false);
@@ -596,8 +596,9 @@ function GRNRouteComponent() {
 		? createInboundLoading
 		: createGrnLoading;
 
-	const [pendingStatusAction, setPendingStatusAction] =
-		useState<GRNStatus | null>(null);
+	const [pendingStatusAction, setPendingStatusAction] = useState<
+		GRNStatus | null
+	>(null);
 	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
 		UPDATE_GRN_MUTATION,
 		{
@@ -886,11 +887,10 @@ function GRNRouteComponent() {
 														aria-selected={i === helpStep}
 														aria-label={`Step ${i + 1}: ${GRN_HELP_STEPS[i].title}`}
 														onClick={() => setHelpStep(i)}
-														className={`h-2 rounded-full transition-all duration-200 ${
-															i === helpStep
+														className={`h-2 rounded-full transition-all duration-200 ${i === helpStep
 																? "w-6 bg-amber-600"
 																: "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 hover:w-3"
-														}`}
+															}`}
 													/>
 												))}
 											</div>
@@ -953,8 +953,6 @@ function GRNRouteComponent() {
 															u.unitCode.toLowerCase() ===
 															l.units.toLowerCase(),
 													);
-													const lotTracked =
-														l.islotitem?.trim().toUpperCase() === "T";
 													return {
 														skuCode: l.itemid,
 														description: l.displayname ?? "",
@@ -962,12 +960,9 @@ function GRNRouteComponent() {
 														loss: 0,
 														uom: unitMatch?.stockUnitId ?? l.units,
 														unitPrice: 0,
-														expiryDate: lotTracked
-															? (l.expiryDate ?? "").trim()
-															: "",
-														lotNo: lotTracked ? (l.lotNo ?? "").trim() : "",
+														expiryDate: "",
+														lotNo: "",
 														rackIds: [],
-														...(lotTracked ? { asnLotTracked: true } : {}),
 													};
 												}),
 											});
@@ -1054,7 +1049,9 @@ function GRNRouteComponent() {
 								className={`dashboard-card shadow-md hover:shadow-lg cursor-pointer transition-all ${statusFilter === status ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""}`}
 								style={{ animationDelay: `${summaryDelays[i]}ms` }}
 								onClick={() => {
-									setStatusFilter((prev) => (prev === status ? "ALL" : status));
+									setStatusFilter((prev) =>
+										prev === status ? "ALL" : status,
+									);
 									setPage(1);
 								}}
 								role="button"
@@ -1191,14 +1188,14 @@ function GRNRouteComponent() {
 										fontFamily: "var(--dashboard-body)",
 										...(statusFilter === value
 											? {
-													background: "var(--dashboard-accent)",
-													borderColor: "var(--dashboard-accent)",
-													color: "white",
-												}
+												background: "var(--dashboard-accent)",
+												borderColor: "var(--dashboard-accent)",
+												color: "white",
+											}
 											: {
-													background: "transparent",
-													color: "inherit",
-												}),
+												background: "transparent",
+												color: "inherit",
+											}),
 									}}
 								>
 									{value === "ALL" ? "All" : formatStatus(value)}
@@ -1247,11 +1244,10 @@ function GRNRouteComponent() {
 												(grn.status === "Draft" || grn.status === "Submitted");
 											const showApprove =
 												canApproveGrn && grn.status === "Submitted";
-											console.log("");
+											console.log("")
 											const showSend =
 												canApproveGrn && grn.status === "Approved";
-											const showRetry =
-												canApproveGrn && grn.status === "Failed";
+											const showRetry = canApproveGrn && grn.status === "Failed";
 											return (
 												<TableRow
 													key={grn.id}
@@ -1511,12 +1507,12 @@ function GRNRouteComponent() {
 													>
 														{selectedGRN.warehouse?.warehouseName
 															? [
-																	selectedGRN.warehouse.warehouseName,
-																	selectedGRN.warehouse.warehouseCode,
-																]
-																	.filter(Boolean)
-																	.join(" · ") ||
-																selectedGRN.warehouse.warehouseName
+																selectedGRN.warehouse.warehouseName,
+																selectedGRN.warehouse.warehouseCode,
+															]
+																.filter(Boolean)
+																.join(" · ") ||
+															selectedGRN.warehouse.warehouseName
 															: "-"}
 													</p>
 												</div>

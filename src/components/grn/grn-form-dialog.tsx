@@ -362,39 +362,17 @@ function GRNLineRow({
 							>
 								Lot-tracked (ASN)
 							</Badge>
-					<p
-							className="text-[10px] text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Lot-tracked — Lot No. and Expiry Date are required before saving.
-						</p>
-						</div>
-					) : null}
-
-					{item.asnLotTracked ? (
-						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
-							<Badge
-								variant="outline"
-								className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
+							<p
+								className="text-[10px] text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Lot-tracked (ASN)
-							</Badge>
-					<p
-							className="text-[10px] text-muted-foreground"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							Lot-tracked — Lot No. and Expiry Date are required before saving.
-						</p>
+								Lot-tracked — Lot No. and Expiry Date are required before saving.
+							</p>
 						</div>
 					) : null}
 
-<<<<<<< HEAD
-				{/* Row 2: Carton + Loss + Expiry + Lot No. */}
-				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-=======
-					{/* Row 2: Carton + Loss + Expiry */}
-					<div className="grid grid-cols-3 gap-2">
->>>>>>> parent of d8dfe93 (Revert "Merge pull request #86 from United-Private-Ship/dev")
+					{/* Row 2: Carton + Loss + Expiry + Lot No. */}
+					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
 						<div className="space-y-1">
 							<label
 								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -451,20 +429,20 @@ function GRNLineRow({
 								<CalendarDays className="h-2.5 w-2.5" />
 								Expiry
 							</label>
-						<Input
-							type="text"
-							value={item.expiryDate ?? ""}
-							onChange={(e) => {
-								const newItems = [...items];
-								newItems[index] = {
-									...newItems[index],
-									expiryDate: e.target.value,
-								};
-								onItemsChange(newItems);
-							}}
-							placeholder="YYYY-MM-DD"
-							className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-						/>
+							<Input
+								type="text"
+								value={item.expiryDate ?? ""}
+								onChange={(e) => {
+									const newItems = [...items];
+									newItems[index] = {
+										...newItems[index],
+										expiryDate: e.target.value,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="YYYY-MM-DD"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
 						</div>
 						<div className="space-y-1">
 							<label
@@ -704,13 +682,12 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-					const missingLotFields = items.find(
-						(i) =>
-							i.asnLotTracked &&
-							(!i.lotNo?.trim() || !i.expiryDate?.trim()),
-					);
+						const missingLotFields = items.find(
+							(i) =>
+								i.asnLotTracked &&
+								(!i.lotNo?.trim() || !i.expiryDate?.trim()),
+						);
 						console.log("missingLotFields", missingLotFields);
-
 						if (missingLotFields) {
 							fields.items =
 								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";
@@ -802,7 +779,7 @@ export function GrnFormDialog({
 							items: (value.items ?? []).map((i) => {
 								const uomId = i.uom
 									? (stockUnits.find((u) => u.unitCode === i.uom)
-											?.stockUnitId ?? i.uom)
+										?.stockUnitId ?? i.uom)
 									: undefined;
 								const rackIds = (i.rackIds ?? []).filter((id) =>
 									(id ?? "").trim(),
@@ -837,8 +814,8 @@ export function GrnFormDialog({
 				const sku = skuOptions.find((s) => s.skuCode === it.skuCode);
 				const uomUnit = sku
 					? stockUnits.find(
-							(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
-						)
+						(u) => u.stockUnitId === sku.skuUom || u.unitCode === sku.skuUom,
+					)
 					: undefined;
 				const rack = it.rack;
 				const rackIds =
@@ -1144,10 +1121,10 @@ export function GrnFormDialog({
 									}}
 								</form.Field>
 							</div>
-						<form.Field name="items">
-							{(field) => {
-								const items = (field.state.value ?? []) as GRNLineItemForm[];
-								updateItemsWithRackRef.current = (lineIndex, rackId) => {
+							<form.Field name="items">
+								{(field) => {
+									const items = (field.state.value ?? []) as GRNLineItemForm[];
+									updateItemsWithRackRef.current = (lineIndex, rackId) => {
 										const current = (field.state.value ??
 											[]) as GRNLineItemForm[];
 										if (current[lineIndex] == null) return;
@@ -1207,7 +1184,7 @@ export function GrnFormDialog({
 															typeof e === "string"
 																? e
 																: (e as unknown as { message?: string })
-																		.message,
+																	.message,
 														)
 														.filter(Boolean)
 														.join(" ")}
