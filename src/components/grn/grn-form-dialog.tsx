@@ -480,7 +480,7 @@ function GRNLineRow({
 							{rackIds.map((rid) => {
 								const r = racks.find((x) => x.rackId === rid);
 								const label = r
-									? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`
+									? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`
 									: rid;
 								return (
 									<Badge
