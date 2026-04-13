@@ -22,13 +22,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getPrimaryRole } from "@/lib/auth";
 import {
@@ -306,7 +299,7 @@ function SettingsPage() {
 						</div>
 					)}
 
-					{activeTab === "users" && <UsersRolesCard />}
+					{/* {activeTab === "users" && <UsersRolesCard />} */}
 
 					{activeTab === "master-data" && showMasterDataTab && (
 						<MasterDataCard allowedSubTabs={allowedMasterDataSubTabs} />
