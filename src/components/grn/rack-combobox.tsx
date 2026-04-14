@@ -39,7 +39,7 @@ export function RackCombobox({
 		if (!search.trim()) return racks;
 		const q = search.toLowerCase();
 		return racks.filter((r) => {
-			const label = `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`;
+			const label = `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`;
 			return label.toLowerCase().includes(q);
 		});
 	}, [racks, search]);
@@ -87,7 +87,7 @@ export function RackCombobox({
 						) : (
 							<ul className="py-1 px-1">
 								{filtered.map((r) => {
-									const label = `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`;
+									const label = `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`;
 									const isSelected = selectedRackIds.includes(r.rackId);
 									return (
 										<li key={r.rackId}>

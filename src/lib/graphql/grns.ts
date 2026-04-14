@@ -379,7 +379,7 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 			const lossNum = Number(i.lossQty) || 0;
 			const rack = i.rack ?? null;
 			const location = rack
-				? `${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`
+				? `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`
 				: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
 			return {
 				id: i.id,
