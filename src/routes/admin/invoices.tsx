@@ -28,6 +28,7 @@ import {
 	Eye,
 	ChevronRight,
 	FileText,
+	FileSpreadsheet,
 	Receipt,
 	Printer,
 	FolderOpen,
@@ -37,6 +38,14 @@ import {
 	FileArchive,
 	Files,
 } from "lucide-react";
+import * as XLSX from "xlsx";
+import {
+	endOfISOWeek,
+	format,
+	getISOWeek,
+	getISOWeekYear,
+	startOfISOWeek,
+} from "date-fns";
 import { useBulkProformaPdf } from "@/hooks/useBulkProformaPdf";
 import {
 	INVOICES_QUERY,
@@ -87,6 +96,11 @@ function InvoicesComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>("ALL");
+	const [summaryMode, setSummaryMode] = useState<"Monthly" | "Weekly">(
+		"Monthly",
+	);
+	const [summaryDateFrom, setSummaryDateFrom] = useState("");
+	const [summaryDateTo, setSummaryDateTo] = useState("");
 	const [issuedFrom, setIssuedFrom] = useState("");
 	const [issuedTo, setIssuedTo] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -357,6 +371,257 @@ function InvoicesComponent() {
 		return labels;
 	}, [selectedIds, groupKeys, groupedInvoices]);
 
+	const summaryFilteredInvoices = useMemo(() => {
+		const fromDate = summaryDateFrom ? new Date(`${summaryDateFrom}T00:00:00`) : null;
+		const toDate = summaryDateTo ? new Date(`${summaryDateTo}T23:59:59`) : null;
+
+		return invoices.filter((inv) => {
+			if (!fromDate && !toDate) return true;
+			if (!inv.issuedDate) return false;
+			if (fromDate && inv.issuedDate < fromDate) return false;
+			if (toDate && inv.issuedDate > toDate) return false;
+			return true;
+		});
+	}, [invoices, summaryDateFrom, summaryDateTo]);
+
+	const billingPeriods = useMemo(() => {
+		type PeriodSummary = {
+			label: string;
+			sortValue: number;
+			count: number;
+			totalExcl: number;
+			taxAmount: number;
+			totalIncl: number;
+			issued: number;
+			sent: number;
+			cancelled: number;
+		};
+
+		const groups = new Map<string, PeriodSummary>();
+		const noDateKey = "__none__";
+
+		for (const inv of summaryFilteredInvoices) {
+			const invoiceExcl = parseFloat(inv.totalExclTax ?? "0") || 0;
+			const invoiceTax = parseFloat(inv.taxAmount ?? "0") || 0;
+			const invoiceIncl = parseFloat(inv.totalInclTax ?? "0") || 0;
+
+			const key = (() => {
+				if (!inv.issuedDate) return noDateKey;
+				if (summaryMode === "Monthly") return format(inv.issuedDate, "yyyy-MM");
+				return `${getISOWeekYear(inv.issuedDate)}-W${String(
+					getISOWeek(inv.issuedDate),
+				).padStart(2, "0")}`;
+			})();
+
+			const label = (() => {
+				if (!inv.issuedDate) return "No Issued Date";
+				if (summaryMode === "Monthly") return format(inv.issuedDate, "MMMM yyyy");
+				const weekStart = startOfISOWeek(inv.issuedDate);
+				const weekEnd = endOfISOWeek(inv.issuedDate);
+				return `${format(weekStart, "dd MMM")} to ${format(weekEnd, "dd MMM")}`;
+			})();
+
+			const sortValue = inv.issuedDate?.getTime() ?? Number.NEGATIVE_INFINITY;
+			if (!groups.has(key)) {
+				groups.set(key, {
+					label,
+					sortValue,
+					count: 0,
+					totalExcl: 0,
+					taxAmount: 0,
+					totalIncl: 0,
+					issued: 0,
+					sent: 0,
+					cancelled: 0,
+				});
+			}
+
+			const period = groups.get(key);
+			if (!period) continue;
+
+			period.count += 1;
+			period.totalExcl += invoiceExcl;
+			period.taxAmount += invoiceTax;
+			period.totalIncl += invoiceIncl;
+			if (inv.status === "Issued") period.issued += 1;
+			if (inv.status === "Sent") period.sent += 1;
+			if (inv.status === "Cancelled") period.cancelled += 1;
+			if (sortValue > period.sortValue) period.sortValue = sortValue;
+		}
+
+		return [...groups.entries()].sort(([leftKey, left], [rightKey, right]) => {
+			if (leftKey === noDateKey) return 1;
+			if (rightKey === noDateKey) return -1;
+			return right.sortValue - left.sortValue;
+		});
+	}, [summaryFilteredInvoices, summaryMode]);
+
+	const billingTotals = useMemo(
+		() =>
+			billingPeriods.reduce(
+				(acc, [, period]) => ({
+					count: acc.count + period.count,
+					totalExcl: acc.totalExcl + period.totalExcl,
+					taxAmount: acc.taxAmount + period.taxAmount,
+					totalIncl: acc.totalIncl + period.totalIncl,
+					issued: acc.issued + period.issued,
+					sent: acc.sent + period.sent,
+					cancelled: acc.cancelled + period.cancelled,
+				}),
+				{
+					count: 0,
+					totalExcl: 0,
+					taxAmount: 0,
+					totalIncl: 0,
+					issued: 0,
+					sent: 0,
+					cancelled: 0,
+				},
+			),
+		[billingPeriods],
+	);
+
+	function exportBillingToExcel() {
+		const workbook = XLSX.utils.book_new();
+		const summaryRows = [
+			[
+				"Period",
+				"# Invoices",
+				"Subtotal (excl. SST)",
+				"SST",
+				"Total (incl. SST)",
+				"Issued",
+				"Sent",
+				"Cancelled",
+			],
+			...billingPeriods.map(([, period]) => [
+				period.label,
+				period.count,
+				Number(period.totalExcl.toFixed(2)),
+				Number(period.taxAmount.toFixed(2)),
+				Number(period.totalIncl.toFixed(2)),
+				period.issued,
+				period.sent,
+				period.cancelled,
+			]),
+			[
+				"TOTAL",
+				billingTotals.count,
+				Number(billingTotals.totalExcl.toFixed(2)),
+				Number(billingTotals.taxAmount.toFixed(2)),
+				Number(billingTotals.totalIncl.toFixed(2)),
+				billingTotals.issued,
+				billingTotals.sent,
+				billingTotals.cancelled,
+			],
+		];
+		XLSX.utils.book_append_sheet(
+			workbook,
+			XLSX.utils.aoa_to_sheet(summaryRows),
+			"Billing Summary",
+		);
+
+		const detailRows = [
+			[
+				"No.",
+				"Invoice No",
+				"PO No",
+				"DO No",
+				"Qty",
+				"Unit",
+				"Subtotal (excl. SST)",
+				"SST",
+				"Total (incl. SST)",
+				"Amount",
+				"SST Rate",
+				"Issued Date",
+				"Delivery Date",
+				"Status",
+			],
+			...summaryFilteredInvoices.map((inv, index) => {
+				const snapshot =
+					typeof inv.poAmountCalcSnapshot === "object" && inv.poAmountCalcSnapshot
+						? (inv.poAmountCalcSnapshot as Record<string, unknown>)
+						: null;
+				const qty =
+					Number(snapshot?.totalQty ?? snapshot?.effectiveQty ?? snapshot?.qty ?? 0) ||
+					0;
+				const subtotal = Number((parseFloat(inv.totalExclTax ?? "0") || 0).toFixed(2));
+				const sst = Number((parseFloat(inv.taxAmount ?? "0") || 0).toFixed(2));
+				const totalIncl = Number((parseFloat(inv.totalInclTax ?? "0") || 0).toFixed(2));
+
+				return [
+					index + 1,
+					inv.invoiceNumber ?? "",
+					inv.toNumber ?? "",
+					inv.doNumber ?? "",
+					qty,
+					"CTN",
+					subtotal,
+					sst,
+					totalIncl,
+					totalIncl,
+					`${Math.round(((inv.sstRate ?? 0.06) as number) * 100)}%`,
+					inv.issuedDate ? formatDateOnly(inv.issuedDate) : "",
+					inv.deliveryDate ? formatDateOnly(inv.deliveryDate) : "",
+					inv.status,
+				];
+			}),
+			[
+				"",
+				"TOTAL",
+				"",
+				"",
+				summaryFilteredInvoices.reduce((sum, inv) => {
+					const snapshot =
+						typeof inv.poAmountCalcSnapshot === "object" && inv.poAmountCalcSnapshot
+							? (inv.poAmountCalcSnapshot as Record<string, unknown>)
+							: null;
+					const qty =
+						Number(
+							snapshot?.totalQty ?? snapshot?.effectiveQty ?? snapshot?.qty ?? 0,
+						) || 0;
+					return sum + qty;
+				}, 0),
+				"CTN",
+				Number(
+					summaryFilteredInvoices
+						.reduce((sum, inv) => sum + (parseFloat(inv.totalExclTax ?? "0") || 0), 0)
+						.toFixed(2),
+				),
+				Number(
+					summaryFilteredInvoices
+						.reduce((sum, inv) => sum + (parseFloat(inv.taxAmount ?? "0") || 0), 0)
+						.toFixed(2),
+				),
+				Number(
+					summaryFilteredInvoices
+						.reduce((sum, inv) => sum + (parseFloat(inv.totalInclTax ?? "0") || 0), 0)
+						.toFixed(2),
+				),
+				Number(
+					summaryFilteredInvoices
+						.reduce((sum, inv) => sum + (parseFloat(inv.totalInclTax ?? "0") || 0), 0)
+						.toFixed(2),
+				),
+				"",
+				"",
+				"",
+				"",
+			],
+		];
+		XLSX.utils.book_append_sheet(
+			workbook,
+			XLSX.utils.aoa_to_sheet(detailRows),
+			"Invoice Details",
+		);
+
+		XLSX.writeFile(
+			workbook,
+			`Billing_Summary_${new Date().toISOString().slice(0, 10)}.xlsx`,
+		);
+	}
+
 	return (
 		<main
 			className="invoices-page container mx-auto p-6 space-y-6"
@@ -465,6 +730,188 @@ function InvoicesComponent() {
 					</Card>
 				</div>
 			)}
+
+			<Card className="dashboard-card" style={{ animationDelay: "160ms" }}>
+				<CardHeader className="pb-4">
+					<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+						<div className="space-y-1">
+							<CardTitle
+								className="text-base font-semibold"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Billing Summary
+							</CardTitle>
+							<CardDescription className="text-xs">
+								Totals grouped by{" "}
+								{summaryMode === "Monthly" ? "calendar month" : "ISO week"} for{" "}
+								{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}.
+							</CardDescription>
+						</div>
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-1.5">
+								{(["Monthly", "Weekly"] as const).map((mode) => (
+									<button
+										key={mode}
+										type="button"
+										className={`invoice-status-tab${summaryMode === mode ? " active" : ""}`}
+										onClick={() => setSummaryMode(mode)}
+									>
+										{mode}
+									</button>
+								))}
+							</div>
+							<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+								<span>Issued:</span>
+								<Input
+									type="date"
+									value={summaryDateFrom}
+									onChange={(e) => setSummaryDateFrom(e.target.value)}
+									className="h-8 w-32"
+								/>
+								<span className="text-[10px] text-muted-foreground/80">to</span>
+								<Input
+									type="date"
+									value={summaryDateTo}
+									onChange={(e) => setSummaryDateTo(e.target.value)}
+									className="h-8 w-32"
+								/>
+							</div>
+							<Button
+								size="sm"
+								className="h-8 text-xs gap-1.5"
+								style={{
+									background: "var(--dashboard-accent)",
+									borderColor: "var(--dashboard-accent)",
+									color: "#fff",
+								}}
+								disabled={summaryFilteredInvoices.length === 0}
+								onClick={exportBillingToExcel}
+							>
+								<FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />
+								Export Excel
+							</Button>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent className="pt-0">
+					<div className="overflow-x-auto rounded-lg border">
+						<Table>
+							<TableHeader>
+								<TableRow className="bg-muted/40">
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Period
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										# Inv
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Subtotal (excl. SST)
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										SST
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Total (incl. SST)
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Issued
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Sent
+									</TableHead>
+									<TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+										Cancelled
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{billingPeriods.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={8}
+											className="h-20 text-center text-sm text-muted-foreground"
+										>
+											No billing data available for current filters.
+										</TableCell>
+									</TableRow>
+								) : (
+									<>
+										{billingPeriods.map(([key, period]) => (
+											<TableRow key={key}>
+												<TableCell className="font-medium">
+													<span
+														className="inline-block rounded-sm border-l-[3px] px-2 py-0.5"
+														style={{
+															borderLeftColor: "var(--dashboard-accent)",
+															fontFamily: "var(--dashboard-display)",
+														}}
+													>
+														{period.label}
+													</span>
+												</TableCell>
+												<TableCell className="tabular-nums">{period.count}</TableCell>
+												<TableCell
+													className="tabular-nums"
+													style={{ fontFamily: "var(--dashboard-display)" }}
+												>
+													{formatCurrency(period.totalExcl)}
+												</TableCell>
+												<TableCell className="tabular-nums">
+													{formatCurrency(period.taxAmount)}
+												</TableCell>
+												<TableCell
+													className="tabular-nums font-semibold"
+													style={{
+														fontFamily: "var(--dashboard-display)",
+														color: "var(--dashboard-accent)",
+													}}
+												>
+													{formatCurrency(period.totalIncl)}
+												</TableCell>
+												<TableCell className="tabular-nums">{period.issued}</TableCell>
+												<TableCell className="tabular-nums">{period.sent}</TableCell>
+												<TableCell className="tabular-nums">{period.cancelled}</TableCell>
+											</TableRow>
+										))}
+										<TableRow className="bg-muted/30">
+											<TableCell
+												className="font-semibold"
+												style={{ fontFamily: "var(--dashboard-display)" }}
+											>
+												TOTAL
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{billingTotals.count}
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{formatCurrency(billingTotals.totalExcl)}
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{formatCurrency(billingTotals.taxAmount)}
+											</TableCell>
+											<TableCell
+												className="font-semibold tabular-nums"
+												style={{ color: "var(--dashboard-accent)" }}
+											>
+												{formatCurrency(billingTotals.totalIncl)}
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{billingTotals.issued}
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{billingTotals.sent}
+											</TableCell>
+											<TableCell className="font-semibold tabular-nums">
+												{billingTotals.cancelled}
+											</TableCell>
+										</TableRow>
+									</>
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</CardContent>
+			</Card>
 
 			<Card className="dashboard-card">
 				<CardHeader className="pb-4">
