@@ -290,7 +290,17 @@ function ReportsComponent() {
 
 				const wb = XLSX.utils.book_new();
 				let summaryRows: Array<
-					[string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number]
+					[
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+					]
 				> = [
 					[
 						"Proforma Invoice No",
@@ -300,7 +310,8 @@ function ReportsComponent() {
 						"Outlet",
 						"Region",
 						"CTN",
-						"Amount",
+						"Before Tax Amount",
+						"After Tax Amount",
 					],
 				];
 
@@ -343,7 +354,8 @@ function ReportsComponent() {
 							row.outlet,
 							row.region,
 							row.ctn,
-							Number(row.amount ?? 0),
+							Number(row.beforeTaxAmount ?? 0),
+							Number(row.afterTaxAmount ?? row.amount ?? 0),
 						]),
 					];
 				}
