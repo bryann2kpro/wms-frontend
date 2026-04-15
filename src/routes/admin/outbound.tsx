@@ -205,6 +205,7 @@ function OutboundRouteComponent() {
 		useState<string | null>(null);
 	const { state: bulkDoPdfState, startBulkExport: startBulkDoPdfExport } =
 		useBulkDeliveryOrderPdf();
+	const [isIndividualBulkDownloading, setIsIndividualBulkDownloading] = useState(false);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [activeStatusFilter, setActiveStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
@@ -325,6 +326,40 @@ function OutboundRouteComponent() {
 			await startBulkDoPdfExport(deliveryOrderIds);
 		},
 		[startBulkDoPdfExport],
+	);
+
+	const bulkDownloadDoPdfIndividual = useCallback(
+		async (orders: PurchaseOrderDetail[]) => {
+			const ordersWithDo = orders.filter((po) => Boolean(po.deliveryOrder?.id));
+			if (ordersWithDo.length === 0) return;
+			setIsIndividualBulkDownloading(true);
+			let successCount = 0;
+			let failCount = 0;
+			try {
+				for (const po of ordersWithDo) {
+					const doId = po.deliveryOrder!.id;
+					try {
+						const url = await generateDeliveryOrderPdfUrl(doId);
+						const doNo = po.deliveryOrder?.doNo?.trim();
+						const filenameBase = doNo || po.purchaseOrderNumber.trim();
+						const filenamePrefix = doNo ? "" : "DO-";
+						const filename = `${filenamePrefix}${sanitizePdfFilenameSegment(filenameBase)}.pdf`;
+						await downloadPdfFromUrl(url, filename);
+						successCount++;
+					} catch {
+						failCount++;
+					}
+				}
+			} finally {
+				setIsIndividualBulkDownloading(false);
+			}
+			if (failCount > 0) {
+				toast.warning(`Downloaded ${successCount} PDF(s). ${failCount} failed.`);
+			} else {
+				toast.success(`${successCount} Delivery Order PDF(s) downloaded`);
+			}
+		},
+		[],
 	);
 
 	const form = useForm({
@@ -632,7 +667,8 @@ function OutboundRouteComponent() {
 					onDownloadDoPdf={downloadDoPdf}
 					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
 					onBulkDownloadDoPdf={bulkDownloadDoPdf}
-					isBulkDoPdfPending={bulkDoPdfState.status === "generating"}
+					onBulkDownloadDoPdfIndividual={bulkDownloadDoPdfIndividual}
+					isBulkDoPdfPending={bulkDoPdfState.status === "generating" || isIndividualBulkDownloading}
 					bulkDoPdfProgress={bulkDoPdfState.progress}
 					bulkDoPdfTotal={bulkDoPdfState.total}
 				/>

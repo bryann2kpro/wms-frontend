@@ -38,8 +38,16 @@ import {
 	ChevronDown,
 	Download,
 	Loader2,
+	FileArchive,
+	Files,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { PurchaseOrderDetail } from "@/data/purchase-orders.types";
 import {
 	purchaseOrderStatuses,
@@ -70,8 +78,12 @@ interface OutboundListCardProps {
 		purchaseOrder: PurchaseOrderDetail,
 	) => void | Promise<void>;
 	pendingDoPdfDeliveryOrderId?: string | null;
-	/** Download PDFs for all selected rows (sequential). */
+	/** Download PDFs for all selected rows bundled as a ZIP. */
 	onBulkDownloadDoPdf?: (
+		purchaseOrders: PurchaseOrderDetail[],
+	) => void | Promise<void>;
+	/** Download PDFs for all selected rows as individual files. */
+	onBulkDownloadDoPdfIndividual?: (
 		purchaseOrders: PurchaseOrderDetail[],
 	) => void | Promise<void>;
 	isBulkDoPdfPending?: boolean;
@@ -92,6 +104,7 @@ export function OutboundListCard({
 	onDownloadDoPdf,
 	pendingDoPdfDeliveryOrderId,
 	onBulkDownloadDoPdf,
+	onBulkDownloadDoPdfIndividual,
 	isBulkDoPdfPending,
 	bulkDoPdfProgress,
 	bulkDoPdfTotal,
@@ -194,6 +207,22 @@ export function OutboundListCard({
 
 	const showRowPdfDownload = Boolean(onDownloadDoPdf);
 	const showBulkPdf = Boolean(onBulkDownloadDoPdf);
+
+	// Derive which delivery-date groups the current selection spans (for sticky bar subtitle)
+	const selectedGroupLabels = useMemo(() => {
+		if (selectedDoIds.size === 0) return [];
+		const labels: string[] = [];
+		for (const dateKey of allDateKeys) {
+			const groupIds = (purchaseOrdersByDate[dateKey] ?? [])
+				.filter((p) => Boolean(p.deliveryOrder?.id))
+				.map((p) => p.deliveryOrder!.id);
+			const count = groupIds.filter((id) => selectedDoIds.has(id)).length;
+			if (count > 0) {
+				labels.push(`${formatDeliveryDateHeader(new Date(dateKey + "T12:00:00"))} (${count})`);
+			}
+		}
+		return labels;
+	}, [selectedDoIds, allDateKeys, purchaseOrdersByDate]);
 	const tableColCount = 7 + (showBulkPdf ? 1 : 0);
 
 	const selectableIds = useMemo(
@@ -208,6 +237,7 @@ export function OutboundListCard({
 	);
 
 	return (
+		<>
 		<Card
 			role="region"
 			aria-labelledby="purchase-order-title"
@@ -382,55 +412,6 @@ export function OutboundListCard({
 							Past Deliveries
 						</Button>
 					</div>
-					{showBulkPdf && selectedDoIds.size > 0 ? (
-						<div
-							className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/40 px-4 py-3"
-							role="status"
-							aria-live="polite"
-						>
-							<span
-								className="text-sm text-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								{selectedDoIds.size}{" "}
-								{selectedDoIds.size === 1 ? "order" : "orders"} selected for
-								bulk DO PDF
-							</span>
-							<Button
-								type="button"
-								size="sm"
-								disabled={isBulkDoPdfPending}
-								className="gap-2 rounded-lg text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-								style={{
-									background: "var(--dashboard-accent)",
-									borderColor: "var(--dashboard-accent)",
-								}}
-								onClick={() => {
-									const selected = selectableWithDo.filter((p) =>
-										selectedDoIds.has(p.deliveryOrder.id),
-									);
-									void onBulkDownloadDoPdf?.(selected);
-								}}
-							>
-								{isBulkDoPdfPending ? (
-									<>
-										<Loader2
-											className="h-4 w-4 animate-spin shrink-0"
-											aria-hidden
-										/>
-										{bulkDoPdfTotal && bulkDoPdfTotal > 0
-											? `${bulkDoPdfProgress ?? 0} / ${bulkDoPdfTotal} PDFs…`
-											: "Generating PDFs…"}
-									</>
-								) : (
-									<>
-										<Download className="h-4 w-4 shrink-0" aria-hidden />
-										Download DO PDFs
-									</>
-								)}
-							</Button>
-						</div>
-					) : null}
 				</div>
 			</CardHeader>
 			<CardContent
@@ -897,6 +878,103 @@ export function OutboundListCard({
 				</div>
 			</CardContent>
 		</Card>
+
+		{/* ── Sticky bulk-action bar ── */}
+		{showBulkPdf && selectedDoIds.size > 0 && (
+			<div
+				className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+				role="status"
+				aria-live="polite"
+			>
+				<div className="container mx-auto flex items-center justify-between gap-4 px-6 py-3">
+					<div className="flex flex-col gap-0.5 min-w-0">
+						<span className="text-sm">
+							<span className="font-semibold text-foreground">
+								{selectedDoIds.size}
+							</span>{" "}
+							<span className="text-muted-foreground">
+								{selectedDoIds.size === 1 ? "order" : "orders"} selected
+							</span>
+						</span>
+						{selectedGroupLabels.length > 0 && (
+							<span className="text-xs text-muted-foreground truncate">
+								{selectedGroupLabels.join(", ")}
+							</span>
+						)}
+					</div>
+					<div className="flex items-center gap-2 shrink-0">
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-8 text-xs"
+							onClick={() => setSelectedDoIds(new Set())}
+						>
+							Clear selection
+						</Button>
+						{isBulkDoPdfPending ? (
+							<Button
+								type="button"
+								size="sm"
+								disabled
+								className="h-8 text-xs gap-1.5 text-white disabled:opacity-50"
+								style={{
+									background: "var(--dashboard-accent)",
+									borderColor: "var(--dashboard-accent)",
+								}}
+							>
+								<Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+								{bulkDoPdfTotal && bulkDoPdfTotal > 0
+									? `${bulkDoPdfProgress ?? 0} / ${bulkDoPdfTotal} PDFs…`
+									: "Generating PDFs…"}
+							</Button>
+						) : (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										type="button"
+										size="sm"
+										className="h-8 text-xs gap-1.5 text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										style={{
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+										}}
+									>
+										<Download className="h-3.5 w-3.5 shrink-0" aria-hidden />
+										Download {selectedDoIds.size} PDF{selectedDoIds.size !== 1 ? "s" : ""}
+										<ChevronDown className="h-3 w-3 opacity-80" aria-hidden />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem
+										onSelect={() => {
+											const selected = selectableWithDo.filter((p) =>
+												selectedDoIds.has(p.deliveryOrder.id),
+											);
+											void onBulkDownloadDoPdf?.(selected);
+										}}
+									>
+										<FileArchive className="mr-2 h-4 w-4" aria-hidden />
+										Download as ZIP
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onSelect={() => {
+											const selected = selectableWithDo.filter((p) =>
+												selectedDoIds.has(p.deliveryOrder.id),
+											);
+											void onBulkDownloadDoPdfIndividual?.(selected);
+										}}
+									>
+										<Files className="mr-2 h-4 w-4" aria-hidden />
+										Download individually
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
+					</div>
+				</div>
+			</div>
+		)}
+		</>
 	);
 }
 
