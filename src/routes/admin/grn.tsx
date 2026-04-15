@@ -483,6 +483,10 @@ function GRNRouteComponent() {
 	const [sortField, setSortField] = useState<string>("UPDATED_AT");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const debouncedSearchTerm = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
+	const statusFilterForQuery =
+		statusFilter === "ALL"
+			? undefined
+			: (UI_STATUS_TO_GQL[statusFilter as GRNStatus] ?? statusFilter);
 	const [selectedGRN, setSelectedGRN] = useState<GrnDetailForList | null>(null);
 	const [isAsnPickerOpen, setIsAsnPickerOpen] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -539,7 +543,7 @@ function GRNRouteComponent() {
 				page,
 				pageSize,
 				search: debouncedSearchTerm.trim() || undefined,
-				status: statusFilter === "ALL" ? undefined : statusFilter,
+				status: statusFilterForQuery,
 				/** Draft GRNs are hidden from this page; backend excludes them when not filtering by status. */
 				excludeDraft: true,
 				sortBy: sortField,
