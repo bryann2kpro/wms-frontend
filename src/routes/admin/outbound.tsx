@@ -58,6 +58,7 @@ import {
 	downloadPdfFromUrl,
 	sanitizePdfFilenameSegment,
 } from "@/lib/reports/report-pdf";
+import { buildErrorReport, copyErrorReport } from "@/lib/error-report";
 import { getErrorMessage } from "@/lib/utils";
 
 const STATUS_BORDER_COLOR: Record<string, string> = {
@@ -190,6 +191,79 @@ function HelpStepImage({
 	);
 }
 
+/**
+ * Extract the first clean GraphQL error message from a graphql-request ClientError.
+ * graphql-request puts errors at err.response.errors (not err.graphQLErrors like Apollo).
+ * Falls back to err.graphQLErrors for Apollo-style errors, then to err.message
+ * only when neither structured location is available.
+ */
+function extractGqlMessage(err: unknown): string | undefined {
+	if (!err || typeof err !== "object") return undefined;
+
+	// graphql-request: { response: { errors: [{ message }] }, request: { ... } }
+	const responseErrors = (
+		err as { response?: { errors?: Array<{ message?: string }> } }
+	).response?.errors;
+	if (responseErrors?.[0]?.message) return responseErrors[0].message;
+
+	// Apollo Client: { graphQLErrors: [{ message }] }
+	const gqlErrors = (err as { graphQLErrors?: Array<{ message?: string }> })
+		.graphQLErrors;
+	if (gqlErrors?.[0]?.message) return gqlErrors[0].message;
+
+	return undefined;
+}
+
+/**
+ * Parse "Insufficient stock for SKU "RAW-T0001": required 3, available 0 (onHand: 0, reserved: 0)."
+ * into a readable sentence: "RAW-T0001: 3 required, 0 available (0 on hand)"
+ */
+function formatInsufficientStockMessage(raw: string): string {
+	const match = raw.match(
+		/Insufficient stock for SKU "([^"]+)": required ([\d.]+), available ([\d.]+) \(onHand: ([\d.]+), reserved: ([\d.]+)\)/,
+	);
+	if (!match) return raw;
+	const [, sku, required, available, onHand, reserved] = match;
+	const parts = [`${sku}: ${required} required, ${available} available`];
+	if (Number(reserved) > 0) {
+		parts.push(`(${onHand} on hand, ${reserved} reserved)`);
+	} else {
+		parts.push(`(${onHand} on hand)`);
+	}
+	return parts.join(" ");
+}
+
+/**
+ * Extract a user-friendly title + optional description from a createPurchaseOrder error.
+ * Handles the two most common server-side failures:
+ *   1. Duplicate PO number  → DB unique constraint violation
+ *   2. Insufficient stock   → service-level assertion
+ */
+function parseCreatePoError(err: unknown): { title: string; description?: string } {
+	const rawMessage = extractGqlMessage(err);
+
+	if (rawMessage) {
+		if (
+			rawMessage.includes("duplicate key value") ||
+			rawMessage.includes("unique constraint") ||
+			rawMessage.toLowerCase().includes("already exists")
+		) {
+			return {
+				title: "Purchase order number already exists",
+				description: "Use a different PO number and try again.",
+			};
+		}
+		if (rawMessage.includes("Insufficient stock for SKU")) {
+			return {
+				title: "Insufficient stock",
+				description: formatInsufficientStockMessage(rawMessage),
+			};
+		}
+	}
+
+	return { title: getErrorMessage(err as Error) };
+}
+
 function OutboundRouteComponent() {
 	const { user } = useCurrentUser();
 	const { update } = usePermissions(user);
@@ -220,7 +294,27 @@ function OutboundRouteComponent() {
 			setIsCreateOpen(false);
 			toast.success("Purchase order created");
 		},
-		onError: (err) => toast.error(getErrorMessage(err as Error)),
+		onError: (err) => {
+			const { title, description } = parseCreatePoError(err);
+			const report = buildErrorReport(err, {
+				operation: "createPurchaseOrder",
+				userEmail: user?.email ?? undefined,
+			});
+			toast.error(title, {
+				description,
+				action: {
+					label: "Copy error details",
+					onClick: async () => {
+						const ok = await copyErrorReport(report);
+						if (ok) {
+							toast.success("Error details copied to clipboard");
+						} else {
+							toast.error("Could not access clipboard");
+						}
+					},
+				},
+			});
+		},
 	});
 
 	const statusMutation = useMutation({
@@ -301,14 +395,17 @@ function OutboundRouteComponent() {
 						success: true,
 					});
 				} catch (err) {
-					const message =
-						err instanceof Error
-							? err.message
-							: "Could not create purchase order.";
+					const { title, description } = parseCreatePoError(err);
+					const message = description ? `${title}: ${description}` : title;
+					const report = buildErrorReport(err, {
+						operation: "createPurchaseOrder",
+						userEmail: user?.email ?? undefined,
+					});
 					results.push({
 						purchaseOrderNumber: input.purchaseOrderNumber,
 						success: false,
 						error: message,
+						report,
 					});
 				}
 			}
