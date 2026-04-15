@@ -948,6 +948,8 @@ function GRNRouteComponent() {
 												poReference: asn.tranid,
 												receivedDate: asn.duedate,
 												items: asn.lines.map((l) => {
+													const isLotTracked =
+														(l.islotitem ?? "").trim().toUpperCase() === "T";
 													const unitMatch = stockUnits.find(
 														(u) =>
 															u.unitCode.toLowerCase() ===
@@ -960,9 +962,10 @@ function GRNRouteComponent() {
 														loss: 0,
 														uom: unitMatch?.stockUnitId ?? l.units,
 														unitPrice: 0,
-														expiryDate: "",
-														lotNo: "",
+														expiryDate: l.expiryDate ?? "",
+														lotNo: l.lotNo ?? "",
 														rackIds: [],
+														asnLotTracked: isLotTracked,
 													};
 												}),
 											});
