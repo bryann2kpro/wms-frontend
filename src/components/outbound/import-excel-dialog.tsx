@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import {
 	AlertTriangle,
 	CheckCircle2,
+	Copy,
 	Loader2,
 	Upload,
 	XCircle,
@@ -48,12 +49,15 @@ import {
 	type ImportReviewRow,
 	parseDeliveryExcel,
 } from "@/lib/outbound-excel-import";
+import { copyErrorReport } from "@/lib/error-report";
 import { cn } from "@/lib/utils";
 
 export type ImportRowResult = {
 	purchaseOrderNumber: string;
 	success: boolean;
 	error?: string;
+	/** Structured JSON error report for developer triage — copy to clipboard. */
+	report?: string;
 };
 
 export interface ImportExcelDialogProps {
@@ -529,13 +533,42 @@ export function ImportExcelDialog({
 							</>
 						)}
 						{(step === "pick" || step === "done") && (
-							<Button
-								type="button"
-								variant="secondary"
-								onClick={() => handleOpenChange(false)}
-							>
-								{step === "done" ? "Close" : "Cancel"}
-							</Button>
+							<>
+								{step === "done" && importResults && (
+									(() => {
+										const failedReports = importResults
+											.filter((r) => !r.success && r.report)
+											.map((r) => JSON.parse(r.report!));
+										if (failedReports.length === 0) return null;
+										return (
+											<Button
+												type="button"
+												variant="outline"
+												className="gap-2"
+												onClick={async () => {
+													const combined = JSON.stringify(failedReports, null, 2);
+													const ok = await copyErrorReport(combined);
+													toast[ok ? "success" : "error"](
+														ok
+															? `${failedReports.length} error report${failedReports.length > 1 ? "s" : ""} copied`
+															: "Could not access clipboard",
+													);
+												}}
+											>
+												<Copy className="h-4 w-4" aria-hidden />
+												Copy error details
+											</Button>
+										);
+									})()
+								)}
+								<Button
+									type="button"
+									variant="secondary"
+									onClick={() => handleOpenChange(false)}
+								>
+									{step === "done" ? "Close" : "Cancel"}
+								</Button>
+							</>
 						)}
 					</DialogFooter>
 				</DialogContent>
