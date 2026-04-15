@@ -38,10 +38,14 @@ import {
 	ImageOff,
 } from "lucide-react";
 import { useMutation } from "@apollo/client/react";
+import * as XLSX from "xlsx";
 import {
 	GENERATE_REPORT_MUTATION,
 	type GenerateReportMutationData,
 	type GenerateReportMutationVariables,
+	INVOICE_SUMMARY_REPORT_DATA_QUERY,
+	type InvoiceSummaryReportDataQueryData,
+	type InvoiceSummaryReportDataQueryVariables,
 } from "@/lib/graphql/reports";
 import { downloadPdfFromBase64 } from "@/lib/reports";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -268,6 +272,89 @@ function ReportsComponent() {
 							: "Failed to generate report. Please try again.";
 					toast.error(message);
 				}
+				return;
+			}
+
+			// Excel: generate a real XLSX file (not a text blob)
+			if (format === "Excel") {
+				if (selectedReport === "InvoiceSummary") {
+					if (!regionId?.trim()) {
+						toast.error("Region is required for this report.");
+						return;
+					}
+					if (!dateFrom?.trim() || !dateTo?.trim()) {
+						toast.error("Date range (From and To) is required for this report.");
+						return;
+					}
+				}
+
+				const wb = XLSX.utils.book_new();
+				let summaryRows: Array<
+					[string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number]
+				> = [
+					[
+						"Proforma Invoice No",
+						"Invoice Date",
+						"PO No",
+						"DO No",
+						"Outlet",
+						"Region",
+						"CTN",
+						"Amount",
+					],
+				];
+
+				if (selectedReport === "InvoiceSummary") {
+					const headers = new Headers();
+					headers.set(
+						"Authorization",
+						`Bearer ${localStorage.getItem("access_token")}`,
+					);
+
+					const reportData = await request<
+						InvoiceSummaryReportDataQueryData,
+						InvoiceSummaryReportDataQueryVariables
+					>(
+						env.VITE_GRAPHQL_ENDPOINT,
+						INVOICE_SUMMARY_REPORT_DATA_QUERY,
+						{
+							regionId: regionId.trim(),
+							dateFrom: dateFrom.trim(),
+							dateTo: dateTo.trim(),
+						},
+						headers,
+					);
+
+					const rows = reportData.invoiceSummaryReportData ?? [];
+					if (rows.length === 0) {
+						toast.error(
+							"No data found for selected region and date range.",
+						);
+						return;
+					}
+
+					summaryRows = [
+						summaryRows[0],
+						...rows.map((row) => [
+							row.proformaId,
+							row.invoiceDate,
+							row.poNumber,
+							row.doNumber,
+							row.outlet,
+							row.region,
+							row.ctn,
+							Number(row.amount ?? 0),
+						]),
+					];
+				}
+
+				const ws = XLSX.utils.aoa_to_sheet(summaryRows);
+				XLSX.utils.book_append_sheet(wb, ws, "Invoice Summary");
+				XLSX.writeFile(
+					wb,
+					`${selectedReport}_Report_${new Date().toISOString().split("T")[0]}.xlsx`,
+				);
+				toast.success("Excel report downloaded.");
 				return;
 			}
 
