@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useQuery, useLazyQuery } from "@apollo/client/react";
+import { useQuery, useLazyQuery, useMutation } from "@apollo/client/react";
 import {
 	Card,
 	CardContent,
@@ -33,6 +34,8 @@ import {
 	Folder,
 	Loader2,
 	Download,
+	FileArchive,
+	Files,
 } from "lucide-react";
 import { useBulkProformaPdf } from "@/hooks/useBulkProformaPdf";
 import {
@@ -42,7 +45,17 @@ import {
 	type InvoiceStatusFilter,
 	gqlStatusToUI,
 	uiStatusToGql,
+	GENERATE_PROFORMA_INVOICE_PDF_MUTATION,
+	type GenerateProformaInvoicePdfData,
+	type GenerateProformaInvoicePdfVariables,
 } from "@/lib/graphql/invoices";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { formatCurrency, formatDateOnly } from "@/lib/utils";
 
@@ -91,6 +104,13 @@ function InvoicesComponent() {
 		{ fetchPolicy: "network-only" },
 	);
 	const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+	const [isDownloadingAllIndividual, setIsDownloadingAllIndividual] = useState(false);
+	const [isDownloadingSelectedIndividual, setIsDownloadingSelectedIndividual] = useState(false);
+
+	const [generateSinglePdf] = useMutation<
+		GenerateProformaInvoicePdfData,
+		GenerateProformaInvoicePdfVariables
+	>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION);
 
 	// Build the current active filter (shared between main query and download-all)
 	const activeFilter = useMemo(() => ({
@@ -145,6 +165,51 @@ function InvoicesComponent() {
 			if (ids.length > 0) await startBulkExport(ids);
 		} finally {
 			setIsDownloadingAll(false);
+		}
+	}
+
+	async function downloadIndividually(ids: string[]) {
+		if (ids.length === 0) return;
+		let successCount = 0;
+		let failCount = 0;
+		for (const invoiceId of ids) {
+			try {
+				const { data: res } = await generateSinglePdf({ variables: { invoiceId } });
+				const pdf = res?.generateProformaInvoicePdf;
+				if (pdf) downloadPdfFromBase64(pdf.pdfBase64, pdf.filename);
+				successCount++;
+			} catch {
+				failCount++;
+			}
+		}
+		if (failCount > 0) {
+			toast.warning(`Downloaded ${successCount} PDF(s). ${failCount} failed.`);
+		} else {
+			toast.success(`${successCount} Proforma PDF(s) downloaded`);
+		}
+	}
+
+	async function downloadAllFilteredIndividually() {
+		if (isGenerating || isDownloadingAllIndividual) return;
+		setIsDownloadingAllIndividual(true);
+		try {
+			const { data: result } = await fetchAllInvoices({
+				variables: { filter: activeFilter, pageSize: 500, pageNumber: 1 },
+			});
+			const ids = (result?.invoices.query ?? []).map((inv) => inv.id);
+			await downloadIndividually(ids);
+		} finally {
+			setIsDownloadingAllIndividual(false);
+		}
+	}
+
+	async function downloadSelectedIndividually() {
+		if (isGenerating || isDownloadingSelectedIndividual) return;
+		setIsDownloadingSelectedIndividual(true);
+		try {
+			await downloadIndividually(Array.from(selectedIds));
+		} finally {
+			setIsDownloadingSelectedIndividual(false);
 		}
 	}
 
@@ -429,29 +494,50 @@ function InvoicesComponent() {
 										className="pl-8 h-8 text-sm sm:w-72"
 									/>
 								</div>
-								<Button
-									size="sm"
-									className="h-8 text-xs gap-1.5 shrink-0"
-									style={{
-										background: "var(--dashboard-accent)",
-										borderColor: "var(--dashboard-accent)",
-										color: "#fff",
-									}}
-									disabled={isGenerating || isDownloadingAll || !pagination?.totalCount}
-									onClick={() => void downloadAllFiltered()}
-								>
-									{isDownloadingAll || (isGenerating && !generatingGroupKey && selectedIds.size === 0) ? (
-										<>
-											<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-											Generating…
-										</>
-									) : (
-										<>
-											<Download className="h-3.5 w-3.5" aria-hidden />
-											Download All{pagination ? ` (${pagination.totalCount})` : ""}
-										</>
-									)}
-								</Button>
+								{isDownloadingAll || isDownloadingAllIndividual || (isGenerating && !generatingGroupKey && selectedIds.size === 0) ? (
+									<Button
+										size="sm"
+										className="h-8 text-xs gap-1.5 shrink-0"
+										style={{
+											background: "var(--dashboard-accent)",
+											borderColor: "var(--dashboard-accent)",
+											color: "#fff",
+										}}
+										disabled
+									>
+										<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+										Generating…
+									</Button>
+								) : (
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												size="sm"
+												className="h-8 text-xs gap-1.5 shrink-0"
+												style={{
+													background: "var(--dashboard-accent)",
+													borderColor: "var(--dashboard-accent)",
+													color: "#fff",
+												}}
+												disabled={!pagination?.totalCount}
+											>
+												<Download className="h-3.5 w-3.5" aria-hidden />
+												Download All{pagination ? ` (${pagination.totalCount})` : ""}
+												<ChevronRight className="h-3 w-3 opacity-80 rotate-90" aria-hidden />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem onSelect={() => void downloadAllFiltered()}>
+												<FileArchive className="mr-2 h-4 w-4" aria-hidden />
+												Download as ZIP
+											</DropdownMenuItem>
+											<DropdownMenuItem onSelect={() => void downloadAllFilteredIndividually()}>
+												<Files className="mr-2 h-4 w-4" aria-hidden />
+												Download individually
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
 							</div>
 						</div>
 						{/* Status pill tabs + issued date filter */}
@@ -830,29 +916,51 @@ function InvoicesComponent() {
 							>
 								Clear selection
 							</Button>
-							<Button
-								size="sm"
-								className="h-8 text-xs gap-1.5"
-								style={{
-									background: "var(--dashboard-accent)",
-									borderColor: "var(--dashboard-accent)",
-									color: "#fff",
-								}}
-								disabled={isGenerating}
-								onClick={() => void startBulkExport(Array.from(selectedIds))}
-							>
-								{isGenerating ? (
-									<>
-										<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-										Generating {bulkPdfState.progress}/{bulkPdfState.total}…
-									</>
-								) : (
-									<>
-										<Download className="h-3.5 w-3.5" aria-hidden />
-										Download {selectedIds.size} PDF{selectedIds.size !== 1 ? "s" : ""}
-									</>
-								)}
-							</Button>
+							{isGenerating || isDownloadingSelectedIndividual ? (
+								<Button
+									size="sm"
+									className="h-8 text-xs gap-1.5"
+									style={{
+										background: "var(--dashboard-accent)",
+										borderColor: "var(--dashboard-accent)",
+										color: "#fff",
+									}}
+									disabled
+								>
+									<Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+									{isGenerating
+										? `Generating ${bulkPdfState.progress}/${bulkPdfState.total}…`
+										: "Downloading…"}
+								</Button>
+							) : (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											size="sm"
+											className="h-8 text-xs gap-1.5"
+											style={{
+												background: "var(--dashboard-accent)",
+												borderColor: "var(--dashboard-accent)",
+												color: "#fff",
+											}}
+										>
+											<Download className="h-3.5 w-3.5" aria-hidden />
+											Download {selectedIds.size} PDF{selectedIds.size !== 1 ? "s" : ""}
+											<ChevronRight className="h-3 w-3 opacity-80 rotate-90" aria-hidden />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onSelect={() => void startBulkExport(Array.from(selectedIds))}>
+											<FileArchive className="mr-2 h-4 w-4" aria-hidden />
+											Download as ZIP
+										</DropdownMenuItem>
+										<DropdownMenuItem onSelect={() => void downloadSelectedIndividually()}>
+											<Files className="mr-2 h-4 w-4" aria-hidden />
+											Download individually
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
 						</div>
 					</div>
 				</div>
