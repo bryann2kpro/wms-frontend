@@ -40,6 +40,7 @@ import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminAuditLogRouteImport } from './routes/admin/audit-log'
+import { Route as AdminApiLogRouteImport } from './routes/admin/api-log'
 import { Route as AdminApiKeysRouteImport } from './routes/admin/api-keys'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
@@ -208,6 +209,11 @@ const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
   path: '/audit-log',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminApiLogRoute = AdminApiLogRouteImport.update({
+  id: '/api-log',
+  path: '/api-log',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminApiKeysRoute = AdminApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
@@ -276,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -367,6 +375,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -414,6 +423,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/admin/api-keys'
+    | '/admin/api-log'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/admin/api-keys'
+    | '/admin/api-log'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/admin/api-keys'
+    | '/admin/api-log'
     | '/admin/audit-log'
     | '/admin/dashboard'
     | '/admin/deliveries'
@@ -784,6 +796,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditLogRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/api-log': {
+      id: '/admin/api-log'
+      path: '/api-log'
+      fullPath: '/admin/api-log'
+      preLoaderRoute: typeof AdminApiLogRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/api-keys': {
       id: '/admin/api-keys'
       path: '/api-keys'
@@ -885,6 +904,7 @@ const AdminSettlementRouteWithChildren = AdminSettlementRoute._addFileChildren(
 
 interface AdminRouteRouteChildren {
   AdminApiKeysRoute: typeof AdminApiKeysRoute
+  AdminApiLogRoute: typeof AdminApiLogRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
@@ -911,6 +931,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminApiKeysRoute: AdminApiKeysRoute,
+  AdminApiLogRoute: AdminApiLogRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,

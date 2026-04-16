@@ -15,6 +15,7 @@ import {
 	Shield,
 	KeyRound,
 	Boxes,
+	Activity,
 } from "lucide-react";
 import { z } from "zod";
 
@@ -202,6 +203,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Audit Log",
 		href: "/admin/audit-log",
 		icon: FileText,
+		allowedPermission: ["Audit Log"],
+		variant: "default",
+		group: "administration",
+	},
+	{
+		key: "sidebar-api-log",
+		title: "API Log",
+		href: "/admin/api-log",
+		icon: Activity,
 		allowedPermission: ["Audit Log"],
 		variant: "default",
 		group: "administration",
