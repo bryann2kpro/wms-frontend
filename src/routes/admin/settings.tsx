@@ -1349,8 +1349,17 @@ function WhatsAppSettingsCard() {
 
 	useEffect(() => {
 		const socket = getSocket();
-		if (!socket.connected) socket.connect();
-		socket.emit("join-room", "whatsapp-admin");
+		const syncWhatsAppState = () => {
+			socket.emit("join-room", "whatsapp-admin");
+			socket.emit("whatsapp:request-sync");
+		};
+
+		socket.on("connect", syncWhatsAppState);
+		if (!socket.connected) {
+			socket.connect();
+		} else {
+			syncWhatsAppState();
+		}
 
 		const onStatus = (payload: {
 			status?: string;
@@ -1367,6 +1376,7 @@ function WhatsAppSettingsCard() {
 		socket.on("whatsapp:qr", onQr);
 
 		return () => {
+			socket.off("connect", syncWhatsAppState);
 			socket.off("whatsapp:status", onStatus);
 			socket.off("whatsapp:qr", onQr);
 			socket.emit("leave-room", "whatsapp-admin");
