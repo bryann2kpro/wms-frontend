@@ -6,6 +6,7 @@
 
 /** Module name for the Email Settings tab */
 export const SETTINGS_EMAIL_SETTINGS_MODULE = "Email Settings";
+export const SETTINGS_WHATSAPP_SETTINGS_MODULE = "WhatsApp Settings";
 
 /**
  * Master Data sub-tabs: each key is the sub-tab id, value is the RBAC module name.
@@ -101,4 +102,10 @@ export function canSeeEmailSettingsTab(
 	user: { readPermission?: string[]; createPermission?: string[] } | null,
 ): boolean {
 	return hasModulePermission(user, SETTINGS_EMAIL_SETTINGS_MODULE);
+}
+
+export function canSeeWhatsAppSettingsTab(
+	user: { readPermission?: string[]; createPermission?: string[] } | null,
+): boolean {
+	return hasModulePermission(user, SETTINGS_WHATSAPP_SETTINGS_MODULE);
 }
