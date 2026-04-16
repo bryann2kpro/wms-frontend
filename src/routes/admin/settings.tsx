@@ -62,9 +62,11 @@ import {
 	type UpdateEmailNotificationSettingsMutationVariables,
 } from "@/lib/graphql/email-settings";
 import {
+	RESET_WHATSAPP_SESSION_MUTATION,
 	WHATSAPP_SETTINGS_QUERY,
 	WHATSAPP_STATUS_QUERY,
 	UPDATE_WHATSAPP_SETTINGS_MUTATION,
+	type ResetWhatsAppSessionMutationData,
 	type WhatsAppSettingsQueryData,
 	type WhatsAppSettingsQueryVariables,
 	type WhatsAppStatusQueryData,
@@ -1316,6 +1318,9 @@ function WhatsAppSettingsCard() {
 	const [liveQr, setLiveQr] = useState<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [saveSuccess, setSaveSuccess] = useState(false);
+	const [sessionActionMessage, setSessionActionMessage] = useState<string | null>(
+		null,
+	);
 
 	const { data: statusData, isLoading: isStatusLoading } = useQuery({
 		queryKey: ["whatsAppStatus"],
@@ -1324,6 +1329,9 @@ function WhatsAppSettingsCard() {
 				query: WHATSAPP_STATUS_QUERY,
 				fetchPolicy: "network-only",
 			});
+			if (!result.data) {
+				throw new Error("Unable to fetch WhatsApp status.");
+			}
 			return result.data.whatsAppStatus;
 		},
 	});
@@ -1409,6 +1417,26 @@ function WhatsAppSettingsCard() {
 		},
 	});
 
+	const resetSessionMutation = useMutation({
+		mutationFn: async () => {
+			await apolloClient.mutate<ResetWhatsAppSessionMutationData>({
+				mutation: RESET_WHATSAPP_SESSION_MUTATION,
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["whatsAppStatus"] });
+			const socket = getSocket();
+			socket.emit("whatsapp:request-sync");
+			setSessionActionMessage(
+				"WhatsApp session reset requested. A new QR code should appear shortly.",
+			);
+			setTimeout(() => setSessionActionMessage(null), 5000);
+		},
+		onError: (err: Error) => {
+			setSessionActionMessage(`Failed to reset session: ${err.message}`);
+		},
+	});
+
 	const effectiveStatus = liveStatus ?? statusData?.status ?? "disconnected";
 	const effectiveQr = liveQr ?? statusData?.lastQr ?? null;
 
@@ -1471,6 +1499,27 @@ function WhatsAppSettingsCard() {
 							</div>
 						</div>
 					) : null}
+					<div>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => resetSessionMutation.mutate()}
+							disabled={resetSessionMutation.isPending}
+							className="rounded-lg"
+						>
+							{resetSessionMutation.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Resetting Session...
+								</>
+							) : (
+								"Reset WhatsApp Session"
+							)}
+						</Button>
+					</div>
+					{sessionActionMessage && (
+						<p className="text-xs text-muted-foreground">{sessionActionMessage}</p>
+					)}
 				</div>
 
 				<Separator />

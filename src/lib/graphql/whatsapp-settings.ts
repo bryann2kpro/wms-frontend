@@ -30,6 +30,16 @@ export const UPDATE_WHATSAPP_SETTINGS_MUTATION = gql`
 	}
 `;
 
+export const RESET_WHATSAPP_SESSION_MUTATION = gql`
+	mutation ResetWhatsAppSession {
+		resetWhatsAppSession {
+			status
+			connectedPhone
+			lastQr
+		}
+	}
+`;
+
 export type WhatsAppStatus = {
 	status: "initializing" | "qr_needed" | "ready" | "disconnected";
 	connectedPhone: string | null;
@@ -61,5 +71,9 @@ export type UpdateWhatsAppSettingsMutationVariables = {
 
 export type UpdateWhatsAppSettingsMutationData = {
 	updateWhatsAppSettings: WhatsAppSettings;
+};
+
+export type ResetWhatsAppSessionMutationData = {
+	resetWhatsAppSession: WhatsAppStatus;
 };
 
