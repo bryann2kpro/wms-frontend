@@ -28,6 +28,8 @@ export const INVOICE_SUMMARY_REPORT_DATA_QUERY = gql`
 			outlet
 			region
 			ctn
+			beforeTaxAmount
+			afterTaxAmount
 			amount
 		}
 	}
@@ -65,6 +67,8 @@ export type InvoiceSummaryReportDataRow = {
 	outlet: string;
 	region: string;
 	ctn: number;
+	beforeTaxAmount: number;
+	afterTaxAmount: number;
 	amount: number;
 };
 
