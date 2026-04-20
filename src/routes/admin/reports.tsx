@@ -300,18 +300,20 @@ function ReportsComponent() {
 						string | number,
 						string | number,
 						string | number,
+						string | number,
 					]
 				> = [
 					[
 						"Proforma Invoice No",
 						"Invoice Date",
+						"Delivery Date",
 						"PO No",
 						"DO No",
 						"Outlet",
 						"Region",
 						"CTN",
-						"Before Tax Amount",
-						"After Tax Amount",
+						"Subtotal Excl. SST (RM)",
+						"Total Incl. SST (RM)",
 					],
 				];
 
@@ -349,6 +351,7 @@ function ReportsComponent() {
 						...rows.map((row) => [
 							row.proformaId,
 							row.invoiceDate,
+							row.deliveryDate,
 							row.poNumber,
 							row.doNumber,
 							row.outlet,
@@ -356,7 +359,7 @@ function ReportsComponent() {
 							row.ctn,
 							Number(row.beforeTaxAmount ?? 0),
 							Number(row.afterTaxAmount ?? row.amount ?? 0),
-						]),
+						] as [string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number]),
 					];
 				}
 

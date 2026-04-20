@@ -23,6 +23,7 @@ export const INVOICE_SUMMARY_REPORT_DATA_QUERY = gql`
 		) {
 			proformaId
 			invoiceDate
+			deliveryDate
 			poNumber
 			doNumber
 			outlet
@@ -62,6 +63,7 @@ export type GenerateReportMutationVariables = {
 export type InvoiceSummaryReportDataRow = {
 	proformaId: string;
 	invoiceDate: string;
+	deliveryDate: string;
 	poNumber: string;
 	doNumber: string;
 	outlet: string;
