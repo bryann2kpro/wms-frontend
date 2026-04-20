@@ -290,17 +290,30 @@ function ReportsComponent() {
 
 				const wb = XLSX.utils.book_new();
 				let summaryRows: Array<
-					[string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number]
+					[
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+						string | number,
+					]
 				> = [
 					[
 						"Proforma Invoice No",
 						"Invoice Date",
+						"Delivery Date",
 						"PO No",
 						"DO No",
 						"Outlet",
 						"Region",
 						"CTN",
-						"Amount",
+						"Subtotal Excl. SST (RM)",
+						"Total Incl. SST (RM)",
 					],
 				];
 
@@ -338,13 +351,15 @@ function ReportsComponent() {
 						...rows.map((row) => [
 							row.proformaId,
 							row.invoiceDate,
+							row.deliveryDate,
 							row.poNumber,
 							row.doNumber,
 							row.outlet,
 							row.region,
 							row.ctn,
-							Number(row.amount ?? 0),
-						]),
+							Number(row.beforeTaxAmount ?? 0),
+							Number(row.afterTaxAmount ?? row.amount ?? 0),
+						] as [string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number, string | number]),
 					];
 				}
 
