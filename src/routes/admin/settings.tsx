@@ -27,6 +27,7 @@ import { getPrimaryRole } from "@/lib/auth";
 import {
 	canSeeEmailSettingsTab,
 	canSeeMasterDataTab,
+	canSeeWhatsAppSettingsTab,
 	getAllowedMasterDataSubTabs,
 } from "@/lib/settings-permissions";
 import { MasterDataCard } from "@/components/settings/master-data-card";
@@ -44,6 +45,7 @@ import {
 	Trash2,
 	X,
 	Mail,
+	MessageCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +61,20 @@ import {
 	type UpdateEmailNotificationSettingsMutationData,
 	type UpdateEmailNotificationSettingsMutationVariables,
 } from "@/lib/graphql/email-settings";
+import {
+	RESET_WHATSAPP_SESSION_MUTATION,
+	WHATSAPP_SETTINGS_QUERY,
+	WHATSAPP_STATUS_QUERY,
+	UPDATE_WHATSAPP_SETTINGS_MUTATION,
+	type ResetWhatsAppSessionMutationData,
+	type WhatsAppSettingsQueryData,
+	type WhatsAppSettingsQueryVariables,
+	type WhatsAppStatusQueryData,
+	type UpdateWhatsAppSettingsMutationData,
+	type UpdateWhatsAppSettingsMutationVariables,
+} from "@/lib/graphql/whatsapp-settings";
+import { QRCodeSVG } from "qrcode.react";
+import { getSocket } from "@/lib/socket";
 
 // Zod schemas for validation
 const userProfileSchema = z.object({
@@ -106,12 +122,13 @@ function SettingsPage() {
 	const queryClient = useQueryClient();
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<
-		"profile" | "master-data" | "email-settings"
+		"profile" | "master-data" | "email-settings" | "whatsapp-settings"
 	>("profile");
 
 	const allowedMasterDataSubTabs = getAllowedMasterDataSubTabs(user);
 	const showMasterDataTab = canSeeMasterDataTab(user);
 	const showEmailSettingsTab = canSeeEmailSettingsTab(user);
+	const showWhatsAppSettingsTab = canSeeWhatsAppSettingsTab(user);
 
 	// Mock mutation functions
 	const updateUserProfile = useMutation({
@@ -179,6 +196,15 @@ function SettingsPage() {
 					},
 				]
 			: []),
+		...(showWhatsAppSettingsTab
+			? [
+					{
+						id: "whatsapp-settings" as const,
+						label: "WhatsApp Settings",
+						icon: MessageCircle,
+					},
+				]
+			: []),
 	];
 
 	const visibleTabIds = tabs.map((t) => t.id);
@@ -186,7 +212,7 @@ function SettingsPage() {
 		if (visibleTabIds.length > 0 && !visibleTabIds.includes(activeTab)) {
 			setActiveTab(visibleTabIds[0]);
 		}
-	}, [activeTab, showMasterDataTab, showEmailSettingsTab]);
+	}, [activeTab, showMasterDataTab, showEmailSettingsTab, showWhatsAppSettingsTab]);
 
 	return (
 		<main
@@ -307,6 +333,9 @@ function SettingsPage() {
 
 					{activeTab === "email-settings" && showEmailSettingsTab && (
 						<EmailNotificationsSettingsCard />
+					)}
+					{activeTab === "whatsapp-settings" && showWhatsAppSettingsTab && (
+						<WhatsAppSettingsCard />
 					)}
 				</div>
 			</div>
@@ -1275,6 +1304,306 @@ function EmailNotificationsSettingsCard() {
 						</Button>
 					</>
 				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function WhatsAppSettingsCard() {
+	const apolloClient = useApolloClient();
+	const queryClient = useQueryClient();
+	const [phoneInput, setPhoneInput] = useState("");
+	const [toPhones, setToPhones] = useState<string[]>([]);
+	const [liveStatus, setLiveStatus] = useState<string | null>(null);
+	const [liveQr, setLiveQr] = useState<string | null>(null);
+	const [saveError, setSaveError] = useState<string | null>(null);
+	const [saveSuccess, setSaveSuccess] = useState(false);
+	const [sessionActionMessage, setSessionActionMessage] = useState<string | null>(
+		null,
+	);
+
+	const { data: statusData, isLoading: isStatusLoading } = useQuery({
+		queryKey: ["whatsAppStatus"],
+		queryFn: async () => {
+			const result = await apolloClient.query<WhatsAppStatusQueryData>({
+				query: WHATSAPP_STATUS_QUERY,
+				fetchPolicy: "network-only",
+			});
+			if (!result.data) {
+				throw new Error("Unable to fetch WhatsApp status.");
+			}
+			return result.data.whatsAppStatus;
+		},
+	});
+
+	const { data, isLoading } = useQuery({
+		queryKey: ["whatsAppSettings", ADVANCE_NOTICE_SETTING_KEY],
+		queryFn: async () => {
+			const result = await apolloClient.query<
+				WhatsAppSettingsQueryData,
+				WhatsAppSettingsQueryVariables
+			>({
+				query: WHATSAPP_SETTINGS_QUERY,
+				variables: { settingKey: ADVANCE_NOTICE_SETTING_KEY },
+				fetchPolicy: "network-only",
+			});
+			return result.data?.whatsAppSettings;
+		},
+	});
+
+	useEffect(() => {
+		if (data) setToPhones(data.toPhones);
+	}, [data]);
+
+	useEffect(() => {
+		const socket = getSocket();
+		const syncWhatsAppState = () => {
+			socket.emit("join-room", "whatsapp-admin");
+			socket.emit("whatsapp:request-sync");
+		};
+
+		socket.on("connect", syncWhatsAppState);
+		if (!socket.connected) {
+			socket.connect();
+		} else {
+			syncWhatsAppState();
+		}
+
+		const onStatus = (payload: {
+			status?: string;
+			lastQr?: string | null;
+		}) => {
+			if (payload.status) setLiveStatus(payload.status);
+			if (typeof payload.lastQr !== "undefined") setLiveQr(payload.lastQr ?? null);
+		};
+		const onQr = (payload: { qr?: string }) => {
+			if (payload.qr) setLiveQr(payload.qr);
+		};
+
+		socket.on("whatsapp:status", onStatus);
+		socket.on("whatsapp:qr", onQr);
+
+		return () => {
+			socket.off("connect", syncWhatsAppState);
+			socket.off("whatsapp:status", onStatus);
+			socket.off("whatsapp:qr", onQr);
+			socket.emit("leave-room", "whatsapp-admin");
+		};
+	}, []);
+
+	const saveMutation = useMutation({
+		mutationFn: async () => {
+			await apolloClient.mutate<
+				UpdateWhatsAppSettingsMutationData,
+				UpdateWhatsAppSettingsMutationVariables
+			>({
+				mutation: UPDATE_WHATSAPP_SETTINGS_MUTATION,
+				variables: {
+					settingKey: ADVANCE_NOTICE_SETTING_KEY,
+					toPhones,
+				},
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: ["whatsAppSettings", ADVANCE_NOTICE_SETTING_KEY],
+			});
+			setSaveSuccess(true);
+			setSaveError(null);
+			setTimeout(() => setSaveSuccess(false), 3000);
+		},
+		onError: (err: Error) => {
+			setSaveError(err.message);
+		},
+	});
+
+	const resetSessionMutation = useMutation({
+		mutationFn: async () => {
+			await apolloClient.mutate<ResetWhatsAppSessionMutationData>({
+				mutation: RESET_WHATSAPP_SESSION_MUTATION,
+			});
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["whatsAppStatus"] });
+			const socket = getSocket();
+			socket.emit("whatsapp:request-sync");
+			setSessionActionMessage(
+				"WhatsApp session reset requested. A new QR code should appear shortly.",
+			);
+			setTimeout(() => setSessionActionMessage(null), 5000);
+		},
+		onError: (err: Error) => {
+			setSessionActionMessage(`Failed to reset session: ${err.message}`);
+		},
+	});
+
+	const effectiveStatus = liveStatus ?? statusData?.status ?? "disconnected";
+	const effectiveQr = liveQr ?? statusData?.lastQr ?? null;
+
+	function addPhone() {
+		const normalized = phoneInput.trim();
+		if (!normalized || toPhones.includes(normalized)) return;
+		setToPhones([...toPhones, normalized]);
+		setPhoneInput("");
+	}
+
+	function removePhone(phone: string) {
+		setToPhones(toPhones.filter((value) => value !== phone));
+	}
+
+	const statusColor =
+		effectiveStatus === "ready"
+			? "bg-green-500"
+			: effectiveStatus === "initializing"
+				? "bg-yellow-500"
+				: "bg-red-500";
+
+	return (
+		<Card className="dashboard-card">
+			<CardHeader>
+				<CardTitle
+					className="flex items-center gap-2 text-xl"
+					style={{ fontFamily: "var(--dashboard-display)" }}
+				>
+					<MessageCircle className="h-5 w-5" />
+					Advance Notice WhatsApp Notifications
+				</CardTitle>
+				<CardDescription
+					className="text-muted-foreground"
+					style={{ fontFamily: "var(--dashboard-body)" }}
+				>
+					Configure WhatsApp recipients and monitor connection status for
+					external API alerts.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-6">
+				<div className="rounded-lg border p-4 space-y-4">
+					<div className="flex items-center gap-2">
+						<span className={`h-2.5 w-2.5 rounded-full ${statusColor}`} />
+						<p className="text-sm font-medium capitalize">
+							Status: {effectiveStatus.replace("_", " ")}
+						</p>
+					</div>
+					{isStatusLoading ? (
+						<div className="flex items-center gap-2 text-sm text-muted-foreground">
+							<Loader2 className="h-4 w-4 animate-spin" />
+							Loading WhatsApp status...
+						</div>
+					) : effectiveStatus === "qr_needed" && effectiveQr ? (
+						<div className="space-y-2">
+							<p className="text-sm text-muted-foreground">
+								Scan this QR code with the WhatsApp account used for alerts.
+							</p>
+							<div className="inline-flex rounded-lg border bg-white p-3">
+								<QRCodeSVG value={effectiveQr} size={180} />
+							</div>
+						</div>
+					) : null}
+					<div>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => resetSessionMutation.mutate()}
+							disabled={resetSessionMutation.isPending}
+							className="rounded-lg"
+						>
+							{resetSessionMutation.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Resetting Session...
+								</>
+							) : (
+								"Reset WhatsApp Session"
+							)}
+						</Button>
+					</div>
+					{sessionActionMessage && (
+						<p className="text-xs text-muted-foreground">{sessionActionMessage}</p>
+					)}
+				</div>
+
+				<Separator />
+
+				{isLoading ? (
+					<div className="flex items-center gap-2 text-sm text-muted-foreground">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						Loading settings...
+					</div>
+				) : (
+					<div className="space-y-3">
+						<Label style={{ fontFamily: "var(--dashboard-body)" }}>
+							Recipient Phone Numbers
+						</Label>
+						<div className="flex gap-2">
+							<Input
+								placeholder="60123456789"
+								value={phoneInput}
+								onChange={(e) => setPhoneInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										addPhone();
+									}
+								}}
+								className="rounded-lg border-muted-foreground/20"
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								className="rounded-lg shrink-0"
+								onClick={addPhone}
+							>
+								<Plus className="h-4 w-4" />
+							</Button>
+						</div>
+						{toPhones.length > 0 && (
+							<div className="flex flex-wrap gap-2">
+								{toPhones.map((phone) => (
+									<Badge
+										key={phone}
+										variant="secondary"
+										className="flex items-center gap-1.5 pl-3 pr-1.5 py-1"
+									>
+										{phone}
+										<button
+											type="button"
+											onClick={() => removePhone(phone)}
+											className="rounded hover:bg-muted-foreground/20 p-0.5"
+										>
+											<X className="h-3 w-3" />
+										</button>
+									</Badge>
+								))}
+							</div>
+						)}
+					</div>
+				)}
+
+				{saveError && <p className="text-sm text-destructive">{saveError}</p>}
+				{saveSuccess && (
+					<p className="text-sm text-green-600">
+						WhatsApp settings saved successfully.
+					</p>
+				)}
+
+				<Button
+					onClick={() => saveMutation.mutate()}
+					disabled={saveMutation.isPending}
+					className="rounded-lg text-white disabled:opacity-50"
+					style={{
+						background: "var(--dashboard-accent)",
+						borderColor: "var(--dashboard-accent)",
+					}}
+				>
+					{saveMutation.isPending ? (
+						<>
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							Saving...
+						</>
+					) : (
+						"Save Settings"
+					)}
+				</Button>
 			</CardContent>
 		</Card>
 	);
