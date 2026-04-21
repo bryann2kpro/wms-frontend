@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import request from "graphql-request";
 import { env } from "@/env";
 import {
@@ -36,6 +36,11 @@ export interface UsePurchaseOrdersOptions {
 	enabled?: boolean;
 }
 
+export interface UseInfinitePurchaseOrdersOptions
+	extends Omit<UsePurchaseOrdersOptions, "page"> {
+	dateGroupPageSize?: number;
+}
+
 export interface PurchaseOrdersResult {
 	purchaseOrders: PurchaseOrderDetail[];
 	purchaseOrdersByDate: Record<string, PurchaseOrderDetail[]>;
@@ -46,6 +51,11 @@ export interface PurchaseOrdersResult {
 	totalPages: number;
 	filteredTotal: number;
 	summary: PurchaseOrderSummary;
+}
+
+export interface PurchaseOrdersInfinitePage {
+	result: PurchaseOrdersResult;
+	hasNextPage: boolean;
 }
 
 function getAuthHeaders(): Headers {
@@ -122,6 +132,141 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 	});
 }
 
+/** Max weeks of history to offer for the Past Deliveries infinite scroll (≈ 1 year). */
+const MAX_PAST_WEEKS = 52;
+
+/**
+ * Compute a UTC date-range window for a given week offset going backwards from today.
+ * weekOffset=1 → yesterday back 7 days (the most-recent past week).
+ * weekOffset=2 → 8–14 days ago, and so on.
+ * Dates are aligned to UTC+8 business timezone midnight.
+ */
+function getPastWeekWindow(weekOffset: number): {
+	fromDate: Date;
+	toDate: Date;
+} {
+	const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000;
+	const now = new Date();
+	// Today in UTC+8, then snap to UTC midnight of that day
+	const todayUTC8 = new Date(now.getTime() + UTC8_OFFSET_MS);
+	todayUTC8.setUTCHours(0, 0, 0, 0);
+	const todayMidnightUTC = new Date(todayUTC8.getTime() - UTC8_OFFSET_MS);
+
+	// toDate: end of day for (weekOffset * 7) days ago, relative to yesterday
+	// page 1 → yesterday (today-1), page 2 → today-8, etc.
+	const daysBackTo = (weekOffset - 1) * 7 + 1;
+	const toDate = new Date(todayMidnightUTC);
+	toDate.setUTCDate(todayMidnightUTC.getUTCDate() - daysBackTo);
+	toDate.setUTCHours(23, 59, 59, 999);
+
+	// fromDate: 6 days before toDate → 7-day window total
+	const fromDate = new Date(toDate);
+	fromDate.setUTCDate(toDate.getUTCDate() - 6);
+	fromDate.setUTCHours(0, 0, 0, 0);
+
+	return { fromDate, toDate };
+}
+
+export function useInfinitePurchaseOrders(
+	options: UseInfinitePurchaseOrdersOptions = {},
+) {
+	const {
+		searchTerm = "",
+		statusFilter = "ALL",
+		regionFilter = "ALL",
+		activeTab = "current-week",
+		enabled = true,
+		dateGroupPageSize = 6,
+	} = options;
+
+	return useInfiniteQuery({
+		queryKey: [
+			"purchase-orders-list",
+			"infinite",
+			activeTab,
+			regionFilter,
+			statusFilter,
+			searchTerm,
+			dateGroupPageSize,
+		],
+		initialPageParam: 1,
+		queryFn: async ({ pageParam }): Promise<PurchaseOrdersInfinitePage> => {
+			const headers = getAuthHeaders();
+			const pageNumber = Number(pageParam);
+
+			if (activeTab === "current-week") {
+				// Fetch entire current week at once; reveal date groups in chunks client-side
+				const data = await request<PurchaseOrdersByWeekQueryData>(
+					env.VITE_GRAPHQL_ENDPOINT,
+					PURCHASE_ORDERS_BY_WEEK_QUERY,
+					{ filter: null },
+					headers,
+				);
+				const fullResult = processPurchaseOrdersFromWeek(
+					data.purchaseOrdersByWeek,
+					{ searchTerm, statusFilter, regionFilter, activeTab, page: pageNumber },
+				);
+				const startIndex = (pageNumber - 1) * dateGroupPageSize;
+				const paginatedDateKeys = fullResult.dateKeys.slice(
+					startIndex,
+					startIndex + dateGroupPageSize,
+				);
+				return {
+					result: {
+						...fullResult,
+						paginatedDateKeys,
+						startDateIndex: startIndex,
+						totalPages: Math.max(
+							1,
+							Math.ceil(fullResult.dateKeys.length / dateGroupPageSize),
+						),
+					},
+					hasNextPage: startIndex + dateGroupPageSize < fullResult.dateKeys.length,
+				};
+			}
+
+			// past-weeks: one 7-day window per page, sliding backwards.
+			// page 1 → yesterday…7 days ago
+			// page 2 → 8…14 days ago
+			// Stops when the window contains zero raw orders OR MAX_PAST_WEEKS is hit.
+			const { fromDate, toDate } = getPastWeekWindow(pageNumber);
+
+			const data = await request<PurchaseOrdersByWeekQueryData>(
+				env.VITE_GRAPHQL_ENDPOINT,
+				PURCHASE_ORDERS_BY_WEEK_QUERY,
+				{
+					filter: {
+						scheduledDeliveryDateFrom: fromDate.toISOString(),
+						scheduledDeliveryDateTo: toDate.toISOString(),
+					},
+				},
+				headers,
+			);
+
+			const fullResult = processPurchaseOrdersFromWeek(
+				data.purchaseOrdersByWeek,
+				{ searchTerm, statusFilter, regionFilter, activeTab, page: pageNumber },
+			);
+
+			// Stop when the raw API returned no orders for this window (gone far enough back)
+			// or when we've hit the safety limit.
+			const hasAnyRawOrders = data.purchaseOrdersByWeek.some(
+				(e) => e.orders.length > 0,
+			);
+
+			return {
+				result: fullResult,
+				hasNextPage: hasAnyRawOrders && pageNumber < MAX_PAST_WEEKS,
+			};
+		},
+		getNextPageParam: (lastPage, allPages) =>
+			lastPage.hasNextPage ? allPages.length + 1 : undefined,
+		enabled,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+	});
+}
+
 interface ProcessOptions {
 	searchTerm: string;
 	statusFilter: PurchaseOrderStatusFilter;
@@ -138,7 +283,7 @@ function processPurchaseOrdersFromWeek(
 	entries: PurchaseOrdersByWeekQueryData["purchaseOrdersByWeek"],
 	options: ProcessOptions,
 ): PurchaseOrdersResult {
-	const { searchTerm, statusFilter, regionFilter, page } = options;
+	const { searchTerm, statusFilter, regionFilter } = options;
 
 	const purchaseOrdersByDate: Record<string, PurchaseOrderDetail[]> = {};
 	const allDetails: PurchaseOrderDetail[] = [];
@@ -203,10 +348,10 @@ function processPurchaseOrdersFromWeek(
 
 function processPurchaseOrders(
 	allPurchaseOrders: PurchaseOrderDetail[],
-	summary: PurchaseOrderSummary,
+	_summary: PurchaseOrderSummary,
 	options: ProcessOptions,
 ): PurchaseOrdersResult {
-	const { searchTerm, statusFilter, regionFilter, activeTab, page } = options;
+	const { searchTerm, statusFilter, regionFilter, activeTab } = options;
 
 	const tabFilteredOrders = allPurchaseOrders.filter((po) => {
 		const deliveryDate = new Date(po.expectedDeliveryDate);
