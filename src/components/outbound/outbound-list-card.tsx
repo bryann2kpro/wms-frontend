@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
 	Card,
 	CardContent,
@@ -61,6 +61,7 @@ import {
 import type { DeliveryTab } from "@/lib/outbound";
 import { formatDeliveryDateHeader, formatWeekRange } from "@/lib/utils";
 import {
+	useInfinitePurchaseOrders,
 	usePurchaseOrders,
 	type PurchaseOrderStatusFilter,
 } from "@/lib/hooks/use-purchase-orders";
@@ -119,6 +120,9 @@ export function OutboundListCard({
 	const [selectedDoIds, setSelectedDoIds] = useState<Set<string>>(new Set());
 	const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
+	// Sentinel ref for IntersectionObserver
+	const sentinelRef = useRef<HTMLTableRowElement>(null);
+
 	useEffect(() => {
 		if (initialStatusFilter !== undefined) {
 			setStatusFilter(initialStatusFilter);
@@ -132,22 +136,81 @@ export function OutboundListCard({
 		return `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, "0")}-${String(utc8.getUTCDate()).padStart(2, "0")}`;
 	}, []);
 
-	const { data, isLoading, isFetching, error, refetch } = usePurchaseOrders({
-		searchTerm,
-		statusFilter,
-		regionFilter,
-		activeTab,
-		page: 1,
-	});
+	// Separate query for region options (unfiltered, for the region dropdown)
 	const { data: regionData } = usePurchaseOrders({
 		activeTab,
 		page: 1,
 		regionFilter: "ALL",
 	});
 
-	const purchaseOrdersByDate = data?.purchaseOrdersByDate ?? {};
-	const allDateKeys = data?.paginatedDateKeys ?? [];
-	const dateKeys = data?.dateKeys ?? [];
+	// Infinite query for the main table
+	const {
+		data: infiniteData,
+		isLoading,
+		isFetchingNextPage,
+		hasNextPage,
+		fetchNextPage,
+		error,
+		refetch,
+	} = useInfinitePurchaseOrders({
+		searchTerm,
+		statusFilter,
+		regionFilter,
+		activeTab,
+	});
+
+	// Merge all pages into a single model
+	const { purchaseOrdersByDate, allDateKeys, dateKeys, weekRangeDateKeys } =
+		useMemo(() => {
+			if (!infiniteData) {
+				return {
+					purchaseOrdersByDate: {},
+					allDateKeys: [],
+					dateKeys: [],
+					weekRangeDateKeys: [],
+				};
+			}
+			const mergedByDate: Record<string, PurchaseOrderDetail[]> = {};
+			const seenDateKeys = new Set<string>();
+
+			for (const page of infiniteData.pages) {
+				const pageByDate = page.result.purchaseOrdersByDate;
+				for (const dk of page.result.paginatedDateKeys) {
+					seenDateKeys.add(dk);
+					// Merge orders, deduplicating by PO id
+					const existing = mergedByDate[dk] ?? [];
+					const incoming = pageByDate[dk] ?? [];
+					const existingIds = new Set(existing.map((p) => p.id));
+					mergedByDate[dk] = [
+						...existing,
+						...incoming.filter((p) => !existingIds.has(p.id)),
+					];
+				}
+				// For current-week include all date slots (even empty ones) from first page
+				if (activeTab === "current-week" && infiniteData.pages[0]?.result.dateKeys) {
+					for (const dk of infiniteData.pages[0].result.dateKeys) {
+						seenDateKeys.add(dk);
+						if (!mergedByDate[dk]) mergedByDate[dk] = [];
+					}
+				}
+			}
+
+			// Globally sort all collected date keys so cross-page ordering is consistent.
+			// current-week: ASC (nearest first), past-weeks: DESC (newest first)
+			const allKeys = Array.from(seenDateKeys).sort((a, b) =>
+				activeTab === "current-week" ? a.localeCompare(b) : b.localeCompare(a),
+			);
+
+			// Week range label uses the full set from the first page
+			const weekKeys = infiniteData.pages[0]?.result.dateKeys ?? [];
+
+			return {
+				purchaseOrdersByDate: mergedByDate,
+				allDateKeys: allKeys,
+				dateKeys: weekKeys,
+				weekRangeDateKeys: weekKeys,
+			};
+		}, [infiniteData, activeTab]);
 
 	const paginatedDateKeys =
 		dateFilter === "ALL"
@@ -158,6 +221,7 @@ export function OutboundListCard({
 		() => paginatedDateKeys.flatMap((dk) => purchaseOrdersByDate[dk] ?? []),
 		[paginatedDateKeys, purchaseOrdersByDate],
 	);
+
 	const dateOptions = useMemo(
 		() =>
 			allDateKeys.map((dk) => {
@@ -166,6 +230,7 @@ export function OutboundListCard({
 			}),
 		[allDateKeys],
 	);
+
 	const regionOptions = useMemo(() => {
 		const allPurchaseOrders = regionData?.purchaseOrders ?? [];
 		const seen = new Map<string, string>();
@@ -190,6 +255,7 @@ export function OutboundListCard({
 		[visiblePurchaseOrders],
 	);
 
+	// Reset selection and filters when tab/filter changes
 	useEffect(() => {
 		setSelectedDoIds(new Set());
 	}, [activeTab, statusFilter, searchTerm, regionFilter, dateFilter]);
@@ -199,10 +265,36 @@ export function OutboundListCard({
 		setDateFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
-	const loading = isLoading || isFetching;
+	// IntersectionObserver sentinel to auto-fetch next page
+	const handleFetchNext = useCallback(() => {
+		if (hasNextPage && !isFetchingNextPage) {
+			void fetchNextPage();
+		}
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) {
+					handleFetchNext();
+				}
+			},
+			{ threshold: 0.1 },
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [handleFetchNext]);
+
+	const isFetching = isLoading || isFetchingNextPage;
+	const loading = isLoading;
 	const weekRangeLabel =
-		activeTab === "current-week" && dateKeys.length > 0
-			? formatWeekRange(dateKeys[0], dateKeys[dateKeys.length - 1])
+		activeTab === "current-week" && weekRangeDateKeys.length > 0
+			? formatWeekRange(
+					weekRangeDateKeys[0],
+					weekRangeDateKeys[weekRangeDateKeys.length - 1],
+				)
 			: null;
 
 	const showRowPdfDownload = Boolean(onDownloadDoPdf);
@@ -223,6 +315,7 @@ export function OutboundListCard({
 		}
 		return labels;
 	}, [selectedDoIds, allDateKeys, purchaseOrdersByDate]);
+
 	const tableColCount = 7 + (showBulkPdf ? 1 : 0);
 
 	const selectableIds = useMemo(
@@ -344,20 +437,6 @@ export function OutboundListCard({
 									))}
 								</SelectContent>
 							</Select>
-							{/* <div
-								className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/30 px-3 py-1.5"
-								title="Testing mode: show all scheduled dates, not just today"
-							>
-								<FlaskConical className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-								<span className="text-xs font-medium text-amber-700 select-none">Testing</span>
-								<Switch
-									id="testing-mode-toggle"
-									checked={isTesting}
-									onCheckedChange={setIsTesting}
-									aria-label="Toggle testing mode to show all scheduled dates"
-									className="data-[state=checked]:bg-amber-500"
-								/>
-							</div> */}
 						</div>
 					</div>
 					<div
@@ -422,7 +501,7 @@ export function OutboundListCard({
 			>
 				<GlobalLoadingShadow />
 				<div className="overflow-x-auto rounded-lg border mx-6">
-					<Table aria-label="Purchase orders list">
+					<Table aria-label="Purchase orders list" aria-busy={isFetching}>
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
 								{showBulkPdf ? (
@@ -582,296 +661,336 @@ export function OutboundListCard({
 									</TableCell>
 								</TableRow>
 							) : (
-								paginatedDateKeys.flatMap((dateKey) => {
-									const datePurchaseOrders =
-										purchaseOrdersByDate[dateKey] ?? [];
-									const deliveryDate = new Date(dateKey + "T12:00:00");
-									const headerLabel = formatDeliveryDateHeader(deliveryDate);
+								<>
+									{paginatedDateKeys.flatMap((dateKey) => {
+										const datePurchaseOrders =
+											purchaseOrdersByDate[dateKey] ?? [];
+										const deliveryDate = new Date(dateKey + "T12:00:00");
+										const headerLabel = formatDeliveryDateHeader(deliveryDate);
 
-									const dateSelectableIds = datePurchaseOrders
-										.filter((p) => Boolean(p.deliveryOrder?.id))
-										.map((p) => p.deliveryOrder!.id);
-									const allDateSelected =
-										dateSelectableIds.length > 0 &&
-										dateSelectableIds.every((id) => selectedDoIds.has(id));
-									const someDateSelected = dateSelectableIds.some((id) =>
-										selectedDoIds.has(id),
-									);
+										const dateSelectableIds = datePurchaseOrders
+											.filter((p) => Boolean(p.deliveryOrder?.id))
+											.map((p) => p.deliveryOrder!.id);
+										const allDateSelected =
+											dateSelectableIds.length > 0 &&
+											dateSelectableIds.every((id) => selectedDoIds.has(id));
+										const someDateSelected = dateSelectableIds.some((id) =>
+											selectedDoIds.has(id),
+										);
 
-									const isCollapsed = collapsedDates.has(dateKey);
+										const isCollapsed = collapsedDates.has(dateKey);
 
-									return [
-										<TableRow
-											key={dateKey}
-											className="hover:bg-muted/70 bg-muted/50 border-l-4 border-l-primary/30 cursor-pointer select-none"
-											onClick={() =>
-												setCollapsedDates((prev) => {
-													const next = new Set(prev);
-													if (next.has(dateKey)) next.delete(dateKey);
-													else next.add(dateKey);
-													return next;
-												})
-											}
-											aria-expanded={!isCollapsed}
-										>
-											<TableCell
-												colSpan={tableColCount}
-												className="px-6 font-semibold text-foreground py-3"
+										return [
+											<TableRow
+												key={dateKey}
+												className="hover:bg-muted/70 bg-muted/50 border-l-4 border-l-primary/30 cursor-pointer select-none"
+												onClick={() =>
+													setCollapsedDates((prev) => {
+														const next = new Set(prev);
+														if (next.has(dateKey)) next.delete(dateKey);
+														else next.add(dateKey);
+														return next;
+													})
+												}
+												aria-expanded={!isCollapsed}
 											>
-												<div className="flex items-center gap-3">
-													<ChevronDown
-														className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
-														aria-hidden
-													/>
-													{showBulkPdf && dateSelectableIds.length > 0 ? (
-														<Checkbox
-															checked={
-																allDateSelected
-																	? true
-																	: someDateSelected
-																		? "indeterminate"
-																		: false
-															}
-															onCheckedChange={(checked) => {
-																setSelectedDoIds((prev) => {
-																	const next = new Set(prev);
-																	if (checked === true) {
-																		dateSelectableIds.forEach((id) =>
-																			next.add(id),
-																		);
-																	} else {
-																		dateSelectableIds.forEach((id) =>
-																			next.delete(id),
-																		);
-																	}
-																	return next;
-																});
-															}}
-															onClick={(e) => e.stopPropagation()}
-															disabled={isBulkDoPdfPending}
-															aria-label={`Select all orders for ${headerLabel}`}
-														/>
-													) : null}
-													<span>
-														{headerLabel}
-														{datePurchaseOrders.length > 0 && (
-															<span className="ml-2 text-muted-foreground font-normal">
-																({datePurchaseOrders.length}{" "}
-																{datePurchaseOrders.length === 1
-																	? "order"
-																	: "orders"}
-																)
-															</span>
-														)}
-													</span>
-												</div>
-											</TableCell>
-										</TableRow>,
-										...(!isCollapsed && datePurchaseOrders.length === 0
-											? [
-													<TableRow key={`${dateKey}-empty`}>
-														<TableCell
-															colSpan={tableColCount}
-															className="px-6 py-4 text-center text-sm text-muted-foreground italic"
-														>
-															No orders for this day
-														</TableCell>
-													</TableRow>,
-												]
-											: []),
-										...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
-											const deliveryOrderStatus =
-												purchaseOrder.deliveryOrder?.status ?? "";
-											const isAwaitingPicking = [
-												"NEW",
-												"CREATED",
-												"PICKING",
-											].includes(deliveryOrderStatus);
-											return (
-												<TableRow
-													key={purchaseOrder.id}
-													className="transition-colors hover:bg-muted/50"
+												<TableCell
+													colSpan={tableColCount}
+													className="px-6 font-semibold text-foreground py-3"
 												>
-													{showBulkPdf ? (
-														<TableCell className="w-12 px-3 align-middle">
-															{purchaseOrder.deliveryOrder?.id ? (
-																<Checkbox
-																	checked={selectedDoIds.has(
-																		purchaseOrder.deliveryOrder.id,
-																	)}
-																	onCheckedChange={(c) => {
-																		const id = purchaseOrder.deliveryOrder?.id;
-																		if (!id) return;
-																		setSelectedDoIds((prev) => {
-																			const next = new Set(prev);
-																			if (c === true) next.add(id);
-																			else next.delete(id);
-																			return next;
-																		});
-																	}}
-																	disabled={isBulkDoPdfPending}
-																	aria-label={`Select ${purchaseOrder.purchaseOrderNumber} for bulk DO PDF download`}
-																/>
+													<div className="flex items-center gap-3">
+														<ChevronDown
+															className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+															aria-hidden
+														/>
+														{showBulkPdf && dateSelectableIds.length > 0 ? (
+															<Checkbox
+																checked={
+																	allDateSelected
+																		? true
+																		: someDateSelected
+																			? "indeterminate"
+																			: false
+																}
+																onCheckedChange={(checked) => {
+																	setSelectedDoIds((prev) => {
+																		const next = new Set(prev);
+																		if (checked === true) {
+																			dateSelectableIds.forEach((id) =>
+																				next.add(id),
+																			);
+																		} else {
+																			dateSelectableIds.forEach((id) =>
+																				next.delete(id),
+																			);
+																		}
+																		return next;
+																	});
+																}}
+																onClick={(e) => e.stopPropagation()}
+																disabled={isBulkDoPdfPending}
+																aria-label={`Select all orders for ${headerLabel}`}
+															/>
+														) : null}
+														<span>
+															{headerLabel}
+															{datePurchaseOrders.length > 0 && (
+																<span className="ml-2 text-muted-foreground font-normal">
+																	({datePurchaseOrders.length}{" "}
+																	{datePurchaseOrders.length === 1
+																		? "order"
+																		: "orders"}
+																	)
+																</span>
+															)}
+														</span>
+													</div>
+												</TableCell>
+											</TableRow>,
+											...(!isCollapsed && datePurchaseOrders.length === 0
+												? [
+														<TableRow key={`${dateKey}-empty`}>
+															<TableCell
+																colSpan={tableColCount}
+																className="px-6 py-4 text-center text-sm text-muted-foreground italic"
+															>
+																No orders for this day
+															</TableCell>
+														</TableRow>,
+													]
+												: []),
+											...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
+												const deliveryOrderStatus =
+													purchaseOrder.deliveryOrder?.status ?? "";
+												const isAwaitingPicking = [
+													"NEW",
+													"CREATED",
+													"PICKING",
+												].includes(deliveryOrderStatus);
+												return (
+													<TableRow
+														key={purchaseOrder.id}
+														className="transition-colors hover:bg-muted/50"
+													>
+														{showBulkPdf ? (
+															<TableCell className="w-12 px-3 align-middle">
+																{purchaseOrder.deliveryOrder?.id ? (
+																	<Checkbox
+																		checked={selectedDoIds.has(
+																			purchaseOrder.deliveryOrder.id,
+																		)}
+																		onCheckedChange={(c) => {
+																			const id = purchaseOrder.deliveryOrder?.id;
+																			if (!id) return;
+																			setSelectedDoIds((prev) => {
+																				const next = new Set(prev);
+																				if (c === true) next.add(id);
+																				else next.delete(id);
+																				return next;
+																			});
+																		}}
+																		disabled={isBulkDoPdfPending}
+																		aria-label={`Select ${purchaseOrder.purchaseOrderNumber} for bulk DO PDF download`}
+																	/>
+																) : (
+																	<span className="text-muted-foreground/50">
+																		—
+																	</span>
+																)}
+															</TableCell>
+														) : null}
+														<TableCell className="px-6 font-medium">
+															{purchaseOrder.purchaseOrderNumber}
+														</TableCell>
+														<TableCell className="px-6">
+															{purchaseOrder.toLocation}
+														</TableCell>
+														<TableCell className="px-6">
+															{purchaseOrder.regionName ? (
+																<div className="flex flex-col">
+																	<span>
+																		{purchaseOrder.regionName}
+																		{purchaseOrder.regionCode
+																			? ` (${purchaseOrder.regionCode})`
+																			: ""}
+																	</span>
+																</div>
 															) : (
-																<span className="text-muted-foreground/50">
+																"—"
+															)}
+														</TableCell>
+														<TableCell className="px-6">
+															<Badge
+																variant="outline"
+																className={getStatusColor(purchaseOrder.status)}
+															>
+																{formatStatus(purchaseOrder.status)}
+															</Badge>
+														</TableCell>
+														<TableCell className="px-6">
+															{purchaseOrder.deliveryOrder ? (
+																<div className="flex items-center gap-2">
+																	<Badge
+																		variant="outline"
+																		className={getDeliveryOrderStepStatusColor(
+																			purchaseOrder.deliveryOrder.status,
+																		)}
+																	>
+																		{formatDeliveryOrderStepStatus(
+																			purchaseOrder.deliveryOrder.status,
+																		)}
+																	</Badge>
+																	{isAwaitingPicking ? (
+																		<span className="text-xs text-muted-foreground italic">
+																			Awaiting picking
+																		</span>
+																	) : onAdvanceStep &&
+																		deliveryOrderStatus === "PACKING" &&
+																		dateKey === todayKey ? (
+																		<Button
+																			variant="outline"
+																			size="sm"
+																			className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+																			onClick={() => onAdvanceStep(purchaseOrder)}
+																			disabled={
+																				isAdvanceStepPending &&
+																				advancingDeliveryOrderId ===
+																					purchaseOrder.deliveryOrder?.id
+																			}
+																			aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
+																		>
+																			{isAdvanceStepPending &&
+																			advancingDeliveryOrderId ===
+																				purchaseOrder.deliveryOrder?.id
+																				? "Updating…"
+																				: "Next step"}
+																			<ChevronRight className="ml-1 h-4 w-4" />
+																		</Button>
+																	) : null}
+																</div>
+															) : (
+																<span className="text-muted-foreground text-sm">
 																	—
 																</span>
 															)}
 														</TableCell>
-													) : null}
-													<TableCell className="px-6 font-medium">
-														{purchaseOrder.purchaseOrderNumber}
-													</TableCell>
-													<TableCell className="px-6">
-														{purchaseOrder.toLocation}
-													</TableCell>
-													<TableCell className="px-6">
-														{purchaseOrder.regionName ? (
-															<div className="flex flex-col">
-																<span>
-																	{purchaseOrder.regionName}
-																	{purchaseOrder.regionCode
-																		? ` (${purchaseOrder.regionCode})`
-																		: ""}
-																</span>
-															</div>
-														) : (
-															"—"
-														)}
-													</TableCell>
-													<TableCell className="px-6">
-														<Badge
-															variant="outline"
-															className={getStatusColor(purchaseOrder.status)}
-														>
-															{formatStatus(purchaseOrder.status)}
-														</Badge>
-													</TableCell>
-													<TableCell className="px-6">
-														{purchaseOrder.deliveryOrder ? (
-															<div className="flex items-center gap-2">
-																<Badge
-																	variant="outline"
-																	className={getDeliveryOrderStepStatusColor(
-																		purchaseOrder.deliveryOrder.status,
-																	)}
-																>
-																	{formatDeliveryOrderStepStatus(
-																		purchaseOrder.deliveryOrder.status,
-																	)}
-																</Badge>
-																{isAwaitingPicking ? (
-																	<span className="text-xs text-muted-foreground italic">
-																		Awaiting picking
-																	</span>
-																) : onAdvanceStep &&
-																	deliveryOrderStatus === "PACKING" &&
-																	dateKey === todayKey ? (
-																	<Button
-																		variant="outline"
-																		size="sm"
-																		className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		onClick={() => onAdvanceStep(purchaseOrder)}
-																		disabled={
-																			isAdvanceStepPending &&
-																			advancingDeliveryOrderId ===
-																				purchaseOrder.deliveryOrder?.id
-																		}
-																		aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
-																	>
-																		{isAdvanceStepPending &&
-																		advancingDeliveryOrderId ===
-																			purchaseOrder.deliveryOrder?.id
-																			? "Updating…"
-																			: "Next step"}
-																		<ChevronRight className="ml-1 h-4 w-4" />
-																	</Button>
-																) : null}
-															</div>
-														) : (
-															<span className="text-muted-foreground text-sm">
-																—
-															</span>
-														)}
-													</TableCell>
-													<TableCell className="px-6">
-														<Badge
-															variant="outline"
-															className={getNetSuiteStatusColor(
-																purchaseOrder.netsuiteStatus,
-															)}
-														>
-															{purchaseOrder.netsuiteStatus || "N/A"}
-														</Badge>
-													</TableCell>
-													<TableCell className="px-6 text-right">
-														<div
-															className="flex justify-end gap-1"
-															role="group"
-															aria-label={`Actions for ${purchaseOrder.purchaseOrderNumber}`}
-														>
-															<Button
-																variant="ghost"
-																size="icon"
-																onClick={() =>
-																	onViewPurchaseOrder(purchaseOrder)
-																}
-																className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																aria-label={`View details for ${purchaseOrder.purchaseOrderNumber}`}
+														<TableCell className="px-6">
+															<Badge
+																variant="outline"
+																className={getNetSuiteStatusColor(
+																	purchaseOrder.netsuiteStatus,
+																)}
 															>
-																<Eye className="h-4 w-4" aria-hidden="true" />
-															</Button>
-															{showRowPdfDownload &&
-															purchaseOrder.deliveryOrder?.id ? (
+																{purchaseOrder.netsuiteStatus || "N/A"}
+															</Badge>
+														</TableCell>
+														<TableCell className="px-6 text-right">
+															<div
+																className="flex justify-end gap-1"
+																role="group"
+																aria-label={`Actions for ${purchaseOrder.purchaseOrderNumber}`}
+															>
 																<Button
 																	variant="ghost"
 																	size="icon"
 																	onClick={() =>
-																		void onDownloadDoPdf?.(purchaseOrder)
-																	}
-																	disabled={
-																		pendingDoPdfDeliveryOrderId ===
-																			purchaseOrder.deliveryOrder.id ||
-																		isBulkDoPdfPending
+																		onViewPurchaseOrder(purchaseOrder)
 																	}
 																	className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																	aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
+																	aria-label={`View details for ${purchaseOrder.purchaseOrderNumber}`}
 																>
-																	{pendingDoPdfDeliveryOrderId ===
-																	purchaseOrder.deliveryOrder.id ? (
-																		<Loader2
-																			className="h-4 w-4 animate-spin"
-																			aria-hidden
-																		/>
-																	) : (
-																		<Download className="h-4 w-4" aria-hidden />
-																	)}
+																	<Eye className="h-4 w-4" aria-hidden="true" />
 																</Button>
-															) : null}
-															{hasAcceptPermission &&
-																purchaseOrder.status === "preparing" && (
+																{showRowPdfDownload &&
+																purchaseOrder.deliveryOrder?.id ? (
 																	<Button
 																		variant="ghost"
 																		size="icon"
 																		onClick={() =>
-																			onAcceptClick?.(purchaseOrder)
+																			void onDownloadDoPdf?.(purchaseOrder)
+																		}
+																		disabled={
+																			pendingDoPdfDeliveryOrderId ===
+																				purchaseOrder.deliveryOrder.id ||
+																			isBulkDoPdfPending
 																		}
 																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
+																		aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
 																	>
-																		<CheckCircle
-																			className="h-4 w-4 text-green-600"
-																			aria-hidden="true"
-																		/>
+																		{pendingDoPdfDeliveryOrderId ===
+																		purchaseOrder.deliveryOrder.id ? (
+																			<Loader2
+																				className="h-4 w-4 animate-spin"
+																				aria-hidden
+																			/>
+																		) : (
+																			<Download className="h-4 w-4" aria-hidden />
+																		)}
 																	</Button>
-																)}
-														</div>
-													</TableCell>
-												</TableRow>
-											);
-										}),
-									];
-								})
+																) : null}
+																{hasAcceptPermission &&
+																	purchaseOrder.status === "preparing" && (
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() =>
+																				onAcceptClick?.(purchaseOrder)
+																			}
+																			className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+																			aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
+																		>
+																			<CheckCircle
+																				className="h-4 w-4 text-green-600"
+																				aria-hidden="true"
+																			/>
+																		</Button>
+																	)}
+															</div>
+														</TableCell>
+													</TableRow>
+												);
+											}),
+										];
+									})}
+
+									{/* Infinite scroll sentinel row */}
+									<TableRow
+										ref={sentinelRef}
+										aria-hidden="true"
+										className="pointer-events-none"
+									>
+										<TableCell colSpan={tableColCount} className="py-0 h-1" />
+									</TableRow>
+
+									{/* Loading more indicator */}
+									{isFetchingNextPage && (
+										<TableRow aria-live="polite" role="status">
+											<TableCell
+												colSpan={tableColCount}
+												className="px-6 py-4 text-center"
+											>
+												<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+													<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+													Loading more orders…
+												</div>
+											</TableCell>
+										</TableRow>
+									)}
+
+									{/* End of list indicator */}
+									{!hasNextPage && paginatedDateKeys.length > 0 && !loading && (
+										<TableRow aria-live="polite">
+											<TableCell
+												colSpan={tableColCount}
+												className="px-6 py-3 text-center"
+											>
+												<span className="text-xs text-muted-foreground">
+													All orders loaded
+												</span>
+											</TableCell>
+										</TableRow>
+									)}
+								</>
 							)}
 						</TableBody>
 					</Table>
