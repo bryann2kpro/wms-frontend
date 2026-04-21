@@ -90,6 +90,19 @@ interface OutboundListCardProps {
 	isBulkDoPdfPending?: boolean;
 	bulkDoPdfProgress?: number;
 	bulkDoPdfTotal?: number;
+	/** Mark selected delivery orders as picked (advance to PACKING). */
+	onBulkMarkAllPicked?: (
+		purchaseOrders: PurchaseOrderDetail[],
+	) => void | Promise<void>;
+	/** Mark selected PACKING delivery orders as shipped. */
+	onBulkMarkAsShipped?: (
+		purchaseOrders: PurchaseOrderDetail[],
+	) => void | Promise<void>;
+	/** Bulk process selected delivery orders to their next step. */
+	onBulkProcessSelected?: (
+		purchaseOrders: PurchaseOrderDetail[],
+	) => void | Promise<void>;
+	isBulkStatusActionPending?: boolean;
 	/** When set, syncs the internal status filter from an external source (e.g. summary cards). */
 	initialStatusFilter?: PurchaseOrderStatusFilter;
 }
@@ -109,6 +122,10 @@ export function OutboundListCard({
 	isBulkDoPdfPending,
 	bulkDoPdfProgress,
 	bulkDoPdfTotal,
+	onBulkMarkAllPicked,
+	onBulkMarkAsShipped,
+	onBulkProcessSelected,
+	isBulkStatusActionPending,
 	initialStatusFilter,
 }: OutboundListCardProps) {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -160,7 +177,7 @@ export function OutboundListCard({
 	});
 
 	// Merge all pages into a single model
-	const { purchaseOrdersByDate, allDateKeys, dateKeys, weekRangeDateKeys } =
+	const { purchaseOrdersByDate, allDateKeys, weekRangeDateKeys } =
 		useMemo(() => {
 			if (!infiniteData) {
 				return {
@@ -317,6 +334,11 @@ export function OutboundListCard({
 	}, [selectedDoIds, allDateKeys, purchaseOrdersByDate]);
 
 	const tableColCount = 7 + (showBulkPdf ? 1 : 0);
+	const selectedPurchaseOrders = useMemo(
+		() =>
+			selectableWithDo.filter((p) => selectedDoIds.has(p.deliveryOrder.id)),
+		[selectableWithDo, selectedDoIds],
+	);
 
 	const selectableIds = useMemo(
 		() => selectableWithDo.map((p) => p.deliveryOrder.id),
@@ -1030,6 +1052,57 @@ export function OutboundListCard({
 						>
 							Clear selection
 						</Button>
+						{(onBulkMarkAllPicked || onBulkMarkAsShipped || onBulkProcessSelected) ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="h-8 text-xs gap-1.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										disabled={Boolean(isBulkStatusActionPending)}
+									>
+										{isBulkStatusActionPending ? (
+											<Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+										) : null}
+										Update DO status
+										<ChevronDown className="h-3 w-3 opacity-80" aria-hidden />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									{onBulkMarkAllPicked ? (
+										<DropdownMenuItem
+											disabled={Boolean(isBulkStatusActionPending)}
+											onSelect={() => {
+												void onBulkMarkAllPicked(selectedPurchaseOrders);
+											}}
+										>
+											Mark all as Picked
+										</DropdownMenuItem>
+									) : null}
+									{onBulkMarkAsShipped ? (
+										<DropdownMenuItem
+											disabled={Boolean(isBulkStatusActionPending)}
+											onSelect={() => {
+												void onBulkMarkAsShipped(selectedPurchaseOrders);
+											}}
+										>
+											Mark as Shipped
+										</DropdownMenuItem>
+									) : null}
+									{onBulkProcessSelected ? (
+										<DropdownMenuItem
+											disabled={Boolean(isBulkStatusActionPending)}
+											onSelect={() => {
+												void onBulkProcessSelected(selectedPurchaseOrders);
+											}}
+										>
+											Bulk process
+										</DropdownMenuItem>
+									) : null}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : null}
 						{isBulkDoPdfPending ? (
 							<Button
 								type="button"
