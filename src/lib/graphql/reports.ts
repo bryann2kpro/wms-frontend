@@ -15,11 +15,13 @@ export const INVOICE_SUMMARY_REPORT_DATA_QUERY = gql`
 		$dateFrom: String!
 		$dateTo: String!
 		$regionId: ID!
+		$deliveryDateSortOrder: DeliveryDateSortOrder
 	) {
 		invoiceSummaryReportData(
 			dateFrom: $dateFrom
 			dateTo: $dateTo
 			regionId: $regionId
+			deliveryDateSortOrder: $deliveryDateSortOrder
 		) {
 			proformaId
 			invoiceDate
@@ -37,12 +39,14 @@ export const INVOICE_SUMMARY_REPORT_DATA_QUERY = gql`
 `;
 
 export type ReportType = "INVOICE_SUMMARY" | "MOVEMENT_REPORT";
+export type DeliveryDateSortOrder = "ASC" | "DESC";
 
 export type GenerateReportInput = {
 	type: ReportType;
 	regionId?: string;
 	dateFrom?: string;
 	dateTo?: string;
+	deliveryDateSortOrder?: DeliveryDateSortOrder;
 	saveToS3?: boolean;
 };
 
@@ -82,4 +86,5 @@ export type InvoiceSummaryReportDataQueryVariables = {
 	dateFrom: string;
 	dateTo: string;
 	regionId: string;
+	deliveryDateSortOrder?: DeliveryDateSortOrder;
 };
