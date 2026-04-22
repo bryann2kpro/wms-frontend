@@ -188,7 +188,7 @@ async function approveAndSendToES(page: Page, po: string): Promise<void> {
   // Send to ES
   console.log("    Sending to ES…");
   const sendBtn = page.getByRole("button", { name: /Send to ES/i });
-  await sendBtn.waitFor({ timeout: 8_000 });
+  await sendBtn.waitFor({ timeout: 30_000 });
   await sendBtn.click();
   await page
     .locator("[data-sonner-toast]")
