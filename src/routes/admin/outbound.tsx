@@ -280,6 +280,7 @@ function OutboundRouteComponent() {
 	const { state: bulkDoPdfState, startBulkExport: startBulkDoPdfExport } =
 		useBulkDeliveryOrderPdf();
 	const [isIndividualBulkDownloading, setIsIndividualBulkDownloading] = useState(false);
+	const [isBulkStatusUpdating, setIsBulkStatusUpdating] = useState(false);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [activeStatusFilter, setActiveStatusFilter] =
 		useState<PurchaseOrderStatusFilter>("ALL");
@@ -457,6 +458,149 @@ function OutboundRouteComponent() {
 			}
 		},
 		[],
+	);
+
+	const bulkMarkAllPicked = useCallback(
+		async (orders: PurchaseOrderDetail[]) => {
+			const shippedCount = orders.filter(
+				(po) => po.deliveryOrder?.status === "SHIPPED",
+			).length;
+			const selected = orders.filter(
+				(po) =>
+					Boolean(po.deliveryOrder?.id) &&
+					po.deliveryOrder?.status !== "SHIPPED",
+			);
+			if (selected.length === 0) return;
+			setIsBulkStatusUpdating(true);
+			let successCount = 0;
+			let failCount = 0;
+			try {
+				for (const po of selected) {
+					const deliveryOrder = po.deliveryOrder;
+					if (!deliveryOrder) continue;
+					if (!["CREATED", "NEW", "PICKING"].includes(deliveryOrder.status)) continue;
+					try {
+						let currentStatus = deliveryOrder.status;
+						for (let i = 0; i < 2; i++) {
+							if (currentStatus === "PACKING" || currentStatus === "SHIPPED") break;
+							const updated = await advanceDeliveryOrderStatus(deliveryOrder.id);
+							currentStatus = updated.status as
+								| "CREATED"
+								| "NEW"
+								| "PICKING"
+								| "PACKING"
+								| "SHIPPED"
+								| "DELIVERED";
+						}
+						successCount++;
+					} catch {
+						failCount++;
+					}
+				}
+			} finally {
+				setIsBulkStatusUpdating(false);
+				await queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			}
+			if (failCount > 0) {
+				toast.warning(
+					`Marked ${successCount} delivery order(s) as picked. ${failCount} failed.`,
+				);
+			} else {
+				toast.success(`Marked ${successCount} delivery order(s) as picked`);
+			}
+			if (shippedCount > 0) {
+				toast.info(`${shippedCount} SHIPPED delivery order(s) were skipped.`);
+			}
+		},
+		[queryClient],
+	);
+
+	const bulkMarkAsShipped = useCallback(
+		async (orders: PurchaseOrderDetail[]) => {
+			const shippedCount = orders.filter(
+				(po) => po.deliveryOrder?.status === "SHIPPED",
+			).length;
+			const selected = orders.filter((po) => po.deliveryOrder?.status === "PACKING");
+			if (selected.length === 0) {
+				toast.info("No selected delivery orders are in PACKING status");
+				if (shippedCount > 0) {
+					toast.info(`${shippedCount} SHIPPED delivery order(s) were skipped.`);
+				}
+				return;
+			}
+			setIsBulkStatusUpdating(true);
+			let successCount = 0;
+			let failCount = 0;
+			try {
+				for (const po of selected) {
+					const doId = po.deliveryOrder?.id;
+					if (!doId) continue;
+					try {
+						await advanceDeliveryOrderStatus(doId);
+						successCount++;
+					} catch {
+						failCount++;
+					}
+				}
+			} finally {
+				setIsBulkStatusUpdating(false);
+				await queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			}
+			if (failCount > 0) {
+				toast.warning(`Marked ${successCount} as shipped. ${failCount} failed.`);
+			} else {
+				toast.success(`Marked ${successCount} delivery order(s) as shipped`);
+			}
+			if (shippedCount > 0) {
+				toast.info(`${shippedCount} SHIPPED delivery order(s) were skipped.`);
+			}
+		},
+		[queryClient],
+	);
+
+	const bulkProcessSelected = useCallback(
+		async (orders: PurchaseOrderDetail[]) => {
+			const shippedCount = orders.filter(
+				(po) => po.deliveryOrder?.status === "SHIPPED",
+			).length;
+			const selected = orders.filter(
+				(po) =>
+					Boolean(po.deliveryOrder?.id) &&
+					po.deliveryOrder?.status !== "SHIPPED",
+			);
+			if (selected.length === 0) return;
+			setIsBulkStatusUpdating(true);
+			let successCount = 0;
+			let failCount = 0;
+			try {
+				for (const po of selected) {
+					const doId = po.deliveryOrder?.id;
+					if (!doId) continue;
+					try {
+						await advanceDeliveryOrderStatus(doId);
+						successCount++;
+					} catch {
+						failCount++;
+					}
+				}
+			} finally {
+				setIsBulkStatusUpdating(false);
+				await queryClient.invalidateQueries({ queryKey: ["purchase-orders-list"] });
+			}
+			if (failCount > 0) {
+				toast.warning(
+					`Processed ${successCount} delivery order(s) to next step. ${failCount} failed.`,
+				);
+			} else {
+				toast.success(
+					`Processed ${successCount} delivery order(s) to their next step`,
+				);
+			}
+			if (shippedCount > 0) {
+				toast.info(`${shippedCount} SHIPPED delivery order(s) were skipped.`);
+			}
+		},
+		[queryClient],
 	);
 
 	const form = useForm({
@@ -765,6 +909,10 @@ function OutboundRouteComponent() {
 					pendingDoPdfDeliveryOrderId={pendingDoPdfDeliveryOrderId}
 					onBulkDownloadDoPdf={bulkDownloadDoPdf}
 					onBulkDownloadDoPdfIndividual={bulkDownloadDoPdfIndividual}
+					onBulkMarkAllPicked={bulkMarkAllPicked}
+					onBulkMarkAsShipped={bulkMarkAsShipped}
+					onBulkProcessSelected={bulkProcessSelected}
+					isBulkStatusActionPending={isBulkStatusUpdating}
 					isBulkDoPdfPending={bulkDoPdfState.status === "generating" || isIndividualBulkDownloading}
 					bulkDoPdfProgress={bulkDoPdfState.progress}
 					bulkDoPdfTotal={bulkDoPdfState.total}
