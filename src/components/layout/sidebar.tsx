@@ -172,14 +172,14 @@ export function Sidebar() {
 				className="app-sidebar space-y-4 rounded-none border-r border-sidebar-border"
 				collapsible="icon"
 			>
-				<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-4 py-4">
+				<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-3 py-3">
 					<div className="relative z-20 flex items-center justify-center">
 						<div className="flex flex-col">
 							<img
 								src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
 								alt="SME Logo"
-								width={100}
-								height={100}
+								width={56}
+								height={56}
 								className="rounded-lg object-contain"
 							/>
 						</div>
