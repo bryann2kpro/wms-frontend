@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E test configuration for SME-Ederan WMS frontend.
+ * E2E test configuration for SME-Edaran WMS frontend.
  *
  * Prerequisites before running:
  *   1. Backend running on http://localhost:7777
