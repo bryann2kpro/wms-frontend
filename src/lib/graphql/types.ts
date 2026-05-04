@@ -550,6 +550,8 @@ export interface GrnListResult {
 	page: number;
 	pageSize: number;
 	total: number;
+	/** Total pages from server pagination metadata (preferred over computing from total/pageSize). */
+	totalPages: number;
 }
 
 // ---------------------------------------------------------------------------

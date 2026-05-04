@@ -540,8 +540,6 @@ function GRNRouteComponent() {
 	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
 		variables: {
 			filter: {
-				page,
-				pageSize,
 				search: debouncedSearchTerm.trim() || undefined,
 				status: statusFilterForQuery,
 				/** Draft GRNs are hidden from this page; backend excludes them when not filtering by status. */
@@ -549,6 +547,8 @@ function GRNRouteComponent() {
 				sortBy: sortField,
 				sortOrder: sortDirection,
 			},
+			pageSize,
+			pageNumber: page,
 		},
 		fetchPolicy: "cache-and-network",
 	});
@@ -568,10 +568,13 @@ function GRNRouteComponent() {
 		page: 1,
 		pageSize: 10,
 		total: 0,
+		totalPages: 1,
 	};
 	const data =
 		grnsQueryData?.grns != null
-			? mapGrnsQueryToResult(grnsQueryData.grns)
+			? mapGrnsQueryToResult(grnsQueryData.grns, {
+					requestedPageSize: pageSize,
+				})
 			: emptyResult;
 	const isLoading = grnsLoading;
 
@@ -743,9 +746,7 @@ function GRNRouteComponent() {
 
 	const grns = data?.items ?? [];
 	const summary = data?.summary;
-	const totalPages = data
-		? Math.max(1, Math.ceil(data.total / data.pageSize))
-		: 1;
+	const totalPages = data?.totalPages ?? 1;
 	const canApproveGrn = (profile?.approvePermission ?? []).includes("GRN");
 
 	const getStatusColor = (status: GRNStatus | null | undefined) => {
@@ -1361,11 +1362,15 @@ function GRNRouteComponent() {
 								<div style={{ fontFamily: "var(--dashboard-body)" }}>
 									Showing{" "}
 									<span className="font-semibold tabular-nums text-foreground">
-										{(data.page - 1) * data.pageSize + 1}
+										{data.total === 0
+											? 0
+											: (data.page - 1) * data.pageSize + 1}
 									</span>{" "}
 									–{" "}
 									<span className="font-semibold tabular-nums text-foreground">
-										{Math.min(data.page * data.pageSize, data.total)}
+										{data.total === 0
+											? 0
+											: Math.min(data.page * data.pageSize, data.total)}
 									</span>{" "}
 									of{" "}
 									<span className="font-semibold tabular-nums text-foreground">

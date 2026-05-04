@@ -11,10 +11,10 @@ import type {
 	GrnListResult,
 } from "./types";
 
-/** GRN list query - backend does search/filter; pass filter only */
+/** GRN list query — pagination via top-level `pageSize` / `pageNumber` (server applies LIMIT/OFFSET). */
 export const GRNS_QUERY = gql`
-	query GRNs($filter: GrnFilterInput) {
-		grns(filter: $filter) {
+	query GRNs($filter: GrnFilterInput, $pageSize: Int, $pageNumber: Int) {
+		grns(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
 			pagination {
 				count
 				totalCount
@@ -233,6 +233,8 @@ export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
 
 export type GrnsQueryVariables = {
 	filter?: GrnFilterInput | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
 };
 
 export type GrnsQueryData = {
@@ -355,8 +357,15 @@ export const UI_STATUS_TO_GQL: Record<GrnStatusUI, string> = {
 // Mapper: GrnPaginatedResponse -> GRNListResult (for existing UI)
 // ---------------------------------------------------------------------------
 
-/** Map backend GrnPaginatedResponse to UI GrnListResult. Derives summary from query when backend does not return it. */
-export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
+/**
+ * Map backend GrnPaginatedResponse to UI GrnListResult.
+ * Pass `requestedPageSize` so list page size stays correct on the last page — GraphQL `pagination.count`
+ * is rows on the current page, not the requested page size.
+ */
+export function mapGrnsQueryToResult(
+	raw: GrnPaginatedResponse,
+	options?: { requestedPageSize?: number },
+): GrnListResult {
 	const query = raw.query ?? [];
 	const pagination = raw.pagination as Pagination;
 
@@ -428,14 +437,19 @@ export function mapGrnsQueryToResult(raw: GrnPaginatedResponse): GrnListResult {
 		};
 	});
 
+	const requestedPageSize = options?.requestedPageSize ?? 10;
+	const serverTotalPages = pagination?.totalPages ?? 1;
+	const totalCount = pagination?.totalCount ?? query.length;
+
 	return {
 		items,
 		summary: {
 			byStatus,
-			total: query.length,
+			total: totalCount,
 		},
 		page: pagination?.currentPage ?? 1,
-		pageSize: pagination?.count ?? query.length,
-		total: pagination?.totalCount ?? query.length,
+		pageSize: requestedPageSize,
+		total: totalCount,
+		totalPages: Math.max(1, serverTotalPages),
 	};
 }
