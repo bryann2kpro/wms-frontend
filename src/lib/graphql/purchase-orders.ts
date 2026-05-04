@@ -339,8 +339,13 @@ export function mapGqlToPurchaseOrderDetail(
 	};
 }
 
+/**
+ * `pagination.count` is rows on the current page, not page size — pass `requestedPageSize`
+ * from the query variables (same pattern as `mapGrnsQueryToResult`).
+ */
 export function mapGqlToPurchaseOrderList(
 	raw: PurchaseOrderPaginatedResponse,
+	options?: { requestedPageSize?: number },
 ): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
@@ -361,14 +366,19 @@ export function mapGqlToPurchaseOrderList(
 		byStatus[po.status] = (byStatus[po.status] ?? 0) + 1;
 	}
 
+	const requestedPageSize = options?.requestedPageSize ?? 10;
+	const serverTotalPages = pagination?.totalPages ?? 1;
+	const totalCount = pagination?.totalCount ?? items.length;
+
 	return {
 		items,
 		summary: {
 			byStatus,
-			total: items.length,
+			total: totalCount,
 		},
 		page: pagination?.currentPage ?? 1,
-		pageSize: pagination?.count ?? items.length,
-		total: pagination?.totalCount ?? items.length,
+		pageSize: requestedPageSize,
+		total: totalCount,
+		totalPages: Math.max(1, serverTotalPages),
 	};
 }

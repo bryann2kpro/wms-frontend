@@ -404,11 +404,16 @@ function DeliveryProofComponent() {
 						<p className="text-sm text-slate-500">
 							Showing{" "}
 							<span className="font-semibold text-slate-700">
-								{(pagination.currentPage - 1) * pagination.count + 1}–
-								{Math.min(
-									pagination.currentPage * pagination.count,
-									totalCount,
-								)}
+								{totalCount === 0
+									? 0
+									: (pagination.currentPage - 1) * pageSize + 1}
+								–
+								{totalCount === 0
+									? 0
+									: Math.min(
+											pagination.currentPage * pageSize,
+											totalCount,
+										)}
 							</span>{" "}
 							of{" "}
 							<span className="font-semibold text-slate-700">{totalCount}</span>
