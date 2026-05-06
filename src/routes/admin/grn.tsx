@@ -1642,17 +1642,22 @@ function GRNRouteComponent() {
 										</div>
 									</div>
 
-									<Separator />
-
-									{/* Integration */}
-									<IntegrationLogPanel
-										entityId={selectedGRN.id}
-										entityType="grn"
-										poNo={selectedGRN.poNo}
-										onRetry={(logId) => {
-											console.log("Retry log:", logId);
-										}}
-									/>
+									{(selectedGRN.status === "Sent-to-ES" ||
+										selectedGRN.status === "Failed") && (
+										<>
+											<Separator />
+											
+											{/* Integration */}
+											<IntegrationLogPanel
+												entityId={selectedGRN.id}
+												entityType="grn"
+												poNo={selectedGRN.poNo}
+												onRetry={(logId) => {
+													console.log("Retry log:", logId);
+												}}
+											/>
+										</>
+									)}
 								</div>
 							</div>
 						)}
