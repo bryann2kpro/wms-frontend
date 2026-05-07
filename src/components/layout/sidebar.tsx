@@ -6,7 +6,6 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Sidebar as SidebarUi,
 	SidebarContent,
@@ -14,7 +13,9 @@ import {
 	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
+	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarRail,
 } from "@/components/ui/sidebar";
 import {
 	allNavigationItems,
@@ -110,20 +111,25 @@ export function Sidebar() {
 	const renderNavLink = (link: NavLinkSchemaType) => {
 		const active = isActive(link.href);
 		return (
-			<SidebarMenuItem key={`nav-${link.key}`} title={link.title}>
-				<Link
-					to={link.href}
+			<SidebarMenuItem key={`nav-${link.key}`}>
+				<SidebarMenuButton
+					asChild
+					isActive={active}
+					tooltip={link.title}
 					className={cn(
-						"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none border-l-4 border-transparent",
-						active
-							? "bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:text-white dark:border-amber-500 dark:hover:bg-amber-700"
-							: "text-muted-foreground border-l-transparent hover:bg-muted/60 hover:text-foreground",
+						"border-l-4 border-transparent",
+						active &&
+							"bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:border-amber-500 dark:hover:bg-amber-700",
 					)}
-					style={{ fontFamily: '"Figtree", sans-serif' }}
 				>
-					<link.icon className="h-5 w-5 shrink-0" />
-					{link.title}
-				</Link>
+					<Link
+						to={link.href}
+						style={{ fontFamily: '"Figtree", sans-serif' }}
+					>
+						<link.icon className="shrink-0" />
+						<span>{link.title}</span>
+					</Link>
+				</SidebarMenuButton>
 			</SidebarMenuItem>
 		);
 	};
@@ -185,11 +191,10 @@ export function Sidebar() {
 						</div>
 					</div>
 				</SidebarHeader>
-				<SidebarContent>
-					<ScrollArea className="flex-1 px-3 py-4">
-						<div className="flex flex-col gap-6">{navSections}</div>
-					</ScrollArea>
+				<SidebarContent className="px-3 py-4">
+					<div className="flex flex-col gap-6">{navSections}</div>
 				</SidebarContent>
+				<SidebarRail />
 			</SidebarUi>
 		</ClientOnly>
 	);
