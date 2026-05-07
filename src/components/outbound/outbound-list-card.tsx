@@ -1,4 +1,12 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import type { CSSProperties } from "react";
+import {
+	useReactTable,
+	getCoreRowModel,
+	flexRender,
+	type ColumnDef,
+	type Column,
+} from "@tanstack/react-table";
 import {
 	Card,
 	CardContent,
@@ -65,6 +73,23 @@ import {
 	usePurchaseOrders,
 	type PurchaseOrderStatusFilter,
 } from "@/lib/hooks/use-purchase-orders";
+
+function getCommonPinningStyles(
+	column: Column<PurchaseOrderDetail>,
+): CSSProperties {
+	const isPinned = column.getIsPinned();
+	const isLastLeftPinned =
+		isPinned === "left" && column.getIsLastColumn("left");
+	return {
+		boxShadow: isLastLeftPinned
+			? "-4px 0 4px -4px var(--border) inset"
+			: undefined,
+		left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
+		position: isPinned ? "sticky" : "relative",
+		width: column.getSize(),
+		zIndex: isPinned ? 1 : 0,
+	};
+}
 
 interface OutboundListCardProps {
 	onViewPurchaseOrder: (purchaseOrder: PurchaseOrderDetail) => void;
@@ -333,7 +358,16 @@ export function OutboundListCard({
 		return labels;
 	}, [selectedDoIds, allDateKeys, purchaseOrdersByDate]);
 
-	const tableColCount = 7 + (showBulkPdf ? 1 : 0);
+	const poToDateKey = useMemo(() => {
+		const m = new Map<string, string>();
+		for (const dateKey of allDateKeys) {
+			for (const po of purchaseOrdersByDate[dateKey] ?? []) {
+				m.set(po.id, dateKey);
+			}
+		}
+		return m;
+	}, [allDateKeys, purchaseOrdersByDate]);
+
 	const selectedPurchaseOrders = useMemo(
 		() =>
 			selectableWithDo.filter((p) => selectedDoIds.has(p.deliveryOrder.id)),
@@ -350,6 +384,281 @@ export function OutboundListCard({
 	const someSelectableSelected = selectableIds.some((id) =>
 		selectedDoIds.has(id),
 	);
+
+	const columns = useMemo<ColumnDef<PurchaseOrderDetail>[]>(() => {
+		const cols: ColumnDef<PurchaseOrderDetail>[] = [];
+
+		if (showBulkPdf) {
+			cols.push({
+				id: "select",
+				size: 56,
+				header: () => (
+					<Checkbox
+						checked={
+							allSelectableSelected
+								? true
+								: someSelectableSelected
+									? "indeterminate"
+									: false
+						}
+						onCheckedChange={(checked) => {
+							if (checked === true) {
+								setSelectedDoIds(new Set(selectableIds));
+							} else {
+								setSelectedDoIds(new Set());
+							}
+						}}
+						disabled={selectableIds.length === 0 || isBulkDoPdfPending}
+						aria-label="Select all delivery orders in this list for bulk PDF download"
+					/>
+				),
+				cell: ({ row }) => {
+					const po = row.original;
+					const doId = po.deliveryOrder?.id;
+					if (!doId)
+						return <span className="text-muted-foreground/50">—</span>;
+					return (
+						<Checkbox
+							checked={selectedDoIds.has(doId)}
+							onCheckedChange={(c) => {
+								setSelectedDoIds((prev) => {
+									const next = new Set(prev);
+									if (c === true) next.add(doId);
+									else next.delete(doId);
+									return next;
+								});
+							}}
+							disabled={isBulkDoPdfPending}
+							aria-label={`Select ${po.purchaseOrderNumber} for bulk DO PDF download`}
+						/>
+					);
+				},
+			});
+		}
+
+		cols.push(
+			{
+				id: "purchaseOrderNumber",
+				size: 160,
+				header: () => "PO Number",
+				cell: ({ row }) => (
+					<span className="block truncate font-medium" title={row.original.purchaseOrderNumber}>
+						{row.original.purchaseOrderNumber}
+					</span>
+				),
+			},
+			{
+				id: "toLocation",
+				size: 192,
+				header: () => "Outlet",
+				cell: ({ row }) => (
+					<span className="block truncate" title={row.original.toLocation ?? undefined}>
+						{row.original.toLocation}
+					</span>
+				),
+			},
+			{
+				id: "regionName",
+				size: 200,
+				header: () => "Region",
+				cell: ({ row }) => {
+					const po = row.original;
+					if (!po.regionName) return "—";
+					const label = `${po.regionName}${po.regionCode ? ` (${po.regionCode})` : ""}`;
+					return (
+						<span className="block truncate" title={label}>
+							{label}
+						</span>
+					);
+				},
+			},
+			{
+				id: "status",
+				size: 150,
+				header: () => "PO Status",
+				cell: ({ row }) => (
+					<Badge
+						variant="outline"
+						className={getStatusColor(row.original.status)}
+					>
+						{formatStatus(row.original.status)}
+					</Badge>
+				),
+			},
+			{
+				id: "deliveryOrderStatus",
+				size: 260,
+				header: () => "DO Status",
+				cell: ({ row }) => {
+					const po = row.original;
+					if (!po.deliveryOrder) {
+						return (
+							<span className="text-muted-foreground text-sm">—</span>
+						);
+					}
+					const deliveryOrderStatus = po.deliveryOrder.status ?? "";
+					const isAwaitingPicking = [
+						"NEW",
+						"CREATED",
+						"PICKING",
+					].includes(deliveryOrderStatus);
+					const rowDateKey = poToDateKey.get(po.id);
+					return (
+						<div className="flex items-center gap-2">
+							<Badge
+								variant="outline"
+								className={getDeliveryOrderStepStatusColor(
+									po.deliveryOrder.status,
+								)}
+							>
+								{formatDeliveryOrderStepStatus(po.deliveryOrder.status)}
+							</Badge>
+							{isAwaitingPicking ? (
+								<span className="text-xs text-muted-foreground italic">
+									Awaiting picking
+								</span>
+							) : onAdvanceStep &&
+								deliveryOrderStatus === "PACKING" &&
+								rowDateKey === todayKey ? (
+								<Button
+									variant="outline"
+									size="sm"
+									className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									onClick={() => onAdvanceStep(po)}
+									disabled={
+										isAdvanceStepPending &&
+										advancingDeliveryOrderId === po.deliveryOrder?.id
+									}
+									aria-label={`Mark ${po.purchaseOrderNumber} to next step`}
+								>
+									{isAdvanceStepPending &&
+									advancingDeliveryOrderId === po.deliveryOrder?.id
+										? "Updating…"
+										: "Next step"}
+									<ChevronRight className="ml-1 h-4 w-4" />
+								</Button>
+							) : null}
+						</div>
+					);
+				},
+			},
+			{
+				id: "netsuiteStatus",
+				size: 150,
+				header: () => "NetSuite (API)",
+				cell: ({ row }) => (
+					<Badge
+						variant="outline"
+						className={getNetSuiteStatusColor(row.original.netsuiteStatus)}
+					>
+						{row.original.netsuiteStatus || "N/A"}
+					</Badge>
+				),
+			},
+			{
+				id: "actions",
+				size: 180,
+				header: () => <span className="block text-right">Actions</span>,
+				cell: ({ row }) => {
+					const purchaseOrder = row.original;
+					return (
+						<div
+							className="flex justify-end gap-1"
+							role="group"
+							aria-label={`Actions for ${purchaseOrder.purchaseOrderNumber}`}
+						>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onViewPurchaseOrder(purchaseOrder)}
+								className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								aria-label={`View details for ${purchaseOrder.purchaseOrderNumber}`}
+							>
+								<Eye className="h-4 w-4" aria-hidden="true" />
+							</Button>
+							{showRowPdfDownload && purchaseOrder.deliveryOrder?.id ? (
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() =>
+										void onDownloadDoPdf?.(purchaseOrder)
+									}
+									disabled={
+										pendingDoPdfDeliveryOrderId ===
+											purchaseOrder.deliveryOrder.id ||
+										isBulkDoPdfPending
+									}
+									className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
+								>
+									{pendingDoPdfDeliveryOrderId ===
+									purchaseOrder.deliveryOrder.id ? (
+										<Loader2
+											className="h-4 w-4 animate-spin"
+											aria-hidden
+										/>
+									) : (
+										<Download className="h-4 w-4" aria-hidden />
+									)}
+								</Button>
+							) : null}
+							{hasAcceptPermission &&
+								purchaseOrder.status === "preparing" && (
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => onAcceptClick?.(purchaseOrder)}
+										className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+										aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
+									>
+										<CheckCircle
+											className="h-4 w-4 text-green-600"
+											aria-hidden="true"
+										/>
+									</Button>
+								)}
+						</div>
+					);
+				},
+			},
+		);
+
+		return cols;
+	}, [
+		showBulkPdf,
+		allSelectableSelected,
+		someSelectableSelected,
+		selectableIds,
+		isBulkDoPdfPending,
+		selectedDoIds,
+		onAdvanceStep,
+		isAdvanceStepPending,
+		advancingDeliveryOrderId,
+		todayKey,
+		onViewPurchaseOrder,
+		showRowPdfDownload,
+		onDownloadDoPdf,
+		pendingDoPdfDeliveryOrderId,
+		hasAcceptPermission,
+		onAcceptClick,
+		poToDateKey,
+	]);
+
+	const table = useReactTable({
+		data: visiblePurchaseOrders,
+		columns,
+		getCoreRowModel: getCoreRowModel(),
+		getRowId: (po) => po.id,
+		state: {
+			columnPinning: {
+				left: showBulkPdf
+					? ["select", "purchaseOrderNumber"]
+					: ["purchaseOrderNumber", "toLocation"],
+			},
+		},
+	});
+
+	const tableColCount = columns.length;
 
 	return (
 		<>
@@ -523,55 +832,39 @@ export function OutboundListCard({
 			>
 				<GlobalLoadingShadow />
 				<div className="overflow-x-auto rounded-lg border mx-6">
-					<Table aria-label="Purchase orders list" aria-busy={isFetching}>
+					<Table
+						aria-label="Purchase orders list"
+						aria-busy={isFetching}
+						style={{ width: "100%", minWidth: table.getTotalSize(), tableLayout: "fixed" }}
+					>
 						<TableHeader>
-							<TableRow className="hover:bg-transparent">
-								{showBulkPdf ? (
-									<TableHead scope="col" className="w-12 px-3">
-										<Checkbox
-											checked={
-												allSelectableSelected
-													? true
-													: someSelectableSelected
-														? "indeterminate"
-														: false
-											}
-											onCheckedChange={(checked) => {
-												if (checked === true) {
-													setSelectedDoIds(new Set(selectableIds));
-												} else {
-													setSelectedDoIds(new Set());
-												}
+							{table.getHeaderGroups().map((headerGroup) => (
+								<TableRow
+									key={headerGroup.id}
+									className="hover:bg-transparent"
+								>
+									{headerGroup.headers.map((header) => (
+										<TableHead
+											key={header.id}
+											scope="col"
+											className="px-6"
+											style={{
+												...getCommonPinningStyles(header.column),
+												backgroundColor: header.column.getIsPinned()
+													? "var(--background)"
+													: undefined,
 											}}
-											disabled={
-												selectableIds.length === 0 || isBulkDoPdfPending
-											}
-											aria-label="Select all delivery orders in this list for bulk PDF download"
-										/>
-									</TableHead>
-								) : null}
-								<TableHead scope="col" className="px-6">
-									PO Number
-								</TableHead>
-								<TableHead scope="col" className="px-6">
-									Outlet
-								</TableHead>
-								<TableHead scope="col" className="px-6">
-									Region
-								</TableHead>
-								<TableHead scope="col" className="px-6">
-									PO Status
-								</TableHead>
-								<TableHead scope="col" className="px-6">
-									DO Status
-								</TableHead>
-								<TableHead scope="col" className="px-6">
-									NetSuite (API)
-								</TableHead>
-								<TableHead scope="col" className="px-6 text-right">
-									Actions
-								</TableHead>
-							</TableRow>
+										>
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+										</TableHead>
+									))}
+								</TableRow>
+							))}
 						</TableHeader>
 						<TableBody>
 							{loading ? (
@@ -588,32 +881,20 @@ export function OutboundListCard({
 									</TableRow>
 									{Array.from({ length: 8 }).map((_, i) => (
 										<TableRow key={i}>
-											{showBulkPdf ? (
-												<TableCell className="px-3">
-													<Skeleton className="h-4 w-4 rounded" />
+											{table.getAllLeafColumns().map((column) => (
+												<TableCell
+													key={column.id}
+													className="px-6"
+													style={{
+														...getCommonPinningStyles(column),
+														backgroundColor: column.getIsPinned()
+															? "var(--background)"
+															: undefined,
+													}}
+												>
+													<Skeleton className="h-5 w-3/4" />
 												</TableCell>
-											) : null}
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-24" />
-											</TableCell>
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-32" />
-											</TableCell>
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-20" />
-											</TableCell>
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-16" />
-											</TableCell>
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-20" />
-											</TableCell>
-											<TableCell className="px-6">
-												<Skeleton className="h-5 w-12" />
-											</TableCell>
-											<TableCell className="px-6 text-right">
-												<Skeleton className="h-8 w-20 ml-auto" />
-											</TableCell>
+											))}
 										</TableRow>
 									))}
 								</>
@@ -625,7 +906,7 @@ export function OutboundListCard({
 										role="alert"
 										aria-live="assertive"
 									>
-										<div className="flex flex-col items-center gap-4">
+										<div className="sticky left-0 flex flex-col items-center gap-4">
 											<div className="rounded-full bg-destructive/10 p-3">
 												<AlertCircle
 													className="h-8 w-8 text-destructive"
@@ -660,7 +941,7 @@ export function OutboundListCard({
 										className="px-6 py-12 text-center"
 										role="status"
 									>
-										<div className="flex flex-col items-center gap-3">
+										<div className="sticky left-0 flex flex-col items-center gap-3">
 											<div className="rounded-full bg-muted p-3">
 												<PackageOpen
 													className="h-10 w-10 text-muted-foreground"
@@ -720,7 +1001,7 @@ export function OutboundListCard({
 													colSpan={tableColCount}
 													className="px-6 font-semibold text-foreground py-3"
 												>
-													<div className="flex items-center gap-3">
+													<div className="sticky left-0 inline-flex items-center gap-3">
 														<ChevronDown
 															className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
 															aria-hidden
@@ -774,204 +1055,44 @@ export function OutboundListCard({
 														<TableRow key={`${dateKey}-empty`}>
 															<TableCell
 																colSpan={tableColCount}
-																className="px-6 py-4 text-center text-sm text-muted-foreground italic"
+																className="px-6 py-4 text-sm text-muted-foreground italic"
 															>
-																No orders for this day
+																<span className="sticky left-0 inline-block">
+																	No orders for this day
+																</span>
 															</TableCell>
 														</TableRow>,
 													]
 												: []),
-											...(!isCollapsed ? datePurchaseOrders : []).map((purchaseOrder) => {
-												const deliveryOrderStatus =
-													purchaseOrder.deliveryOrder?.status ?? "";
-												const isAwaitingPicking = [
-													"NEW",
-													"CREATED",
-													"PICKING",
-												].includes(deliveryOrderStatus);
-												return (
-													<TableRow
-														key={purchaseOrder.id}
-														className="transition-colors hover:bg-muted/50"
-													>
-														{showBulkPdf ? (
-															<TableCell className="w-12 px-3 align-middle">
-																{purchaseOrder.deliveryOrder?.id ? (
-																	<Checkbox
-																		checked={selectedDoIds.has(
-																			purchaseOrder.deliveryOrder.id,
-																		)}
-																		onCheckedChange={(c) => {
-																			const id = purchaseOrder.deliveryOrder?.id;
-																			if (!id) return;
-																			setSelectedDoIds((prev) => {
-																				const next = new Set(prev);
-																				if (c === true) next.add(id);
-																				else next.delete(id);
-																				return next;
-																			});
-																		}}
-																		disabled={isBulkDoPdfPending}
-																		aria-label={`Select ${purchaseOrder.purchaseOrderNumber} for bulk DO PDF download`}
-																	/>
-																) : (
-																	<span className="text-muted-foreground/50">
-																		—
-																	</span>
-																)}
-															</TableCell>
-														) : null}
-														<TableCell className="px-6 font-medium">
-															{purchaseOrder.purchaseOrderNumber}
-														</TableCell>
-														<TableCell className="px-6">
-															{purchaseOrder.toLocation}
-														</TableCell>
-														<TableCell className="px-6">
-															{purchaseOrder.regionName ? (
-																<div className="flex flex-col">
-																	<span>
-																		{purchaseOrder.regionName}
-																		{purchaseOrder.regionCode
-																			? ` (${purchaseOrder.regionCode})`
-																			: ""}
-																	</span>
-																</div>
-															) : (
-																"—"
-															)}
-														</TableCell>
-														<TableCell className="px-6">
-															<Badge
-																variant="outline"
-																className={getStatusColor(purchaseOrder.status)}
-															>
-																{formatStatus(purchaseOrder.status)}
-															</Badge>
-														</TableCell>
-														<TableCell className="px-6">
-															{purchaseOrder.deliveryOrder ? (
-																<div className="flex items-center gap-2">
-																	<Badge
-																		variant="outline"
-																		className={getDeliveryOrderStepStatusColor(
-																			purchaseOrder.deliveryOrder.status,
-																		)}
-																	>
-																		{formatDeliveryOrderStepStatus(
-																			purchaseOrder.deliveryOrder.status,
-																		)}
-																	</Badge>
-																	{isAwaitingPicking ? (
-																		<span className="text-xs text-muted-foreground italic">
-																			Awaiting picking
-																		</span>
-																	) : onAdvanceStep &&
-																		deliveryOrderStatus === "PACKING" &&
-																		dateKey === todayKey ? (
-																		<Button
-																			variant="outline"
-																			size="sm"
-																			className="rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																			onClick={() => onAdvanceStep(purchaseOrder)}
-																			disabled={
-																				isAdvanceStepPending &&
-																				advancingDeliveryOrderId ===
-																					purchaseOrder.deliveryOrder?.id
-																			}
-																			aria-label={`Mark ${purchaseOrder.purchaseOrderNumber} to next step`}
-																		>
-																			{isAdvanceStepPending &&
-																			advancingDeliveryOrderId ===
-																				purchaseOrder.deliveryOrder?.id
-																				? "Updating…"
-																				: "Next step"}
-																			<ChevronRight className="ml-1 h-4 w-4" />
-																		</Button>
-																	) : null}
-																</div>
-															) : (
-																<span className="text-muted-foreground text-sm">
-																	—
-																</span>
-															)}
-														</TableCell>
-														<TableCell className="px-6">
-															<Badge
-																variant="outline"
-																className={getNetSuiteStatusColor(
-																	purchaseOrder.netsuiteStatus,
-																)}
-															>
-																{purchaseOrder.netsuiteStatus || "N/A"}
-															</Badge>
-														</TableCell>
-														<TableCell className="px-6 text-right">
-															<div
-																className="flex justify-end gap-1"
-																role="group"
-																aria-label={`Actions for ${purchaseOrder.purchaseOrderNumber}`}
-															>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	onClick={() =>
-																		onViewPurchaseOrder(purchaseOrder)
-																	}
-																	className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																	aria-label={`View details for ${purchaseOrder.purchaseOrderNumber}`}
+											...(!isCollapsed ? datePurchaseOrders : []).map(
+												(purchaseOrder) => {
+													const tableRow = table.getRow(purchaseOrder.id);
+													return (
+														<TableRow
+															key={purchaseOrder.id}
+															className="transition-colors hover:bg-muted/50 [&:hover>td]:bg-muted/50"
+														>
+															{tableRow.getVisibleCells().map((cell) => (
+																<TableCell
+																	key={cell.id}
+																	className="px-6 align-middle"
+																	style={{
+																		...getCommonPinningStyles(cell.column),
+																		backgroundColor: cell.column.getIsPinned()
+																			? "var(--background)"
+																			: undefined,
+																	}}
 																>
-																	<Eye className="h-4 w-4" aria-hidden="true" />
-																</Button>
-																{showRowPdfDownload &&
-																purchaseOrder.deliveryOrder?.id ? (
-																	<Button
-																		variant="ghost"
-																		size="icon"
-																		onClick={() =>
-																			void onDownloadDoPdf?.(purchaseOrder)
-																		}
-																		disabled={
-																			pendingDoPdfDeliveryOrderId ===
-																				purchaseOrder.deliveryOrder.id ||
-																			isBulkDoPdfPending
-																		}
-																		className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																		aria-label={`Download delivery order PDF for ${purchaseOrder.purchaseOrderNumber}`}
-																	>
-																		{pendingDoPdfDeliveryOrderId ===
-																		purchaseOrder.deliveryOrder.id ? (
-																			<Loader2
-																				className="h-4 w-4 animate-spin"
-																				aria-hidden
-																			/>
-																		) : (
-																			<Download className="h-4 w-4" aria-hidden />
-																		)}
-																	</Button>
-																) : null}
-																{hasAcceptPermission &&
-																	purchaseOrder.status === "preparing" && (
-																		<Button
-																			variant="ghost"
-																			size="icon"
-																			onClick={() =>
-																				onAcceptClick?.(purchaseOrder)
-																			}
-																			className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-																			aria-label={`Accept ${purchaseOrder.purchaseOrderNumber}`}
-																		>
-																			<CheckCircle
-																				className="h-4 w-4 text-green-600"
-																				aria-hidden="true"
-																			/>
-																		</Button>
+																	{flexRender(
+																		cell.column.columnDef.cell,
+																		cell.getContext(),
 																	)}
-															</div>
-														</TableCell>
-													</TableRow>
-												);
-											}),
+																</TableCell>
+															))}
+														</TableRow>
+													);
+												},
+											),
 										];
 									})}
 

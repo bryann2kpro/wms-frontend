@@ -75,6 +75,8 @@ export interface PurchaseOrderListResult {
 	page: number;
 	pageSize: number;
 	total: number;
+	/** From API pagination when available; minimum 1 for empty UI. */
+	totalPages: number;
 }
 
 export interface CreatePurchaseOrderLineItemInput {

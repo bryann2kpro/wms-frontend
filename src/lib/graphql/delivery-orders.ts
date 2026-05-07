@@ -330,6 +330,7 @@ const GQL_DO_STATUS_TO_PO_STATUS: Record<string, PurchaseOrderStatus> = {
 /** Map backend DeliveryOrderPaginatedResponse to PurchaseOrderListResult UI shape. */
 export function mapDeliveryOrdersToPurchaseOrderList(
 	raw: DeliveryOrderPaginatedResponse,
+	options?: { requestedPageSize?: number },
 ): PurchaseOrderListResult {
 	const pagination = raw.pagination as Pagination;
 
@@ -373,14 +374,19 @@ export function mapDeliveryOrdersToPurchaseOrderList(
 		byStatus[po.status] = (byStatus[po.status] ?? 0) + 1;
 	}
 
+	const requestedPageSize = options?.requestedPageSize ?? 10;
+	const serverTotalPages = pagination?.totalPages ?? 1;
+	const totalCount = pagination?.totalCount ?? items.length;
+
 	return {
 		items,
 		summary: {
 			byStatus,
-			total: items.length,
+			total: totalCount,
 		},
 		page: pagination?.currentPage ?? 1,
-		pageSize: pagination?.count ?? items.length,
-		total: pagination?.totalCount ?? items.length,
+		pageSize: requestedPageSize,
+		total: totalCount,
+		totalPages: Math.max(1, serverTotalPages),
 	};
 }

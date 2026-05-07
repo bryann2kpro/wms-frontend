@@ -845,6 +845,73 @@ code {
 		box-shadow 0.2s ease;
 }
 
+/* Movement Cross Check page: same tokens as dashboard/admin */
+.movement-cross-check-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .movement-cross-check-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.movement-cross-check-page .dashboard-card {
+	animation: dashboard-fade-up 0.45s ease-out both;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+.movement-cross-check-page .dashboard-card:hover {
+	transform: translateY(-2px);
+}
+
+@keyframes movement-cross-check-bar-wave {
+	0%,
+	100% {
+		height: 8px;
+		opacity: 0.45;
+	}
+	50% {
+		height: 40px;
+		opacity: 1;
+	}
+}
+.movement-cross-check-page .movement-cross-check-bar-wave {
+	animation: movement-cross-check-bar-wave 1s ease-in-out infinite;
+}
+
+.movement-cross-check-page .mcc-dropzone {
+	border: 1.5px dashed
+		color-mix(in oklch, var(--dashboard-accent) 35%, transparent);
+	background: color-mix(in oklch, var(--dashboard-accent) 4%, transparent);
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease;
+}
+.movement-cross-check-page .mcc-dropzone[data-active="true"] {
+	border-color: var(--dashboard-accent);
+	background: color-mix(in oklch, var(--dashboard-accent) 10%, transparent);
+}
+
+.movement-cross-check-page .mcc-row-flash {
+	animation: mcc-row-flash 1.4s ease-out 1;
+}
+@keyframes mcc-row-flash {
+	0% {
+		box-shadow: 0 0 0 0 var(--dashboard-accent);
+	}
+	30% {
+		box-shadow: 0 0 0 3px
+			color-mix(in oklch, var(--dashboard-accent) 60%, transparent);
+	}
+	100% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;

@@ -126,7 +126,9 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 			if (raw.tab === "current-week") {
 				return processPurchaseOrdersFromWeek(raw.entries, options);
 			}
-			const result = mapGqlToPurchaseOrderList(raw.data.purchaseOrders);
+			const result = mapGqlToPurchaseOrderList(raw.data.purchaseOrders, {
+				requestedPageSize: pageSize,
+			});
 			return processPurchaseOrders(result.items, result.summary, options);
 		},
 	});
