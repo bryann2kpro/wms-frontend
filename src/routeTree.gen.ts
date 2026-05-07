@@ -26,6 +26,7 @@ import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
+import { Route as AdminMovementCrossCheckRouteImport } from './routes/admin/movement-cross-check'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryDetailRouteImport } from './routes/admin/inventory-detail'
@@ -137,6 +138,11 @@ const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
 const AdminOutboundRoute = AdminOutboundRouteImport.update({
   id: '/outbound',
   path: '/outbound',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminMovementCrossCheckRoute = AdminMovementCrossCheckRouteImport.update({
+  id: '/movement-cross-check',
+  path: '/movement-cross-check',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
@@ -343,6 +350,7 @@ export interface FileRoutesByTo {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/rbac': typeof AdminRbacRoute
@@ -438,6 +447,7 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
@@ -484,6 +494,7 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
@@ -530,6 +541,7 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/rbac'
@@ -696,6 +708,13 @@ declare module '@tanstack/react-router' {
       path: '/outbound'
       fullPath: '/admin/outbound'
       preLoaderRoute: typeof AdminOutboundRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/movement-cross-check': {
+      id: '/admin/movement-cross-check'
+      path: '/movement-cross-check'
+      fullPath: '/admin/movement-cross-check'
+      preLoaderRoute: typeof AdminMovementCrossCheckRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -919,6 +938,7 @@ interface AdminRouteRouteChildren {
   AdminInventoryDetailRoute: typeof AdminInventoryDetailRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminMovementCrossCheckRoute: typeof AdminMovementCrossCheckRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminRbacRoute: typeof AdminRbacRoute
@@ -946,6 +966,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryDetailRoute: AdminInventoryDetailRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminMovementCrossCheckRoute: AdminMovementCrossCheckRoute,
   AdminOutboundRoute: AdminOutboundRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminRbacRoute: AdminRbacRoute,

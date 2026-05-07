@@ -1,4 +1,4 @@
-import { Bell, Search, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, LogOut, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@/lib/auth/use-auth-actions";
@@ -13,6 +13,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { createAvatar } from "@dicebear/core";
 import { glass } from "@dicebear/collection";
 import { useMemo } from "react";
@@ -40,6 +41,7 @@ export function Header() {
 		<ClientOnly>
 			<header className="flex h-16 items-center justify-between border-b bg-background px-6">
 				<div className="flex flex-1 items-center gap-4">
+					<SidebarTrigger />
 					{/* <div className="relative w-full max-w-md">
 						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 						<Input

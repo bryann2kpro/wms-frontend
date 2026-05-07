@@ -58,6 +58,7 @@ export async function getPurchaseOrders(
 		page,
 		pageSize,
 		total: 0,
+		totalPages: 1,
 	};
 }
 
