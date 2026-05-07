@@ -145,9 +145,9 @@ function getCommonPinningStyles(column: Column<Skus>): CSSProperties {
 
 	return {
 		boxShadow: isLastLeftPinnedColumn
-			? "-4px 0 4px -4px hsl(var(--border)) inset"
+			? "-4px 0 4px -4px var(--border) inset"
 			: isFirstRightPinnedColumn
-				? "4px 0 4px -4px hsl(var(--border)) inset"
+				? "4px 0 4px -4px var(--border) inset"
 				: undefined,
 		left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
 		right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
@@ -690,7 +690,7 @@ export function SkusSection() {
 											style={{
 												...getCommonPinningStyles(header.column),
 												backgroundColor: header.column.getIsPinned()
-													? "hsl(var(--background))"
+													? "var(--background)"
 													: undefined,
 											}}
 											className="px-4"
@@ -738,7 +738,7 @@ export function SkusSection() {
 												style={{
 													...getCommonPinningStyles(cell.column),
 													backgroundColor: cell.column.getIsPinned()
-														? "hsl(var(--background))"
+														? "var(--background)"
 														: undefined,
 												}}
 												className="px-4"
