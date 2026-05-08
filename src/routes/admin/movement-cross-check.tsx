@@ -1348,6 +1348,11 @@ function DiffRowCard({
 					{formatDdMmYyyy(rec.date) || (
 						<span className="text-muted-foreground">—</span>
 					)}
+					{rec.date && (
+						<span className="block text-[10px] text-muted-foreground/60 font-mono mt-0.5">
+							{rec.date.toISOString()} (ts:{rec.date.getTime()})
+						</span>
+					)}
 				</dd>
 				<dt className="text-muted-foreground">Ctn</dt>
 				<dd
