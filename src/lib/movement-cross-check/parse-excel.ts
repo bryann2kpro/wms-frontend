@@ -181,6 +181,23 @@ interface SheetLayout {
 	skuCols: Array<{ index: number; code: string }>;
 }
 
+function parseDateFromCell(
+	sheet: XLSX.WorkSheet,
+	rowIndex: number,
+	colIndex: number,
+	fallbackRaw: unknown,
+): Date | null {
+	const addr = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+	const cell = sheet[addr];
+	// Prefer formatted cell text when present (e.g. "4/30/26"), because some
+	// workbooks produce shifted Date objects in raw/cellDates mode.
+	if (cell?.w && typeof cell.w === "string") {
+		const parsedFromText = cellToDate(cell.w);
+		if (parsedFromText) return parsedFromText;
+	}
+	return cellToDate(fallbackRaw);
+}
+
 /** Try to recognise the per-sheet header layout. Returns null if unrecognised. */
 function detectLayout(rows: unknown[][]): SheetLayout | null {
 	for (let r = 0; r < Math.min(rows.length, 10); r++) {
@@ -323,7 +340,12 @@ export async function parseMovementExcel(
 				row[layout.outletCol] === null || row[layout.outletCol] === undefined
 					? ""
 					: String(row[layout.outletCol]).trim();
-			const date = cellToDate(row[layout.dateCol]);
+			const date = parseDateFromCell(
+				sheet,
+				r,
+				layout.dateCol,
+				row[layout.dateCol],
+			);
 
 			const items: ParsedItems = {};
 			let summedCtn = 0;
