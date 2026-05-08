@@ -74,16 +74,34 @@ function looksLikeSkuHeader(val: unknown): val is string {
 	const t = val.trim();
 	if (!t || isFormulaCell(t)) return false;
 	const lower = t.toLowerCase();
-	if (lower === "sum" || lower === "total" || lower === "ctn") return false;
+	if (
+		lower === "sum" ||
+		lower === "total" ||
+		lower === "ctn" ||
+		lower === "qty" ||
+		lower === "quantity" ||
+		lower === "q'ty"
+	)
+		return false;
 	if (lower === "po number" || lower === "outlet") return false;
 	if (lower.startsWith("expected")) return false;
 	// Typical codes: P0017, E0010, W0005, RAW-P0017
 	return /^(RAW-)?[A-Za-z]\w{2,}$/.test(t);
 }
 
+function utcMidnight(year: number, month: number, day: number): Date {
+	return new Date(Date.UTC(year, month, day));
+}
+
 function cellToDate(val: unknown): Date | null {
-	if (val instanceof Date && !Number.isNaN(val.getTime())) return val;
+	// xlsx with cellDates:true returns local-midnight Date objects.
+	// Normalise to UTC midnight using the *local* calendar date so that
+	// UTC-based display helpers (getUTCDate, etc.) show the right day.
+	if (val instanceof Date && !Number.isNaN(val.getTime())) {
+		return utcMidnight(val.getFullYear(), val.getMonth(), val.getDate());
+	}
 	if (typeof val === "number" && Number.isFinite(val)) {
+		// Excel serial → UTC midnight (25569 = days between 1900-01-01 and 1970-01-01).
 		const ms = (val - 25569) * 86400 * 1000;
 		const d = new Date(ms);
 		if (!Number.isNaN(d.getTime())) return d;
@@ -91,18 +109,39 @@ function cellToDate(val: unknown): Date | null {
 	if (typeof val === "string") {
 		const t = val.trim();
 		if (!t) return null;
-		// Handle DD/MM/YYYY explicitly (Date.parse() reads it as MM/DD on some browsers).
+
+		// MM/DD/YY(YY) — Excel's default US locale string, e.g. "4/30/26"
+		const mdy = t.match(/^(\d{1,2})[/](\d{1,2})[/](\d{2,4})$/);
+		if (mdy) {
+			const month = Number.parseInt(mdy[1], 10);
+			const day = Number.parseInt(mdy[2], 10);
+			let year = Number.parseInt(mdy[3], 10);
+			if (year < 100) year += 2000;
+			// Only valid as MM/DD if day ≤ 31 and month ≤ 12.
+			if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+				const d = utcMidnight(year, month - 1, day);
+				if (!Number.isNaN(d.getTime())) return d;
+			}
+		}
+
+		// DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
 		const dmy = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
 		if (dmy) {
 			const day = Number.parseInt(dmy[1], 10);
 			const month = Number.parseInt(dmy[2], 10);
 			let year = Number.parseInt(dmy[3], 10);
 			if (year < 100) year += 2000;
-			const d = new Date(Date.UTC(year, month - 1, day));
+			if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+				const d = utcMidnight(year, month - 1, day);
+				if (!Number.isNaN(d.getTime())) return d;
+			}
+		}
+
+		// ISO YYYY-MM-DD (already UTC-friendly via Date.parse)
+		if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+			const d = new Date(t);
 			if (!Number.isNaN(d.getTime())) return d;
 		}
-		const d = new Date(t);
-		if (!Number.isNaN(d.getTime())) return d;
 	}
 	return null;
 }
@@ -140,6 +179,23 @@ interface SheetLayout {
 	ctnCol: number;
 	totalCol: number;
 	skuCols: Array<{ index: number; code: string }>;
+}
+
+function parseDateFromCell(
+	sheet: XLSX.WorkSheet,
+	rowIndex: number,
+	colIndex: number,
+	fallbackRaw: unknown,
+): Date | null {
+	const addr = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+	const cell = sheet[addr];
+	// Prefer formatted cell text when present (e.g. "4/30/26"), because some
+	// workbooks produce shifted Date objects in raw/cellDates mode.
+	if (cell?.w && typeof cell.w === "string") {
+		const parsedFromText = cellToDate(cell.w);
+		if (parsedFromText) return parsedFromText;
+	}
+	return cellToDate(fallbackRaw);
 }
 
 /** Try to recognise the per-sheet header layout. Returns null if unrecognised. */
@@ -284,7 +340,12 @@ export async function parseMovementExcel(
 				row[layout.outletCol] === null || row[layout.outletCol] === undefined
 					? ""
 					: String(row[layout.outletCol]).trim();
-			const date = cellToDate(row[layout.dateCol]);
+			const date = parseDateFromCell(
+				sheet,
+				r,
+				layout.dateCol,
+				row[layout.dateCol],
+			);
 
 			const items: ParsedItems = {};
 			let summedCtn = 0;

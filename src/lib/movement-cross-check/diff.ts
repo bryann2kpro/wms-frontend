@@ -57,10 +57,6 @@ export interface DiffResult {
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 
-function normalizeOutlet(s: string): string {
-	return s.trim().toLowerCase();
-}
-
 function dateKey(d: Date | null): string {
 	if (!d) return "";
 	const yyyy = d.getUTCFullYear();
@@ -71,6 +67,10 @@ function dateKey(d: Date | null): string {
 
 function isCtnDifferent(a: number, b: number): boolean {
 	return Math.abs(a - b) > 0.0001;
+}
+
+function sumItems(items: ParsedItems): number {
+	return Object.values(items).reduce((sum, qty) => sum + qty, 0);
 }
 
 /* ─────────────────────────── Public API ─────────────────────────── */
@@ -125,10 +125,16 @@ export function diffMovement(
 		}
 		if (!excel || !db) continue;
 
+		const excelSkuSum = sumItems(excel.items);
+		const excelQtyMatchesItsSkuSum = !isCtnDifferent(excel.ctn, excelSkuSum);
+		const ctnDiffAgainstDb = isCtnDifferent(excel.ctn, db.ctn);
+
 		const flags: DiffFlags = {
 			outletDiff: false,
 			dateDiff: dateKey(excel.date) !== dateKey(db.date),
-			ctnDiff: isCtnDifferent(excel.ctn, db.ctn),
+			// If Excel total qty/ctn already equals the sum of its SKU quantities,
+			// do not fail on ctn mismatch; SKU-level diff remains the source of truth.
+			ctnDiff: ctnDiffAgainstDb && !excelQtyMatchesItsSkuSum,
 			skuDiffs: [],
 		};
 
