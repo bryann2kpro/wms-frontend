@@ -12,8 +12,6 @@ ENV VITE_GRAPHQL_ENDPOINT=$VITE_GRAPHQL_ENDPOINT
 
 COPY package.json pnpm-lock.yaml* ./
 
-RUN pnpm approve-builds
-
 RUN pnpm install --frozen-lockfile
 
 COPY src src
