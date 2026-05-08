@@ -12,7 +12,8 @@ ENV VITE_GRAPHQL_ENDPOINT=$VITE_GRAPHQL_ENDPOINT
 
 COPY package.json pnpm-lock.yaml* ./
 
-RUN pnpm install --frozen-lockfile --unsafe-perm
+RUN pnpm config set --location project auto-install-peers true && \
+    pnpm install --frozen-lockfile --unsafe-perm
 
 COPY src src
 COPY vite.config.ts .
