@@ -55,8 +55,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+	const locale = getLocale();
 	return (
-		<html lang={getLocale()}>
+		<html lang={locale} suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>

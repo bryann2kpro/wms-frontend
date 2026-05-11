@@ -28,7 +28,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye, Activity } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
 	INVENTORY_BALANCES_QUERY,
@@ -430,21 +430,38 @@ function InventoryComponent() {
 													className="text-right"
 													onClick={(e) => e.stopPropagation()}
 												>
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="h-7 w-7 opacity-60 hover:opacity-100"
-														aria-label={`View details for ${item.skuCode}`}
-														onClick={() =>
-															navigate({
-																to: "/admin/inventory-detail",
-																search: { skuId: item.skuId },
-															})
-														}
-													>
-														<Eye className="h-3.5 w-3.5" />
-													</Button>
+													<div className="flex items-center justify-end gap-1">
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="h-7 w-7 opacity-60 hover:opacity-100"
+															aria-label={`View movements for ${item.skuCode}`}
+															onClick={() =>
+																navigate({
+																	to: "/admin/sku-movement",
+																	search: { skuId: item.skuId },
+																})
+															}
+														>
+															<Activity className="h-3.5 w-3.5" />
+														</Button>
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="h-7 w-7 opacity-60 hover:opacity-100"
+															aria-label={`View details for ${item.skuCode}`}
+															onClick={() =>
+																navigate({
+																	to: "/admin/inventory-detail",
+																	search: { skuId: item.skuId },
+																})
+															}
+														>
+															<Eye className="h-3.5 w-3.5" />
+														</Button>
+													</div>
 												</TableCell>
 											</TableRow>
 										);
