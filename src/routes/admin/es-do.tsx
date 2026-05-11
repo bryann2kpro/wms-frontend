@@ -240,6 +240,7 @@ function EmpireSushiDOComponent() {
 
 	const pickingListFilter = {
 		regionId: regionId || null,
+		search: trimmedSearchTerm || null,
 		scheduledDeliveryDateFrom: dateFrom || null,
 		scheduledDeliveryDateTo: dateTo || null,
 	};
