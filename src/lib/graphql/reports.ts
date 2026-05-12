@@ -88,3 +88,50 @@ export type InvoiceSummaryReportDataQueryVariables = {
 	regionId: string;
 	deliveryDateSortOrder?: DeliveryDateSortOrder;
 };
+
+export type InventoryBalanceReportType = "WITHOUT_RACK" | "WITH_RACK";
+
+export const INVENTORY_BALANCE_REPORT_DATA_QUERY = gql`
+	query InventoryBalanceReportData($type: InventoryBalanceReportType!) {
+		inventoryBalanceReportData(type: $type) {
+			skuCode
+			skuDescription
+			unitCode
+			onHandQty
+			rackLocations
+		}
+	}
+`;
+
+export const GENERATE_STOCK_BALANCE_REPORT_MUTATION = gql`
+	mutation GenerateStockBalanceReport($type: InventoryBalanceReportType!) {
+		generateStockBalanceReport(type: $type) {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
+export type InventoryBalanceReportRow = {
+	skuCode: string;
+	skuDescription: string;
+	unitCode: string;
+	onHandQty: number;
+	rackLocations: string[];
+};
+
+export type InventoryBalanceReportDataQueryData = {
+	inventoryBalanceReportData: InventoryBalanceReportRow[];
+};
+
+export type InventoryBalanceReportDataQueryVariables = {
+	type: InventoryBalanceReportType;
+};
+
+export type GenerateStockBalanceReportMutationData = {
+	generateStockBalanceReport: GenerateReportPayload;
+};
+
+export type GenerateStockBalanceReportMutationVariables = {
+	type: InventoryBalanceReportType;
+};

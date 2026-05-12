@@ -36,6 +36,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	ImageOff,
+	Package,
 } from "lucide-react";
 import { useMutation } from "@apollo/client/react";
 import * as XLSX from "xlsx";
@@ -46,6 +47,13 @@ import {
 	INVOICE_SUMMARY_REPORT_DATA_QUERY,
 	type InvoiceSummaryReportDataQueryData,
 	type InvoiceSummaryReportDataQueryVariables,
+	INVENTORY_BALANCE_REPORT_DATA_QUERY,
+	type InventoryBalanceReportDataQueryData,
+	type InventoryBalanceReportDataQueryVariables,
+	type InventoryBalanceReportType,
+	GENERATE_STOCK_BALANCE_REPORT_MUTATION,
+	type GenerateStockBalanceReportMutationData,
+	type GenerateStockBalanceReportMutationVariables,
 } from "@/lib/graphql/reports";
 import { downloadPdfFromBase64 } from "@/lib/reports";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -71,7 +79,7 @@ export const Route = createFileRoute("/admin/reports")({
 	}),
 });
 
-type ReportType = "Movement" | "InvoiceSummary";
+type ReportType = "Movement" | "InvoiceSummary" | "StockBalance";
 type ExportFormat = "PDF" | "Excel";
 
 type ReportFormValues = {
@@ -80,6 +88,7 @@ type ReportFormValues = {
 	dateFrom: string;
 	dateTo: string;
 	format: ExportFormat;
+	stockBalanceType: InventoryBalanceReportType;
 };
 
 const reportTypes: {
@@ -103,7 +112,14 @@ const reportTypes: {
 		icon: Receipt,
 		index: "02",
 	},
-];
+	{
+		value: "StockBalance",
+		label: "Stock Balance",
+		shortLabel: "Stock Balance",
+		icon: Package,
+		index: "03",
+	},
+] satisfies { value: ReportType; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }>; index: string }[];
 
 /** Base path for Reports help screenshots. Add step-1.png, step-2.png, etc. under public/help/reports/ */
 const HELP_IMAGES_BASE = "/help/reports";
@@ -206,6 +222,11 @@ function ReportsComponent() {
 		GenerateReportMutationVariables
 	>(GENERATE_REPORT_MUTATION);
 
+	const [generateStockBalanceMutation, { loading: generatingStockBalance }] = useMutation<
+		GenerateStockBalanceReportMutationData,
+		GenerateStockBalanceReportMutationVariables
+	>(GENERATE_STOCK_BALANCE_REPORT_MUTATION);
+
 	const regions = data?.regions?.query ?? [];
 
 	const form = useForm({
@@ -215,10 +236,66 @@ function ReportsComponent() {
 			dateFrom: "",
 			dateTo: "",
 			format: "PDF" as ExportFormat,
+			stockBalanceType: "WITHOUT_RACK" as InventoryBalanceReportType,
 		} satisfies ReportFormValues,
 		onSubmit: async ({ value }) => {
-			const { selectedReport, regionId, dateFrom, dateTo, format } = value;
+			const { selectedReport, regionId, dateFrom, dateTo, format, stockBalanceType } = value;
 			if (!selectedReport) return;
+
+			// Stock Balance — PDF
+			if (selectedReport === "StockBalance" && format === "PDF") {
+				try {
+					const result = await generateStockBalanceMutation({ variables: { type: stockBalanceType } });
+					if (result.errors?.length) {
+						toast.error(result.errors[0].message ?? "Failed to generate report.");
+						return;
+					}
+					const payload = result.data?.generateStockBalanceReport;
+					if (!payload?.pdfBase64 || !payload?.filename) {
+						toast.error("Report generated but no file was returned. Please try again.");
+						return;
+					}
+					downloadPdfFromBase64(payload.pdfBase64, payload.filename);
+					toast.success("Report downloaded.");
+				} catch (err) {
+					toast.error(err instanceof Error ? err.message : "Failed to generate report. Please try again.");
+				}
+				return;
+			}
+
+			// Stock Balance — Excel
+			if (selectedReport === "StockBalance" && format === "Excel") {
+				try {
+					const headers = new Headers();
+					headers.set("Authorization", `Bearer ${localStorage.getItem("access_token")}`);
+					const reportData = await request<
+						InventoryBalanceReportDataQueryData,
+						InventoryBalanceReportDataQueryVariables
+					>(env.VITE_GRAPHQL_ENDPOINT, INVENTORY_BALANCE_REPORT_DATA_QUERY, { type: stockBalanceType }, headers);
+					const rows = reportData.inventoryBalanceReportData ?? [];
+					if (rows.length === 0) {
+						toast.error("No stock balance data found.");
+						return;
+					}
+					const withRack = stockBalanceType === "WITH_RACK";
+					const header = withRack
+						? ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty", "Rack Location(s)"]
+						: ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty"];
+					const dataRows = rows.map((row, i) =>
+						withRack
+							? [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty, row.rackLocations.join(", ")]
+							: [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty],
+					);
+					const wb = XLSX.utils.book_new();
+					const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+					XLSX.utils.book_append_sheet(wb, ws, "Stock Balance");
+					XLSX.writeFile(wb, `Stock_Balance_Report_${new Date().toISOString().split("T")[0]}.xlsx`);
+					toast.success("Excel report downloaded.");
+				} catch (err) {
+					toast.error(err instanceof Error ? err.message : "Failed to generate report. Please try again.");
+				}
+				return;
+			}
 
 			// PDF: Movement Report or Invoices Summary — fetch from backend, then download PDF
 			if (
@@ -392,7 +469,7 @@ function ReportsComponent() {
 		},
 	});
 
-	const isGenerating = generatingReport || form.state.isSubmitting;
+	const isGenerating = generatingReport || generatingStockBalance || form.state.isSubmitting;
 
 	return (
 		<main
@@ -838,6 +915,39 @@ function ReportsComponent() {
 										)}
 									</form.Field>
 								</div>
+
+								{/* Stock Balance type selector — shown only when StockBalance is selected */}
+								<form.Subscribe selector={(state) => state.values.selectedReport}>
+									{(selectedReport) =>
+										selectedReport === "StockBalance" ? (
+											<form.Field name="stockBalanceType">
+												{(field) => (
+													<div className="space-y-1.5">
+														<FieldLabel className="text-xs font-medium">
+															Report Variant
+														</FieldLabel>
+														<Select
+															value={field.state.value}
+															onValueChange={(v) => {
+																field.handleChange(v as InventoryBalanceReportType);
+																field.handleBlur();
+															}}
+															disabled={isGenerating}
+														>
+															<SelectTrigger className="h-9 text-sm w-56" aria-label="Stock balance report variant">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="WITHOUT_RACK">Without Rack (for principals)</SelectItem>
+																<SelectItem value="WITH_RACK">With Rack (internal)</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
+												)}
+											</form.Field>
+										) : null
+									}
+								</form.Subscribe>
 
 								{/* Divider */}
 								<div className="border-t border-border/60" />
