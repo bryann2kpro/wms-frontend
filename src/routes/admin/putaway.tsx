@@ -1,4 +1,4 @@
-import { useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Move } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -35,7 +35,10 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
+	PUTAWAY_TRANSFER_STOCK_MUTATION,
 	STOCK_QUANTS_QUERY,
+	type PutawayTransferStockMutationData,
+	type PutawayTransferStockMutationVariables,
 	type StockQuant,
 	type StockQuantsQueryData,
 	type StockQuantsQueryVariables,
@@ -97,18 +100,24 @@ function PutawayComponent() {
 		},
 	);
 
-	const { data: quantsData, loading: quantsLoading } = useQuery<
-		StockQuantsQueryData,
-		StockQuantsQueryVariables
-	>(STOCK_QUANTS_QUERY, {
-		skip: !sourceRackId,
-		variables: {
-			filter: { rackId: sourceRackId },
-			pageSize: STOCK_QUANTS_PAGE_SIZE,
-			pageNumber: 1,
+	const { data: quantsData, loading: quantsLoading, refetch: refetchQuants } =
+		useQuery<StockQuantsQueryData, StockQuantsQueryVariables>(
+		STOCK_QUANTS_QUERY,
+		{
+			skip: !sourceRackId,
+			variables: {
+				filter: { rackId: sourceRackId },
+				pageSize: STOCK_QUANTS_PAGE_SIZE,
+				pageNumber: 1,
+			},
+			fetchPolicy: "cache-and-network",
 		},
-		fetchPolicy: "cache-and-network",
-	});
+	);
+
+	const [putawayTransferStock, { loading: transferLoading }] = useMutation<
+		PutawayTransferStockMutationData,
+		PutawayTransferStockMutationVariables
+	>(PUTAWAY_TRANSFER_STOCK_MUTATION);
 
 	const racksSorted = useMemo(
 		() => sortRacksByLocation(racksData?.racks?.query ?? []),
@@ -206,13 +215,43 @@ function PutawayComponent() {
 		stockQuantsInRack,
 	]);
 
-	const handleTransfer = useCallback((line: PutawayLine) => {
-		// Placeholder until a dedicated putaway / stock-move mutation exists.
-		toast.success("Transfer queued", {
-			description: `${line.quantity} × ${line.skuCode}: ${line.sourceRackLabel} → ${line.destinationRackLabel}`,
-		});
-		setLines((prev) => prev.filter((l) => l.id !== line.id));
-	}, []);
+	const handleTransfer = useCallback(
+		async (line: PutawayLine) => {
+			try {
+				const { data } = await putawayTransferStock({
+					variables: {
+						input: {
+							sourceStockQuantId: line.sourceStockQuantId,
+							destinationRackId: line.destinationRackId,
+							quantity: line.quantity,
+						},
+					},
+				});
+				const res = data?.putawayTransferStock;
+				if (res?.success) {
+					toast.success(res.message);
+					setLines((prev) => prev.filter((l) => l.id !== line.id));
+					await refetchQuants();
+				} else {
+					toast.error(res?.message ?? "Transfer was not completed.");
+				}
+			} catch (err: unknown) {
+				const gqlMsg =
+					err &&
+					typeof err === "object" &&
+					"graphQLErrors" in err &&
+					Array.isArray((err as { graphQLErrors?: { message?: string }[] }).graphQLErrors)
+						? (err as { graphQLErrors: { message?: string }[] }).graphQLErrors[0]
+								?.message
+						: undefined;
+				toast.error(
+					gqlMsg ??
+						(err instanceof Error ? err.message : "Transfer failed. Please try again."),
+				);
+			}
+		},
+		[putawayTransferStock, refetchQuants],
+	);
 
 	const handleDeleteLine = useCallback((lineId: string) => {
 		setLines((prev) => prev.filter((l) => l.id !== lineId));
@@ -223,7 +262,9 @@ function PutawayComponent() {
 			className="container mx-auto space-y-6 p-6"
 			aria-labelledby="putaway-page-title"
 			aria-describedby="putaway-page-description"
-			aria-busy={racksLoading || (!!sourceRackId && quantsLoading)}
+			aria-busy={
+				racksLoading || (!!sourceRackId && quantsLoading) || transferLoading
+			}
 		>
 			<AdminPageHeader
 				icon={Move}
@@ -413,7 +454,8 @@ function PutawayComponent() {
 														type="button"
 														size="sm"
 														variant="default"
-														onClick={() => handleTransfer(line)}
+														disabled={transferLoading}
+														onClick={() => void handleTransfer(line)}
 													>
 														Transfer
 													</Button>
