@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -233,8 +235,13 @@ function EmpireSushiDOComponent() {
 	/** DOs that have been auto-advanced to PACKING. */
 	const advancedDOs = useRef<Set<string>>(new Set());
 
-	const { data: regionsData } = useQuery<RegionsQueryData>(REGIONS_QUERY, {
-		variables: { pageSize: 100, pageNumber: 1 },
+	const { data: regionsData } = useQuery({
+		queryKey: [...qk.regions.all, "list", { pageSize: 100, pageNumber: 1 }] as const,
+		queryFn: () =>
+			gqlRequest<RegionsQueryData>(REGIONS_QUERY, {
+				pageSize: 100,
+				pageNumber: 1,
+			}),
 	});
 	const regions = regionsData?.regions?.query ?? [];
 
@@ -244,44 +251,55 @@ function EmpireSushiDOComponent() {
 		scheduledDeliveryDateTo: dateTo || null,
 	};
 
+	const doItemsVariables: DeliveryOrderItemsQueryVariables = {
+		pageSize: 200,
+		pageNumber: 1,
+		filter: {
+			doStatuses: Array.from(ACTIVE_DO_STATUSES),
+			search: trimmedSearchTerm || undefined,
+			regionId: regionId || undefined,
+			scheduledDeliveryDateFrom: dateFrom || undefined,
+			scheduledDeliveryDateTo: dateTo || undefined,
+		},
+	};
+
 	const {
 		data,
-		loading: queryLoading,
+		isLoading: queryLoading,
 		error: queryError,
 		refetch,
-	} = useQuery<DeliveryOrderItemsQueryData, DeliveryOrderItemsQueryVariables>(
-		DELIVERY_ORDER_ITEMS_QUERY,
-		{
-			variables: {
-				pageSize: 200,
-				pageNumber: 1,
-				filter: {
-					doStatuses: Array.from(ACTIVE_DO_STATUSES),
-					search: trimmedSearchTerm || undefined,
-					regionId: regionId || undefined,
-					scheduledDeliveryDateFrom: dateFrom || undefined,
-					scheduledDeliveryDateTo: dateTo || undefined,
-				},
-			},
-			fetchPolicy: "cache-and-network",
-			notifyOnNetworkStatusChange: true,
-		},
-	);
+	} = useQuery({
+		queryKey: [...qk.dos.all, "items", doItemsVariables] as const,
+		queryFn: () =>
+			gqlRequest<DeliveryOrderItemsQueryData, DeliveryOrderItemsQueryVariables>(
+				DELIVERY_ORDER_ITEMS_QUERY,
+				doItemsVariables,
+			),
+	});
 
-	const [markPicked] = useMutation<
-		MarkDeliveryOrderItemPickedMutationData,
-		MarkDeliveryOrderItemPickedMutationVariables
-	>(MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION);
+	const { mutateAsync: markPicked } = useMutation({
+		mutationFn: (vars: MarkDeliveryOrderItemPickedMutationVariables) =>
+			gqlRequest<
+				MarkDeliveryOrderItemPickedMutationData,
+				MarkDeliveryOrderItemPickedMutationVariables
+			>(MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION, vars),
+	});
 
-	const [advanceStatus] = useMutation<
-		AdvanceDeliveryOrderStatusMutationData,
-		AdvanceDeliveryOrderStatusMutationVariables
-	>(ADVANCE_DELIVERY_ORDER_STATUS_MUTATION);
+	const { mutateAsync: advanceStatus } = useMutation({
+		mutationFn: (vars: AdvanceDeliveryOrderStatusMutationVariables) =>
+			gqlRequest<
+				AdvanceDeliveryOrderStatusMutationData,
+				AdvanceDeliveryOrderStatusMutationVariables
+			>(ADVANCE_DELIVERY_ORDER_STATUS_MUTATION, vars),
+	});
 
-	const [allocatePickListMutation] = useMutation<
-		AllocatePickListMutationData,
-		AllocatePickListMutationVariables
-	>(ALLOCATE_PICK_LIST_MUTATION);
+	const { mutateAsync: allocatePickListMutation } = useMutation({
+		mutationFn: (vars: AllocatePickListMutationVariables) =>
+			gqlRequest<
+				AllocatePickListMutationData,
+				AllocatePickListMutationVariables
+			>(ALLOCATE_PICK_LIST_MUTATION, vars),
+	});
 
 	const allItems = useMemo(() => data?.deliveryOrderItems?.query ?? [], [data]);
 
@@ -389,15 +407,18 @@ function EmpireSushiDOComponent() {
 		return rows;
 	}, [skuGroups]);
 
-	const [generatePickingList, { loading: generatingPickingList }] = useMutation<
-		GenerateDoPickingListMutationData,
-		GenerateDoPickingListMutationVariables
-	>(GENERATE_DO_PICKING_LIST_MUTATION, {
-		onCompleted(data) {
-			const { pdfBase64, filename } = data.generateDoPickingList;
-			downloadPdfFromBase64(pdfBase64, filename);
-		},
-	});
+	const { mutate: generatePickingList, isPending: generatingPickingList } =
+		useMutation({
+			mutationFn: (vars: GenerateDoPickingListMutationVariables) =>
+				gqlRequest<
+					GenerateDoPickingListMutationData,
+					GenerateDoPickingListMutationVariables
+				>(GENERATE_DO_PICKING_LIST_MUTATION, vars),
+			onSuccess(data) {
+				const { pdfBase64, filename } = data.generateDoPickingList;
+				downloadPdfFromBase64(pdfBase64, filename);
+			},
+		});
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -441,15 +462,13 @@ function EmpireSushiDOComponent() {
 					if (allDOItemsPicked) {
 						// Single-item DO: must await so DO is in PICKING before we advance to PACKING
 						try {
-							await allocatePickListMutation({
-								variables: { deliveryOrderId: doId },
-							});
+							await allocatePickListMutation({ deliveryOrderId: doId });
 						} catch {
 							/* non-fatal — allocation guidance only */
 						}
 					} else {
 						// Multi-item DO: fire-and-forget is safe, last pick is not this one
-						allocatePickListMutation({ variables: { deliveryOrderId: doId } })
+						allocatePickListMutation({ deliveryOrderId: doId })
 							.then(() => refetch())
 							.catch(() => {
 								/* non-fatal — allocation guidance only */
@@ -458,12 +477,12 @@ function EmpireSushiDOComponent() {
 				}
 
 				// Mark this item as picked (qty = qty required)
-				await markPicked({ variables: { id: itemId, qtyPicked: qtyRequired } });
+				await markPicked({ id: itemId, qtyPicked: qtyRequired });
 
 				// Auto-advance DO to PACKING when all items are picked
 				if (allDOItemsPicked && !advancedDOs.current.has(doId)) {
 					advancedDOs.current.add(doId);
-					await advanceStatus({ variables: { id: doId } });
+					await advanceStatus({ id: doId });
 					await refetch();
 				}
 			} catch {
@@ -507,9 +526,7 @@ function EmpireSushiDOComponent() {
 				if (!allocatedDOs.current.has(doId)) {
 					allocatedDOs.current.add(doId);
 					try {
-						await allocatePickListMutation({
-							variables: { deliveryOrderId: doId },
-						});
+						await allocatePickListMutation({ deliveryOrderId: doId });
 					} catch {
 						/* non-fatal — allocation guidance only */
 					}
@@ -519,9 +536,7 @@ function EmpireSushiDOComponent() {
 				if (unpickedItems.length > 0) {
 					await Promise.all(
 						unpickedItems.map((item) =>
-							markPicked({
-								variables: { id: item.id, qtyPicked: item.qtyRequired },
-							}),
+							markPicked({ id: item.id, qtyPicked: item.qtyRequired }),
 						),
 					);
 				}
@@ -529,7 +544,7 @@ function EmpireSushiDOComponent() {
 				// 3. Advance DO to PACKING (PICKING → PACKING)
 				if (!advancedDOs.current.has(doId)) {
 					advancedDOs.current.add(doId);
-					await advanceStatus({ variables: { id: doId } });
+					await advanceStatus({ id: doId });
 				}
 
 				await refetch();
@@ -562,7 +577,7 @@ function EmpireSushiDOComponent() {
 			if (advancingDOs.has(doId)) return;
 			setAdvancingDOs((prev) => new Set(prev).add(doId));
 			try {
-				await advanceStatus({ variables: { id: doId } });
+				await advanceStatus({ id: doId });
 				await refetch();
 			} finally {
 				setAdvancingDOs((prev) => {
@@ -713,9 +728,7 @@ function EmpireSushiDOComponent() {
 							variant="outline"
 							size="sm"
 							onClick={() =>
-								generatePickingList({
-									variables: { filter: pickingListFilter },
-								})
+								generatePickingList({ filter: pickingListFilter })
 							}
 							disabled={generatingPickingList}
 							className="h-7 text-xs gap-1.5"
@@ -747,7 +760,7 @@ function EmpireSushiDOComponent() {
 						role="alert"
 					>
 						<AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-						<span>Failed to load items: {queryError.message}</span>
+						<span>Failed to load items: {(queryError as Error).message}</span>
 						<Button
 							variant="outline"
 							size="sm"

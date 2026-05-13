@@ -1,4 +1,3 @@
-import type { ApolloClientIntegration } from "@apollo/client-integration-tanstack-start";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -14,7 +13,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { AuthProvider } from "../lib/auth-context";
 import appCss from "../styles.css?url";
 
-interface MyRouterContext extends ApolloClientIntegration.RouterContext {
+interface MyRouterContext {
 	queryClient: QueryClient;
 	isAuthenticated: () => boolean;
 }

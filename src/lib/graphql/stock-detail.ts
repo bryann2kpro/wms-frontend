@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 
 export const SKU_STOCK_DETAILS_QUERY = gql`
 	query SkuStockDetails($skuId: ID!) {

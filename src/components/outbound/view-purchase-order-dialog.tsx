@@ -9,7 +9,9 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,12 +89,14 @@ export function ViewPurchaseOrderDialog({
 	const [editNewItems, setEditNewItems] = useState<NewItemRow[]>([]);
 	const [editRemovedItemIds, setEditRemovedItemIds] = useState<Set<string>>(new Set());
 
-	const { data: outletsData, refetch: refetchOutlets } = useQuery<
-		OutletsQueryData,
-		OutletsQueryVariables
-	>(OUTLETS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-		skip: !isEditMode,
+	const { data: outletsData, refetch: refetchOutlets } = useQuery({
+		queryKey: [...qk.outlets.all, { pageSize: 500, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<OutletsQueryData, OutletsQueryVariables>(OUTLETS_QUERY, {
+				pageSize: 500,
+				pageNumber: 1,
+			}),
+		enabled: isEditMode,
 	});
 
 	const outlets = outletsData?.outlets?.query ?? [];

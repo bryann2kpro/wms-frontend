@@ -1,0 +1,59 @@
+export const qk = {
+	grns: {
+		all: ["grns"] as const,
+		list: (f: object) => ["grns", "list", f] as const,
+	},
+	purchaseOrders: {
+		all: ["purchase-orders"] as const,
+		list: (f: object) => ["purchase-orders", "list", f] as const,
+		byWeek: ["purchase-orders", "by-week"] as const,
+	},
+	invoices: {
+		all: ["invoices"] as const,
+		list: (f: object) => ["invoices", "list", f] as const,
+	},
+	warehouses: { all: ["warehouses"] as const },
+	racks: { all: ["racks"] as const },
+	skus: { all: ["skus"] as const },
+	stockUnits: { all: ["stock-units"] as const },
+	suppliers: { all: ["suppliers"] as const },
+	outlets: { all: ["outlets"] as const },
+	regions: { all: ["regions"] as const },
+	deliveries: {
+		all: ["deliveries"] as const,
+		list: (f: object) => ["deliveries", "list", f] as const,
+	},
+	deliverySchedules: { all: ["delivery-schedules"] as const },
+	dos: {
+		all: ["dos"] as const,
+		detail: (id: string) => ["dos", id] as const,
+	},
+	exceptions: { all: ["exceptions"] as const },
+	stockAdjustments: {
+		all: ["stock-adjustments"] as const,
+		list: (f: object) => ["stock-adjustments", "list", f] as const,
+	},
+	inventory: {
+		all: ["inventory"] as const,
+		list: (f: object) => ["inventory", "list", f] as const,
+		detail: (skuId: string) => ["inventory", "detail", skuId] as const,
+	},
+	inventoryMovements: {
+		all: ["inventory-movements"] as const,
+		list: (f: object) => ["inventory-movements", "list", f] as const,
+	},
+	stockCount: { all: ["stock-count"] as const },
+	dashboard: { all: ["dashboard"] as const },
+	auditLogs: {
+		all: ["audit-logs"] as const,
+		list: (f: object) => ["audit-logs", "list", f] as const,
+	},
+	users: {
+		all: ["users"] as const,
+		list: (f: object) => ["users", "list", f] as const,
+	},
+	roles: { all: ["roles"] as const },
+	esApiLogs: { all: ["es-api-logs"] as const },
+	documents: { all: ["documents"] as const },
+	reports: { all: ["reports"] as const },
+} as const;

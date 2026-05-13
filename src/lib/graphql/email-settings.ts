@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 
 export const EMAIL_NOTIFICATION_SETTINGS_QUERY = gql`
 	query EmailNotificationSettings($settingKey: String!) {

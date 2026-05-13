@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -51,38 +53,57 @@ export function SupplierSection() {
 	const [editing, setEditing] = useState<Supplier | null>(null);
 	const [deleting, setDeleting] = useState<Supplier | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		SuppliersQueryData,
-		SuppliersQueryVariables
-	>(SUPPLIERS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(search.trim() ? { filter: { supplierName: search.trim() } } : {}),
-		},
+	const suppliersVars: SuppliersQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(search.trim() ? { filter: { supplierName: search.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.suppliers.all, suppliersVars],
+		queryFn: () =>
+			gqlRequest<SuppliersQueryData, SuppliersQueryVariables>(
+				SUPPLIERS_QUERY,
+				suppliersVars,
+			),
 	});
 
-	const [createSupplier, { loading: createLoading }] =
-		useMutation<CreateSupplierMutationData>(CREATE_SUPPLIER_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateSupplier, { loading: updateLoading }] =
-		useMutation<UpdateSupplierMutationData>(UPDATE_SUPPLIER_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteSupplier, { loading: deleteLoading }] =
-		useMutation<DeleteSupplierMutationData>(DELETE_SUPPLIER_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { mutate: createSupplier, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateSupplierMutationData>(CREATE_SUPPLIER_MUTATION, {
+				input,
+			}),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateSupplier, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateSupplierMutationData>(
+				UPDATE_SUPPLIER_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteSupplier, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteSupplierMutationData>(
+				DELETE_SUPPLIER_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const list = data?.suppliers?.query ?? [];
 	const pagination = data?.suppliers?.pagination;
@@ -255,14 +276,10 @@ export function SupplierSection() {
 				onOpenChange={setIsCreateOpen}
 				onSubmit={(values) =>
 					createSupplier({
-						variables: {
-							input: {
-								supplierName: values.supplierName,
-								supplierCode: values.supplierCode,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						supplierName: values.supplierName,
+						supplierCode: values.supplierCode,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -281,13 +298,11 @@ export function SupplierSection() {
 					}}
 					onSubmit={(values) =>
 						updateSupplier({
-							variables: {
-								id: editing.supplierId,
-								input: {
-									supplierName: values.supplierName,
-									supplierCode: values.supplierCode,
-									updatedBy: createdBy,
-								},
+							id: editing.supplierId,
+							input: {
+								supplierName: values.supplierName,
+								supplierCode: values.supplierCode,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -302,9 +317,7 @@ export function SupplierSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.supplierName}
-					onConfirm={() =>
-						deleteSupplier({ variables: { id: deleting.supplierId } })
-					}
+					onConfirm={() => deleteSupplier({ id: deleting.supplierId })}
 					loading={deleteLoading}
 				/>
 			)}

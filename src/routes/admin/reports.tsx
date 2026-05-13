@@ -38,7 +38,8 @@ import {
 	ImageOff,
 	Package,
 } from "lucide-react";
-import { useMutation } from "@apollo/client/react";
+import { useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
 import * as XLSX from "xlsx";
 import {
 	GENERATE_REPORT_MUTATION,
@@ -217,15 +218,27 @@ function ReportsComponent() {
 			return data;
 		},
 	});
-	const [generateReportMutation, { loading: generatingReport }] = useMutation<
-		GenerateReportMutationData,
-		GenerateReportMutationVariables
-	>(GENERATE_REPORT_MUTATION);
+	const {
+		mutateAsync: generateReportMutation,
+		isPending: generatingReport,
+	} = useMutation({
+		mutationFn: (vars: GenerateReportMutationVariables) =>
+			gqlRequest<GenerateReportMutationData, GenerateReportMutationVariables>(
+				GENERATE_REPORT_MUTATION,
+				vars,
+			),
+	});
 
-	const [generateStockBalanceMutation, { loading: generatingStockBalance }] = useMutation<
-		GenerateStockBalanceReportMutationData,
-		GenerateStockBalanceReportMutationVariables
-	>(GENERATE_STOCK_BALANCE_REPORT_MUTATION);
+	const {
+		mutateAsync: generateStockBalanceMutation,
+		isPending: generatingStockBalance,
+	} = useMutation({
+		mutationFn: (vars: GenerateStockBalanceReportMutationVariables) =>
+			gqlRequest<
+				GenerateStockBalanceReportMutationData,
+				GenerateStockBalanceReportMutationVariables
+			>(GENERATE_STOCK_BALANCE_REPORT_MUTATION, vars),
+	});
 
 	const regions = data?.regions?.query ?? [];
 
@@ -245,12 +258,10 @@ function ReportsComponent() {
 			// Stock Balance — PDF
 			if (selectedReport === "StockBalance" && format === "PDF") {
 				try {
-					const result = await generateStockBalanceMutation({ variables: { type: stockBalanceType } });
-					if (result.errors?.length) {
-						toast.error(result.errors[0].message ?? "Failed to generate report.");
-						return;
-					}
-					const payload = result.data?.generateStockBalanceReport;
+					const result = await generateStockBalanceMutation({
+						type: stockBalanceType,
+					});
+					const payload = result?.generateStockBalanceReport;
 					if (!payload?.pdfBase64 || !payload?.filename) {
 						toast.error("Report generated but no file was returned. Please try again.");
 						return;
@@ -320,20 +331,8 @@ function ReportsComponent() {
 					saveToS3: true,
 				};
 				try {
-					const result = await generateReportMutation({ variables: { input } });
-					if (result.error) {
-						const err = result.error as {
-							graphQLErrors?: Array<{ message: string }>;
-							message: string;
-						};
-						const message =
-							err.graphQLErrors?.[0]?.message ??
-							err.message ??
-							"Failed to generate report.";
-						toast.error(message);
-						return;
-					}
-					const payload = result.data?.generateReport;
+					const result = await generateReportMutation({ input });
+					const payload = result?.generateReport;
 					if (!payload?.pdfBase64 || !payload?.filename) {
 						toast.error(
 							"Report generated but no file was returned. Please try again.",
@@ -343,10 +342,16 @@ function ReportsComponent() {
 					downloadPdfFromBase64(payload.pdfBase64, payload.filename);
 					toast.success("Report downloaded.");
 				} catch (err) {
+					const errObj = err as {
+						response?: { errors?: Array<{ message?: string }> };
+						graphQLErrors?: Array<{ message?: string }>;
+						message?: string;
+					};
 					const message =
-						err instanceof Error
-							? err.message
-							: "Failed to generate report. Please try again.";
+						errObj.response?.errors?.[0]?.message ??
+						errObj.graphQLErrors?.[0]?.message ??
+						errObj.message ??
+						"Failed to generate report. Please try again.";
 					toast.error(message);
 				}
 				return;

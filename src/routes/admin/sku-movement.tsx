@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { requirePermission } from "@/lib/rbac";
 import {
 	Card,
@@ -172,38 +174,56 @@ function SkuMovementComponent() {
 	const movementTypes: InventoryMovementType[] | undefined =
 		selectedType === "ALL" ? PHYSICAL_TYPES : [selectedType];
 
-	const { data: balanceData, loading: balanceLoading, refetch: refetchBalance } =
-		useQuery<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, {
-			variables: { filter: { skuId }, pageSize: 1, pageNumber: 1 },
-			fetchPolicy: "cache-and-network",
-			skip: !skuId,
-		});
+	const balanceVars = { filter: { skuId }, pageSize: 1, pageNumber: 1 };
+	const {
+		data: balanceData,
+		isLoading: balanceLoading,
+		refetch: refetchBalance,
+	} = useQuery({
+		queryKey: qk.inventory.list(balanceVars),
+		queryFn: () =>
+			gqlRequest<InventoryBalancesQueryData>(
+				INVENTORY_BALANCES_QUERY,
+				balanceVars,
+			),
+		enabled: !!skuId,
+	});
 
-	const { data: movementsData, loading: movementsLoading, refetch: refetchMovements } =
-		useQuery<InventoryMovementsQueryData, InventoryMovementsQueryVariables>(
-			INVENTORY_MOVEMENTS_QUERY,
-			{
-				variables: {
-					filter: {
-						skuId,
-						movementTypes,
-						referenceNo: debouncedRef.trim() || undefined,
-						dateFrom: dateFrom || undefined,
-						dateTo: dateTo || undefined,
-					},
-					pageSize: PAGE_SIZE,
-					pageNumber: page,
-					sortBy: "created_at",
-					sortOrder,
-				},
-				fetchPolicy: "cache-and-network",
-				skip: !skuId,
-			},
-		);
+	const movementsVars: InventoryMovementsQueryVariables = {
+		filter: {
+			skuId,
+			movementTypes,
+			referenceNo: debouncedRef.trim() || undefined,
+			dateFrom: dateFrom || undefined,
+			dateTo: dateTo || undefined,
+		},
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		sortBy: "created_at",
+		sortOrder,
+	};
+	const {
+		data: movementsData,
+		isLoading: movementsLoading,
+		refetch: refetchMovements,
+	} = useQuery({
+		queryKey: qk.inventoryMovements.list(movementsVars),
+		queryFn: () =>
+			gqlRequest<
+				InventoryMovementsQueryData,
+				InventoryMovementsQueryVariables
+			>(INVENTORY_MOVEMENTS_QUERY, movementsVars),
+		enabled: !!skuId,
+	});
 
-	const [reconcileSkuBalance, { loading: reconcileLoading }] =
-		useMutation<ReconcileSkuBalanceMutationData>(RECONCILE_SKU_BALANCE_MUTATION, {
-			onCompleted: (data) => {
+	const { mutate: reconcileSkuBalance, isPending: reconcileLoading } =
+		useMutation({
+			mutationFn: (vars: { skuId: string }) =>
+				gqlRequest<ReconcileSkuBalanceMutationData>(
+					RECONCILE_SKU_BALANCE_MUTATION,
+					vars,
+				),
+			onSuccess: (data) => {
 				const r = data.reconcileSkuBalance;
 				toast.success(
 					`Balance recalculated — ${r.movementsFixed} movements fixed. Final on-hand: ${Number(r.finalOnHandQty).toFixed(2)}`,
@@ -212,24 +232,32 @@ function SkuMovementComponent() {
 				refetchBalance();
 				refetchMovements();
 			},
-			onError: (err) => {
+			onError: (err: Error) => {
 				toast.error(err.message ?? "Recalculation failed");
 			},
 		});
 
 	const {
 		data: integrityData,
-		loading: integrityLoading,
+		isLoading: integrityLoading,
 		refetch: refetchIntegrity,
-	} = useQuery<SkuIntegrityCheckQueryData>(SKU_INTEGRITY_CHECK_QUERY, {
-		variables: { skuId },
-		fetchPolicy: "cache-and-network",
-		skip: !skuId || !integrityChecked,
+	} = useQuery({
+		queryKey: ["sku-integrity-check", skuId] as const,
+		queryFn: () =>
+			gqlRequest<SkuIntegrityCheckQueryData>(SKU_INTEGRITY_CHECK_QUERY, {
+				skuId,
+			}),
+		enabled: !!skuId && integrityChecked,
 	});
 
-	const [backfillSkuMovements, { loading: backfillLoading }] =
-		useMutation<BackfillSkuMovementsMutationData>(BACKFILL_SKU_MOVEMENTS_MUTATION, {
-			onCompleted: (data) => {
+	const { mutate: backfillSkuMovements, isPending: backfillLoading } =
+		useMutation({
+			mutationFn: (vars: { skuId: string }) =>
+				gqlRequest<BackfillSkuMovementsMutationData>(
+					BACKFILL_SKU_MOVEMENTS_MUTATION,
+					vars,
+				),
+			onSuccess: (data) => {
 				const r = data.backfillSkuMovements;
 				toast.success(
 					`${r.backfilledCount} movement${r.backfilledCount !== 1 ? "s" : ""} backfilled. Balance recalculated.`,
@@ -238,7 +266,7 @@ function SkuMovementComponent() {
 				refetchBalance();
 				refetchMovements();
 			},
-			onError: (err) => toast.error(err.message ?? "Backfill failed"),
+			onError: (err: Error) => toast.error(err.message ?? "Backfill failed"),
 		});
 
 	const integrity = integrityData?.skuIntegrityCheck;
@@ -316,7 +344,7 @@ function SkuMovementComponent() {
 							Cancel
 						</Button>
 						<Button
-							onClick={() => reconcileSkuBalance({ variables: { skuId } })}
+							onClick={() => reconcileSkuBalance({ skuId })}
 							disabled={reconcileLoading}
 						>
 							{reconcileLoading ? "Recalculating…" : "Confirm"}
@@ -461,7 +489,7 @@ function SkuMovementComponent() {
 										<Button
 											size="sm"
 											className="gap-1.5 text-xs"
-											onClick={() => backfillSkuMovements({ variables: { skuId } })}
+											onClick={() => backfillSkuMovements({ skuId })}
 											disabled={backfillLoading}
 										>
 											<RefreshCw className="h-3.5 w-3.5" />

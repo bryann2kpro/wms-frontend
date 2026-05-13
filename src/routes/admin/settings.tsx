@@ -51,7 +51,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WMSRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { useApolloClient } from "@apollo/client/react";
+import { gqlRequest } from "@/lib/api/gql";
 import {
 	ADVANCE_NOTICE_SETTING_KEY,
 	EMAIL_NOTIFICATION_SETTINGS_QUERY,
@@ -1060,7 +1060,6 @@ function UsersRolesCard() {
 }
 
 function EmailNotificationsSettingsCard() {
-	const apolloClient = useApolloClient();
 	const queryClient = useQueryClient();
 	const [toInput, setToInput] = useState("");
 	const [ccInput, setCcInput] = useState("");
@@ -1068,17 +1067,15 @@ function EmailNotificationsSettingsCard() {
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
 	const { data, isLoading } = useQuery({
-		queryKey: ["emailNotificationSettings", ADVANCE_NOTICE_SETTING_KEY],
+		queryKey: ["emailNotificationSettings", ADVANCE_NOTICE_SETTING_KEY] as const,
 		queryFn: async () => {
-			const result = await apolloClient.query<
+			const result = await gqlRequest<
 				EmailNotificationSettingsQueryData,
 				EmailNotificationSettingsQueryVariables
-			>({
-				query: EMAIL_NOTIFICATION_SETTINGS_QUERY,
-				variables: { settingKey: ADVANCE_NOTICE_SETTING_KEY },
-				fetchPolicy: "network-only",
+			>(EMAIL_NOTIFICATION_SETTINGS_QUERY, {
+				settingKey: ADVANCE_NOTICE_SETTING_KEY,
 			});
-			return result.data?.emailNotificationSettings;
+			return result?.emailNotificationSettings;
 		},
 	});
 
@@ -1094,15 +1091,12 @@ function EmailNotificationsSettingsCard() {
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
-			await apolloClient.mutate<
+			await gqlRequest<
 				UpdateEmailNotificationSettingsMutationData,
 				UpdateEmailNotificationSettingsMutationVariables
-			>({
-				mutation: UPDATE_EMAIL_NOTIFICATION_SETTINGS_MUTATION,
-				variables: {
-					settingKey: ADVANCE_NOTICE_SETTING_KEY,
-					input: { toEmails, ccEmails },
-				},
+			>(UPDATE_EMAIL_NOTIFICATION_SETTINGS_MUTATION, {
+				settingKey: ADVANCE_NOTICE_SETTING_KEY,
+				input: { toEmails, ccEmails },
 			});
 		},
 		onSuccess: () => {
@@ -1310,7 +1304,6 @@ function EmailNotificationsSettingsCard() {
 }
 
 function WhatsAppSettingsCard() {
-	const apolloClient = useApolloClient();
 	const queryClient = useQueryClient();
 	const [phoneInput, setPhoneInput] = useState("");
 	const [toPhones, setToPhones] = useState<string[]>([]);
@@ -1323,31 +1316,27 @@ function WhatsAppSettingsCard() {
 	);
 
 	const { data: statusData, isLoading: isStatusLoading } = useQuery({
-		queryKey: ["whatsAppStatus"],
+		queryKey: ["whatsAppStatus"] as const,
 		queryFn: async () => {
-			const result = await apolloClient.query<WhatsAppStatusQueryData>({
-				query: WHATSAPP_STATUS_QUERY,
-				fetchPolicy: "network-only",
-			});
-			if (!result.data) {
+			const result =
+				await gqlRequest<WhatsAppStatusQueryData>(WHATSAPP_STATUS_QUERY);
+			if (!result) {
 				throw new Error("Unable to fetch WhatsApp status.");
 			}
-			return result.data.whatsAppStatus;
+			return result.whatsAppStatus;
 		},
 	});
 
 	const { data, isLoading } = useQuery({
-		queryKey: ["whatsAppSettings", ADVANCE_NOTICE_SETTING_KEY],
+		queryKey: ["whatsAppSettings", ADVANCE_NOTICE_SETTING_KEY] as const,
 		queryFn: async () => {
-			const result = await apolloClient.query<
+			const result = await gqlRequest<
 				WhatsAppSettingsQueryData,
 				WhatsAppSettingsQueryVariables
-			>({
-				query: WHATSAPP_SETTINGS_QUERY,
-				variables: { settingKey: ADVANCE_NOTICE_SETTING_KEY },
-				fetchPolicy: "network-only",
+			>(WHATSAPP_SETTINGS_QUERY, {
+				settingKey: ADVANCE_NOTICE_SETTING_KEY,
 			});
-			return result.data?.whatsAppSettings;
+			return result?.whatsAppSettings;
 		},
 	});
 
@@ -1393,15 +1382,12 @@ function WhatsAppSettingsCard() {
 
 	const saveMutation = useMutation({
 		mutationFn: async () => {
-			await apolloClient.mutate<
+			await gqlRequest<
 				UpdateWhatsAppSettingsMutationData,
 				UpdateWhatsAppSettingsMutationVariables
-			>({
-				mutation: UPDATE_WHATSAPP_SETTINGS_MUTATION,
-				variables: {
-					settingKey: ADVANCE_NOTICE_SETTING_KEY,
-					toPhones,
-				},
+			>(UPDATE_WHATSAPP_SETTINGS_MUTATION, {
+				settingKey: ADVANCE_NOTICE_SETTING_KEY,
+				toPhones,
 			});
 		},
 		onSuccess: () => {
@@ -1419,9 +1405,9 @@ function WhatsAppSettingsCard() {
 
 	const resetSessionMutation = useMutation({
 		mutationFn: async () => {
-			await apolloClient.mutate<ResetWhatsAppSessionMutationData>({
-				mutation: RESET_WHATSAPP_SESSION_MUTATION,
-			});
+			await gqlRequest<ResetWhatsAppSessionMutationData>(
+				RESET_WHATSAPP_SESSION_MUTATION,
+			);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["whatsAppStatus"] });

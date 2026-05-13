@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +56,16 @@ function getErrorMessage(err: unknown): string {
 				return toUserFriendlyMessage(messages.join(" "), fallback);
 		}
 	}
-	// Apollo often puts the first GraphQL error message on the error itself
+	if (err && typeof err === "object" && "response" in err) {
+		const errors = (
+			err as { response?: { errors?: Array<{ message?: string }> } }
+		).response?.errors;
+		if (errors?.length) {
+			const messages = errors.map((e) => e?.message?.trim()).filter(Boolean);
+			if (messages.length)
+				return toUserFriendlyMessage(messages.join(" "), fallback);
+		}
+	}
 	if (err instanceof Error && err.message?.trim())
 		return toUserFriendlyMessage(err.message.trim(), fallback);
 	return fallback;
@@ -98,12 +109,14 @@ function CreateOutletDialog({
 	const [outletCode, setOutletCode] = useState("");
 	const [regionId, setRegionId] = useState<string>("");
 
-	const { data: regionsData } = useQuery<
-		RegionsQueryData,
-		RegionsQueryVariables
-	>(REGIONS_QUERY, {
-		variables: { pageSize: 200, pageNumber: 1 },
-		skip: !open,
+	const { data: regionsData } = useQuery({
+		queryKey: [...qk.regions.all, { pageSize: 200, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<RegionsQueryData, RegionsQueryVariables>(REGIONS_QUERY, {
+				pageSize: 200,
+				pageNumber: 1,
+			}),
+		enabled: open,
 	});
 	const regions = regionsData?.regions?.query ?? [];
 
@@ -223,19 +236,26 @@ export function OutletCombobox({
 	const { user } = useCurrentUser();
 	const createdBy = user?.id ?? "";
 
-	const [createOutlet, { loading: createLoading }] =
-		useMutation<CreateOutletMutationData>(CREATE_OUTLET_MUTATION, {
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: async (data) => {
-				const newId = data?.createOutlet?.outletId;
-				if (!newId) return;
-				await onOutletCreated?.();
-				onChange(newId);
-				setCreateOpen(false);
-				setOpen(false);
-				toast.success("Outlet created.");
-			},
-		});
+	const { mutate: createOutlet, isPending: createLoading } = useMutation({
+		mutationFn: (input: {
+			outletName: string;
+			outletCode: string;
+			regionId: string;
+			createdBy: string;
+			updatedBy: string;
+		}) =>
+			gqlRequest<CreateOutletMutationData>(CREATE_OUTLET_MUTATION, { input }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: async (data) => {
+			const newId = data?.createOutlet?.outletId;
+			if (!newId) return;
+			await onOutletCreated?.();
+			onChange(newId);
+			setCreateOpen(false);
+			setOpen(false);
+			toast.success("Outlet created.");
+		},
+	});
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
@@ -349,15 +369,11 @@ export function OutletCombobox({
 								onOpenChange={setCreateOpen}
 								onSubmit={(values) =>
 									createOutlet({
-										variables: {
-											input: {
-												outletName: values.outletName,
-												outletCode: values.outletCode,
-												regionId: values.regionId,
-												createdBy,
-												updatedBy: createdBy,
-											},
-										},
+										outletName: values.outletName,
+										outletCode: values.outletCode,
+										regionId: values.regionId,
+										createdBy,
+										updatedBy: createdBy,
 									})
 								}
 								loading={createLoading}
