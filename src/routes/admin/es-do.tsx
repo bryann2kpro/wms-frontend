@@ -9,12 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	Table,
 	TableBody,
@@ -31,6 +29,7 @@ import {
 	PackageOpen,
 	AlertCircle,
 	Printer,
+	ChevronDown,
 	Layers,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -66,6 +65,13 @@ const PAGE_DESCRIPTION =
 
 /** Only show DOs in these statuses on the work queue. */
 const ACTIVE_DO_STATUSES = new Set(["CREATED", "NEW", "PICKING", "PACKING"]);
+
+/**
+ * Max delivery-order lines fetched for this page. Keep in sync with
+ * `DO_PICKING_LIST_LINE_FETCH_CAP` in `smee-backend/.../report.service.ts`
+ * so on-screen totals match the picking list PDF for the same filters.
+ */
+const ES_DO_WORK_QUEUE_PAGE_SIZE = 100_000;
 
 export const Route = createFileRoute("/admin/es-do")({
 	beforeLoad: async ({ context }) => {
@@ -209,7 +215,7 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const trimmedSearchTerm = searchTerm.trim();
-	const [regionId, setRegionId] = useState<string>("");
+	const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
 	const [dateFrom, setDateFrom] = useState<string>(TODAY_ISO);
 	const [dateTo, setDateTo] = useState<string>(TODAY_ISO);
 	// Optimistic picked state — items checked in this session before API confirms
@@ -245,22 +251,59 @@ function EmpireSushiDOComponent() {
 	});
 	const regions = regionsData?.regions?.query ?? [];
 
-	const pickingListFilter = {
-		regionId: regionId || null,
-		scheduledDeliveryDateFrom: dateFrom || null,
-		scheduledDeliveryDateTo: dateTo || null,
-	};
+	const sortedRegionIdsForQuery = useMemo(
+		() => [...selectedRegionIds].sort(),
+		[selectedRegionIds],
+	);
+
+	const regionFilterTriggerLabel = useMemo(() => {
+		if (selectedRegionIds.length === 0) return "All regions";
+		const names = selectedRegionIds
+			.map((id) => regions.find((r) => r.regionId === id)?.regionName)
+			.filter((n): n is string => Boolean(n?.trim()));
+		if (names.length === 0) return "All regions";
+		if (names.length === 1) return names[0]!;
+		if (names.length === 2) return `${names[0]!}, ${names[1]!}`;
+		return `${names[0]!}, ${names[1]!} +${names.length - 2}`;
+	}, [selectedRegionIds, regions]);
+
+	const pickingListFilter = useMemo(
+		() => ({
+			...(sortedRegionIdsForQuery.length > 0
+				? { regionIds: sortedRegionIdsForQuery }
+				: {}),
+			search: trimmedSearchTerm || null,
+			scheduledDeliveryDateFrom: dateFrom || null,
+			scheduledDeliveryDateTo: dateTo || null,
+		}),
+		[
+			sortedRegionIdsForQuery,
+			trimmedSearchTerm,
+			dateFrom,
+			dateTo,
+		],
+	);
+
+	const toggleRegionFilter = useCallback((regionId: string) => {
+		setSelectedRegionIds((prev) =>
+			prev.includes(regionId)
+				? prev.filter((id) => id !== regionId)
+				: [...prev, regionId],
+		);
+	}, []);
 
 	const doItemsVariables: DeliveryOrderItemsQueryVariables = {
-		pageSize: 200,
-		pageNumber: 1,
-		filter: {
-			doStatuses: Array.from(ACTIVE_DO_STATUSES),
-			search: trimmedSearchTerm || undefined,
-			regionId: regionId || undefined,
-			scheduledDeliveryDateFrom: dateFrom || undefined,
-			scheduledDeliveryDateTo: dateTo || undefined,
-		},
+		pageSize: ES_DO_WORK_QUEUE_PAGE_SIZE,
+    pageNumber: 1,
+    filter: {
+      doStatuses: Array.from(ACTIVE_DO_STATUSES),
+      search: trimmedSearchTerm || undefined,
+      ...(sortedRegionIdsForQuery.length > 0
+        ? { regionIds: sortedRegionIdsForQuery }
+        : {}),
+      scheduledDeliveryDateFrom: dateFrom || undefined,
+      scheduledDeliveryDateTo: dateTo || undefined,
+    }
 	};
 
 	const {
@@ -642,25 +685,75 @@ function EmpireSushiDOComponent() {
 				<div className="flex flex-col gap-3 print:hidden">
 					{/* Filter row */}
 					<div className="flex flex-wrap items-center gap-2">
-						<Select
-							value={regionId || "all"}
-							onValueChange={(v) => setRegionId(v === "all" ? "" : v)}
-						>
-							<SelectTrigger
-								className="h-8 w-44 text-xs"
-								aria-label="Filter by region"
-							>
-								<SelectValue placeholder="All regions" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All regions</SelectItem>
-								{regions.map((r) => (
-									<SelectItem key={r.regionId} value={r.regionId}>
-										{r.regionName}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="h-8 min-w-[11rem] max-w-[min(100%,18rem)] justify-between gap-1 px-2 text-xs font-normal"
+									aria-label="Filter by region (multiple)"
+									aria-haspopup="dialog"
+								>
+									<span className="truncate text-left">
+										{regionFilterTriggerLabel}
+									</span>
+									<ChevronDown
+										className="h-3.5 w-3.5 shrink-0 opacity-60"
+										aria-hidden
+									/>
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-56 p-2" align="start">
+								<div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-2">
+									<span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+										Regions
+									</span>
+									{selectedRegionIds.length > 0 && (
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="h-6 px-2 text-[11px] text-muted-foreground"
+											onClick={() => setSelectedRegionIds([])}
+										>
+											Clear all
+										</Button>
+									)}
+								</div>
+								<div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
+									{regions.length === 0 ? (
+										<p className="px-2 py-2 text-xs text-muted-foreground">
+											No regions loaded.
+										</p>
+									) : (
+										regions.map((r) => {
+											const cid = `es-do-region-${r.regionId}`;
+											return (
+												<div
+													key={r.regionId}
+													className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/60"
+												>
+													<Checkbox
+														id={cid}
+														checked={selectedRegionIds.includes(r.regionId)}
+														onCheckedChange={() => {
+															toggleRegionFilter(r.regionId);
+														}}
+													/>
+													<label
+														htmlFor={cid}
+														className="min-w-0 flex-1 cursor-pointer truncate leading-tight"
+													>
+														{r.regionName}
+													</label>
+												</div>
+											);
+										})
+									)}
+								</div>
+							</PopoverContent>
+						</Popover>
 
 						<div className="flex items-center gap-1.5">
 							<label className="text-xs text-muted-foreground whitespace-nowrap">
@@ -683,13 +776,15 @@ function EmpireSushiDOComponent() {
 							/>
 						</div>
 
-						{(regionId || dateFrom !== TODAY_ISO || dateTo !== TODAY_ISO) && (
+						{(selectedRegionIds.length > 0 ||
+							dateFrom !== TODAY_ISO ||
+							dateTo !== TODAY_ISO) && (
 							<Button
 								variant="ghost"
 								size="sm"
 								className="h-8 text-xs text-muted-foreground"
 								onClick={() => {
-									setRegionId("");
+									setSelectedRegionIds([]);
 									setDateFrom(TODAY_ISO);
 									setDateTo(TODAY_ISO);
 								}}
