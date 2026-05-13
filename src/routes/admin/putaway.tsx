@@ -5,7 +5,6 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
-	formatRackLocationLabel,
 	RackLocationCombobox,
 	sortRacksByLocation,
 } from "@/components/grn/rack-location-combobox";
@@ -35,15 +34,27 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	PUTAWAY_TRANSFER_STOCK_MUTATION,
+	APPROVE_PUTAWAY_LINE_MUTATION,
+	type ApprovePutawayLineMutationData,
+	type ApprovePutawayLineMutationVariables,
+	CREATE_PUTAWAY_DRAFT_MUTATION,
+	type CreatePutawayDraftMutationData,
+	type CreatePutawayDraftMutationVariables,
+	PUTAWAY_LINES_QUERY,
+	type PutawayLineGql,
+	type PutawayLinesQueryData,
+	type PutawayLinesQueryVariables,
+	REJECT_PUTAWAY_LINE_MUTATION,
+	type RejectPutawayLineMutationData,
+	type RejectPutawayLineMutationVariables,
+} from "@/lib/graphql/putaway";
+import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
+import {
 	STOCK_QUANTS_QUERY,
-	type PutawayTransferStockMutationData,
-	type PutawayTransferStockMutationVariables,
 	type StockQuant,
 	type StockQuantsQueryData,
 	type StockQuantsQueryVariables,
 } from "@/lib/graphql/stock-quant";
-import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import { requirePermission } from "@/lib/rbac";
 
 const RACKS_PAGE_SIZE = 500;
@@ -67,19 +78,6 @@ export const Route = createFileRoute("/admin/putaway")({
 	}),
 });
 
-type PutawayLine = {
-	id: string;
-	sourceStockQuantId: string;
-	skuId: string;
-	skuCode: string;
-	description: string;
-	sourceRackId: string;
-	sourceRackLabel: string;
-	destinationRackId: string;
-	destinationRackLabel: string;
-	quantity: string;
-};
-
 function stockQuantOnHand(q: StockQuant): number {
 	const n = Number(q.quantity ?? "0");
 	return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
@@ -90,7 +88,6 @@ function PutawayComponent() {
 	const [sourceStockQuantId, setSourceStockQuantId] = useState("");
 	const [quantity, setQuantity] = useState("");
 	const [destinationRackId, setDestinationRackId] = useState("");
-	const [lines, setLines] = useState<PutawayLine[]>([]);
 
 	const { data: racksData, loading: racksLoading } = useQuery<RacksQueryData>(
 		RACKS_QUERY,
@@ -100,8 +97,11 @@ function PutawayComponent() {
 		},
 	);
 
-	const { data: quantsData, loading: quantsLoading, refetch: refetchQuants } =
-		useQuery<StockQuantsQueryData, StockQuantsQueryVariables>(
+	const {
+		data: quantsData,
+		loading: quantsLoading,
+		refetch: refetchQuants,
+	} = useQuery<StockQuantsQueryData, StockQuantsQueryVariables>(
 		STOCK_QUANTS_QUERY,
 		{
 			skip: !sourceRackId,
@@ -114,10 +114,37 @@ function PutawayComponent() {
 		},
 	);
 
-	const [putawayTransferStock, { loading: transferLoading }] = useMutation<
-		PutawayTransferStockMutationData,
-		PutawayTransferStockMutationVariables
-	>(PUTAWAY_TRANSFER_STOCK_MUTATION);
+	const {
+		data: draftsData,
+		loading: draftsLoading,
+		refetch: refetchDrafts,
+	} = useQuery<PutawayLinesQueryData, PutawayLinesQueryVariables>(
+		PUTAWAY_LINES_QUERY,
+		{
+			variables: {
+				filter: { status: "DRAFT" },
+				limit: 100,
+			},
+			fetchPolicy: "cache-and-network",
+		},
+	);
+
+	const draftLines: PutawayLineGql[] = draftsData?.putawayLines ?? [];
+
+	const [createPutawayDraft, { loading: createDraftLoading }] = useMutation<
+		CreatePutawayDraftMutationData,
+		CreatePutawayDraftMutationVariables
+	>(CREATE_PUTAWAY_DRAFT_MUTATION);
+
+	const [approvePutawayLine, { loading: approveLoading }] = useMutation<
+		ApprovePutawayLineMutationData,
+		ApprovePutawayLineMutationVariables
+	>(APPROVE_PUTAWAY_LINE_MUTATION);
+
+	const [rejectPutawayLineMutation, { loading: rejectLoading }] = useMutation<
+		RejectPutawayLineMutationData,
+		RejectPutawayLineMutationVariables
+	>(REJECT_PUTAWAY_LINE_MUTATION);
 
 	const racksSorted = useMemo(
 		() => sortRacksByLocation(racksData?.racks?.query ?? []),
@@ -143,7 +170,7 @@ function PutawayComponent() {
 		? stockQuantOnHand(selectedStockQuant)
 		: undefined;
 
-	const handleAddToList = useCallback(() => {
+	const handleAddToList = useCallback(async () => {
 		const qtyRaw = quantity.trim();
 
 		if (!sourceRackId || !destinationRackId || !sourceStockQuantId || !qtyRaw) {
@@ -169,10 +196,8 @@ function PutawayComponent() {
 			return;
 		}
 
-		const sourceRack = racksSorted.find((r) => r.rackId === sourceRackId);
-		const destRack = racksSorted.find((r) => r.rackId === destinationRackId);
 		const quant = stockQuantsInRack.find((q) => q.id === sourceStockQuantId);
-		if (!sourceRack || !destRack || !quant) {
+		if (!quant) {
 			toast.error("Data out of date", {
 				description: "Re-select source rack and SKU, then try again.",
 			});
@@ -187,75 +212,115 @@ function PutawayComponent() {
 			return;
 		}
 
-		const skuCode = quant.skuCode ?? quant.skuId;
-		const description = quant.description?.trim() || "—";
-
-		setLines((prev) => [
-			...prev,
-			{
-				id: crypto.randomUUID(),
-				sourceStockQuantId: quant.id,
-				skuId: quant.skuId,
-				skuCode,
-				description,
-				sourceRackId,
-				sourceRackLabel: formatRackLocationLabel(sourceRack),
-				destinationRackId,
-				destinationRackLabel: formatRackLocationLabel(destRack),
-				quantity: String(qtyNum),
-			},
-		]);
-		toast.success("Added to putaway list");
+		try {
+			await createPutawayDraft({
+				variables: {
+					input: {
+						sourceStockQuantId: quant.id,
+						destinationRackId,
+						quantity: String(qtyNum),
+					},
+				},
+			});
+			toast.success("Saved as draft in putaway.");
+			await refetchDrafts();
+			await refetchQuants();
+		} catch (err: unknown) {
+			const gqlMsg =
+				err &&
+				typeof err === "object" &&
+				"graphQLErrors" in err &&
+				Array.isArray(
+					(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
+				)
+					? (err as { graphQLErrors: { message?: string }[] }).graphQLErrors[0]
+							?.message
+					: undefined;
+			toast.error(
+				gqlMsg ??
+					(err instanceof Error
+						? err.message
+						: "Could not save putaway draft."),
+			);
+		}
 	}, [
+		createPutawayDraft,
 		destinationRackId,
 		quantity,
-		racksSorted,
+		refetchDrafts,
+		refetchQuants,
 		sourceRackId,
 		sourceStockQuantId,
 		stockQuantsInRack,
 	]);
 
 	const handleTransfer = useCallback(
-		async (line: PutawayLine) => {
+		async (line: PutawayLineGql) => {
 			try {
-				const { data } = await putawayTransferStock({
-					variables: {
-						input: {
-							sourceStockQuantId: line.sourceStockQuantId,
-							destinationRackId: line.destinationRackId,
-							quantity: line.quantity,
-						},
-					},
+				const { data } = await approvePutawayLine({
+					variables: { id: line.id },
 				});
-				const res = data?.putawayTransferStock;
+				const res = data?.approvePutawayLine;
 				if (res?.success) {
 					toast.success(res.message);
-					setLines((prev) => prev.filter((l) => l.id !== line.id));
+					await refetchDrafts();
 					await refetchQuants();
 				} else {
 					toast.error(res?.message ?? "Transfer was not completed.");
+					await refetchDrafts();
 				}
 			} catch (err: unknown) {
 				const gqlMsg =
 					err &&
 					typeof err === "object" &&
 					"graphQLErrors" in err &&
-					Array.isArray((err as { graphQLErrors?: { message?: string }[] }).graphQLErrors)
-						? (err as { graphQLErrors: { message?: string }[] }).graphQLErrors[0]
-								?.message
+					Array.isArray(
+						(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
+					)
+						? (err as { graphQLErrors: { message?: string }[] })
+								.graphQLErrors[0]?.message
 						: undefined;
 				toast.error(
 					gqlMsg ??
-						(err instanceof Error ? err.message : "Transfer failed. Please try again."),
+						(err instanceof Error
+							? err.message
+							: "Transfer failed. Please try again."),
 				);
+				await refetchDrafts();
 			}
 		},
-		[putawayTransferStock, refetchQuants],
+		[approvePutawayLine, refetchDrafts, refetchQuants],
 	);
 
-	const handleDeleteLine = useCallback((lineId: string) => {
-		setLines((prev) => prev.filter((l) => l.id !== lineId));
-	}, []);
+	const handleRejectLine = useCallback(
+		async (lineId: string) => {
+			try {
+				const { data } = await rejectPutawayLineMutation({
+					variables: { id: lineId },
+				});
+				if (data?.rejectPutawayLine?.status === "REJECT") {
+					toast.success("Putaway line rejected; no stock was moved.");
+				} else {
+					toast.error("Could not reject this line.");
+				}
+				await refetchDrafts();
+			} catch (err: unknown) {
+				const gqlMsg =
+					err &&
+					typeof err === "object" &&
+					"graphQLErrors" in err &&
+					Array.isArray(
+						(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
+					)
+						? (err as { graphQLErrors: { message?: string }[] })
+								.graphQLErrors[0]?.message
+						: undefined;
+				toast.error(gqlMsg ?? "Could not reject this line.");
+				await refetchDrafts();
+			}
+		},
+		[rejectPutawayLineMutation, refetchDrafts],
+	);
 
 	return (
 		<main
@@ -263,7 +328,12 @@ function PutawayComponent() {
 			aria-labelledby="putaway-page-title"
 			aria-describedby="putaway-page-description"
 			aria-busy={
-				racksLoading || (!!sourceRackId && quantsLoading) || transferLoading
+				racksLoading ||
+				(!!sourceRackId && quantsLoading) ||
+				draftsLoading ||
+				createDraftLoading ||
+				approveLoading ||
+				rejectLoading
 			}
 		>
 			<AdminPageHeader
@@ -280,8 +350,9 @@ function PutawayComponent() {
 						New transfer
 					</CardTitle>
 					<CardDescription>
-						Pick a source rack to load stock quants there, choose a SKU and quantity (capped
-						by on-hand in the database), then destination rack and add to the list.
+						Pick a source rack and SKU, set quantity (capped by on-hand),
+						destination rack — Add to list saves a Draft in the database.
+						Approve moves stock; Reject keeps the record with status REJECT.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -299,7 +370,9 @@ function PutawayComponent() {
 								}}
 								disabled={racksLoading}
 								placeholder={
-									racksLoading ? "Loading racks…" : "Search or select source rack…"
+									racksLoading
+										? "Loading racks…"
+										: "Search or select source rack…"
 								}
 								allowClear
 							/>
@@ -315,7 +388,10 @@ function PutawayComponent() {
 								}}
 								disabled={!sourceRackId || quantsLoading}
 							>
-								<SelectTrigger id="putaway-sku" className="w-full font-mono text-xs">
+								<SelectTrigger
+									id="putaway-sku"
+									className="w-full font-mono text-xs"
+								>
 									<SelectValue
 										placeholder={
 											!sourceRackId
@@ -341,7 +417,9 @@ function PutawayComponent() {
 									})}
 								</SelectContent>
 							</Select>
-							{sourceRackId && !quantsLoading && stockQuantsInRack.length === 0 ? (
+							{sourceRackId &&
+							!quantsLoading &&
+							stockQuantsInRack.length === 0 ? (
 								<p className="text-xs text-muted-foreground">
 									No stock quant rows with quantity for this rack.
 								</p>
@@ -367,10 +445,13 @@ function PutawayComponent() {
 							/>
 							{maxQtyForSelection != null && maxQtyForSelection > 0 ? (
 								<p className="text-xs text-muted-foreground">
-									Maximum {maxQtyForSelection.toLocaleString()} (stock quant on this rack).
+									Maximum {maxQtyForSelection.toLocaleString()} (stock quant on
+									this rack).
 								</p>
 							) : selectedStockQuant && maxQtyForSelection === 0 ? (
-								<p className="text-xs text-muted-foreground">No quantity available.</p>
+								<p className="text-xs text-muted-foreground">
+									No quantity available.
+								</p>
 							) : null}
 						</div>
 					</div>
@@ -391,7 +472,12 @@ function PutawayComponent() {
 								allowClear
 							/>
 						</div>
-						<Button type="button" onClick={handleAddToList} className="sm:mb-0.5">
+						<Button
+							type="button"
+							disabled={createDraftLoading}
+							onClick={() => void handleAddToList()}
+							className="sm:mb-0.5"
+						>
 							Add to list
 						</Button>
 					</div>
@@ -404,7 +490,9 @@ function PutawayComponent() {
 						Putaway list
 					</CardTitle>
 					<CardDescription>
-						Review queued moves and run a transfer for each line when ready.
+						Draft lines on the server. Approve runs the transfer (APPROVED or
+						FAIL). Reject sets REJECT without moving stock; the row stays in the
+						database for audit.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -417,11 +505,13 @@ function PutawayComponent() {
 									<TableHead>Source Rack</TableHead>
 									<TableHead>Destination Rack</TableHead>
 									<TableHead className="text-right">Quantity</TableHead>
-									<TableHead className="min-w-[200px] text-right">Action</TableHead>
+									<TableHead className="min-w-[200px] text-right">
+										Action
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{lines.length === 0 ? (
+								{draftLines.length === 0 ? (
 									<TableRow>
 										<TableCell
 											colSpan={6}
@@ -431,19 +521,19 @@ function PutawayComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									lines.map((line) => (
+									draftLines.map((line) => (
 										<TableRow key={line.id}>
 											<TableCell className="font-mono text-xs">
-												{line.skuCode}
+												{line.skuCode ?? line.skuId}
 											</TableCell>
 											<TableCell className="max-w-[280px] truncate">
-												{line.description}
+												{line.description?.trim() || "—"}
 											</TableCell>
 											<TableCell className="font-mono text-xs">
-												{line.sourceRackLabel}
+												{line.sourceRackLabel ?? "—"}
 											</TableCell>
 											<TableCell className="font-mono text-xs">
-												{line.destinationRackLabel}
+												{line.destinationRackLabel ?? "—"}
 											</TableCell>
 											<TableCell className="text-right font-medium">
 												{Number(line.quantity).toLocaleString()}
@@ -454,19 +544,20 @@ function PutawayComponent() {
 														type="button"
 														size="sm"
 														variant="default"
-														disabled={transferLoading}
+														disabled={approveLoading}
 														onClick={() => void handleTransfer(line)}
 													>
-														Transfer
+														Approve
 													</Button>
 													<Button
 														type="button"
 														size="sm"
 														variant="outline"
 														className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-														onClick={() => handleDeleteLine(line.id)}
+														disabled={rejectLoading}
+														onClick={() => void handleRejectLine(line.id)}
 													>
-														Delete
+														Reject
 													</Button>
 												</div>
 											</TableCell>

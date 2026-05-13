@@ -34,30 +34,6 @@ export const STOCK_QUANTS_QUERY = gql`
 	}
 `;
 
-export const PUTAWAY_TRANSFER_STOCK_MUTATION = gql`
-	mutation PutawayTransferStock($input: PutawayTransferStockInput!) {
-		putawayTransferStock(input: $input) {
-			success
-			message
-		}
-	}
-`;
-
-export type PutawayTransferStockMutationVariables = {
-	input: {
-		sourceStockQuantId: string;
-		destinationRackId: string;
-		quantity: string;
-	};
-};
-
-export type PutawayTransferStockMutationData = {
-	putawayTransferStock: {
-		success: boolean;
-		message: string;
-	};
-};
-
 export type StockQuantFilterInput = {
 	id?: string;
 	skuId?: string;
