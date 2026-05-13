@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useMutation } from "@tanstack/react-query";
 import {
 	Dialog,
 	DialogContent,
@@ -24,6 +24,7 @@ import {
 	CREATE_WAREHOUSE_MUTATION,
 	type CreateWarehouseMutationData,
 } from "@/lib/graphql/warehouses";
+import { gqlRequest } from "@/lib/api/gql";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 
@@ -31,6 +32,13 @@ function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
 		const first = (err as { graphQLErrors?: Array<{ message?: string }> })
 			.graphQLErrors?.[0];
+		if (first?.message)
+			return toUserFriendlyMessage(first.message, "Something went wrong.");
+	}
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as { response?: { errors?: Array<{ message?: string }> } }
+		).response?.errors?.[0];
 		if (first?.message)
 			return toUserFriendlyMessage(first.message, "Something went wrong.");
 	}
@@ -154,19 +162,26 @@ export function WarehouseCombobox({
 	const [search, setSearch] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
 
-	const [createWarehouse, { loading: createLoading }] =
-		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: async (data) => {
-				const newId = data?.createWarehouse?.warehouseId;
-				if (!newId) return;
-				await onWarehouseCreated?.();
-				onChange(newId);
-				setCreateOpen(false);
-				setOpen(false);
-				toast.success("Warehouse created.");
-			},
-		});
+	const { mutate: createWarehouse, isPending: createLoading } = useMutation({
+		mutationFn: (input: {
+			warehouseName: string;
+			warehouseCode?: string;
+			warehouseAddress?: string;
+		}) =>
+			gqlRequest<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
+				input,
+			}),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: async (data) => {
+			const newId = data?.createWarehouse?.warehouseId;
+			if (!newId) return;
+			await onWarehouseCreated?.();
+			onChange(newId);
+			setCreateOpen(false);
+			setOpen(false);
+			toast.success("Warehouse created.");
+		},
+	});
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
@@ -197,13 +212,9 @@ export function WarehouseCombobox({
 		warehouseAddress: string;
 	}) => {
 		createWarehouse({
-			variables: {
-				input: {
-					warehouseName: values.warehouseName.trim(),
-					warehouseCode: values.warehouseCode.trim() || undefined,
-					warehouseAddress: values.warehouseAddress.trim() || undefined,
-				},
-			},
+			warehouseName: values.warehouseName.trim(),
+			warehouseCode: values.warehouseCode.trim() || undefined,
+			warehouseAddress: values.warehouseAddress.trim() || undefined,
 		});
 	};
 

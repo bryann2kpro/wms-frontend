@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import {
-	useQuery as useApolloQuery,
-	useMutation as useApolloMutation,
-} from "@apollo/client/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -254,10 +253,13 @@ function UserManagementComponent() {
 		roleId: string;
 	} | null>(null);
 
+	const queryClient = useQueryClient();
+
 	// GraphQL: roles for filter and create/edit dropdowns (backend expects roleId)
-	const { data: rolesData } = useApolloQuery<{ roles: RoleOption[] }>(
-		ROLES_QUERY,
-	);
+	const { data: rolesData } = useQuery({
+		queryKey: qk.roles.all,
+		queryFn: () => gqlRequest<{ roles: RoleOption[] }>(ROLES_QUERY),
+	});
 	const allRoles = rolesData?.roles ?? [];
 	// Exclude Super Admin so it cannot be assigned in create/update or filter
 	const displayRolesList = allRoles.filter(
@@ -288,30 +290,38 @@ function UserManagementComponent() {
 
 	const {
 		data,
-		loading: isLoading,
+		isLoading,
 		refetch,
-	} = useApolloQuery<UsersQueryData, UsersQueryVariables>(USERS_QUERY, {
-		variables,
+	} = useQuery({
+		queryKey: qk.users.list(variables),
+		queryFn: () =>
+			gqlRequest<UsersQueryData, UsersQueryVariables>(USERS_QUERY, variables),
 	});
 
 	// GraphQL create user mutation (backend: CreateUserInput with email, displayName, password, roleId)
-	const [createUserMutation, { loading: createLoading }] = useApolloMutation<
-		CreateUserMutationData,
-		CreateUserMutationVariables
-	>(CREATE_USER_MUTATION, {
-		onCompleted: () => {
+	const { mutate: createUserMutation, isPending: createLoading } = useMutation({
+		mutationFn: (vars: CreateUserMutationVariables) =>
+			gqlRequest<CreateUserMutationData, CreateUserMutationVariables>(
+				CREATE_USER_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
 			refetch();
+			queryClient.invalidateQueries({ queryKey: qk.users.all });
 			setIsCreateDialogOpen(false);
 		},
 	});
 
 	// GraphQL update user mutation (backend: UpdateUserInput with displayName, roleId, password, etc.)
-	const [updateUserMutation, { loading: updateLoading }] = useApolloMutation<
-		UpdateUserMutationData,
-		UpdateUserMutationVariables
-	>(UPDATE_USER_MUTATION, {
-		onCompleted: () => {
+	const { mutate: updateUserMutation, isPending: updateLoading } = useMutation({
+		mutationFn: (vars: UpdateUserMutationVariables) =>
+			gqlRequest<UpdateUserMutationData, UpdateUserMutationVariables>(
+				UPDATE_USER_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
 			refetch();
+			queryClient.invalidateQueries({ queryKey: qk.users.all });
 			setIsEditRoleDialogOpen(false);
 			setSelectedUser(null);
 		},
@@ -369,7 +379,7 @@ function UserManagementComponent() {
 		password?: string | null;
 	}) => {
 		if (!selectedUser) return;
-		updateUserMutation({ variables: { id: selectedUser.id, input } });
+		updateUserMutation({ id: selectedUser.id, input });
 	};
 
 	useEffect(() => {
@@ -852,7 +862,7 @@ function UserManagementComponent() {
 					onOpenChange={setIsCreateDialogOpen}
 					roles={displayRolesList}
 					onSubmit={(input) => {
-						createUserMutation({ variables: { input } });
+						createUserMutation({ input });
 					}}
 					isSubmitting={createLoading}
 				/>

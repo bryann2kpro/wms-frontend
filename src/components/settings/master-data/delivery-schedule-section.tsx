@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -57,57 +59,80 @@ export function DeliveryScheduleSection() {
 	const [editing, setEditing] = useState<DeliverySchedule | null>(null);
 	const [deleting, setDeleting] = useState<DeliverySchedule | null>(null);
 
-	const { data: regionsData } = useQuery<
-		RegionsQueryData,
-		RegionsQueryVariables
-	>(REGIONS_QUERY, { variables: { pageSize: 200, pageNumber: 1 } });
+	const { data: regionsData } = useQuery({
+		queryKey: [...qk.regions.all, { pageSize: 200, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<RegionsQueryData, RegionsQueryVariables>(REGIONS_QUERY, {
+				pageSize: 200,
+				pageNumber: 1,
+			}),
+	});
 	const regions = regionsData?.regions?.query ?? [];
 
-	const { data, loading, refetch } = useQuery<
-		DeliverySchedulesQueryData,
-		DeliverySchedulesQueryVariables
-	>(DELIVERY_SCHEDULES_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(regionIdFilter ? { filter: { regionId: regionIdFilter } } : {}),
-		},
+	const schedulesVars: DeliverySchedulesQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(regionIdFilter ? { filter: { regionId: regionIdFilter } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.deliverySchedules.all, schedulesVars],
+		queryFn: () =>
+			gqlRequest<DeliverySchedulesQueryData, DeliverySchedulesQueryVariables>(
+				DELIVERY_SCHEDULES_QUERY,
+				schedulesVars,
+			),
 	});
 
-	const [createSchedule, { loading: createLoading }] =
-		useMutation<CreateDeliveryScheduleMutationData>(
-			CREATE_DELIVERY_SCHEDULE_MUTATION,
-			{
-				onCompleted: () => {
-					refetch();
-					setIsCreateOpen(false);
-				},
-			},
-		);
-	const [updateSchedule, { loading: updateLoading }] =
-		useMutation<UpdateDeliveryScheduleMutationData>(
-			UPDATE_DELIVERY_SCHEDULE_MUTATION,
-			{
-				onCompleted: () => {
-					refetch();
-					setEditing(null);
-				},
-			},
-		);
-	const [toggleActive] = useMutation<ToggleDeliveryScheduleActiveMutationData>(
-		TOGGLE_DELIVERY_SCHEDULE_ACTIVE_MUTATION,
-		{ onCompleted: () => refetch() },
-	);
-	const [deleteSchedule, { loading: deleteLoading }] =
-		useMutation<DeleteDeliveryScheduleMutationData>(
-			DELETE_DELIVERY_SCHEDULE_MUTATION,
-			{
-				onCompleted: () => {
-					refetch();
-					setDeleting(null);
-				},
-			},
-		);
+	const { mutate: createSchedule, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateDeliveryScheduleMutationData>(
+				CREATE_DELIVERY_SCHEDULE_MUTATION,
+				{ input },
+			),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateSchedule, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateDeliveryScheduleMutationData>(
+				UPDATE_DELIVERY_SCHEDULE_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: toggleActive } = useMutation({
+		mutationFn: (variables: {
+			id: string;
+			isActive: boolean;
+			updatedBy: string;
+		}) =>
+			gqlRequest<ToggleDeliveryScheduleActiveMutationData>(
+				TOGGLE_DELIVERY_SCHEDULE_ACTIVE_MUTATION,
+				variables,
+			),
+		onSuccess: () => refetch(),
+	});
+	const { mutate: deleteSchedule, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteDeliveryScheduleMutationData>(
+				DELETE_DELIVERY_SCHEDULE_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const list = data?.deliverySchedules?.query ?? [];
 	const pagination = data?.deliverySchedules?.pagination;
@@ -265,11 +290,9 @@ export function DeliveryScheduleSection() {
 												size="sm"
 												onClick={() =>
 													toggleActive({
-														variables: {
-															id: row.scheduleId,
-															isActive: !row.isActive,
-															updatedBy: createdBy,
-														},
+														id: row.scheduleId,
+														isActive: !row.isActive,
+														updatedBy: createdBy,
 													})
 												}
 												title={row.isActive ? "Deactivate" : "Activate"}
@@ -342,17 +365,13 @@ export function DeliveryScheduleSection() {
 				regions={regions}
 				onSubmit={(values) =>
 					createSchedule({
-						variables: {
-							input: {
-								regionId: values.regionId,
-								dayOfWeek: values.dayOfWeek,
-								cutoffDaysBefore: values.cutoffDaysBefore,
-								cutoffTime: values.cutoffTime,
-								isActive: values.isActive ?? true,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						regionId: values.regionId,
+						dayOfWeek: values.dayOfWeek,
+						cutoffDaysBefore: values.cutoffDaysBefore,
+						cutoffTime: values.cutoffTime,
+						isActive: values.isActive ?? true,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -374,15 +393,13 @@ export function DeliveryScheduleSection() {
 					}}
 					onSubmit={(values) =>
 						updateSchedule({
-							variables: {
-								id: editing.scheduleId,
-								input: {
-									dayOfWeek: values.dayOfWeek,
-									cutoffDaysBefore: values.cutoffDaysBefore,
-									cutoffTime: values.cutoffTime,
-									isActive: values.isActive,
-									updatedBy: createdBy,
-								},
+							id: editing.scheduleId,
+							input: {
+								dayOfWeek: values.dayOfWeek,
+								cutoffDaysBefore: values.cutoffDaysBefore,
+								cutoffTime: values.cutoffTime,
+								isActive: values.isActive,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -398,9 +415,7 @@ export function DeliveryScheduleSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={`${deleting.regionName} - ${deleting.dayName}`}
-					onConfirm={() =>
-						deleteSchedule({ variables: { id: deleting.scheduleId } })
-					}
+					onConfirm={() => deleteSchedule({ id: deleting.scheduleId })}
 					loading={deleteLoading}
 				/>
 			)}

@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { requirePermission } from "@/lib/rbac";
 import {
 	Card,
@@ -96,24 +98,28 @@ function InventoryDetailComponent() {
 	const { skuId } = Route.useSearch();
 	const navigate = useNavigate();
 
-	const { data: balanceData, loading: balanceLoading } =
-		useQuery<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, {
-			variables: {
-				filter: { skuId },
-				pageSize: 1,
-				pageNumber: 1,
-			},
-			fetchPolicy: "cache-and-network",
-		})
+	const balanceVars = {
+		filter: { skuId },
+		pageSize: 1,
+		pageNumber: 1,
+	};
+	const { data: balanceData, isLoading: balanceLoading } = useQuery({
+		queryKey: qk.inventory.list(balanceVars),
+		queryFn: () =>
+			gqlRequest<InventoryBalancesQueryData>(
+				INVENTORY_BALANCES_QUERY,
+				balanceVars,
+			),
+	});
 
-	const { data: stockData, loading: stockLoading } =
-		useQuery<SkuStockDetailsQueryData, SkuStockDetailsQueryVariables>(
-			SKU_STOCK_DETAILS_QUERY,
-			{
-				variables: { skuId },
-				fetchPolicy: "cache-and-network",
-			},
-		)
+	const { data: stockData, isLoading: stockLoading } = useQuery({
+		queryKey: qk.inventory.detail(skuId),
+		queryFn: () =>
+			gqlRequest<SkuStockDetailsQueryData, SkuStockDetailsQueryVariables>(
+				SKU_STOCK_DETAILS_QUERY,
+				{ skuId },
+			),
+	});
 
 	const loading = balanceLoading || stockLoading;
 	const balance = balanceData?.inventoryBalances?.query?.[0];

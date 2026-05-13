@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -52,37 +54,56 @@ export function WarehouseSection() {
 	const [editing, setEditing] = useState<Warehouse | null>(null);
 	const [deleting, setDeleting] = useState<Warehouse | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		WarehousesQueryData,
-		WarehousesQueryVariables
-	>(WAREHOUSES_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE * 4,
-			pageNumber: 1,
-		},
+	const warehousesVars: WarehousesQueryVariables = {
+		pageSize: PAGE_SIZE * 4,
+		pageNumber: 1,
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.warehouses.all, warehousesVars],
+		queryFn: () =>
+			gqlRequest<WarehousesQueryData, WarehousesQueryVariables>(
+				WAREHOUSES_QUERY,
+				warehousesVars,
+			),
 	});
 
-	const [createWarehouse, { loading: createLoading }] =
-		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateWarehouse, { loading: updateLoading }] =
-		useMutation<UpdateWarehouseMutationData>(UPDATE_WAREHOUSE_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteWarehouse, { loading: deleteLoading }] =
-		useMutation<DeleteWarehouseMutationData>(DELETE_WAREHOUSE_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { mutate: createWarehouse, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
+				input,
+			}),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateWarehouse, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateWarehouseMutationData>(
+				UPDATE_WAREHOUSE_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteWarehouse, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteWarehouseMutationData>(
+				DELETE_WAREHOUSE_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const list = data?.warehouses?.query ?? [];
 
@@ -232,13 +253,9 @@ export function WarehouseSection() {
 				onOpenChange={setIsCreateOpen}
 				onSubmit={(values) =>
 					createWarehouse({
-						variables: {
-							input: {
-								warehouseName: values.warehouseName,
-								warehouseCode: values.warehouseCode.trim() || undefined,
-								warehouseAddress: values.warehouseAddress.trim() || undefined,
-							},
-						},
+						warehouseName: values.warehouseName,
+						warehouseCode: values.warehouseCode.trim() || undefined,
+						warehouseAddress: values.warehouseAddress.trim() || undefined,
 					})
 				}
 				loading={createLoading}
@@ -258,13 +275,11 @@ export function WarehouseSection() {
 					}}
 					onSubmit={(values) =>
 						updateWarehouse({
-							variables: {
-								id: editing.warehouseId,
-								input: {
-									warehouseName: values.warehouseName.trim(),
-									warehouseCode: values.warehouseCode.trim() || undefined,
-									warehouseAddress: values.warehouseAddress.trim() || undefined,
-								},
+							id: editing.warehouseId,
+							input: {
+								warehouseName: values.warehouseName.trim(),
+								warehouseCode: values.warehouseCode.trim() || undefined,
+								warehouseAddress: values.warehouseAddress.trim() || undefined,
 							},
 						})
 					}
@@ -279,9 +294,7 @@ export function WarehouseSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.warehouseName}
-					onConfirm={() =>
-						deleteWarehouse({ variables: { id: deleting.warehouseId } })
-					}
+					onConfirm={() => deleteWarehouse({ id: deleting.warehouseId })}
 					loading={deleteLoading}
 				/>
 			)}

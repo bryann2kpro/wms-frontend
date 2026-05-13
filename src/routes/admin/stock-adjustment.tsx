@@ -1,4 +1,4 @@
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	ChevronLeft,
@@ -37,6 +37,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	STOCK_ADJUSTMENTS_QUERY,
 	type StockAdjustment,
@@ -72,21 +74,23 @@ function StockAdjustmentComponent() {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [viewAdj, setViewAdj] = useState<StockAdjustment | null>(null);
 
+	const queryVars = {
+		filter: {
+			search: debouncedSearch.trim() || undefined,
+			sortBy: "CREATED_AT",
+			sortOrder: "DESC",
+		},
+		pageSize,
+		pageNumber: page,
+	};
 	const {
 		data: queryData,
-		loading,
+		isLoading: loading,
 		refetch,
-	} = useQuery<StockAdjustmentsQueryData>(STOCK_ADJUSTMENTS_QUERY, {
-		variables: {
-			filter: {
-				search: debouncedSearch.trim() || undefined,
-				sortBy: "CREATED_AT",
-				sortOrder: "DESC",
-			},
-			pageSize,
-			pageNumber: page,
-		},
-		fetchPolicy: "cache-and-network",
+	} = useQuery({
+		queryKey: qk.stockAdjustments.list(queryVars),
+		queryFn: () =>
+			gqlRequest<StockAdjustmentsQueryData>(STOCK_ADJUSTMENTS_QUERY, queryVars),
 	});
 
 	const adjustments = queryData?.stockAdjustments?.query ?? [];
