@@ -324,7 +324,7 @@ export function StockAdjustmentFormDialog({
 														</SelectItem>
 														{racks.map((r) => (
 															<SelectItem key={r.rackId} value={r.rackId}>
-																{r.rackRow}-{r.rackColumn}-{r.rackLevel}
+																{r.rackRow}-{r.rackLevel}-{r.rackColumn}
 															</SelectItem>
 														))}
 													</SelectContent>
