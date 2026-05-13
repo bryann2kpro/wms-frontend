@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import request from "graphql-request";
-import { env } from "@/env";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -96,21 +96,8 @@ export function SkuCombobox({
 	const queryClient = useQueryClient();
 
 	const { data, isLoading: loading } = useQuery({
-		queryKey: ["skus"],
-		queryFn: () => {
-			const headers = new Headers();
-			headers.set(
-				"Authorization",
-				`Bearer ${localStorage.getItem("access_token")}`,
-			);
-
-			return request(
-				env.VITE_GRAPHQL_ENDPOINT,
-				SKUS_AND_UOM_QUERY,
-				{},
-				headers,
-			);
-		},
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest(SKUS_AND_UOM_QUERY, {}),
 	});
 
 	const skus = data?.skus.query ?? [];
@@ -136,22 +123,10 @@ export function SkuCombobox({
 	}
 
 	const createSku = useMutation({
-		mutationFn: (input: CreateSkuInput & { isActive: boolean }) => {
-			const headers = new Headers();
-			headers.set(
-				"Authorization",
-				`Bearer ${localStorage.getItem("access_token")}`,
-			);
-
-			return request(
-				env.VITE_GRAPHQL_ENDPOINT,
-				CREATE_SKU_MUTATION,
-				{ input },
-				headers,
-			);
-		},
+		mutationFn: (input: CreateSkuInput & { isActive: boolean }) =>
+			gqlRequest(CREATE_SKU_MUTATION, { input }),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["skus"] });
+			queryClient.invalidateQueries({ queryKey: qk.skus.all });
 			toast.success("SKU created successfully");
 			setCreateOpen(false);
 			form.reset();

@@ -2,7 +2,7 @@
  * RBAC – GraphQL mutation documents for module operations
  */
 
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 
 export const CREATE_MODULE_MUTATION = gql`
 	mutation CreateModule($input: CreateModuleInput!) {

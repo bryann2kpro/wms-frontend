@@ -5,7 +5,9 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	useReactTable,
 	getCoreRowModel,
@@ -205,10 +207,16 @@ export function SkusSection() {
 	const [sortField, setSortField] = useState<SkuSortField>("CODE");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 
-	const { data, loading, refetch } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, { variables: {}, fetchPolicy: "no-cache" });
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {}),
+		staleTime: 0,
+		gcTime: 0,
+	});
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	const deferredSearch = useDeferredValue(search);
 
@@ -274,60 +282,71 @@ export function SkusSection() {
 
 	const createdBy = user?.id ?? "";
 
-	const { data: suppliersData } = useQuery<
-		SuppliersQueryData,
-		SuppliersQueryVariables
-	>(SUPPLIERS_QUERY, { variables: {} });
+	const { data: suppliersData } = useQuery({
+		queryKey: qk.suppliers.all,
+		queryFn: () =>
+			gqlRequest<SuppliersQueryData, SuppliersQueryVariables>(
+				SUPPLIERS_QUERY,
+				{},
+			),
+	});
 	const suppliers = suppliersData?.suppliers.query ?? [];
 
-	const { data: stockUnitsData } = useQuery<
-		StockUnitsQueryData,
-		StockUnitsQueryVariables
-	>(STOCK_UNITS_QUERY, { variables: {} });
+	const { data: stockUnitsData } = useQuery({
+		queryKey: qk.stockUnits.all,
+		queryFn: () =>
+			gqlRequest<StockUnitsQueryData, StockUnitsQueryVariables>(
+				STOCK_UNITS_QUERY,
+				{},
+			),
+	});
 	const stockUnits = stockUnitsData?.stockUnits.query ?? [];
 
 	const createInFlightRef = useRef(false);
 	const updateInFlightRef = useRef(false);
 	const deleteInFlightRef = useRef(false);
 
-	const [createSkus, { loading: createLoading }] =
-		useMutation<CreateSkusMutationData>(CREATE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				createInFlightRef.current = false;
-				await refetch();
-				setIsCreateOpen(false);
-			},
-			onError: (error) => {
-				createInFlightRef.current = false;
-				toast.error("Failed to create SKU", { description: error.message });
-			},
-		});
+	const { mutate: createSkus, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateSkusMutationData>(CREATE_SKUS_MUTATION, { input }),
+		onSuccess: async () => {
+			createInFlightRef.current = false;
+			await refetch();
+			setIsCreateOpen(false);
+		},
+		onError: (error: Error) => {
+			createInFlightRef.current = false;
+			toast.error("Failed to create SKU", { description: error.message });
+		},
+	});
 
-	const [updateSkus, { loading: updateLoading }] =
-		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				updateInFlightRef.current = false;
-				await refetch();
-				setEditing(null);
-			},
-			onError: (error) => {
-				updateInFlightRef.current = false;
-				toast.error("Failed to update SKU", { description: error.message });
-			},
-		});
+	const { mutate: updateSkus, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, variables),
+		onSuccess: async () => {
+			updateInFlightRef.current = false;
+			await refetch();
+			setEditing(null);
+		},
+		onError: (error: Error) => {
+			updateInFlightRef.current = false;
+			toast.error("Failed to update SKU", { description: error.message });
+		},
+	});
 
-	const [deleteSkus, { loading: deleteLoading }] =
-		useMutation<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				deleteInFlightRef.current = false;
-				await refetch();
-				setDeleting(null);
-			},
-			onError: (error) => {
-				deleteInFlightRef.current = false;
-				toast.error("Failed to delete SKU", { description: error.message });
-			},
-		});
+	const { mutate: deleteSkus, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, variables),
+		onSuccess: async () => {
+			deleteInFlightRef.current = false;
+			await refetch();
+			setDeleting(null);
+		},
+		onError: (error: Error) => {
+			deleteInFlightRef.current = false;
+			toast.error("Failed to delete SKU", { description: error.message });
+		},
+	});
 
 	const columns = useMemo<ColumnDef<Skus>[]>(
 		() => [
@@ -828,26 +847,22 @@ export function SkusSection() {
 						? `${values.skuExpiryDate} 00:00:00.000000`
 						: "";
 					createSkus({
-						variables: {
-							input: {
-								skuCode: values.skuCode,
-								skuDescription: values.skuDescription,
-								skuPrice:
-									values.skuPrice === 0 || values.skuPrice === null
-										? null
-										: Number(values.skuPrice),
-								skuQuantity: Number(values.skuQuantity),
-								skuExpiryDate: expiryDate,
-								skuUom: values.skuUom,
-								pickingStrategy: values.pickingStrategy,
-								skuSuppliers:
-									values.skuSuppliers?.map((s) => ({
-										supplierId: s.supplierId,
-										originalSkuCode: s.originalSkuCode || null,
-									})) || [],
-								isActive: true,
-							},
-						},
+						skuCode: values.skuCode,
+						skuDescription: values.skuDescription,
+						skuPrice:
+							values.skuPrice === 0 || values.skuPrice === null
+								? null
+								: Number(values.skuPrice),
+						skuQuantity: Number(values.skuQuantity),
+						skuExpiryDate: expiryDate,
+						skuUom: values.skuUom,
+						pickingStrategy: values.pickingStrategy,
+						skuSuppliers:
+							values.skuSuppliers?.map((s) => ({
+								supplierId: s.supplierId,
+								originalSkuCode: s.originalSkuCode || null,
+							})) || [],
+						isActive: true,
 					});
 				}}
 				loading={createLoading}
@@ -891,27 +906,25 @@ export function SkusSection() {
 							? `${values.skuExpiryDate} 00:00:00.000000`
 							: "";
 						updateSkus({
-							variables: {
-								id: editing.skuId,
-								input: {
-									skuCode: values.skuCode,
-									skuDescription: values.skuDescription,
-									skuPrice:
-										values.skuPrice === 0 || values.skuPrice === null
-											? null
-											: Number(values.skuPrice),
-									skuQuantity: Number(values.skuQuantity),
-									lossQuantity: Number(values.lossQuantity ?? 0),
-									skuExpiryDate: expiryDate,
-									skuUom: values.skuUom,
-									pickingStrategy: values.pickingStrategy,
-									skuSuppliers:
-										values.skuSuppliers?.map((s) => ({
-											supplierId: s.supplierId,
-											originalSkuCode: s.originalSkuCode || null,
-										})) || [],
-									isActive: values.isActive,
-								},
+							id: editing.skuId,
+							input: {
+								skuCode: values.skuCode,
+								skuDescription: values.skuDescription,
+								skuPrice:
+									values.skuPrice === 0 || values.skuPrice === null
+										? null
+										: Number(values.skuPrice),
+								skuQuantity: Number(values.skuQuantity),
+								lossQuantity: Number(values.lossQuantity ?? 0),
+								skuExpiryDate: expiryDate,
+								skuUom: values.skuUom,
+								pickingStrategy: values.pickingStrategy,
+								skuSuppliers:
+									values.skuSuppliers?.map((s) => ({
+										supplierId: s.supplierId,
+										originalSkuCode: s.originalSkuCode || null,
+									})) || [],
+								isActive: values.isActive,
 							},
 						});
 					}}
@@ -929,7 +942,7 @@ export function SkusSection() {
 					onConfirm={() => {
 						if (deleteInFlightRef.current || deleteLoading) return;
 						deleteInFlightRef.current = true;
-						deleteSkus({ variables: { id: deleting.skuId } });
+						deleteSkus({ id: deleting.skuId });
 					}}
 					loading={deleteLoading}
 				/>

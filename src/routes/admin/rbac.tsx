@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/lib/rbac";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMutation as useApolloMutation } from "@apollo/client/react";
+import { gqlRequest } from "@/lib/api/gql";
 import { Button } from "@/components/ui/button";
 import { Shield, Package, Users, Key } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -186,55 +186,65 @@ function RbacComponent() {
 		retry: 2,
 	});
 
+	type CreateModuleResult = {
+		createModule: {
+			moduleId: string;
+			permissions?: Array<{ permissionType?: string | null }>;
+		};
+	};
+
 	// Create module mutation (GraphQL)
-	const [
-		createModuleGql,
-		{ loading: isCreatingModule, error: createModuleError },
-	] = useApolloMutation<
-		{
-			createModule: {
-				moduleId: string;
-				permissions?: Array<{ permissionType?: string | null }>;
-			};
-		},
-		CreateModuleVariables
-	>(CREATE_MODULE_MUTATION);
+	const {
+		mutate: createModuleGql,
+		mutateAsync: createModuleGqlAsync,
+		isPending: isCreatingModule,
+		error: createModuleError,
+	} = useMutation({
+		mutationFn: (vars: CreateModuleVariables) =>
+			gqlRequest<CreateModuleResult, CreateModuleVariables>(
+				CREATE_MODULE_MUTATION,
+				vars,
+			),
+	});
 
 	// Wrap to accept the dialog's CreateModuleInput format
 	const createModuleMutation = {
-		mutate: (input: CreateModuleInput) =>
-			createModuleGql({ variables: { input } }),
-		mutateAsync: async (input: CreateModuleInput) =>
-			createModuleGql({ variables: { input } }),
+		mutate: (input: CreateModuleInput) => createModuleGql({ input }),
+		mutateAsync: (input: CreateModuleInput) =>
+			createModuleGqlAsync({ input }),
 		isPending: isCreatingModule,
 		error: createModuleError ?? null,
 		isError: !!createModuleError,
 	};
 
 	// Update module mutation (GraphQL)
-	const [
-		updateModuleGql,
-		{ loading: isUpdatingModule, error: updateModuleError },
-	] = useApolloMutation<unknown, UpdateModuleVariables>(
-		UPDATE_MODULE_MUTATION,
-		{
-			onCompleted: () => {
-				queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-				setIsEditModuleDialogOpen(false);
-				setSelectedModule(null);
-			},
+	const {
+		mutate: updateModuleGql,
+		mutateAsync: updateModuleGqlAsync,
+		isPending: isUpdatingModule,
+		error: updateModuleError,
+	} = useMutation({
+		mutationFn: (vars: UpdateModuleVariables) =>
+			gqlRequest<unknown, UpdateModuleVariables>(
+				UPDATE_MODULE_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+			setIsEditModuleDialogOpen(false);
+			setSelectedModule(null);
 		},
-	);
+	});
 
 	// Wrap to accept the dialog's UpdateModuleInput format (moduleId → id)
 	const updateModuleMutation = {
 		mutate: (input: UpdateModuleInput) => {
 			const { moduleId, ...rest } = input;
-			return updateModuleGql({ variables: { id: moduleId, input: rest } });
+			return updateModuleGql({ id: moduleId, input: rest });
 		},
 		mutateAsync: async (input: UpdateModuleInput) => {
 			const { moduleId, ...rest } = input;
-			await updateModuleGql({ variables: { id: moduleId, input: rest } });
+			await updateModuleGqlAsync({ id: moduleId, input: rest });
 		},
 		isPending: isUpdatingModule,
 		error: updateModuleError ?? null,
@@ -242,24 +252,27 @@ function RbacComponent() {
 	};
 
 	// Deactivate module mutation (GraphQL – reuses updateModule)
-	const [
-		deactivateModuleGql,
-		{ loading: isDeactivatingModule, error: deactivateModuleError },
-	] = useApolloMutation<unknown, UpdateModuleVariables>(
-		UPDATE_MODULE_MUTATION,
-		{
-			onCompleted: () => {
-				queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
-				setIsDeleteModuleDialogOpen(false);
-				setSelectedModule(null);
-			},
+	const {
+		mutate: deactivateModuleGql,
+		isPending: isDeactivatingModule,
+		error: deactivateModuleError,
+	} = useMutation({
+		mutationFn: (vars: UpdateModuleVariables) =>
+			gqlRequest<unknown, UpdateModuleVariables>(
+				UPDATE_MODULE_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rbac-modules"] });
+			setIsDeleteModuleDialogOpen(false);
+			setSelectedModule(null);
 		},
-	);
+	});
 
 	const deactivateModuleMutation = {
 		mutate: (input: UpdateModuleInput) => {
 			const { moduleId, ...rest } = input;
-			return deactivateModuleGql({ variables: { id: moduleId, input: rest } });
+			return deactivateModuleGql({ id: moduleId, input: rest });
 		},
 		isPending: isDeactivatingModule,
 		error: deactivateModuleError ?? null,
@@ -553,9 +566,9 @@ function RbacComponent() {
 					onOpenChange={setIsCreateModuleDialogOpen}
 					onSubmit={async (input, addPermissionTypes) => {
 						const result = await createModuleMutation.mutateAsync(input);
-						const created = result.data?.createModule;
+						const created = result?.createModule;
 						const moduleId = created?.moduleId;
-						if (!moduleId) return;
+						if (!moduleId || !created) return;
 
 						const existingTypes = new Set(
 							(created.permissions ?? [])

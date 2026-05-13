@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle, Loader2, PackageOpen, Search, Truck } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -15,11 +15,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { useProfile } from "@/lib/auth/use-profile";
 import {
 	GRNS_WORK_QUEUE_QUERY,
 	type GrnsWorkQueueQueryData,
-	type GrnsWorkQueueQueryVariables,
 	UPDATE_GRN_MUTATION,
 	type UpdateGrnMutationData,
 	type UpdateGrnMutationVariables,
@@ -105,31 +106,33 @@ function DOWorkQueueComponent() {
 		profile?.roles.some((r) => r.toLowerCase() === "super admin") ||
 		(profile?.approvePermission ?? []).includes("Supplier Delivery");
 
+	const queryClient = useQueryClient();
+	const queryVars = {
+		filter: {
+			excludeDraft: true,
+			search: trimmedSearchTerm || null,
+		},
+		pageSize: 200,
+		pageNumber: 1,
+	};
 	const {
 		data,
-		loading: queryLoading,
+		isLoading: queryLoading,
 		error: queryError,
 		refetch,
-	} = useQuery<GrnsWorkQueueQueryData, GrnsWorkQueueQueryVariables>(
-		GRNS_WORK_QUEUE_QUERY,
-		{
-			variables: {
-				filter: {
-					excludeDraft: true,
-					search: trimmedSearchTerm || null,
-				},
-				pageSize: 200,
-				pageNumber: 1,
-			},
-			fetchPolicy: "cache-and-network",
-			notifyOnNetworkStatusChange: true,
-		},
-	);
+	} = useQuery({
+		queryKey: qk.grns.list(queryVars),
+		queryFn: () =>
+			gqlRequest<GrnsWorkQueueQueryData>(GRNS_WORK_QUEUE_QUERY, queryVars),
+	});
 
-	const [updateGrn] = useMutation<
-		UpdateGrnMutationData,
-		UpdateGrnMutationVariables
-	>(UPDATE_GRN_MUTATION);
+	const { mutateAsync: updateGrn } = useMutation({
+		mutationFn: (vars: UpdateGrnMutationVariables) =>
+			gqlRequest<UpdateGrnMutationData, UpdateGrnMutationVariables>(
+				UPDATE_GRN_MUTATION,
+				vars,
+			),
+	});
 
 	const groups = useMemo<GRNGroup[]>(() => {
 		const grns = data?.grns?.query ?? [];
@@ -147,10 +150,8 @@ function DOWorkQueueComponent() {
 			if (advancingGRNs.has(grnId)) return;
 			setAdvancingGRNs((prev) => new Set(prev).add(grnId));
 			try {
-				await updateGrn({
-					variables: { id: grnId, input: { status: targetStatus } },
-				});
-				await refetch();
+				await updateGrn({ id: grnId, input: { status: targetStatus } });
+				await queryClient.invalidateQueries({ queryKey: qk.grns.all });
 			} finally {
 				setAdvancingGRNs((prev) => {
 					const next = new Set(prev);
@@ -159,7 +160,7 @@ function DOWorkQueueComponent() {
 				});
 			}
 		},
-		[advancingGRNs, updateGrn, refetch],
+		[advancingGRNs, updateGrn, queryClient],
 	);
 
 	return (
@@ -227,7 +228,7 @@ function DOWorkQueueComponent() {
 						role="alert"
 					>
 						<AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-						<span>Failed to load items: {queryError.message}</span>
+						<span>Failed to load items: {(queryError as Error).message}</span>
 						<Button
 							variant="outline"
 							size="sm"

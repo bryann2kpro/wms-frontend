@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -53,38 +55,46 @@ export function RackSection() {
 	const [editing, setEditing] = useState<Rack | null>(null);
 	const [deleting, setDeleting] = useState<Rack | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		RacksQueryData,
-		RacksQueryVariables
-	>(RACKS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(search.trim() ? { filter: { rackRow: search.trim() } } : {}),
-		},
+	const racksVars: RacksQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(search.trim() ? { filter: { rackRow: search.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.racks.all, racksVars],
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, racksVars),
 	});
 
-	const [createRack, { loading: createLoading }] =
-		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateRack, { loading: updateLoading }] =
-		useMutation<UpdateRackMutationData>(UPDATE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteRack, { loading: deleteLoading }] =
-		useMutation<DeleteRackMutationData>(DELETE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { mutate: createRack, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateRack, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateRackMutationData>(UPDATE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteRack, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteRackMutationData>(DELETE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const list = data?.racks?.query ?? [];
 	const pagination = data?.racks?.pagination;
@@ -272,15 +282,11 @@ export function RackSection() {
 				onOpenChange={setIsCreateOpen}
 				onSubmit={(values) =>
 					createRack({
-						variables: {
-							input: {
-								rackRow: values.rackRow,
-								rackColumn: values.rackColumn,
-								rackLevel: values.rackLevel,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						rackRow: values.rackRow,
+						rackColumn: values.rackColumn,
+						rackLevel: values.rackLevel,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -300,14 +306,12 @@ export function RackSection() {
 					}}
 					onSubmit={(values) =>
 						updateRack({
-							variables: {
-								id: editing.rackId,
-								input: {
-									rackRow: values.rackRow,
-									rackColumn: values.rackColumn,
-									rackLevel: values.rackLevel,
-									updatedBy: createdBy,
-								},
+							id: editing.rackId,
+							input: {
+								rackRow: values.rackRow,
+								rackColumn: values.rackColumn,
+								rackLevel: values.rackLevel,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -322,7 +326,7 @@ export function RackSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={rackDisplayName(deleting)}
-					onConfirm={() => deleteRack({ variables: { id: deleting.rackId } })}
+					onConfirm={() => deleteRack({ id: deleting.rackId })}
 					loading={deleteLoading}
 				/>
 			)}

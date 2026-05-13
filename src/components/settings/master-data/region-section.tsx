@@ -1,4 +1,6 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Edit, Plus, Search, Tag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -55,45 +57,59 @@ export function RegionSection() {
 	const [editing, setEditing] = useState<Region | null>(null);
 	const [deleting, setDeleting] = useState<Region | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		RegionsQueryData,
-		RegionsQueryVariables
-	>(REGIONS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(search.trim() ? { filter: { regionName: search.trim() } } : {}),
-		},
+	const queryVars: RegionsQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(search.trim() ? { filter: { regionName: search.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.regions.all, queryVars],
+		queryFn: () =>
+			gqlRequest<RegionsQueryData, RegionsQueryVariables>(
+				REGIONS_QUERY,
+				queryVars,
+			),
 	});
 
-	const [createRegion, { loading: createLoading }] =
-		useMutation<CreateRegionMutationData>(CREATE_REGION_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateRegion, { loading: updateLoading }] =
-		useMutation<UpdateRegionMutationData>(UPDATE_REGION_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteRegion, { loading: deleteLoading }] =
-		useMutation<DeleteRegionMutationData>(DELETE_REGION_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
-	const [upsertPricing, { loading: pricingLoading }] =
-		useMutation<UpsertRegionPricingMutationData>(
-			UPSERT_REGION_PRICING_MUTATION,
-			{
-				onCompleted: () => refetch(),
-			},
-		);
+	const { mutateAsync: createRegion, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateRegionMutationData>(CREATE_REGION_MUTATION, { input }),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutateAsync: updateRegion, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateRegionMutationData>(UPDATE_REGION_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteRegion, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteRegionMutationData>(DELETE_REGION_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
+	const { mutateAsync: upsertPricing, isPending: pricingLoading } = useMutation(
+		{
+			mutationFn: (variables: { regionId: string; input: object }) =>
+				gqlRequest<UpsertRegionPricingMutationData>(
+					UPSERT_REGION_PRICING_MUTATION,
+					variables,
+				),
+			onSuccess: () => refetch(),
+		},
+	);
 
 	const list = data?.regions?.query ?? [];
 	const pagination = data?.regions?.pagination;
@@ -103,14 +119,10 @@ export function RegionSection() {
 
 	const handleCreateSubmit = async (values: RegionFormValues) => {
 		await createRegion({
-			variables: {
-				input: {
-					regionName: values.regionName,
-					regionCode: values.regionCode,
-					createdBy,
-					updatedBy: createdBy,
-				},
-			},
+			regionName: values.regionName,
+			regionCode: values.regionCode,
+			createdBy,
+			updatedBy: createdBy,
 		});
 		if (values.rate) {
 			// Pricing upsert is a no-op here since we don't have the regionId yet.
@@ -123,24 +135,20 @@ export function RegionSection() {
 		regionId: string,
 	) => {
 		await updateRegion({
-			variables: {
-				id: regionId,
-				input: {
-					regionName: values.regionName,
-					regionCode: values.regionCode,
-					updatedBy: createdBy,
-				},
+			id: regionId,
+			input: {
+				regionName: values.regionName,
+				regionCode: values.regionCode,
+				updatedBy: createdBy,
 			},
 		});
 		if (values.rate) {
 			await upsertPricing({
-				variables: {
-					regionId,
-					input: {
-						rate: parseFloat(values.rate),
-						minQty: values.minQty ? parseFloat(values.minQty) : 5,
-						sstRate: values.sstRate ? parseFloat(values.sstRate) / 100 : 0.06,
-					},
+				regionId,
+				input: {
+					rate: parseFloat(values.rate),
+					minQty: values.minQty ? parseFloat(values.minQty) : 5,
+					sstRate: values.sstRate ? parseFloat(values.sstRate) / 100 : 0.06,
 				},
 			});
 		}
@@ -389,9 +397,7 @@ export function RegionSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.regionName}
-					onConfirm={() =>
-						deleteRegion({ variables: { id: deleting.regionId } })
-					}
+					onConfirm={() => deleteRegion({ id: deleting.regionId })}
 					loading={deleteLoading}
 				/>
 			)}

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { read, utils, writeFile } from "xlsx";
 import { toast } from "sonner";
 import { Upload, Download, FileSpreadsheet, CalendarDays } from "lucide-react";
@@ -224,48 +226,63 @@ export function ImportDialog({
 	>([]);
 	const [newUomsToCreate, setNewUomsToCreate] = useState<string[]>([]);
 
-	const { data: stockUnitsData } = useQuery<
-		StockUnitsQueryData,
-		StockUnitsQueryVariables
-	>(STOCK_UNITS_QUERY, {
-		variables: {},
-		skip: mode !== "skus" || !open,
+	const { data: stockUnitsData } = useQuery({
+		queryKey: qk.stockUnits.all,
+		queryFn: () =>
+			gqlRequest<StockUnitsQueryData, StockUnitsQueryVariables>(
+				STOCK_UNITS_QUERY,
+				{},
+			),
+		enabled: mode === "skus" && open,
 	});
 
-	const { data: racksData } = useQuery<RacksQueryData, RacksQueryVariables>(
-		RACKS_QUERY,
-		{
-			variables: { pageSize: 5000, pageNumber: 1 },
-			skip: !open,
-		},
-	);
-
-	const { data: skusData, loading: skusLoading } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, {
-		variables: {},
-		skip: mode !== "skus" || !open,
-		fetchPolicy: "no-cache",
+	const { data: racksData } = useQuery({
+		queryKey: [...qk.racks.all, { pageSize: 5000, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
+				pageSize: 5000,
+				pageNumber: 1,
+			}),
+		enabled: open,
 	});
 
-	const [createSku] = useMutation<
-		CreateSkusMutationData,
-		CreateSkusMutationVariables
-	>(CREATE_SKUS_MUTATION);
+	const { data: skusData, isLoading: skusLoading } = useQuery({
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {}),
+		enabled: mode === "skus" && open,
+		staleTime: 0,
+		gcTime: 0,
+	});
 
-	const [updateSku] = useMutation<
-		UpdateSkusMutationData,
-		UpdateSkusMutationVariables
-	>(UPDATE_SKUS_MUTATION);
-	const [createRack] = useMutation<
-		CreateRackMutationData,
-		CreateRackMutationVariables
-	>(CREATE_RACK_MUTATION);
-	const [createStockUnit] = useMutation<
-		CreateStockUnitMutationData,
-		CreateStockUnitMutationVariables
-	>(CREATE_STOCK_UNIT_MUTATION);
+	const { mutateAsync: createSku } = useMutation({
+		mutationFn: (variables: CreateSkusMutationVariables) =>
+			gqlRequest<CreateSkusMutationData, CreateSkusMutationVariables>(
+				CREATE_SKUS_MUTATION,
+				variables,
+			),
+	});
+
+	const { mutateAsync: updateSku } = useMutation({
+		mutationFn: (variables: UpdateSkusMutationVariables) =>
+			gqlRequest<UpdateSkusMutationData, UpdateSkusMutationVariables>(
+				UPDATE_SKUS_MUTATION,
+				variables,
+			),
+	});
+	const { mutateAsync: createRack } = useMutation({
+		mutationFn: (variables: CreateRackMutationVariables) =>
+			gqlRequest<CreateRackMutationData, CreateRackMutationVariables>(
+				CREATE_RACK_MUTATION,
+				variables,
+			),
+	});
+	const { mutateAsync: createStockUnit } = useMutation({
+		mutationFn: (variables: CreateStockUnitMutationVariables) =>
+			gqlRequest<CreateStockUnitMutationData, CreateStockUnitMutationVariables>(
+				CREATE_STOCK_UNIT_MUTATION,
+				variables,
+			),
+	});
 
 	const validRows = useMemo(
 		() =>
@@ -677,15 +694,13 @@ export function ImportDialog({
 			if (mode === "skus" && isStockTakeFormat) {
 				for (const uomLabel of newUomsToCreate) {
 					if (uomLookup.has(normalizeKey(uomLabel))) continue;
-					const { data } = await createStockUnit({
-						variables: {
-							input: {
-								unitName: uomLabel,
-								unitCode: uomLabel,
-								isActive: true,
-								createdBy,
-								updatedBy: createdBy,
-							},
+					const data = await createStockUnit({
+						input: {
+							unitName: uomLabel,
+							unitCode: uomLabel,
+							isActive: true,
+							createdBy,
+							updatedBy: createdBy,
 						},
 					});
 					const created = data?.createStockUnit;
@@ -700,7 +715,7 @@ export function ImportDialog({
 				}
 
 				for (const rackInput of newRacksToCreate) {
-					await createRack({ variables: { input: rackInput } });
+					await createRack({ input: rackInput });
 				}
 			}
 
@@ -755,11 +770,9 @@ export function ImportDialog({
 
 								if (existing) {
 									await updateSku({
-										variables: {
-											id: existing.skuId,
-											input: {
-												skuQuantity: existing.skuQuantity + payload.skuQuantity,
-											},
+										id: existing.skuId,
+										input: {
+											skuQuantity: existing.skuQuantity + payload.skuQuantity,
 										},
 									});
 									return {
@@ -769,7 +782,7 @@ export function ImportDialog({
 									};
 								}
 
-								await createSku({ variables: { input: payload } });
+								await createSku({ input: payload });
 								return {
 									rowNumber: row.rowNumber,
 									ok: true as const,
@@ -777,7 +790,7 @@ export function ImportDialog({
 								};
 							}
 
-							await createSku({ variables: { input: payload } });
+							await createSku({ input: payload });
 							return {
 								rowNumber: row.rowNumber,
 								ok: true as const,
@@ -793,7 +806,7 @@ export function ImportDialog({
 								ok: false as const,
 								error: "Missing payload",
 							};
-						await createRack({ variables: { input: payload } });
+						await createRack({ input: payload });
 						return { rowNumber: row.rowNumber, ok: true as const };
 					}),
 				);
