@@ -89,6 +89,7 @@ function StockQuantComponent() {
 									<TableHead>SKU Code</TableHead>
 									<TableHead>Description</TableHead>
 									<TableHead>Rack</TableHead>
+									<TableHead>Lot No</TableHead>
 									<TableHead className="text-right">Quantity</TableHead>
 									<TableHead>Last Updated</TableHead>
 								</TableRow>
@@ -96,13 +97,13 @@ function StockQuantComponent() {
 							<TableBody>
 								{loading && items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
 											Loading stock quant data...
 										</TableCell>
 									</TableRow>
 								) : items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
 											No stock quant records found.
 										</TableCell>
 									</TableRow>
@@ -117,6 +118,9 @@ function StockQuantComponent() {
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{item.rackLabel ?? item.rackId}
+											</TableCell>
+											<TableCell className="font-mono text-xs">
+												{item.lotNo?.trim() ? item.lotNo : "—"}
 											</TableCell>
 											<TableCell className="text-right font-medium">
 												{Number(item.quantity ?? "0").toLocaleString()}

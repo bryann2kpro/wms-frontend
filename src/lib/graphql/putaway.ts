@@ -13,6 +13,7 @@ export const PUTAWAY_LINES_QUERY = gql`
 			destinationRackId
 			destinationRackLabel
 			sourceStockQuantId
+			sourceLotNo
 			quantity
 			failureMessage
 			createdAt
@@ -34,6 +35,7 @@ export const CREATE_PUTAWAY_DRAFT_MUTATION = gql`
 			destinationRackId
 			destinationRackLabel
 			sourceStockQuantId
+			sourceLotNo
 			quantity
 			failureMessage
 			createdAt
@@ -64,6 +66,7 @@ export const REJECT_PUTAWAY_LINE_MUTATION = gql`
 			destinationRackId
 			destinationRackLabel
 			sourceStockQuantId
+			sourceLotNo
 			quantity
 			failureMessage
 			createdAt
@@ -83,6 +86,7 @@ export type PutawayLineGql = {
 	destinationRackId: string;
 	destinationRackLabel: string | null;
 	sourceStockQuantId: string;
+	sourceLotNo: string | null;
 	quantity: string;
 	failureMessage: string | null;
 	createdAt: string;
@@ -107,6 +111,7 @@ export type CreatePutawayDraftMutationVariables = {
 		sourceStockQuantId: string;
 		destinationRackId: string;
 		quantity: string;
+		sourceLotNo?: string | null;
 	};
 };
 

@@ -24,6 +24,7 @@ export const STOCK_QUANTS_QUERY = gql`
 				quantity
 				rackId
 				rackLabel
+				lotNo
 				organizationId
 				createdAt
 				updatedAt
@@ -50,6 +51,7 @@ export interface StockQuant {
 	quantity: string;
 	rackId: string;
 	rackLabel: string | null;
+	lotNo: string | null;
 	organizationId: string;
 	createdAt: string;
 	updatedAt: string;
