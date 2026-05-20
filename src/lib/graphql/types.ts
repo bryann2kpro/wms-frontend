@@ -305,6 +305,8 @@ export interface Skus {
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
 	pickingStrategy: string;
+	isLotControlled: boolean;
+	isExpiryControlled: boolean;
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -321,6 +323,8 @@ export interface createSkusInput {
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	isActive?: boolean;
 	initialOnHandQty?: number;
 }
@@ -335,6 +339,8 @@ export interface UpdateSkusInput {
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	isActive?: boolean;
 }
 

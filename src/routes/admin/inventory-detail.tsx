@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
@@ -30,11 +29,12 @@ import {
 	type InventoryBalancesQueryData,
 } from "@/lib/graphql/inventory-balance";
 import {
-	SKU_STOCK_DETAILS_QUERY,
-	type SkuStockDetail,
-	type SkuStockDetailsQueryData,
-	type SkuStockDetailsQueryVariables,
-} from "@/lib/graphql/stock-detail";
+	STOCK_QUANTS_QUERY,
+	sortStockQuantsByPickingStrategy,
+	type StockQuant,
+	type StockQuantsQueryData,
+	type StockQuantsQueryVariables,
+} from "@/lib/graphql/stock-quant";
 import { formatDate } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/inventory-detail")({
@@ -56,53 +56,41 @@ export const Route = createFileRoute("/admin/inventory-detail")({
 	}),
 });
 
+const STOCK_QUANTS_PAGE_SIZE = 9999;
+
 const STRATEGY_STYLES: Record<string, string> = {
 	FIFO: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400",
 	LIFO: "bg-purple-500/10 text-purple-600 border-purple-500/20 dark:text-purple-400",
 	FEFO: "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400",
 };
 
-function sortDetailsByStrategy(
-	details: SkuStockDetail[],
-	strategy: string,
-): SkuStockDetail[] {
-	const sorted = [...details];
-	if (strategy === "FIFO") {
-		sorted.sort((a, b) => {
-			if (!a.firstInboundAt) return 1;
-			if (!b.firstInboundAt) return -1;
-			return new Date(a.firstInboundAt).getTime() - new Date(b.firstInboundAt).getTime();
-		})
-	} else if (strategy === "LIFO") {
-		sorted.sort((a, b) => {
-			if (!a.firstInboundAt) return 1;
-			if (!b.firstInboundAt) return -1;
-			return new Date(b.firstInboundAt).getTime() - new Date(a.firstInboundAt).getTime();
-		})
-	} else if (strategy === "FEFO") {
-		sorted.sort((a, b) => {
-			if (!a.expiryDate) return 1;
-			if (!b.expiryDate) return -1;
-			return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
-		})
-	}
-	return sorted;
-}
-
-function rackLabel(detail: SkuStockDetail): string {
-	if (!detail.rackRow && !detail.rackColumn && !detail.rackLevel) return "Unassigned";
-	return `${detail.rackRow ?? "?"}–${detail.rackColumn ?? "?"}–${detail.rackLevel ?? "?"}`;
+function formatRackLabel(row: StockQuant): string {
+	if (row.rackLabel?.trim()) return row.rackLabel;
+	return "Unassigned";
 }
 
 function InventoryDetailComponent() {
 	const { skuId } = Route.useSearch();
 	const navigate = useNavigate();
 
-	const balanceVars = {
+  const balanceVars = {
 		filter: { skuId },
 		pageSize: 1,
 		pageNumber: 1,
 	};
+
+	const { data: stockQuantData, loading: stockQuantLoading } = useQuery<
+		StockQuantsQueryData,
+		StockQuantsQueryVariables
+	>(STOCK_QUANTS_QUERY, {
+		variables: {
+      ...balanceVars,
+			pageSize: STOCK_QUANTS_PAGE_SIZE,
+		},
+		skip: !skuId,
+		fetchPolicy: "cache-and-network",
+  });
+	
 	const { data: balanceData, isLoading: balanceLoading } = useQuery({
 		queryKey: qk.inventory.list(balanceVars),
 		queryFn: () =>
@@ -112,25 +100,24 @@ function InventoryDetailComponent() {
 			),
 	});
 
-	const { data: stockData, isLoading: stockLoading } = useQuery({
-		queryKey: qk.inventory.detail(skuId),
-		queryFn: () =>
-			gqlRequest<SkuStockDetailsQueryData, SkuStockDetailsQueryVariables>(
-				SKU_STOCK_DETAILS_QUERY,
-				{ skuId },
-			),
-	});
-
-	const loading = balanceLoading || stockLoading;
+	const loading = balanceLoading || stockQuantLoading;
 	const balance = balanceData?.inventoryBalances?.query?.[0];
-	const rawDetails = stockData?.skuStockDetails?.details ?? [];
 	const pickingStrategy = balance?.pickingStrategy ?? "FIFO";
-	const details = sortDetailsByStrategy(rawDetails, pickingStrategy);
+	const stockQuants = sortStockQuantsByPickingStrategy(
+		(stockQuantData?.stockQuants?.query ?? []).filter(
+			(row) => Number(row.quantity ?? "0") > 0,
+		),
+		pickingStrategy,
+	);
 
 	const onHand = Number(balance?.onHandQty ?? 0);
 	const reserved = Number(balance?.reservedQty ?? 0);
 	const loss = Number(balance?.lossQty ?? 0);
 	const available = balance ? getAvailableQty(balance) : 0;
+	const totalStockQuantQty = stockQuants.reduce(
+		(sum, row) => sum + Number(row.quantity ?? "0"),
+		0,
+	);
 
 	return (
 		<main
@@ -222,7 +209,7 @@ function InventoryDetailComponent() {
 				</CardContent>
 			</Card>
 
-			{/* Batch & location breakdown */}
+			{/* Stock quant breakdown */}
 			<Card className="dashboard-card">
 				<CardHeader>
 					<div className="flex items-center gap-2">
@@ -232,8 +219,8 @@ function InventoryDetailComponent() {
 						</CardTitle>
 					</div>
 					<CardDescription>
-						Stock breakdown per lot and rack location, sorted by{" "}
-						<span className="font-medium">{pickingStrategy}</span> picking order.
+						Physical stock from the stock quant ledger, ordered by {pickingStrategy}{" "}
+						picking strategy. Available = On Hand − Reserved.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="relative">
@@ -245,12 +232,12 @@ function InventoryDetailComponent() {
 									<TableHead>Lot No</TableHead>
 									<TableHead>Rack Location</TableHead>
 									<TableHead className="text-right">On Hand</TableHead>
-									<TableHead className="text-right">Loss</TableHead>
+									<TableHead className="text-right">Reserved</TableHead>
 									<TableHead className="text-right">Available</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{loading && details.length === 0 ? (
+								{loading && stockQuants.length === 0 ? (
 									<TableRow>
 										<TableCell
 											colSpan={5}
@@ -259,68 +246,62 @@ function InventoryDetailComponent() {
 											Loading stock details...
 										</TableCell>
 									</TableRow>
-								) : details.length === 0 ? (
+								) : stockQuants.length === 0 ? (
 									<TableRow>
 										<TableCell
 											colSpan={5}
 											className="h-24 text-center text-muted-foreground"
 										>
-											No batch or location data recorded for this SKU.
+											No stock quant records found for this SKU.
 										</TableCell>
 									</TableRow>
 								) : (
-									details.map((detail) => {
-										const onHandQty = Number(detail.onHandQty);
-										const lossQty = Math.max(0, Number(detail.lossQty));
-										const reservedQty = Math.max(0, Number(detail.reservedQty));
-										const availableQty = Math.max(0, onHandQty - reservedQty);
-										const isOut = availableQty <= 0;
+									stockQuants.map((row) => {
+										const onHandQty = Number(row.quantity ?? "0");
+										const reservedQty = 0;
+										const availableQty = onHandQty - reservedQty;
 										return (
-											<TableRow
-												key={`${detail.lotNo ?? "no-lot"}-${detail.rackId ?? "no-rack"}-${detail.expiryDate ?? "no-exp"}`}
-												className={isOut ? "bg-red-50/60 dark:bg-red-950/20" : undefined}
-											>
+											<TableRow key={row.id}>
 												<TableCell className="font-mono text-xs font-semibold">
-													{detail.lotNo ?? <span className="italic text-muted-foreground">N/A</span>}
+													{row.lotNo?.trim() ? (
+														row.lotNo
+													) : (
+														<span className="italic text-muted-foreground">N/A</span>
+													)}
 												</TableCell>
 												<TableCell>
 													<span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium">
 														<MapPin className="h-3 w-3 text-muted-foreground" aria-hidden />
-														{rackLabel(detail)}
+														{formatRackLabel(row)}
 													</span>
 												</TableCell>
 												<TableCell className="text-right font-medium">
 													{onHandQty.toLocaleString()}
 												</TableCell>
-												<TableCell className="text-right">
-													{lossQty > 0 ? (
-														<span className="font-medium text-amber-600 dark:text-amber-400">
-															{lossQty.toLocaleString()}
-														</span>
-													) : <span className="text-muted-foreground">0</span>}
+												<TableCell className="text-right text-muted-foreground">
+													{reservedQty.toLocaleString()}
 												</TableCell>
 												<TableCell className="text-right font-semibold">
-													{isOut ? (
-														<span className="text-red-600 dark:text-red-400">0</span>
-													) : (
-														availableQty.toLocaleString()
-													)}
+													{availableQty.toLocaleString()}
 												</TableCell>
 											</TableRow>
-										)
+										);
 									})
 								)}
 							</TableBody>
 						</Table>
 					</div>
-					{details.length > 0 && (
+					{stockQuants.length > 0 && (
 						<p className="mt-3 text-xs text-muted-foreground">
-							{details.length} batch{details.length !== 1 ? "es" : ""} across{" "}
-							{new Set(details.map((d) => d.rackId).filter(Boolean)).size} rack location{new Set(details.map((d) => d.rackId).filter(Boolean)).size !== 1 ? "s" : ""}
+							{stockQuants.length} row{stockQuants.length !== 1 ? "s" : ""} across{" "}
+							{new Set(stockQuants.map((row) => row.rackId)).size} rack location
+							{new Set(stockQuants.map((row) => row.rackId)).size !== 1 ? "s" : ""}
+							{" · "}
+							Total on hand: {totalStockQuantQty.toLocaleString()}
 						</p>
 					)}
 				</CardContent>
 			</Card>
 		</main>
-	)
+	);
 }

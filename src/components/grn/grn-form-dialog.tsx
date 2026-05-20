@@ -27,7 +27,7 @@ import { RackCombobox } from "@/components/grn/rack-combobox";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
-	Calendar,
+	Calendar as CalendarIcon,
 	FileText,
 	Upload,
 	XCircle,
@@ -38,6 +38,14 @@ import {
 	CalendarDays,
 	AlertTriangle,
 } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
 import {
@@ -54,6 +62,85 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import {
+	getGrnLineSkuControls,
+	grnLineDuplicateKey,
+} from "@/lib/grn-sku-line-controls";
+
+function parseGrnExpiryDate(value: string): Date | undefined {
+	const trimmed = value?.trim();
+	if (!trimmed) return undefined;
+	const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (iso) {
+		const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+		if (!isNaN(date.getTime())) return date;
+	}
+	const parsed = new Date(trimmed);
+	return isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function GrnLineExpiryDatePicker({
+	value,
+	onChange,
+	allowClear,
+}: {
+	value: string;
+	onChange: (yyyyMmDd: string) => void;
+	allowClear?: boolean;
+}) {
+	const selected = parseGrnExpiryDate(value);
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button
+					type="button"
+					variant="outline"
+					className={cn(
+						"h-8 w-full justify-start rounded-lg border-muted-foreground/20 px-2 text-left font-normal hover:bg-accent hover:text-accent-foreground",
+						!selected && "text-muted-foreground",
+					)}
+				>
+					<CalendarIcon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+					<span className="truncate font-mono text-xs">
+						{selected ? format(selected, "yyyy-MM-dd") : "Select date"}
+					</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent
+				className="w-auto p-0 rounded-lg border shadow-lg bg-background"
+				align="start"
+				sideOffset={4}
+			>
+				<Calendar
+					mode="single"
+					selected={selected}
+					onSelect={(date) => {
+						if (date) onChange(format(date, "yyyy-MM-dd"));
+					}}
+					defaultMonth={selected ?? new Date()}
+					captionLayout="dropdown"
+					showOutsideDays
+					fromYear={new Date().getFullYear() - 1}
+					toYear={new Date().getFullYear() + 15}
+				/>
+				{allowClear && selected ? (
+					<div className="border-t p-2">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-7 w-full text-xs"
+							onClick={() => onChange("")}
+						>
+							Clear date
+						</Button>
+					</div>
+				) : null}
+			</PopoverContent>
+		</Popover>
+	);
+}
 
 /** Get a user-facing message from GraphQL or generic errors */
 function getErrorMessage(err: unknown): string {
@@ -317,6 +404,12 @@ function GRNLineRow({
 		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
 
+	const { requireLot, requireExpiry } = useMemo(
+		() =>
+			getGrnLineSkuControls(item.skuCode, skuOptions, item.asnLotTracked),
+		[item.skuCode, skuOptions, item.asnLotTracked],
+	);
+
 	return (
 		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
 			<div className="flex items-start gap-2.5">
@@ -376,19 +469,25 @@ function GRNLineRow({
 						</Button>
 					</div>
 
-					{item.asnLotTracked ? (
+					{(requireLot || requireExpiry) && item.skuCode?.trim() ? (
 						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
-							<Badge
-								variant="outline"
-								className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
-							>
-								Lot-tracked (ASN)
-							</Badge>
+							{item.asnLotTracked ? (
+								<Badge
+									variant="outline"
+									className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
+								>
+									Lot-tracked (ASN)
+								</Badge>
+							) : null}
 							<p
 								className="text-[10px] text-muted-foreground"
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Lot-tracked — Lot No. and Expiry Date are required before saving.
+								{requireLot && requireExpiry
+									? "This SKU requires Lot No. and Expiry Date."
+									: requireLot
+										? "This SKU requires a Lot No."
+										: "This SKU requires an Expiry Date."}
 							</p>
 						</div>
 					) : null}
@@ -444,50 +543,54 @@ function GRNLineRow({
 							/>
 						</div>
 						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								<CalendarDays className="h-2.5 w-2.5" />
-								Expiry
-							</label>
-							<Input
-								type="text"
-								value={item.expiryDate ?? ""}
-								onChange={(e) => {
-									const newItems = [...items];
-									newItems[index] = {
-										...newItems[index],
-										expiryDate: e.target.value,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="YYYY-MM-DD"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
+								<label
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									<CalendarDays className="h-2.5 w-2.5" />
+									Expiry
+									{requireExpiry ? (
+										<span className="text-destructive">*</span>
+									) : null}
+								</label>
+								<GrnLineExpiryDatePicker
+									value={item.expiryDate ?? ""}
+									allowClear={!requireExpiry}
+									onChange={(expiryDate) => {
+										const newItems = [...items];
+										newItems[index] = {
+											...newItems[index],
+											expiryDate,
+										};
+										onItemsChange(newItems);
+									}}
+								/>
+							</div>
 						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Lot No.
-							</label>
-							<Input
-								type="text"
-								value={item.lotNo ?? ""}
-								onChange={(e) => {
-									const newItems = [...items];
-									newItems[index] = {
-										...newItems[index],
-										lotNo: e.target.value,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="e.g. LOT-2026-001"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
+								<label
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Lot No.
+									{requireLot ? (
+										<span className="text-destructive">*</span>
+									) : null}
+								</label>
+								<Input
+									type="text"
+									value={item.lotNo ?? ""}
+									onChange={(e) => {
+										const newItems = [...items];
+										newItems[index] = {
+											...newItems[index],
+											lotNo: e.target.value,
+										};
+										onItemsChange(newItems);
+									}}
+									placeholder="e.g. LOT-2026-001"
+									className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+								/>
+							</div>
 					</div>
 
 					{/* Row 3: Racks */}
@@ -697,7 +800,6 @@ export function GrnFormDialog({
 		},
 		validators: {
 			onSubmit: ({ value }) => {
-				console.log("value", value);
 				const fields: Partial<Record<string, string>> = {};
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
@@ -716,15 +818,20 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingLotFields = items.find(
-							(i) =>
-								i.asnLotTracked &&
-								(!i.lotNo?.trim() || !i.expiryDate?.trim()),
-						);
-						console.log("missingLotFields", missingLotFields);
-						if (missingLotFields) {
+						const missingControlledFields = items.find((i) => {
+							if (!i.skuCode?.trim()) return false;
+							const { requireLot, requireExpiry } = getGrnLineSkuControls(
+								i.skuCode,
+								skuOptions,
+								i.asnLotTracked,
+							);
+							if (requireLot && !i.lotNo?.trim()) return true;
+							if (requireExpiry && !i.expiryDate?.trim()) return true;
+							return false;
+						});
+						if (missingControlledFields) {
 							fields.items =
-								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";
+								"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.";
 						} else {
 							const missingRack = items.find(
 								(i) => !(i.rackIds ?? []).length,
@@ -734,14 +841,20 @@ export function GrnFormDialog({
 							} else {
 								const seen = new Set<string>();
 								const hasDuplicate = items.some((i) => {
-									const key = `${i.skuCode}::${i.expiryDate?.trim() || ""}`;
+									const key = grnLineDuplicateKey(
+										i.skuCode,
+										skuOptions,
+										i.expiryDate ?? "",
+										i.lotNo ?? "",
+										i.asnLotTracked,
+									);
 									if (seen.has(key)) return true;
 									seen.add(key);
 									return false;
 								});
 								if (hasDuplicate) {
 									fields.items =
-										"Duplicate line items: two or more rows share the same SKU and expiry date. Use a different expiry date or merge the quantities into one row.";
+										"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.";
 								}
 							}
 						}
@@ -1077,7 +1190,7 @@ export function GrnFormDialog({
 													className="flex items-center gap-1.5"
 													style={{ fontFamily: "var(--dashboard-body)" }}
 												>
-													<Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+													<CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
 													Received Date/Time{" "}
 													<span className="text-destructive">*</span>
 												</FieldLabel>

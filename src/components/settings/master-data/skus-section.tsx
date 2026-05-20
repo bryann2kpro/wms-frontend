@@ -320,19 +320,25 @@ export function SkusSection() {
 		},
 	});
 
-	const { mutate: updateSkus, isPending: updateLoading } = useMutation({
-		mutationFn: (variables: { id: string; input: object }) =>
-			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, variables),
-		onSuccess: async () => {
-			updateInFlightRef.current = false;
-			await refetch();
-			setEditing(null);
-		},
-		onError: (error: Error) => {
-			updateInFlightRef.current = false;
-			toast.error("Failed to update SKU", { description: error.message });
-		},
-	});
+	const [updateSkus, { loading: updateLoading }] =
+		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
+			onCompleted: async (data) => {
+				updateInFlightRef.current = false;
+				if (!data?.updateSku) {
+					toast.error("Failed to update SKU", {
+						description: "No data returned from server. Check backend logs.",
+					});
+					return;
+				}
+				await refetch();
+				setEditing(null);
+				toast.success("SKU updated");
+			},
+			onError: (error) => {
+				updateInFlightRef.current = false;
+				toast.error("Failed to update SKU", { description: error.message });
+			},
+		});
 
 	const { mutate: deleteSkus, isPending: deleteLoading } = useMutation({
 		mutationFn: (variables: { id: string }) =>
@@ -847,22 +853,28 @@ export function SkusSection() {
 						? `${values.skuExpiryDate} 00:00:00.000000`
 						: "";
 					createSkus({
-						skuCode: values.skuCode,
-						skuDescription: values.skuDescription,
-						skuPrice:
-							values.skuPrice === 0 || values.skuPrice === null
-								? null
-								: Number(values.skuPrice),
-						skuQuantity: Number(values.skuQuantity),
-						skuExpiryDate: expiryDate,
-						skuUom: values.skuUom,
-						pickingStrategy: values.pickingStrategy,
-						skuSuppliers:
-							values.skuSuppliers?.map((s) => ({
-								supplierId: s.supplierId,
-								originalSkuCode: s.originalSkuCode || null,
-							})) || [],
-						isActive: true,
+						variables: {
+							input: {
+								skuCode: values.skuCode,
+								skuDescription: values.skuDescription,
+								skuPrice:
+									values.skuPrice === 0 || values.skuPrice === null
+										? null
+										: Number(values.skuPrice),
+								skuQuantity: Number(values.skuQuantity),
+								skuExpiryDate: expiryDate,
+								skuUom: values.skuUom,
+								pickingStrategy: values.pickingStrategy,
+								isLotControlled: values.isLotControlled,
+								isExpiryControlled: values.isExpiryControlled,
+								skuSuppliers:
+									values.skuSuppliers?.map((s) => ({
+										supplierId: s.supplierId,
+										originalSkuCode: s.originalSkuCode || null,
+									})) || [],
+								isActive: true,
+							},
+						},
 					});
 				}}
 				loading={createLoading}
@@ -882,6 +894,7 @@ export function SkusSection() {
 
 			{editing && (
 				<SkusFormDialog
+					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
 					suppliers={suppliers}
@@ -895,6 +908,8 @@ export function SkusSection() {
 						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
+						isLotControlled: editing.isLotControlled ?? false,
+						isExpiryControlled: editing.isExpiryControlled ?? false,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 					}}
@@ -906,25 +921,29 @@ export function SkusSection() {
 							? `${values.skuExpiryDate} 00:00:00.000000`
 							: "";
 						updateSkus({
-							id: editing.skuId,
-							input: {
-								skuCode: values.skuCode,
-								skuDescription: values.skuDescription,
-								skuPrice:
-									values.skuPrice === 0 || values.skuPrice === null
-										? null
-										: Number(values.skuPrice),
-								skuQuantity: Number(values.skuQuantity),
-								lossQuantity: Number(values.lossQuantity ?? 0),
-								skuExpiryDate: expiryDate,
-								skuUom: values.skuUom,
-								pickingStrategy: values.pickingStrategy,
-								skuSuppliers:
-									values.skuSuppliers?.map((s) => ({
-										supplierId: s.supplierId,
-										originalSkuCode: s.originalSkuCode || null,
-									})) || [],
-								isActive: values.isActive,
+							variables: {
+								id: editing.skuId,
+								input: {
+									skuCode: values.skuCode,
+									skuDescription: values.skuDescription,
+									skuPrice:
+										values.skuPrice === 0 || values.skuPrice === null
+											? null
+											: Number(values.skuPrice),
+									skuQuantity: Number(values.skuQuantity),
+									lossQuantity: Number(values.lossQuantity ?? 0),
+									skuExpiryDate: expiryDate,
+									skuUom: values.skuUom,
+									pickingStrategy: values.pickingStrategy,
+									isLotControlled: values.isLotControlled,
+									isExpiryControlled: values.isExpiryControlled,
+									skuSuppliers:
+										values.skuSuppliers?.map((s) => ({
+											supplierId: s.supplierId,
+											originalSkuCode: s.originalSkuCode || null,
+										})) || [],
+									isActive: values.isActive,
+								},
 							},
 						});
 					}}
