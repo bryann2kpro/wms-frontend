@@ -11,6 +11,7 @@ import {
 	GitCompareArrows,
 	KeyRound,
 	LayoutDashboard,
+	LayoutGrid,
 	ArrowLeftRight,
 	Package,
 	PackageSearch,
@@ -144,6 +145,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Boxes,
 		allowedPermission: ["Inventory"],
 		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-warehouse-map",
+		title: "Warehouse Map",
+		href: "/admin/warehouse-map",
+		icon: LayoutGrid,
+		allowedPermission: ["Warehouse Map"],
+    variant: "default",
 		group: "operations",
 	},
 	{

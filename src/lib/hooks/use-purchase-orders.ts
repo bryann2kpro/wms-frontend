@@ -143,30 +143,53 @@ const MAX_PAST_WEEKS = 52;
  * weekOffset=2 → 8–14 days ago, and so on.
  * Dates are aligned to UTC+8 business timezone midnight.
  */
+function getDayBoundsInBusinessTZ(d: Date): { start: Date; end: Date } {
+	const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000;
+	const shifted = new Date(d.getTime() + UTC8_OFFSET_MS);
+	const startShifted = Date.UTC(
+		shifted.getUTCFullYear(),
+		shifted.getUTCMonth(),
+		shifted.getUTCDate(),
+		0,
+		0,
+		0,
+		0,
+	);
+	const endShifted = Date.UTC(
+		shifted.getUTCFullYear(),
+		shifted.getUTCMonth(),
+		shifted.getUTCDate(),
+		23,
+		59,
+		59,
+		999,
+	);
+	return {
+		start: new Date(startShifted - UTC8_OFFSET_MS),
+		end: new Date(endShifted - UTC8_OFFSET_MS),
+	};
+}
+
 function getPastWeekWindow(weekOffset: number): {
 	fromDate: Date;
 	toDate: Date;
 } {
-	const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000;
 	const now = new Date();
-	// Today in UTC+8, then snap to UTC midnight of that day
-	const todayUTC8 = new Date(now.getTime() + UTC8_OFFSET_MS);
-	todayUTC8.setUTCHours(0, 0, 0, 0);
-	const todayMidnightUTC = new Date(todayUTC8.getTime() - UTC8_OFFSET_MS);
+	const { start: currentWeekStart } = getDayBoundsInBusinessTZ(now);
+	const dayBeforeCurrentWeek = new Date(
+		currentWeekStart.getTime() - 24 * 60 * 60 * 1000,
+	);
+	const weekEndAnchor = new Date(
+		dayBeforeCurrentWeek.getTime() - (weekOffset - 1) * 7 * 24 * 60 * 60 * 1000,
+	);
+	const weekStartAnchor = new Date(
+		weekEndAnchor.getTime() - 6 * 24 * 60 * 60 * 1000,
+	);
 
-	// toDate: end of day for (weekOffset * 7) days ago, relative to yesterday
-	// page 1 → yesterday (today-1), page 2 → today-8, etc.
-	const daysBackTo = (weekOffset - 1) * 7 + 1;
-	const toDate = new Date(todayMidnightUTC);
-	toDate.setUTCDate(todayMidnightUTC.getUTCDate() - daysBackTo);
-	toDate.setUTCHours(23, 59, 59, 999);
-
-	// fromDate: 6 days before toDate → 7-day window total
-	const fromDate = new Date(toDate);
-	fromDate.setUTCDate(toDate.getUTCDate() - 6);
-	fromDate.setUTCHours(0, 0, 0, 0);
-
-	return { fromDate, toDate };
+	return {
+		fromDate: getDayBoundsInBusinessTZ(weekStartAnchor).start,
+		toDate: getDayBoundsInBusinessTZ(weekEndAnchor).end,
+	};
 }
 
 export function useInfinitePurchaseOrders(

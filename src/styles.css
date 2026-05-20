@@ -912,6 +912,32 @@ code {
 	}
 }
 
+/* Warehouse map page: same tokens as dashboard/admin */
+.warehouse-map-page {
+	--dashboard-display: "Plus Jakarta Sans", sans-serif;
+	--dashboard-body: "Figtree", sans-serif;
+	--dashboard-accent: oklch(0.706 0.158 70.697);
+	--dashboard-accent-muted: oklch(0.92 0.04 70);
+	--dashboard-surface: oklch(0.988 0.002 286);
+}
+.dark .warehouse-map-page {
+	--dashboard-accent: oklch(0.75 0.15 70);
+	--dashboard-accent-muted: oklch(0.28 0.04 70);
+	--dashboard-surface: oklch(0.18 0.008 286);
+}
+.warehouse-map-page .dashboard-card {
+	animation: dashboard-fade-up 0.45s ease-out both;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+.warehouse-map-page .dashboard-card:hover {
+	transform: translateY(-2px);
+}
+.warehouse-map-page .warehouse-map-slot {
+	box-shadow: inset 0 -1px 0 color-mix(in oklch, black 8%, transparent);
+}
+
 /* App sidebar: align with admin design system (typography + amber active) */
 .app-sidebar {
 	--dashboard-display: "Plus Jakarta Sans", sans-serif;
