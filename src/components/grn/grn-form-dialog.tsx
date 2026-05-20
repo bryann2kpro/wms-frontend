@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import { RackCombobox } from "@/components/grn/rack-combobox";
+import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import type { Rack } from "@/lib/graphql/types";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
@@ -62,6 +63,14 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import type { Supplier } from "@/lib/graphql/types";
 import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
@@ -213,11 +222,16 @@ export type GRNLineItemForm = {
 	expiryDate: string;
 	/** Lot number assigned by supplier/manufacturer. Optional. */
 	lotNo: string;
-	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
-	rackIds: string[];
+	/** Rack location (one per line). Same SKU allowed with different expiry/rack. */
+	rackId: string;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
+
+function grnApiRackIds(item: Pick<GRNLineItemForm, "rackId">): string[] {
+	const id = item.rackId?.trim();
+	return id ? [id] : [];
+}
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
 function normalizeFieldErrors(
@@ -375,7 +389,6 @@ function GRNLineRow({
 	}>;
 	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
-	const rackIds = item.rackIds ?? [];
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -593,61 +606,43 @@ function GRNLineRow({
 							</div>
 					</div>
 
-					{/* Row 3: Racks */}
+					{/* Row 3: Rack */}
 					<div className="space-y-1">
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
-							Racks <span className="text-destructive">*</span>
+							Rack <span className="text-destructive">*</span>
 						</label>
-						<div className="flex flex-wrap items-center gap-1.5">
-							{rackIds.map((rid) => {
-								const r = racks.find((x) => x.rackId === rid);
-								const label = r
-									? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`
-									: rid;
-								return (
-									<Badge
-										key={rid}
-										variant="secondary"
-										className="gap-1 pr-1 font-mono text-xs font-normal h-6"
-									>
-										{label}
-										<button
-											type="button"
-											onClick={() => {
-												const newItems = [...items];
-												newItems[index] = {
-													...newItems[index],
-													rackIds: rackIds.filter((id) => id !== rid),
-												};
-												onItemsChange(newItems);
-											}}
-											className="rounded-full p-0.5 hover:bg-muted/80"
-											aria-label={`Remove rack ${label}`}
-										>
-											<XCircle className="h-3 w-3" />
-										</button>
-									</Badge>
-								);
-							})}
-							<RackCombobox
-								racks={racks}
-								selectedRackIds={rackIds}
-								onToggle={(rackId) => {
-									const newRackIds = rackIds.includes(rackId)
-										? rackIds.filter((id) => id !== rackId)
-										: [...rackIds, rackId];
+						<div className="flex flex-wrap items-center gap-2">
+							<div className="min-w-0 flex-1">
+							<RackLocationCombobox
+								racks={racks as Rack[]}
+								value={item.rackId ?? ""}
+								onChange={(rackId) => {
 									const newItems = [...items];
 									newItems[index] = {
 										...newItems[index],
-										rackIds: newRackIds,
+										rackId,
 									};
 									onItemsChange(newItems);
 								}}
-								onCreateRack={() => onOpenCreateRack?.(index)}
+								placeholder="Select rack…"
+								className="h-8"
 							/>
+							</div>
+							{onOpenCreateRack ? (
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
+									onClick={() => onOpenCreateRack(index)}
+								>
+									<Plus className="h-3 w-3" />
+									New
+								</Button>
+							) : null}
 						</div>
 					</div>
 				</div>
@@ -660,6 +655,7 @@ function GRNLineRow({
 export type GrnCreateSubmitPayload = {
 	grnNumber: string;
 	poReference: string;
+	supplierId: string;
 	supplierDO: string;
 	receivedDate: string;
 	notes: string;
@@ -689,6 +685,10 @@ export type GrnFormDialogProps = {
 		rackColumn: string;
 		rackLevel: string;
 	}>;
+	/** Suppliers from m_suppliers for receipt details */
+	suppliers: Supplier[];
+	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
+	supplierSelectionOptional?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -720,6 +720,8 @@ export function GrnFormDialog({
 	stockUnits,
 	warehouses: _warehouses,
 	racks,
+	suppliers,
+	supplierSelectionOptional = false,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -792,6 +794,7 @@ export function GrnFormDialog({
 		defaultValues: {
 			grnNumber: "",
 			poReference: initialValues?.poReference ?? "",
+			supplierId: "",
 			supplierDO: "",
 			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
@@ -803,6 +806,12 @@ export function GrnFormDialog({
 				const fields: Partial<Record<string, string>> = {};
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
+				if (
+					!supplierSelectionOptional &&
+					!(value.supplierId ?? "").trim()
+				) {
+					fields.supplierId = "Supplier is required";
+				}
 				if (!value.supplierDO?.trim())
 					fields.supplierDO = "Supplier DO is required";
 				if (!value.receivedDate?.trim())
@@ -834,10 +843,10 @@ export function GrnFormDialog({
 								"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.";
 						} else {
 							const missingRack = items.find(
-								(i) => !(i.rackIds ?? []).length,
+								(i) => !(i.rackId ?? "").trim(),
 							);
 							if (missingRack) {
-								fields.items = "Each line item must have at least one rack.";
+								fields.items = "Each line item must have a rack.";
 							} else {
 								const seen = new Set<string>();
 								const hasDuplicate = items.some((i) => {
@@ -874,6 +883,7 @@ export function GrnFormDialog({
 				const payload: GrnCreateSubmitPayload = {
 					grnNumber: value.grnNumber,
 					poReference: value.poReference ?? "",
+					supplierId: value.supplierId ?? "",
 					supplierDO: value.supplierDO,
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
@@ -888,7 +898,7 @@ export function GrnFormDialog({
 						unitPrice: i.unitPrice,
 						expiryDate: i.expiryDate ?? "",
 						lotNo: i.lotNo ?? "",
-						rackIds: i.rackIds ?? [],
+						rackId: i.rackId ?? "",
 					})),
 				};
 
@@ -963,8 +973,9 @@ export function GrnFormDialog({
 					)
 					: undefined;
 				const rack = it.rack;
-				const rackIds =
-					(it as { rackIds?: string[] }).rackIds ?? (rack ? [rack.rackId] : []);
+				const legacyRackIds = (it as { rackIds?: string[] }).rackIds;
+				const rackId =
+					legacyRackIds?.[0] ?? rack?.rackId ?? (it as { rackId?: string }).rackId ?? "";
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
 				return {
@@ -976,12 +987,13 @@ export function GrnFormDialog({
 					unitPrice: 0,
 					expiryDate,
 					lotNo,
-					rackIds,
+					rackId,
 				};
 			});
 			form.reset({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
+				supplierId: grn.supplierId ?? "",
 				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
 				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
@@ -992,6 +1004,7 @@ export function GrnFormDialog({
 			form.reset({
 				grnNumber: "",
 				poReference: initialValues?.poReference ?? "",
+				supplierId: "",
 				supplierDO: "",
 				receivedDate: initialValues?.receivedDate ?? "",
 				notes: "",
@@ -1014,11 +1027,11 @@ export function GrnFormDialog({
 		if (!grn?.id || grn.status !== "Draft") return;
 		const items = form.state.values.items ?? [];
 		const missingRack = items.find(
-			(i: { rackIds?: string[] }) => !(i.rackIds ?? []).length,
+			(i: { rackId?: string }) => !(i.rackId ?? "").trim(),
 		);
 		if (missingRack) {
 			toast.error(
-				"Each line item must have at least one rack before submitting for approval.",
+				"Each line item must have a rack before submitting for approval.",
 			);
 			return;
 		}
@@ -1047,6 +1060,15 @@ export function GrnFormDialog({
 			initialValues?.receivedDate?.trim() ||
 			(initialValues?.items?.length ?? 0) > 0
 		);
+	const sortedSuppliers = useMemo(
+		() =>
+			[...suppliers].sort((a, b) =>
+				a.supplierName.localeCompare(b.supplierName, undefined, {
+					sensitivity: "base",
+				}),
+			),
+		[suppliers],
+	);
 	const title = isCreate ? "Create New GRN" : "Edit GRN";
 	const description = isCreate
 		? "Enter the details for the new goods receipt note"
@@ -1133,6 +1155,69 @@ export function GrnFormDialog({
 													{isAsnPrefilledCreate ? (
 														<p className="text-xs text-muted-foreground mt-1">
 															Prefilled from selected ASN.
+														</p>
+													) : null}
+													{isInvalid && (
+														<FieldError
+															errors={normalizeFieldErrors(
+																field.state.meta.errors,
+															)}
+														/>
+													)}
+												</Field>
+											);
+										}}
+									</form.Field>
+								</div>
+								<div className="grid gap-4 sm:grid-cols-2">
+									<form.Field name="supplierId">
+										{(field) => {
+											const isInvalid = field.state.meta.errors.length > 0;
+											const required =
+												isCreate && !supplierSelectionOptional;
+											return (
+												<Field data-invalid={isInvalid}>
+													<FieldLabel
+														htmlFor={field.name}
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
+														Supplier{" "}
+														{required ? (
+															<span className="text-destructive">*</span>
+														) : null}
+													</FieldLabel>
+													<Select
+														value={field.state.value || undefined}
+														onValueChange={(v) => field.handleChange(v)}
+													>
+														<SelectTrigger
+															id={field.name}
+															className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
+															aria-invalid={isInvalid}
+														>
+															<SelectValue placeholder="Select supplier…" />
+														</SelectTrigger>
+														<SelectContent>
+															{sortedSuppliers.map((s) => (
+																<SelectItem
+																	key={s.supplierId}
+																	value={s.supplierId}
+																>
+																	{s.supplierCode} — {s.supplierName}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													{sortedSuppliers.length === 0 ? (
+														<p className="text-xs text-amber-600 mt-1">
+															No suppliers in master data. Add suppliers in
+															Settings first.
+														</p>
+													) : null}
+													{supplierSelectionOptional ? (
+														<p className="text-xs text-muted-foreground mt-1">
+															Optional when created from ASN; backend can
+															resolve supplier from the notice.
 														</p>
 													) : null}
 													{isInvalid && (
@@ -1252,7 +1337,7 @@ export function GrnFormDialog({
 															loss: 0,
 															expiryDate: "",
 															lotNo: "",
-															rackIds: [],
+															rackId: "",
 														},
 													]);
 												}}
@@ -1272,11 +1357,9 @@ export function GrnFormDialog({
 											[]) as GRNLineItemForm[];
 										if (current[lineIndex] == null) return;
 										const next = [...current];
-										const existing = next[lineIndex].rackIds ?? [];
-										if (existing.includes(rackId)) return;
 										next[lineIndex] = {
 											...next[lineIndex],
-											rackIds: [...existing, rackId],
+											rackId,
 										};
 										field.handleChange(next);
 									};

@@ -84,6 +84,7 @@ import {
 	mapGrnsQueryToResult,
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
+	type GrnsQueryVariables,
 	type ListPendingAdvanceNoticesQueryData,
 	type AdvanceNotice,
 } from "@/lib/graphql/grns";
@@ -93,6 +94,10 @@ import {
 	type SkusQueryData,
 	type SkusQueryVariables,
 } from "@/lib/graphql/skus";
+import {
+	SUPPLIERS_QUERY,
+	type SuppliersQueryData,
+} from "@/lib/graphql/suppliers";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -560,7 +565,15 @@ function GRNRouteComponent() {
 	});
 	const racks = racksData?.racks?.query ?? [];
 
-	const grnsVariables = {
+	const suppliersVariables = { pageSize: 500, pageNumber: 1 };
+	const { data: suppliersData } = useQuery({
+		queryKey: [...qk.suppliers.all, "list", suppliersVariables] as const,
+		queryFn: () =>
+			gqlRequest<SuppliersQueryData>(SUPPLIERS_QUERY, suppliersVariables),
+	});
+	const suppliers = suppliersData?.suppliers?.query ?? [];
+
+	const grnsQueryVars: GrnsQueryVariables = {
 		filter: {
 			search: debouncedSearchTerm.trim() || undefined,
 			status: statusFilterForQuery,
@@ -577,8 +590,9 @@ function GRNRouteComponent() {
 		isLoading: grnsLoading,
 		refetch: refetchGRNs,
 	} = useQuery({
-		queryKey: qk.grns.list(grnsVariables),
-		queryFn: () => gqlRequest<GrnsQueryData>(GRNS_QUERY, grnsVariables),
+		queryKey: qk.grns.list(grnsQueryVars),
+		queryFn: () =>
+			gqlRequest<GrnsQueryData, GrnsQueryVariables>(GRNS_QUERY, grnsQueryVars),
 	});
 
 	const emptyResult: import("@/lib/graphql/types").GrnListResult = {
@@ -676,6 +690,7 @@ function GRNRouteComponent() {
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
+			supplierId?: string;
 		}) => {
 			const status: GRNStatus =
 				payload.submitIntent === "submit" ? "Submitted" : "Draft";
@@ -721,6 +736,7 @@ function GRNRouteComponent() {
 					input: {
 						userId,
 						...baseInput,
+						supplierId: payload.supplierId?.trim() || undefined,
 						advanceNoticeId: payload.advanceNoticeId ?? undefined,
 					},
 				});
@@ -990,7 +1006,7 @@ function GRNRouteComponent() {
 														unitPrice: 0,
 														expiryDate: l.expiryDate ?? "",
 														lotNo: l.lotNo ?? "",
-														rackIds: [],
+														rackId: "",
 														asnLotTracked: isLotTracked,
 													};
 												}),
@@ -1031,11 +1047,14 @@ function GRNRouteComponent() {
 										}
 										warehouses={warehouses}
 										racks={racks}
+										suppliers={suppliers}
+										supplierSelectionOptional={!!selectedAsnId}
 										initialValues={asnInitialValues}
 										onCreateSubmit={async (payload) => {
 											await createMutation.mutateAsync({
 												grnNumber: payload.grnNumber,
 												poReference: payload.poReference,
+												supplierId: payload.supplierId,
 												supplierDO: payload.supplierDO,
 												receivedDate: payload.receivedDate
 													? new Date(payload.receivedDate)
@@ -1053,7 +1072,7 @@ function GRNRouteComponent() {
 													unitPrice: i.unitPrice,
 													expiryDate: i.expiryDate ?? "",
 													lotNo: i.lotNo ?? "",
-													rackIds: i.rackIds ?? [],
+													rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
 												})),
 											});
 										}}
@@ -1750,6 +1769,7 @@ function GRNRouteComponent() {
 					stockUnits={stockUnits}
 					warehouses={warehouses}
 					racks={racks}
+					suppliers={suppliers}
 					onSuccess={() => {
 						refetchGRNs();
 						setIsEditOpen(false);
