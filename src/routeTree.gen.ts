@@ -18,6 +18,7 @@ import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-qu
 import { Route as DemoStoreRouteImport } from './routes/demo/store'
 import { Route as DemoI18nRouteImport } from './routes/demo.i18n'
 import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-client'
+import { Route as AdminWarehouseMapRouteImport } from './routes/admin/warehouse-map'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
@@ -100,6 +101,11 @@ const DemoApolloClientRoute = DemoApolloClientRouteImport.update({
   id: '/demo/apollo-client',
   path: '/demo/apollo-client',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWarehouseMapRoute = AdminWarehouseMapRouteImport.update({
+  id: '/warehouse-map',
+  path: '/warehouse-map',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
   id: '/user-management',
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
+  '/admin/warehouse-map': typeof AdminWarehouseMapRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
+  '/admin/warehouse-map': typeof AdminWarehouseMapRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -416,6 +424,7 @@ export interface FileRoutesById {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/user-management': typeof AdminUserManagementRoute
+  '/admin/warehouse-map': typeof AdminWarehouseMapRoute
   '/demo/apollo-client': typeof DemoApolloClientRoute
   '/demo/i18n': typeof DemoI18nRoute
   '/demo/store': typeof DemoStoreRoute
@@ -466,6 +475,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/user-management'
+    | '/admin/warehouse-map'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -514,6 +524,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/user-management'
+    | '/admin/warehouse-map'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/user-management'
+    | '/admin/warehouse-map'
     | '/demo/apollo-client'
     | '/demo/i18n'
     | '/demo/store'
@@ -665,6 +677,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/apollo-client'
       preLoaderRoute: typeof DemoApolloClientRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/warehouse-map': {
+      id: '/admin/warehouse-map'
+      path: '/warehouse-map'
+      fullPath: '/admin/warehouse-map'
+      preLoaderRoute: typeof AdminWarehouseMapRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/user-management': {
       id: '/admin/user-management'
@@ -967,6 +986,7 @@ interface AdminRouteRouteChildren {
   AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
+  AdminWarehouseMapRoute: typeof AdminWarehouseMapRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -996,6 +1016,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
+  AdminWarehouseMapRoute: AdminWarehouseMapRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
