@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,6 +22,8 @@ export interface SkusFormValues {
 	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy: string;
+	isLotControlled: boolean;
+	isExpiryControlled: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	isActive?: boolean;
 }
@@ -35,6 +37,8 @@ export interface SkusFormInitial {
 	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
 	isActive?: boolean;
 }
@@ -111,6 +115,12 @@ export function SkusFormDialog({
 	const [pickingStrategy, setPickingStrategy] = useState(
 		initial?.pickingStrategy ?? "FIFO",
 	);
+	const [isLotControlled, setIsLotControlled] = useState(
+		initial?.isLotControlled ?? false,
+	);
+	const [isExpiryControlled, setIsExpiryControlled] = useState(
+		initial?.isExpiryControlled ?? false,
+	);
 	const [skuSuppliers, setSkuSuppliers] = useState<
 		Array<{ supplierId: string; originalSkuCode: string | null }>
 	>(initial?.skuSuppliers ?? []);
@@ -126,42 +136,43 @@ export function SkusFormDialog({
 		skuUom?: string;
 	}>({});
 
+	const initialRef = useRef(initial);
+	initialRef.current = initial;
+
+	const resetFormFromInitial = () => {
+		const i = initialRef.current;
+		setSkuCode(i?.skuCode ?? "");
+		setSkuDescription(i?.skuDescription ?? "");
+		setSkuPrice(i?.skuPrice?.toString() ?? "");
+		setSkuQuantity(i?.skuQuantity?.toString() ?? "0");
+		setLossQuantity(i?.lossQuantity?.toString() ?? "0");
+		setSkuExpiryDate(parseDate(i?.skuExpiryDate));
+		setSkuUom(i?.skuUom ?? "");
+		setPickingStrategy(i?.pickingStrategy ?? "FIFO");
+		setIsLotControlled(i?.isLotControlled ?? false);
+		setIsExpiryControlled(i?.isExpiryControlled ?? false);
+		setSkuSuppliers(i?.skuSuppliers ?? []);
+		setIsActive(i?.isActive ?? true);
+		setStep(1);
+		setSupplierSearch("");
+		setErrors({});
+	};
+
+	// Only reset when the dialog opens — not when parent re-renders (inline `initial` object).
 	useEffect(() => {
 		if (open) {
-			setSkuCode(initial?.skuCode ?? "");
-			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
-			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
-			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
-			setSkuUom(initial?.skuUom ?? "");
-			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
-			setSkuSuppliers(initial?.skuSuppliers ?? []);
-			setIsActive(initial?.isActive ?? true);
-			setStep(1);
-			setSupplierSearch("");
-			setErrors({});
+			resetFormFromInitial();
 		}
-	}, [open, initial]);
+	}, [open]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
-			setSkuCode(initial?.skuCode ?? "");
-			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
-			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
-			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
-			setSkuUom(initial?.skuUom ?? "");
-			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
-			setSkuSuppliers(initial?.skuSuppliers ?? []);
-			setIsActive(initial?.isActive ?? true);
-			setStep(1);
-			setSupplierSearch("");
-			setErrors({});
+			resetFormFromInitial();
 		}
 		onOpenChange(next);
 	};
+
+	const isEditMode = Boolean(initial);
 
 	const toggleSupplier = (supplierId: string) => {
 		setSkuSuppliers((prev) => {
@@ -251,6 +262,8 @@ export function SkusFormDialog({
 			skuExpiryDate: expiryDateString,
 			skuUom,
 			pickingStrategy,
+			isLotControlled,
+			isExpiryControlled,
 			skuSuppliers,
 			isActive,
 		});
@@ -288,6 +301,10 @@ export function SkusFormDialog({
 						setSkuUom={setSkuUom}
 						pickingStrategy={pickingStrategy}
 						setPickingStrategy={setPickingStrategy}
+						isLotControlled={isLotControlled}
+						setIsLotControlled={setIsLotControlled}
+						isExpiryControlled={isExpiryControlled}
+						setIsExpiryControlled={setIsExpiryControlled}
 						stockUnits={stockUnits}
 						errors={errors}
 						setErrors={setErrors}
@@ -328,12 +345,32 @@ export function SkusFormDialog({
 						Cancel
 					</Button>
 					{step === 1 ? (
-						<Button
-							onClick={handleNext}
-							className={`rounded-lg ${!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : "bg-amber-600 text-white hover:bg-amber-700"}`}
-						>
-							Next
-						</Button>
+						<>
+							{isEditMode && (
+								<Button
+									onClick={() => {
+										if (validateStep1()) {
+											handleSubmit();
+										}
+									}}
+									disabled={loading}
+									className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+								>
+									{loading ? "Saving..." : "Save"}
+								</Button>
+							)}
+							<Button
+								onClick={handleNext}
+								variant={isEditMode ? "outline" : "default"}
+								className={
+									isEditMode
+										? "rounded-lg"
+										: `rounded-lg ${!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : "bg-amber-600 text-white hover:bg-amber-700"}`
+								}
+							>
+								{isEditMode ? "Suppliers" : "Next"}
+							</Button>
+						</>
 					) : (
 						<>
 							<Button

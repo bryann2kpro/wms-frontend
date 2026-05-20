@@ -103,7 +103,7 @@ export function RackSection() {
 	const createdBy = user?.id ?? "";
 
 	const rackDisplayName = (rack: Rack) =>
-		`${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`;
+		`${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
 
 	return (
 		<Card className="dashboard-card">

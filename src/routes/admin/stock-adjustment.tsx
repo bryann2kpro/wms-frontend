@@ -325,7 +325,7 @@ function StockAdjustmentComponent() {
 												</TableCell>
 												<TableCell className="font-mono text-sm whitespace-nowrap">
 													{item.rack
-														? `${item.rack.rackRow}-${item.rack.rackColumn}-${item.rack.rackLevel}`
+														? `${item.rack.rackRow}-${item.rack.rackLevel}-${item.rack.rackColumn}`
 														: "-"}
 												</TableCell>
 												<TableCell className="font-mono text-sm">

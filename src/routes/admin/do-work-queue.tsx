@@ -80,7 +80,7 @@ function formatRackLocation(
 	} | null,
 ): string {
 	if (!rack) return "-";
-	return `${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`;
+	return `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
 }
 
 type GRNGroupItem =

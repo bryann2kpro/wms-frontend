@@ -17,6 +17,11 @@ import {
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
 import { Search, X, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import {
+	getAvailablePickingStrategies,
+	PICKING_STRATEGY_LABELS,
+} from "@/lib/picking-strategy";
 
 export function SkusFormStep1({
 	skuCode,
@@ -35,6 +40,10 @@ export function SkusFormStep1({
 	setSkuUom,
 	pickingStrategy,
 	setPickingStrategy,
+	isLotControlled,
+	setIsLotControlled,
+	isExpiryControlled,
+	setIsExpiryControlled,
 	stockUnits,
 	errors,
 	setErrors,
@@ -55,6 +64,10 @@ export function SkusFormStep1({
 	setSkuUom: (v: string) => void;
 	pickingStrategy: string;
 	setPickingStrategy: (v: string) => void;
+	isLotControlled: boolean;
+	setIsLotControlled: (v: boolean) => void;
+	isExpiryControlled: boolean;
+	setIsExpiryControlled: (v: boolean) => void;
 	stockUnits: StockUnit[];
 	errors: Record<string, string | undefined>;
 	setErrors: (
@@ -253,6 +266,37 @@ export function SkusFormStep1({
 					<p className="text-sm text-destructive">{errors.skuUom}</p>
 				)}
 			</div>
+			<div className="flex items-center justify-between gap-4 rounded-lg border border-muted-foreground/20 px-3 py-2">
+				<div className="space-y-0.5">
+					<Label htmlFor="sku-lot-controlled">Lot controlled</Label>
+					<p className="text-xs text-muted-foreground">
+						Require lot numbers for this SKU during inbound and picking.
+					</p>
+				</div>
+				<Switch
+					id="sku-lot-controlled"
+					checked={isLotControlled}
+					onCheckedChange={setIsLotControlled}
+				/>
+			</div>
+			<div className="flex items-center justify-between gap-4 rounded-lg border border-muted-foreground/20 px-3 py-2">
+				<div className="space-y-0.5">
+					<Label htmlFor="sku-expiry-controlled">Expiry controlled</Label>
+					<p className="text-xs text-muted-foreground">
+						Require expiry dates for this SKU; enables FEFO picking strategy.
+					</p>
+				</div>
+				<Switch
+					id="sku-expiry-controlled"
+					checked={isExpiryControlled}
+					onCheckedChange={(checked) => {
+						setIsExpiryControlled(checked);
+						if (!checked && pickingStrategy === "FEFO") {
+							setPickingStrategy("FIFO");
+						}
+					}}
+				/>
+			</div>
 			<div className="grid gap-2">
 				<Label htmlFor="sku-picking-strategy">Picking Strategy</Label>
 				<Select value={pickingStrategy} onValueChange={setPickingStrategy}>
@@ -263,11 +307,11 @@ export function SkusFormStep1({
 						<SelectValue placeholder="Select picking strategy" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="FIFO">FIFO — First In, First Out</SelectItem>
-						<SelectItem value="LIFO">LIFO — Last In, First Out</SelectItem>
-						<SelectItem value="FEFO">
-							FEFO — First Expired, First Out
-						</SelectItem>
+						{getAvailablePickingStrategies(isExpiryControlled).map((strategy) => (
+							<SelectItem key={strategy} value={strategy}>
+								{PICKING_STRATEGY_LABELS[strategy]}
+							</SelectItem>
+						))}
 					</SelectContent>
 				</Select>
 				<p className="text-xs text-muted-foreground">

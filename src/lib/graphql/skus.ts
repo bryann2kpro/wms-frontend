@@ -19,6 +19,8 @@ export const SKUS_QUERY = gql`
 				skuExpiryDate
 				skuUom
 				pickingStrategy
+				isLotControlled
+				isExpiryControlled
 				skuSuppliers {
 					supplierId
 					originalSkuCode
@@ -64,6 +66,8 @@ export const SKUS_FRAGMENT = gql`
 		}
 		skuUom
 		pickingStrategy
+		isLotControlled
+		isExpiryControlled
 		isActive
 		createdAt
 		updatedAt
