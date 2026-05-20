@@ -43,6 +43,7 @@ import {
 } from "@/lib/graphql/skus";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
+import { getAvailablePickingStrategies } from "@/lib/picking-strategy";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/inventory")({
@@ -357,7 +358,9 @@ function InventoryComponent() {
 															</SelectValue>
 														</SelectTrigger>
 														<SelectContent>
-															{["FIFO", "LIFO", "FEFO"].map((s) => (
+															{getAvailablePickingStrategies(
+																item.isExpiryControlled,
+															).map((s) => (
 																<SelectItem key={s} value={s}>
 																	<Badge
 																		variant="outline"

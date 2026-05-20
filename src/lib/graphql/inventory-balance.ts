@@ -26,6 +26,7 @@ export const INVENTORY_BALANCES_QUERY = gql`
 				skuCode
 				skuDescription
 				pickingStrategy
+				isExpiryControlled
 				skuExpiryDate
 				onHandQty
 				lossQty
@@ -52,6 +53,7 @@ export interface InventoryBalance {
 	skuCode: string;
 	skuDescription: string;
 	pickingStrategy: string;
+	isExpiryControlled: boolean;
 	skuExpiryDate: string | null;
 	onHandQty: string;
 	lossQty: string;

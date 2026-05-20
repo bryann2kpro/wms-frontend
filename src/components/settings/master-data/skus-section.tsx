@@ -305,10 +305,17 @@ export function SkusSection() {
 
 	const [updateSkus, { loading: updateLoading }] =
 		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
-			onCompleted: async () => {
+			onCompleted: async (data) => {
 				updateInFlightRef.current = false;
+				if (!data?.updateSku) {
+					toast.error("Failed to update SKU", {
+						description: "No data returned from server. Check backend logs.",
+					});
+					return;
+				}
 				await refetch();
 				setEditing(null);
+				toast.success("SKU updated");
 			},
 			onError: (error) => {
 				updateInFlightRef.current = false;
@@ -840,6 +847,8 @@ export function SkusSection() {
 								skuExpiryDate: expiryDate,
 								skuUom: values.skuUom,
 								pickingStrategy: values.pickingStrategy,
+								isLotControlled: values.isLotControlled,
+								isExpiryControlled: values.isExpiryControlled,
 								skuSuppliers:
 									values.skuSuppliers?.map((s) => ({
 										supplierId: s.supplierId,
@@ -867,6 +876,7 @@ export function SkusSection() {
 
 			{editing && (
 				<SkusFormDialog
+					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
 					suppliers={suppliers}
@@ -880,6 +890,8 @@ export function SkusSection() {
 						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
+						isLotControlled: editing.isLotControlled ?? false,
+						isExpiryControlled: editing.isExpiryControlled ?? false,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 					}}
@@ -905,6 +917,8 @@ export function SkusSection() {
 									skuExpiryDate: expiryDate,
 									skuUom: values.skuUom,
 									pickingStrategy: values.pickingStrategy,
+									isLotControlled: values.isLotControlled,
+									isExpiryControlled: values.isExpiryControlled,
 									skuSuppliers:
 										values.skuSuppliers?.map((s) => ({
 											supplierId: s.supplierId,
