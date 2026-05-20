@@ -150,7 +150,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Warehouse Map",
 		href: "/admin/warehouse-map",
 		icon: LayoutGrid,
-		allowedPermission: ["Inventory"],
+		allowedPermission: ["Warehouse Map"],
 		variant: "default",
 		group: "operations",
 	},

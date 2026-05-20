@@ -31,7 +31,7 @@ type RackCell = {
 
 export const Route = createFileRoute("/admin/warehouse-map")({
 	beforeLoad: async ({ context }) => {
-		await requirePermission(context.queryClient, ["Inventory"]);
+		await requirePermission(context.queryClient, ["Warehouse Map"]);
 	},
 	component: WarehouseMapComponent,
 	head: () => ({
