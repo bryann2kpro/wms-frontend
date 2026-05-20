@@ -10,7 +10,7 @@
  * Usage: useQuery<UsersQueryData, UsersQueryVariables>(USERS_QUERY, { variables })
  */
 
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type { Pagination } from "@/lib/graphql/types";
 
 // ---------------------------------------------------------------------------

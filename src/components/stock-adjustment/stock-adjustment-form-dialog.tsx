@@ -1,7 +1,9 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +84,26 @@ function getErrorMessage(err: unknown): string {
 				"Something went wrong. Please try again.",
 			);
 	}
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as {
+				response?: {
+					errors?: Array<{
+						message?: string;
+						extensions?: { code?: string };
+					}>;
+				};
+			}
+		).response?.errors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
+		const gql = first?.message;
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Something went wrong. Please try again.",
+			);
+	}
 	if (err instanceof Error)
 		return toUserFriendlyMessage(
 			err.message,
@@ -118,23 +140,23 @@ export function StockAdjustmentFormDialog({
 	const [notes, setNotes] = useState("");
 	const [items, setItems] = useState<AdjustmentLineItem[]>([createEmptyLine()]);
 
-	const { data: racksData } = useQuery<RacksQueryData>(RACKS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-		fetchPolicy: "cache-first",
+	const racksVars = { pageSize: 500, pageNumber: 1 };
+	const { data: racksData } = useQuery({
+		queryKey: [...qk.racks.all, racksVars],
+		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVars),
 	});
 	const racks = racksData?.racks?.query ?? [];
 
-	const [createMutation, { loading }] = useMutation(
-		CREATE_STOCK_ADJUSTMENT_MUTATION,
-		{
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: () => {
-				toast.success("Stock adjustment created successfully");
-				resetForm();
-				onSuccess();
-			},
+	const { mutateAsync: createMutation, isPending: loading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest(CREATE_STOCK_ADJUSTMENT_MUTATION, { input }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: () => {
+			toast.success("Stock adjustment created successfully");
+			resetForm();
+			onSuccess();
 		},
-	);
+	});
 
 	function resetForm() {
 		setReason("");
@@ -200,13 +222,9 @@ export function StockAdjustmentFormDialog({
 		});
 
 		await createMutation({
-			variables: {
-				input: {
-					reason: reason.trim() || null,
-					notes: notes.trim() || null,
-					items: payloadItems,
-				},
-			},
+			reason: reason.trim() || null,
+			notes: notes.trim() || null,
+			items: payloadItems,
 		});
 	}
 

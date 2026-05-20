@@ -8,10 +8,9 @@ import {
 } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import {
-	useMutation as useApolloMutation,
-	useQuery as useApolloQuery,
-} from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +89,7 @@ import {
 import { downloadPdfFromBase64 } from "@/lib/reports";
 import { env } from "@/env";
 import { getAccessToken } from "@/lib/auth/auth-storage";
+import { toast } from "sonner";
 
 const ACTION_LABELS: Record<string, string> = {
 	tally_to_opening: "Tally to Opening",
@@ -437,12 +437,18 @@ function ExceptionsComponent() {
 	const [rowActions, setRowActions] = useState<Record<string, string>>({});
 
 	// ─── Queries ──────────────────────────────────────────────────
+	const sessionsQueryVariables = { pageSize: 100, pageNumber: 1 };
 	const {
 		data: sessionsData,
-		loading: sessionsLoading,
+		isLoading: sessionsLoading,
 		refetch: refetchSessions,
-	} = useApolloQuery<StockCountSessionsQueryData>(STOCK_COUNT_SESSIONS_QUERY, {
-		variables: { pageSize: 100, pageNumber: 1 },
+	} = useQuery({
+		queryKey: [...qk.stockCount.all, "sessions", sessionsQueryVariables] as const,
+		queryFn: () =>
+			gqlRequest<StockCountSessionsQueryData>(
+				STOCK_COUNT_SESSIONS_QUERY,
+				sessionsQueryVariables,
+			),
 	});
 
 	const sessions = (sessionsData?.stockCountSessions?.query ??
@@ -463,22 +469,29 @@ function ExceptionsComponent() {
 		}
 	}, [sessions, selectedSessionId]);
 
+	const itemsQueryVariables = {
+		sessionId: selectedSessionId ?? "",
+		search: searchTerm || undefined,
+		pageSize,
+		pageNumber: page,
+	};
 	const {
 		data: itemsData,
-		loading: itemsLoading,
+		isLoading: itemsLoading,
 		refetch: refetchItems,
-	} = useApolloQuery<StockCountSessionItemsQueryData>(
-		STOCK_COUNT_SESSION_ITEMS_QUERY,
-		{
-			variables: {
-				sessionId: selectedSessionId ?? "",
-				search: searchTerm || undefined,
-				pageSize,
-				pageNumber: page,
-			},
-			skip: !selectedSessionId,
-		},
-	);
+	} = useQuery({
+		queryKey: [
+			...qk.stockCount.all,
+			"items",
+			itemsQueryVariables,
+		] as const,
+		queryFn: () =>
+			gqlRequest<StockCountSessionItemsQueryData>(
+				STOCK_COUNT_SESSION_ITEMS_QUERY,
+				itemsQueryVariables,
+			),
+		enabled: !!selectedSessionId,
+	});
 
 	const items: StockCountItem[] =
 		itemsData?.stockCountSessionItems?.query ?? [];
@@ -487,82 +500,88 @@ function ExceptionsComponent() {
 	const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
 	// ─── Mutations ────────────────────────────────────────────────
-	const [createSession, { loading: creatingSession }] =
-		useApolloMutation<CreateStockCountSessionData>(
-			CREATE_STOCK_COUNT_SESSION_MUTATION,
-			{
-				onCompleted(data) {
-					const newId = data.createStockCountSession.id;
-					setSelectedSessionId(newId);
-					setIsNewSessionDialogOpen(false);
-					setNewSessionName("");
-					refetchSessions();
-					refetchItems();
-				},
-			},
-		);
-
-	const [updateItem] = useApolloMutation<UpdateStockCountItemData>(
-		UPDATE_STOCK_COUNT_ITEM_MUTATION,
-		{
-			onCompleted: () => {
-				refetchItems();
-				refetchSessions();
-			},
+	const { mutate: createSession, isPending: creatingSession } = useMutation({
+		mutationFn: (vars: { name: string }) =>
+			gqlRequest<CreateStockCountSessionData>(
+				CREATE_STOCK_COUNT_SESSION_MUTATION,
+				vars,
+			),
+		onSuccess(data) {
+			const newId = data.createStockCountSession.id;
+			setSelectedSessionId(newId);
+			setIsNewSessionDialogOpen(false);
+			setNewSessionName("");
+			refetchSessions();
+			refetchItems();
 		},
-	);
+	});
 
-	const [closeSession, { loading: closingSession }] =
-		useApolloMutation<CloseStockCountSessionData>(
-			CLOSE_STOCK_COUNT_SESSION_MUTATION,
-			{
-				onCompleted() {
-					setIsCloseSessionDialogOpen(false);
-					refetchSessions();
-					refetchItems();
-				},
-			},
-		);
+	const { mutate: updateItem } = useMutation({
+		mutationFn: (vars: { id: string; input: Record<string, unknown> }) =>
+			gqlRequest<UpdateStockCountItemData>(
+				UPDATE_STOCK_COUNT_ITEM_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
+			refetchItems();
+			refetchSessions();
+		},
+	});
 
-	const [generateChecklist, { loading: generatingChecklist }] =
-		useApolloMutation<GenerateStockCountChecklistData>(
-			GENERATE_STOCK_COUNT_CHECKLIST_MUTATION,
-			{
-				onCompleted(data) {
-					const { pdfBase64, filename } = data.generateStockCountChecklist;
-					downloadPdfFromBase64(pdfBase64, filename);
-				},
-			},
-		);
+	const { mutate: closeSession, isPending: closingSession } = useMutation({
+		mutationFn: (vars: { id: string }) =>
+			gqlRequest<CloseStockCountSessionData>(
+				CLOSE_STOCK_COUNT_SESSION_MUTATION,
+				vars,
+			),
+		onSuccess() {
+			setIsCloseSessionDialogOpen(false);
+			refetchSessions();
+			refetchItems();
+		},
+	});
 
-	const [bulkApprove, { loading: bulkApproving }] =
-		useApolloMutation<BulkApproveStockCountItemsData>(
-			BULK_APPROVE_STOCK_COUNT_ITEMS_MUTATION,
-			{
-				onCompleted() {
-					refetchItems();
-					refetchSessions();
-				},
+	const { mutate: generateChecklist, isPending: generatingChecklist } =
+		useMutation({
+			mutationFn: (vars: { sessionId: string }) =>
+				gqlRequest<GenerateStockCountChecklistData>(
+					GENERATE_STOCK_COUNT_CHECKLIST_MUTATION,
+					vars,
+				),
+			onSuccess(data) {
+				const { pdfBase64, filename } = data.generateStockCountChecklist;
+				downloadPdfFromBase64(pdfBase64, filename);
 			},
-		);
+		});
+
+	const { mutate: bulkApprove, isPending: bulkApproving } = useMutation({
+		mutationFn: (vars: { sessionId: string }) =>
+			gqlRequest<BulkApproveStockCountItemsData>(
+				BULK_APPROVE_STOCK_COUNT_ITEMS_MUTATION,
+				vars,
+			),
+		onSuccess(data) {
+			toast.success(`${data.bulkApproveStockCountItems} item(s) approved`);
+			refetchItems();
+			refetchSessions();
+		},
+	});
 
 	// ─── Handlers ─────────────────────────────────────────────────
 	const handleCreateSession = () => {
 		const name = newSessionName.trim();
 		if (!name) return;
-		createSession({ variables: { name } });
+		createSession({ name });
 	};
 
 	const handleCountedChange = useCallback(
 		(itemId: string, update: { dozen: number; loss: number }) => {
 			setRowCountedAmounts((prev) => ({ ...prev, [itemId]: update }));
 			updateItem({
-				variables: {
-					id: itemId,
-					input: {
-						countedQty: update.dozen,
-						countedLossQty: update.loss,
-					},
+				id: itemId,
+				input: {
+					countedQty: update.dozen,
+					countedLossQty: update.loss,
 				},
 			});
 		},
@@ -572,50 +591,51 @@ function ExceptionsComponent() {
 	const handleActionChange = useCallback(
 		(itemId: string, action: string) => {
 			setRowActions((prev) => ({ ...prev, [itemId]: action }));
-			updateItem({ variables: { id: itemId, input: { action } } });
+			updateItem({ id: itemId, input: { action } });
 		},
 		[updateItem],
 	);
 
 	const handleNotesChange = useCallback(
 		(itemId: string, notes: string) => {
-			updateItem({ variables: { id: itemId, input: { notes } } });
+			updateItem({ id: itemId, input: { notes } });
 		},
 		[updateItem],
 	);
 
 	const handleImageUploaded = useCallback(
 		(itemId: string, imageUrl: string) => {
-			updateItem({ variables: { id: itemId, input: { imageUrl } } });
+			updateItem({ id: itemId, input: { imageUrl } });
 		},
 		[updateItem],
 	);
 
 	const handleApprove = useCallback(
 		(itemId: string) => {
-			updateItem({ variables: { id: itemId, input: { isApproved: true } } });
+			updateItem({ id: itemId, input: { isApproved: true } });
 		},
 		[updateItem],
 	);
 
 	const handleBulkApprove = () => {
 		if (!selectedSessionId) return;
-		bulkApprove({ variables: { sessionId: selectedSessionId } });
+		bulkApprove({ sessionId: selectedSessionId });
 	};
 
 	const handleCloseSession = () => {
 		if (!selectedSessionId) return;
-		closeSession({ variables: { id: selectedSessionId } });
+		closeSession({ id: selectedSessionId });
 	};
 
 	const handlePrintChecklist = () => {
 		if (!selectedSessionId) return;
-		generateChecklist({ variables: { sessionId: selectedSessionId } });
+		generateChecklist({ sessionId: selectedSessionId });
 	};
 
 	// ─── Summary ──────────────────────────────────────────────────
 	const summary = useMemo(() => {
 		if (!selectedSession) return null;
+		console.log("selectedSession", selectedSession);
 		return {
 			pending: selectedSession.pendingCount,
 			approved: selectedSession.itemCount - selectedSession.pendingCount,
@@ -992,7 +1012,8 @@ function ExceptionsComponent() {
 							</div>
 
 							<div className="flex items-center gap-2">
-								{isSessionOpen && summary && summary.pending > 0 && (
+								{summary?.pending}
+								{isSessionOpen && summary && summary.approved > 0 && (
 									<Button
 										variant="outline"
 										size="sm"
@@ -1001,7 +1022,7 @@ function ExceptionsComponent() {
 										disabled={bulkApproving}
 									>
 										<ShieldCheck className="h-3.5 w-3.5" />
-										{bulkApproving ? "Approving..." : "Approve All Ready"}
+										{bulkApproving ? "Approving..." : "Approve All"}
 									</Button>
 								)}
 
@@ -1278,7 +1299,7 @@ function ExceptionsComponent() {
 															/>
 														</div>
 													</TableCell>
-													{/* Status / Approve */}
+													{/* Status */}
 													<TableCell className="text-center pr-4 py-3">
 														{item.isApproved ? (
 															<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-700 ring-1 ring-emerald-300/50">
@@ -1286,16 +1307,9 @@ function ExceptionsComponent() {
 																Approved
 															</span>
 														) : (
-															<Button
-																variant="outline"
-																size="sm"
-																onClick={() => handleApprove(item.id)}
-																disabled={!canApprove}
-																className={`h-7 px-3 text-xs rounded-lg transition-all ${canApprove ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-400" : ""}`}
-															>
-																<ShieldCheck className="h-3 w-3 mr-1" />
-																Approve
-															</Button>
+															<span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-1 text-[0.7rem] font-semibold text-muted-foreground ring-1 ring-border/40">
+																Pending
+															</span>
 														)}
 													</TableCell>
 												</TableRow>

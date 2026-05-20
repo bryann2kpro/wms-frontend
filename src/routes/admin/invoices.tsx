@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import { useQuery, useLazyQuery, useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -113,18 +115,22 @@ function InvoicesComponent() {
 		null,
 	);
 
-	const [fetchAllInvoices] = useLazyQuery<InvoicesQueryData, InvoicesQueryVariables>(
-		INVOICES_QUERY,
-		{ fetchPolicy: "network-only" },
-	);
+	const fetchAllInvoices = (variables: InvoicesQueryVariables) =>
+		gqlRequest<InvoicesQueryData, InvoicesQueryVariables>(
+			INVOICES_QUERY,
+			variables,
+		);
 	const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 	const [isDownloadingAllIndividual, setIsDownloadingAllIndividual] = useState(false);
 	const [isDownloadingSelectedIndividual, setIsDownloadingSelectedIndividual] = useState(false);
 
-	const [generateSinglePdf] = useMutation<
-		GenerateProformaInvoicePdfData,
-		GenerateProformaInvoicePdfVariables
-	>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION);
+	const { mutateAsync: generateSinglePdf } = useMutation({
+		mutationFn: (vars: GenerateProformaInvoicePdfVariables) =>
+			gqlRequest<
+				GenerateProformaInvoicePdfData,
+				GenerateProformaInvoicePdfVariables
+			>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION, vars),
+	});
 
 	// Build the current active filter (shared between main query and download-all)
 	const activeFilter = useMemo(() => ({
@@ -144,15 +150,13 @@ function InvoicesComponent() {
 		if (isGenerating || generatingGroupKey) return;
 		setGeneratingGroupKey(key);
 		try {
-			const { data: result } = await fetchAllInvoices({
-				variables: {
-					filter:
-						key === "__none__"
-							? {} // can't filter by null delivery date; fall back to visible IDs
-							: { deliveryDateFrom: key, deliveryDateTo: key },
-					pageSize: 500,
-					pageNumber: 1,
-				},
+			const result = await fetchAllInvoices({
+				filter:
+					key === "__none__"
+						? {} // can't filter by null delivery date; fall back to visible IDs
+						: { deliveryDateFrom: key, deliveryDateTo: key },
+				pageSize: 500,
+				pageNumber: 1,
 			});
 			const ids =
 				key === "__none__"
@@ -168,12 +172,10 @@ function InvoicesComponent() {
 		if (isGenerating || isDownloadingAll) return;
 		setIsDownloadingAll(true);
 		try {
-			const { data: result } = await fetchAllInvoices({
-				variables: {
-					filter: activeFilter,
-					pageSize: 500,
-					pageNumber: 1,
-				},
+			const result = await fetchAllInvoices({
+				filter: activeFilter,
+				pageSize: 500,
+				pageNumber: 1,
 			});
 			const ids = (result?.invoices.query ?? []).map((inv) => inv.id);
 			if (ids.length > 0) await startBulkExport(ids);
@@ -188,7 +190,7 @@ function InvoicesComponent() {
 		let failCount = 0;
 		for (const invoiceId of ids) {
 			try {
-				const { data: res } = await generateSinglePdf({ variables: { invoiceId } });
+				const res = await generateSinglePdf({ invoiceId });
 				const pdf = res?.generateProformaInvoicePdf;
 				if (pdf) downloadPdfFromBase64(pdf.pdfBase64, pdf.filename);
 				successCount++;
@@ -207,8 +209,10 @@ function InvoicesComponent() {
 		if (isGenerating || isDownloadingAllIndividual) return;
 		setIsDownloadingAllIndividual(true);
 		try {
-			const { data: result } = await fetchAllInvoices({
-				variables: { filter: activeFilter, pageSize: 500, pageNumber: 1 },
+			const result = await fetchAllInvoices({
+				filter: activeFilter,
+				pageSize: 500,
+				pageNumber: 1,
 			});
 			const ids = (result?.invoices.query ?? []).map((inv) => inv.id);
 			await downloadIndividually(ids);
@@ -239,17 +243,19 @@ function InvoicesComponent() {
 		setSelectedIds(new Set());
 	}, [debouncedSearch, statusFilter, issuedFrom, issuedTo]);
 
-	const { data, loading } = useQuery<InvoicesQueryData, InvoicesQueryVariables>(
-		INVOICES_QUERY,
-		{
-			variables: {
-				filter: activeFilter,
-				pageSize: 500,
-				pageNumber: 1,
-			},
-			fetchPolicy: "cache-and-network",
-		},
-	);
+	const invoicesVars: InvoicesQueryVariables = {
+		filter: activeFilter,
+		pageSize: 500,
+		pageNumber: 1,
+	};
+	const { data, isLoading: loading } = useQuery({
+		queryKey: qk.invoices.list(invoicesVars),
+		queryFn: () =>
+			gqlRequest<InvoicesQueryData, InvoicesQueryVariables>(
+				INVOICES_QUERY,
+				invoicesVars,
+			),
+	});
 
 	const invoices = (data?.invoices.query ?? []).map((inv) => ({
 		...inv,

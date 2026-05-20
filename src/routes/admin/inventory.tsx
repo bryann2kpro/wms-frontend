@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { requirePermission } from "@/lib/rbac";
 import {
 	Card,
@@ -28,7 +30,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye, Activity } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
 	INVENTORY_BALANCES_QUERY,
@@ -78,30 +80,34 @@ function InventoryComponent() {
 	const [lowStockPage, setLowStockPage] = useState(1);
 	const [lowStockThreshold, setLowStockThreshold] = useState(DEFAULT_LOW_STOCK_THRESHOLD);
 
-	// Normal paginated query — used when low-stock filter is off.
-	const { data: pagedData, loading: pagedLoading } =
-		useQuery<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, {
-			variables: {
-				filter: { search: debouncedSearch.trim() || undefined },
-				pageSize: PAGE_SIZE,
-				pageNumber: page,
-			},
-			skip: lowStockOnly,
-			fetchPolicy: "cache-and-network",
-		});
+	const queryClient = useQueryClient();
 
-	// Full-fetch query — used when low-stock filter is on, fetches everything so
-	// client-side filtering + pagination covers the entire dataset.
-	const { data: fullData, loading: fullLoading } =
-		useQuery<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, {
-			variables: {
-				filter: { search: debouncedSearch.trim() || undefined },
-				pageSize: ALL_ITEMS_PAGE_SIZE,
-				pageNumber: 1,
-			},
-			skip: !lowStockOnly,
-			fetchPolicy: "cache-and-network",
-		});
+	const pagedVars = {
+		filter: { search: debouncedSearch.trim() || undefined },
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+	};
+	const { data: pagedData, isLoading: pagedLoading } = useQuery({
+		queryKey: qk.inventory.list(pagedVars),
+		queryFn: () =>
+			gqlRequest<InventoryBalancesQueryData>(
+				INVENTORY_BALANCES_QUERY,
+				pagedVars,
+			),
+		enabled: !lowStockOnly,
+	});
+
+	const fullVars = {
+		filter: { search: debouncedSearch.trim() || undefined },
+		pageSize: ALL_ITEMS_PAGE_SIZE,
+		pageNumber: 1,
+	};
+	const { data: fullData, isLoading: fullLoading } = useQuery({
+		queryKey: qk.inventory.list(fullVars),
+		queryFn: () =>
+			gqlRequest<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, fullVars),
+		enabled: lowStockOnly,
+	});
 
 	const loading = lowStockOnly ? fullLoading : pagedLoading;
 
@@ -143,11 +149,15 @@ function InventoryComponent() {
 		}
 	};
 
-	const [updateSku, { loading: updatingStrategy }] = useMutation<
-		UpdateSkusMutationData,
-		UpdateSkusMutationVariables
-	>(UPDATE_SKUS_MUTATION, {
-		refetchQueries: [INVENTORY_BALANCES_QUERY],
+	const { mutateAsync: updateSku, isPending: updatingStrategy } = useMutation({
+		mutationFn: (vars: UpdateSkusMutationVariables) =>
+			gqlRequest<UpdateSkusMutationData, UpdateSkusMutationVariables>(
+				UPDATE_SKUS_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: qk.inventory.all });
+		},
 	});
 
 	const [updatingSkuId, setUpdatingSkuId] = useState<string | null>(null);
@@ -155,9 +165,7 @@ function InventoryComponent() {
 	const handleStrategyChange = async (skuId: string, strategy: string) => {
 		setUpdatingSkuId(skuId);
 		try {
-			await updateSku({
-				variables: { id: skuId, input: { pickingStrategy: strategy } },
-			});
+			await updateSku({ id: skuId, input: { pickingStrategy: strategy } });
 			toast.success("Picking strategy updated");
 		} catch {
 			toast.error("Failed to update picking strategy");
@@ -433,21 +441,38 @@ function InventoryComponent() {
 													className="text-right"
 													onClick={(e) => e.stopPropagation()}
 												>
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="h-7 w-7 opacity-60 hover:opacity-100"
-														aria-label={`View details for ${item.skuCode}`}
-														onClick={() =>
-															navigate({
-																to: "/admin/inventory-detail",
-																search: { skuId: item.skuId },
-															})
-														}
-													>
-														<Eye className="h-3.5 w-3.5" />
-													</Button>
+													<div className="flex items-center justify-end gap-1">
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="h-7 w-7 opacity-60 hover:opacity-100"
+															aria-label={`View movements for ${item.skuCode}`}
+															onClick={() =>
+																navigate({
+																	to: "/admin/sku-movement",
+																	search: { skuId: item.skuId },
+																})
+															}
+														>
+															<Activity className="h-3.5 w-3.5" />
+														</Button>
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="h-7 w-7 opacity-60 hover:opacity-100"
+															aria-label={`View details for ${item.skuCode}`}
+															onClick={() =>
+																navigate({
+																	to: "/admin/inventory-detail",
+																	search: { skuId: item.skuId },
+																})
+															}
+														>
+															<Eye className="h-3.5 w-3.5" />
+														</Button>
+													</div>
 												</TableCell>
 											</TableRow>
 										);

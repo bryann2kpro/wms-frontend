@@ -1,5 +1,7 @@
 import type * as React from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Dialog,
 	DialogContent,
@@ -52,12 +54,14 @@ export function CreatePurchaseOrderDialog({
 	form,
 	trigger,
 }: CreatePurchaseOrderDialogProps) {
-	const { data: outletsData, refetch: refetchOutlets } = useQuery<
-		OutletsQueryData,
-		OutletsQueryVariables
-	>(OUTLETS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-		skip: !open,
+	const { data: outletsData, refetch: refetchOutlets } = useQuery({
+		queryKey: [...qk.outlets.all, { pageSize: 500, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<OutletsQueryData, OutletsQueryVariables>(OUTLETS_QUERY, {
+				pageSize: 500,
+				pageNumber: 1,
+			}),
+		enabled: open,
 	});
 
 	const outlets = outletsData?.outlets?.query ?? [];

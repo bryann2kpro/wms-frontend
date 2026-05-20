@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Dialog,
 	DialogContent,
@@ -140,7 +142,7 @@ function GrnLineExpiryDatePicker({
 	);
 }
 
-/** Get a user-facing message from Apollo or generic errors */
+/** Get a user-facing message from GraphQL or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
 		const first = (
@@ -151,6 +153,26 @@ function getErrorMessage(err: unknown): string {
 				}>;
 			}
 		).graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
+		const gql = first?.message;
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Something went wrong. Please try again.",
+			);
+	}
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as {
+				response?: {
+					errors?: Array<{
+						message?: string;
+						extensions?: { code?: string };
+					}>;
+				};
+			}
+		).response?.errors?.[0];
 		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
 			return "Internal Server Error";
 		const gql = first?.message;
@@ -708,6 +730,7 @@ export function GrnFormDialog({
 	initialValues,
 }: GrnFormDialogProps) {
 	const { user } = useCurrentUser();
+	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const [createRackOpen, setCreateRackOpen] = useState(false);
@@ -715,44 +738,55 @@ export function GrnFormDialog({
 		number | null
 	>(null);
 
-	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
-		onCompleted: () => {
+	const { mutateAsync: updateGRN } = useMutation({
+		mutationFn: (variables: { id: string; input: unknown }) =>
+			gqlRequest(UPDATE_GRN_MUTATION, variables),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: qk.grns.all });
 			onSuccess?.();
 			if (mode === "edit") onOpenChange(false);
 		},
 	});
 
-	const [deleteGRN, { loading: deleteLoading }] = useMutation(
-		DELETE_GRN_MUTATION,
-		{
-			onError: (err) => {
-				toast.error(getErrorMessage(err));
-			},
-			onCompleted: () => {
-				onSuccess?.();
-				onOpenChange(false);
-			},
+	const { mutate: deleteGRN, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest(DELETE_GRN_MUTATION, variables),
+		onError: (err) => {
+			toast.error(getErrorMessage(err));
 		},
-	);
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: qk.grns.all });
+			onSuccess?.();
+			onOpenChange(false);
+		},
+	});
 
 	const createdBy = user?.id ?? "";
 	const updateItemsWithRackRef = useRef<
 		((lineIndex: number, rackId: string) => void) | null
 	>(null);
-	const [createRack, { loading: createRackLoading }] =
-		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: (data) => {
-				const rack = data?.createRack;
-				if (rack && createRackForLineIndex != null) {
-					updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
-					onRackCreated?.();
-					setCreateRackOpen(false);
-					setCreateRackForLineIndex(null);
-					toast.success("Rack created.");
-				}
-			},
-		});
+	const { mutate: createRack, isPending: createRackLoading } = useMutation({
+		mutationFn: (input: {
+			rackRow: string;
+			rackColumn: string;
+			rackLevel: string;
+			createdBy: string;
+			updatedBy: string;
+		}) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: (data) => {
+			const rack = data?.createRack;
+			if (rack && createRackForLineIndex != null) {
+				updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
+				queryClient.invalidateQueries({ queryKey: qk.racks.all });
+				onRackCreated?.();
+				setCreateRackOpen(false);
+				setCreateRackForLineIndex(null);
+				toast.success("Rack created.");
+			}
+		},
+	});
 
 	const form = useForm({
 		defaultValues: {
@@ -877,41 +911,39 @@ export function GrnFormDialog({
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
 				await updateGRN({
-					variables: {
-						id: grn.id,
-						input: {
-							grnNo: value.grnNumber || undefined,
-							supplierId: grn.supplierId,
-							supplierDeliveryId: grn.supplierDeliveryId ?? null,
-							supplierDeliveryNo: value.supplierDO || undefined,
-							poNo: value.poReference || undefined,
-							receivedAt: parsedDate?.toISOString() ?? undefined,
-							status: UI_STATUS_TO_GQL[status],
-							notes: value.notes || undefined,
-							warehouseId: value.warehouseId?.trim() || undefined,
-							items: (value.items ?? []).map((i) => {
-								const uomId = i.uom
-									? (stockUnits.find((u) => u.unitCode === i.uom)
-										?.stockUnitId ?? i.uom)
-									: undefined;
-								const rackIds = (i.rackIds ?? []).filter((id) =>
-									(id ?? "").trim(),
-								);
-								return {
-									skuId:
-										skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
-										undefined,
-									skuCode: i.skuCode,
-									skuDescription: i.description ?? undefined,
-									qty: String(i.carton),
-									lossQty: String(i.loss),
-									skuUom: uomId ?? undefined,
-									expiryDate: (i.expiryDate ?? "").trim() || undefined,
-									lotNo: (i.lotNo ?? "").trim() || undefined,
-									...(rackIds.length > 0 && { rackIds }),
-								};
-							}),
-						},
+					id: grn.id,
+					input: {
+						grnNo: value.grnNumber || undefined,
+						supplierId: grn.supplierId,
+						supplierDeliveryId: grn.supplierDeliveryId ?? null,
+						supplierDeliveryNo: value.supplierDO || undefined,
+						poNo: value.poReference || undefined,
+						receivedAt: parsedDate?.toISOString() ?? undefined,
+						status: UI_STATUS_TO_GQL[status],
+						notes: value.notes || undefined,
+						warehouseId: value.warehouseId?.trim() || undefined,
+						items: (value.items ?? []).map((i) => {
+							const uomId = i.uom
+								? (stockUnits.find((u) => u.unitCode === i.uom)
+									?.stockUnitId ?? i.uom)
+								: undefined;
+							const rackIds = (i.rackIds ?? []).filter((id) =>
+								(id ?? "").trim(),
+							);
+							return {
+								skuId:
+									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
+									undefined,
+								skuCode: i.skuCode,
+								skuDescription: i.description ?? undefined,
+								qty: String(i.carton),
+								lossQty: String(i.loss),
+								skuUom: uomId ?? undefined,
+								expiryDate: (i.expiryDate ?? "").trim() || undefined,
+								lotNo: (i.lotNo ?? "").trim() || undefined,
+								...(rackIds.length > 0 && { rackIds }),
+							};
+						}),
 					},
 				});
 			} catch (err) {
@@ -991,10 +1023,8 @@ export function GrnFormDialog({
 			return;
 		}
 		updateGRN({
-			variables: {
-				id: grn.id,
-				input: { status: UI_STATUS_TO_GQL["Submitted"] },
-			},
+			id: grn.id,
+			input: { status: UI_STATUS_TO_GQL["Submitted"] },
 		});
 	};
 
@@ -1006,7 +1036,7 @@ export function GrnFormDialog({
 			)
 		)
 			return;
-		deleteGRN({ variables: { id: grn.id } });
+		deleteGRN({ id: grn.id });
 	};
 
 	const isCreate = mode === "create";
@@ -1311,15 +1341,11 @@ export function GrnFormDialog({
 												}}
 												onSubmit={(values) =>
 													createRack({
-														variables: {
-															input: {
-																rackRow: values.rackRow,
-																rackColumn: values.rackColumn,
-																rackLevel: values.rackLevel,
-																createdBy,
-																updatedBy: createdBy,
-															},
-														},
+														rackRow: values.rackRow,
+														rackColumn: values.rackColumn,
+														rackLevel: values.rackLevel,
+														createdBy,
+														updatedBy: createdBy,
 													})
 												}
 												loading={createRackLoading}

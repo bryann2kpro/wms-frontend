@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	DeliveryOrder,
 	DeliveryOrderPaginatedResponse,
@@ -212,6 +212,8 @@ export const GENERATE_DO_PICKING_LIST_MUTATION = gql`
 
 export type DoPickingListFilterInput = {
 	regionId?: string | null;
+	regionIds?: string[] | null;
+	search?: string | null;
 	scheduledDeliveryDateFrom?: string | null;
 	scheduledDeliveryDateTo?: string | null;
 };

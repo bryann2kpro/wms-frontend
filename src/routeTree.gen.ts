@@ -21,6 +21,7 @@ import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-clien
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
 import { Route as AdminStockQuantRouteImport } from './routes/admin/stock-quant'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
+import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -115,6 +116,11 @@ const AdminStockQuantRoute = AdminStockQuantRouteImport.update({
 const AdminStockAdjustmentRoute = AdminStockAdjustmentRouteImport.update({
   id: '/stock-adjustment',
   path: '/stock-adjustment',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSkuMovementRoute = AdminSkuMovementRouteImport.update({
+  id: '/sku-movement',
+  path: '/sku-movement',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminSettlementRoute = AdminSettlementRouteImport.update({
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
   '/admin/user-management': typeof AdminUserManagementRoute
@@ -372,6 +379,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
   '/admin/user-management': typeof AdminUserManagementRoute
@@ -422,6 +430,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
   '/admin/user-management': typeof AdminUserManagementRoute
@@ -473,6 +482,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
     | '/admin/user-management'
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
     | '/admin/user-management'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
     | '/admin/user-management'
@@ -697,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/stock-adjustment'
       fullPath: '/admin/stock-adjustment'
       preLoaderRoute: typeof AdminStockAdjustmentRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/sku-movement': {
+      id: '/admin/sku-movement'
+      path: '/sku-movement'
+      fullPath: '/admin/sku-movement'
+      preLoaderRoute: typeof AdminSkuMovementRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/settlement': {
@@ -984,6 +1003,7 @@ interface AdminRouteRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
+  AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminStockQuantRoute: typeof AdminStockQuantRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
@@ -1014,6 +1034,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
+  AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminStockQuantRoute: AdminStockQuantRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,

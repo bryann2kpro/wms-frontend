@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { gqlRequest } from "@/lib/api/gql";
 import { getSocket } from "@/lib/socket";
 import {
 	BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION,
@@ -72,10 +73,13 @@ export function useBulkProformaPdf() {
 		total: 0,
 	});
 
-	const [mutate] = useMutation<
-		BulkGenerateProformaInvoicesPdfData,
-		BulkGenerateProformaInvoicesPdfVariables
-	>(BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION);
+	const { mutateAsync } = useMutation({
+		mutationFn: (variables: BulkGenerateProformaInvoicesPdfVariables) =>
+			gqlRequest<
+				BulkGenerateProformaInvoicesPdfData,
+				BulkGenerateProformaInvoicesPdfVariables
+			>(BULK_GENERATE_PROFORMA_INVOICES_PDF_MUTATION, variables),
+	});
 
 	const startBulkExport = useCallback(
 		async (invoiceIds: string[]) => {
@@ -87,8 +91,8 @@ export function useBulkProformaPdf() {
 			if (!socket.connected) socket.connect();
 
 			try {
-				const { data } = await mutate({ variables: { invoiceIds } });
-				const jobId = data!.bulkGenerateProformaInvoicesPdf.jobId;
+				const data = await mutateAsync({ invoiceIds });
+				const jobId = data.bulkGenerateProformaInvoicesPdf.jobId;
 
 				socket.emit("join-room", `job:${jobId}`);
 
@@ -137,7 +141,7 @@ export function useBulkProformaPdf() {
 				);
 			}
 		},
-		[mutate],
+		[mutateAsync],
 	);
 
 	const reset = useCallback(

@@ -15,8 +15,6 @@
     "test:e2e:headed": "dotenv -e .env.e2e -- playwright test --headed"
   },
   "dependencies": {
-    "@apollo/client": "^4.1.6",
-    "@apollo/client-integration-tanstack-start": "^0.14.4-rc.0",
     "@base-ui/react": "^1.2.0",
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",
@@ -74,6 +72,9 @@
     "vite-tsconfig-paths": "^6.1.1",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["core-js", "esbuild"]
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",

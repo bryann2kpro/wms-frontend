@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import {
-	useQuery,
-	useMutation as useApolloMutation,
-} from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -67,7 +66,6 @@ import {
 	GrnFormDialog,
 	type GRNLineItemForm,
 } from "@/components/grn/grn-form-dialog";
-import { useQuery as useApolloQuery } from "@apollo/client/react";
 import {
 	STOCK_UNITS_QUERY,
 	type StockUnitsQueryData,
@@ -100,6 +98,26 @@ import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
 function getGrnErrorMessage(err: unknown): string {
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as {
+				response?: {
+					errors?: Array<{
+						message?: string;
+						extensions?: { code?: string };
+					}>;
+				};
+			}
+		).response?.errors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
+		const gql = first?.message;
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Failed to update GRN. Please try again.",
+			);
+	}
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
 		const first = (
 			err as {
@@ -503,54 +521,64 @@ function GRNRouteComponent() {
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
-	const { data: pendingAsnData, loading: pendingAsnLoading } =
-		useApolloQuery<ListPendingAdvanceNoticesQueryData>(
-			LIST_PENDING_ADVANCE_NOTICES_QUERY,
-			{
-				skip: !isAsnPickerOpen,
-				fetchPolicy: "network-only",
-			},
-		);
+	const { data: pendingAsnData, isLoading: pendingAsnLoading } = useQuery({
+		queryKey: ["pending-advance-notices"] as const,
+		queryFn: () =>
+			gqlRequest<ListPendingAdvanceNoticesQueryData>(
+				LIST_PENDING_ADVANCE_NOTICES_QUERY,
+			),
+		enabled: isAsnPickerOpen,
+	});
 	const pendingAsns = pendingAsnData?.listPendingAdvanceNotices ?? [];
 
-	const { data: stockUnitsData } =
-		useApolloQuery<StockUnitsQueryData>(STOCK_UNITS_QUERY);
+	const { data: stockUnitsData } = useQuery({
+		queryKey: qk.stockUnits.all,
+		queryFn: () => gqlRequest<StockUnitsQueryData>(STOCK_UNITS_QUERY),
+	});
 	const stockUnits = stockUnitsData?.stockUnits?.query ?? [];
-	const { data: skusData, refetch: refetchSkus } = useApolloQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, { variables: {} });
+
+	const skusVariables: SkusQueryVariables = {};
+	const { data: skusData, refetch: refetchSkus } = useQuery({
+		queryKey: [...qk.skus.all, "list", skusVariables] as const,
+		queryFn: () =>
+			gqlRequest<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, skusVariables),
+	});
 	const skuOptions: Skus[] = skusData?.skus?.query ?? [];
-	const { data: warehousesData, refetch: refetchWarehouses } =
-		useApolloQuery<WarehousesQueryData>(WAREHOUSES_QUERY, {
-			variables: { pageSize: 500, pageNumber: 1 },
-		});
+
+	const warehousesVariables = { pageSize: 500, pageNumber: 1 };
+	const { data: warehousesData, refetch: refetchWarehouses } = useQuery({
+		queryKey: [...qk.warehouses.all, "list", warehousesVariables] as const,
+		queryFn: () =>
+			gqlRequest<WarehousesQueryData>(WAREHOUSES_QUERY, warehousesVariables),
+	});
 	const warehouses = warehousesData?.warehouses?.query ?? [];
 
-	const { data: racksData, refetch: refetchRacks } =
-		useApolloQuery<RacksQueryData>(RACKS_QUERY, {
-			variables: { pageSize: 500, pageNumber: 1 },
-		});
+	const racksVariables = { pageSize: 500, pageNumber: 1 };
+	const { data: racksData, refetch: refetchRacks } = useQuery({
+		queryKey: [...qk.racks.all, "list", racksVariables] as const,
+		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVariables),
+	});
 	const racks = racksData?.racks?.query ?? [];
 
+	const grnsVariables = {
+		filter: {
+			search: debouncedSearchTerm.trim() || undefined,
+			status: statusFilterForQuery,
+			/** Draft GRNs are hidden from this page; backend excludes them when not filtering by status. */
+			excludeDraft: true,
+			sortBy: sortField,
+			sortOrder: sortDirection,
+		},
+		pageSize,
+		pageNumber: page,
+	};
 	const {
 		data: grnsQueryData,
-		loading: grnsLoading,
+		isLoading: grnsLoading,
 		refetch: refetchGRNs,
-	} = useQuery<GrnsQueryData>(GRNS_QUERY, {
-		variables: {
-			filter: {
-				search: debouncedSearchTerm.trim() || undefined,
-				status: statusFilterForQuery,
-				/** Draft GRNs are hidden from this page; backend excludes them when not filtering by status. */
-				excludeDraft: true,
-				sortBy: sortField,
-				sortOrder: sortDirection,
-			},
-			pageSize,
-			pageNumber: page,
-		},
-		fetchPolicy: "cache-and-network",
+	} = useQuery({
+		queryKey: qk.grns.list(grnsVariables),
+		queryFn: () => gqlRequest<GrnsQueryData>(GRNS_QUERY, grnsVariables),
 	});
 
 	const emptyResult: import("@/lib/graphql/types").GrnListResult = {
@@ -578,21 +606,23 @@ function GRNRouteComponent() {
 			: emptyResult;
 	const isLoading = grnsLoading;
 
-	const [createGRNApollo, { loading: createGrnLoading }] = useApolloMutation(
-		CREATE_GRN_MUTATION,
-		{
+	const { mutateAsync: createGRNApollo, isPending: createGrnLoading } =
+		useMutation({
+			mutationFn: (vars: { input: Record<string, unknown> }) =>
+				gqlRequest(CREATE_GRN_MUTATION, vars),
 			onError: (err) => toast.error(getGrnErrorMessage(err)),
-			onCompleted: () => {
+			onSuccess: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
 				toast.success("GRN created");
 			},
-		},
-	);
-	const [createInboundApollo, { loading: createInboundLoading }] =
-		useApolloMutation(CREATE_INBOUND_MUTATION, {
+		});
+	const { mutateAsync: createInboundApollo, isPending: createInboundLoading } =
+		useMutation({
+			mutationFn: (vars: { input: Record<string, unknown> }) =>
+				gqlRequest(CREATE_INBOUND_MUTATION, vars),
 			onError: (err) => toast.error(getGrnErrorMessage(err)),
-			onCompleted: () => {
+			onSuccess: () => {
 				refetchGRNs();
 				setIsCreateOpen(false);
 				toast.success("GRN created");
@@ -606,23 +636,22 @@ function GRNRouteComponent() {
 	const [pendingStatusAction, setPendingStatusAction] = useState<
 		GRNStatus | null
 	>(null);
-	const [updateGRNApollo, { loading: statusUpdating }] = useApolloMutation(
-		UPDATE_GRN_MUTATION,
-		{
-			onError: (err) => {
-				toast.error(getGrnErrorMessage(err));
-				setPendingStatusAction(null);
-			},
-			onCompleted: () => {
-				refetchGRNs();
-				const action = pendingStatusAction;
-				setPendingStatusAction(null);
-				if (action === "Approved") toast.success("GRN approved");
-				else if (action === "Sent-to-ES") toast.success("GRN sent to ES");
-				else toast.success("GRN status updated");
-			},
+	const { mutate: updateGRNApollo, isPending: statusUpdating } = useMutation({
+		mutationFn: (vars: { id: string; input: Record<string, unknown> }) =>
+			gqlRequest(UPDATE_GRN_MUTATION, vars),
+		onError: (err) => {
+			toast.error(getGrnErrorMessage(err));
+			setPendingStatusAction(null);
 		},
-	);
+		onSuccess: () => {
+			refetchGRNs();
+			const action = pendingStatusAction;
+			setPendingStatusAction(null);
+			if (action === "Approved") toast.success("GRN approved");
+			else if (action === "Sent-to-ES") toast.success("GRN sent to ES");
+			else toast.success("GRN status updated");
+		},
+	});
 
 	const createMutation = {
 		mutateAsync: async (payload: {
@@ -689,18 +718,14 @@ function GRNRouteComponent() {
 					return;
 				}
 				await createInboundApollo({
-					variables: {
-						input: {
-							userId,
-							...baseInput,
-							advanceNoticeId: payload.advanceNoticeId ?? undefined,
-						},
+					input: {
+						userId,
+						...baseInput,
+						advanceNoticeId: payload.advanceNoticeId ?? undefined,
 					},
 				});
 			} else {
-				await createGRNApollo({
-					variables: { input: baseInput },
-				});
+				await createGRNApollo({ input: baseInput });
 			}
 		},
 		isPending: createLoading,
@@ -719,9 +744,7 @@ function GRNRouteComponent() {
 				input.approvedBy = user.id;
 				input.approvedAt = new Date().toISOString();
 			}
-			await updateGRNApollo({
-				variables: { id, input },
-			});
+			updateGRNApollo({ id, input });
 			return undefined;
 		},
 		mutate: ({ id, status }: { id: string; status: GRNStatus }) => {
@@ -736,9 +759,7 @@ function GRNRouteComponent() {
 				input.approvedBy = user.id;
 				input.approvedAt = new Date().toISOString();
 			}
-			updateGRNApollo({
-				variables: { id, input },
-			});
+			updateGRNApollo({ id, input });
 		},
 		isPending: statusUpdating,
 		status: statusUpdating ? ("pending" as const) : ("idle" as const),
