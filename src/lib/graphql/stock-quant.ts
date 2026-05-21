@@ -16,6 +16,7 @@ export const STOCK_QUANTS_QUERY = gql`
 				hasNextPage
 				hasPrevPage
 			}
+			totalQuantity
 			query {
 				id
 				skuId
@@ -40,8 +41,10 @@ export type StockQuantFilterInput = {
 	id?: string;
 	skuId?: string;
 	skuIds?: string[];
+	skuCode?: string;
 	rackId?: string;
 	rackIds?: string[];
+	rackLabel?: string;
 };
 
 export interface StockQuant {
@@ -64,6 +67,7 @@ export interface StockQuant {
 export interface StockQuantPaginatedResponse {
 	query: StockQuant[];
 	pagination: Pagination;
+	totalQuantity: string;
 }
 
 export type StockQuantsQueryData = {

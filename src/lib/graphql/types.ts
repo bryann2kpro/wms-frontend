@@ -298,9 +298,6 @@ export interface Skus {
 	skuId: string;
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number;
-	skuQuantity: number;
-	lossQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
@@ -317,8 +314,6 @@ export interface Skus {
 export interface createSkusInput {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number;
-	skuQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
@@ -332,9 +327,6 @@ export interface createSkusInput {
 export interface UpdateSkusInput {
 	skuCode?: string;
 	skuDescription?: string;
-	skuPrice?: number;
-	skuQuantity?: number;
-	lossQuantity?: number;
 	skuExpiryDate?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;

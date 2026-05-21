@@ -28,12 +28,6 @@ export function SkusFormStep1({
 	setSkuCode,
 	skuDescription,
 	setSkuDescription,
-	skuPrice,
-	setSkuPrice,
-	skuQuantity,
-	setSkuQuantity,
-	lossQuantity,
-	setLossQuantity,
 	skuExpiryDate,
 	setSkuExpiryDate,
 	skuUom,
@@ -52,12 +46,6 @@ export function SkusFormStep1({
 	setSkuCode: (v: string) => void;
 	skuDescription: string;
 	setSkuDescription: (v: string) => void;
-	skuPrice: string;
-	setSkuPrice: (v: string) => void;
-	skuQuantity: string;
-	setSkuQuantity: (v: string) => void;
-	lossQuantity: string;
-	setLossQuantity: (v: string) => void;
 	skuExpiryDate: Date | undefined;
 	setSkuExpiryDate: (v: Date | undefined) => void;
 	skuUom: string;
@@ -88,8 +76,6 @@ export function SkusFormStep1({
 					<ul className="text-sm text-destructive list-disc list-inside space-y-1">
 						{errors.skuCode && <li>Code is required</li>}
 						{errors.skuDescription && <li>Description is required</li>}
-						{errors.skuQuantity && <li>{errors.skuQuantity}</li>}
-						{errors.lossQuantity && <li>{errors.lossQuantity}</li>}
 						{errors.skuExpiryDate && <li>Expiry date is required</li>}
 						{errors.skuUom && <li>Unit of measure is required</li>}
 					</ul>
@@ -127,67 +113,6 @@ export function SkusFormStep1({
 				/>
 				{errors.skuDescription && (
 					<p className="text-sm text-destructive">{errors.skuDescription}</p>
-				)}
-			</div>
-			<div className="grid grid-cols-2 gap-4">
-				<div className="grid gap-2">
-					<Label htmlFor="sku-price">Price per unit</Label>
-					<Input
-						id="sku-price"
-						type="number"
-						step="0.01"
-						value={skuPrice}
-						onChange={(e) => setSkuPrice(e.target.value)}
-						placeholder="0.00"
-						className="rounded-lg border-muted-foreground/20"
-					/>
-				</div>
-				<div className="grid gap-2">
-					<Label htmlFor="sku-quantity">Quantity</Label>
-					<Input
-						id="sku-quantity"
-						type="number"
-						min="0"
-						value={skuQuantity}
-						onChange={(e) => {
-							const value = e.target.value;
-							if (
-								value === "" ||
-								(!isNaN(Number(value)) && Number(value) >= 0)
-							) {
-								setSkuQuantity(value);
-								if (errors.skuQuantity)
-									setErrors((prev) => ({ ...prev, skuQuantity: undefined }));
-							}
-						}}
-						placeholder="0"
-						className={`rounded-lg border-muted-foreground/20 ${errors.skuQuantity ? "border-destructive" : ""}`}
-					/>
-					{errors.skuQuantity && (
-						<p className="text-sm text-destructive">{errors.skuQuantity}</p>
-					)}
-				</div>
-			</div>
-			<div className="grid gap-2">
-				<Label htmlFor="sku-loss-quantity">Loss quantity</Label>
-				<Input
-					id="sku-loss-quantity"
-					type="number"
-					min="0"
-					value={lossQuantity}
-					onChange={(e) => {
-						const value = e.target.value;
-						if (value === "" || (!isNaN(Number(value)) && Number(value) >= 0)) {
-							setLossQuantity(value);
-							if (errors.lossQuantity)
-								setErrors((prev) => ({ ...prev, lossQuantity: undefined }));
-						}
-					}}
-					placeholder="0"
-					className={`rounded-lg border-muted-foreground/20 ${errors.lossQuantity ? "border-destructive" : ""}`}
-				/>
-				{errors.lossQuantity && (
-					<p className="text-sm text-destructive">{errors.lossQuantity}</p>
 				)}
 			</div>
 			<div className="grid gap-2">
