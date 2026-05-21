@@ -33,6 +33,14 @@ export const qk = {
 		all: ["stock-adjustments"] as const,
 		list: (f: object) => ["stock-adjustments", "list", f] as const,
 	},
+	stockQuants: {
+		all: ["stock-quants"] as const,
+		list: (f: object) => ["stock-quants", "list", f] as const,
+	},
+	putaway: {
+		all: ["putaway"] as const,
+		drafts: (f: object) => ["putaway", "drafts", f] as const,
+	},
 	inventory: {
 		all: ["inventory"] as const,
 		list: (f: object) => ["inventory", "list", f] as const,
