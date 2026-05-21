@@ -8,7 +8,7 @@ import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import { requirePermission } from "@/lib/rbac";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateOnly } from "@/lib/utils";
 import {
 	Card,
 	CardContent,
@@ -235,6 +235,7 @@ function StockQuantComponent() {
 									<TableHead>Description</TableHead>
 									<TableHead>Rack</TableHead>
 									<TableHead>Lot No</TableHead>
+									<TableHead>Expiry</TableHead>
 									<TableHead className="text-right">Quantity</TableHead>
 									<TableHead>Last Updated</TableHead>
 								</TableRow>
@@ -242,13 +243,13 @@ function StockQuantComponent() {
 							<TableBody>
 								{loading && items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
 											Loading stock quant data...
 										</TableCell>
 									</TableRow>
 								) : items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
 											{hasActiveFilters
 												? "No stock quant records match the current filters."
 												: "No stock quant records found."}
@@ -268,6 +269,11 @@ function StockQuantComponent() {
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{item.lotNo?.trim() ? item.lotNo : "—"}
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground">
+												{item.expiryDate
+													? formatDateOnly(item.expiryDate)
+													: "—"}
 											</TableCell>
 											<TableCell className="text-right font-medium">
 												{Number(item.quantity ?? "0").toLocaleString()}
