@@ -64,4 +64,7 @@ export const qk = {
 	esApiLogs: { all: ["es-api-logs"] as const },
 	documents: { all: ["documents"] as const },
 	reports: { all: ["reports"] as const },
+	zones: { all: ["zones"] as const },
+	bins: { all: ["bins"] as const },
+	putawayRules: { all: ["putaway-rules"] as const },
 } as const;

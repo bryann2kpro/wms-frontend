@@ -9,6 +9,7 @@ import type {
 export const RACK_FRAGMENT = gql`
 	fragment RackFields on Rack {
 		rackId
+		zoneId
 		rackRow
 		rackColumn
 		rackLevel

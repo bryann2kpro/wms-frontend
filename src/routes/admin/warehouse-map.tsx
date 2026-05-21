@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutGrid, Search } from "lucide-react";
+import { LayoutGrid, Search, Building2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,13 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
@@ -19,7 +26,17 @@ import {
 	WAREHOUSES_QUERY,
 	type WarehousesQueryData,
 } from "@/lib/graphql/warehouses";
+import { ZONES_QUERY, type ZonesQueryData } from "@/lib/graphql/zones";
 import { requirePermission } from "@/lib/rbac";
+import type { ZonePurpose } from "@/lib/graphql/types";
+
+const PURPOSE_COLOR: Record<ZonePurpose, { bg: string; border: string; text: string }> = {
+	GENERAL: { bg: "bg-gray-100", border: "border-gray-300", text: "text-gray-700" },
+	WET: { bg: "bg-blue-100", border: "border-blue-300", text: "text-blue-700" },
+	DRY: { bg: "bg-amber-100", border: "border-amber-300", text: "text-amber-700" },
+	AMBIENT: { bg: "bg-green-100", border: "border-green-300", text: "text-green-700" },
+	DAMAGED: { bg: "bg-red-100", border: "border-red-300", text: "text-red-700" },
+};
 
 type RackCell = {
 	code: string;
@@ -48,6 +65,7 @@ export const Route = createFileRoute("/admin/warehouse-map")({
 function WarehouseMapComponent() {
 	const [search, setSearch] = useState("");
 	const [selectedCode, setSelectedCode] = useState<string | null>(null);
+	const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
 	const { data: warehousesData } = useQuery({
 		queryKey: [...qk.warehouses.all, "warehouse-map"] as const,
@@ -67,8 +85,61 @@ function WarehouseMapComponent() {
 			}),
 	});
 
-	const racks = racksData?.racks?.query ?? [];
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "warehouse-map"] as const,
+		queryFn: () =>
+			gqlRequest<ZonesQueryData>(ZONES_QUERY, {
+				pageSize: 2000,
+				pageNumber: 1,
+			}),
+	});
+
+	const allRacks = racksData?.racks?.query ?? [];
 	const warehouses = warehousesData?.warehouses?.query ?? [];
+	const allZones = zonesData?.zones?.query ?? [];
+
+	// auto-select first warehouse once loaded
+	const effectiveWarehouseId =
+		selectedWarehouseId || warehouses[0]?.warehouseId || "";
+
+	const zones = useMemo(
+		() =>
+			effectiveWarehouseId
+				? allZones.filter((z) => z.warehouseId === effectiveWarehouseId)
+				: allZones,
+		[allZones, effectiveWarehouseId],
+	);
+
+	// rackIds that belong to zones in the selected warehouse
+	const warehouseZoneIds = useMemo(
+		() => new Set(zones.map((z) => z.zoneId)),
+		[zones],
+	);
+
+	// racks: if warehouse selected, only those assigned to a zone in that warehouse
+	const racks = useMemo(() => {
+		if (!effectiveWarehouseId) return allRacks;
+		return allRacks.filter(
+			(r) => r.zoneId && warehouseZoneIds.has(r.zoneId),
+		);
+	}, [allRacks, effectiveWarehouseId, warehouseZoneIds]);
+
+	const zonePurposeByZoneId = useMemo(() => {
+		const map = new Map<string, ZonePurpose>();
+		for (const z of zones) map.set(z.zoneId, z.purpose);
+		return map;
+	}, [zones]);
+
+	const purposeByRackId = useMemo(() => {
+		const map = new Map<string, ZonePurpose>();
+		for (const rack of racks) {
+			if (rack.zoneId) {
+				const purpose = zonePurposeByZoneId.get(rack.zoneId);
+				if (purpose) map.set(rack.rackId, purpose);
+			}
+		}
+		return map;
+	}, [racks, zonePurposeByZoneId]);
 
 	const { cells, rows, columns } = useMemo(() => {
 		const map = new Map<string, RackCell>();
@@ -153,19 +224,39 @@ function WarehouseMapComponent() {
 								Rack Layout
 							</CardTitle>
 							<CardDescription>
-								{warehouses.length > 0
-									? `Warehouses configured: ${warehouses.map((w) => w.warehouseName).join(", ")}`
-									: "No warehouse names available."}
+								Zone-coloured rack grid. Select a warehouse to view its layout.
 							</CardDescription>
 						</div>
-						<div className="relative w-full sm:w-64">
-							<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-							<Input
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								placeholder="Search position (A-01)"
-								className="pl-9"
-							/>
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+							<Select
+								value={effectiveWarehouseId}
+								onValueChange={(v) => {
+									setSelectedWarehouseId(v);
+									setSelectedCode(null);
+									setSearch("");
+								}}
+							>
+								<SelectTrigger className="w-full sm:w-52">
+									<Building2 className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+									<SelectValue placeholder="Select warehouse" />
+								</SelectTrigger>
+								<SelectContent>
+									{warehouses.map((w) => (
+										<SelectItem key={w.warehouseId} value={w.warehouseId}>
+											{w.warehouseName}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<div className="relative w-full sm:w-56">
+								<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+									placeholder="Search position (A-01)"
+									className="pl-9"
+								/>
+							</div>
 						</div>
 					</div>
 				</CardHeader>
@@ -182,7 +273,9 @@ function WarehouseMapComponent() {
 							<div className="py-10 text-center text-sm text-muted-foreground">
 								{isLoading
 									? "Loading rack layout..."
-									: "No rack positions found."}
+									: effectiveWarehouseId
+										? "No zone-assigned racks for this warehouse. Assign racks to zones in Settings → Racks."
+										: "No rack positions found."}
 							</div>
 						) : (
 							<div className="min-w-[740px]">
@@ -228,16 +321,22 @@ function WarehouseMapComponent() {
 											const hiddenByFilter =
 												search.trim() && !visibleCodes.has(code);
 											const selected = selectedCode === code;
+											const cellPurpose = cell.rackIds
+												.map((id) => purposeByRackId.get(id))
+												.find(Boolean) as ZonePurpose | undefined;
+											const colorStyle = cellPurpose
+												? PURPOSE_COLOR[cellPurpose]
+												: null;
 
 											return (
 												<button
 													type="button"
 													key={code}
 													onClick={() => setSelectedCode(code)}
-													className={`warehouse-map-slot rounded-md border bg-card px-2 py-2 text-xs transition ${selected ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""} ${hiddenByFilter ? "opacity-25" : "opacity-100"}`}
+													className={`warehouse-map-slot rounded-md border px-2 py-2 text-xs transition ${colorStyle ? `${colorStyle.bg} ${colorStyle.border}` : "border bg-card"} ${selected ? "ring-2 ring-[var(--dashboard-accent)] ring-offset-2" : ""} ${hiddenByFilter ? "opacity-25" : "opacity-100"}`}
 													aria-label={`Position ${code} with ${cell.levels.length} level${cell.levels.length === 1 ? "" : "s"}`}
 												>
-													<p className="font-semibold text-foreground">
+													<p className={`font-semibold ${colorStyle ? colorStyle.text : "text-foreground"}`}>
 														{code}
 													</p>
 													<p className="text-[11px] text-muted-foreground">
@@ -251,6 +350,22 @@ function WarehouseMapComponent() {
 							</div>
 						)}
 					</div>
+
+					{zones.length > 0 && (
+						<div className="mt-4 flex flex-wrap items-center gap-3">
+							<span className="text-xs font-medium text-muted-foreground">Zone legend:</span>
+							{(Object.entries(PURPOSE_COLOR) as [ZonePurpose, typeof PURPOSE_COLOR[ZonePurpose]][]).map(
+								([purpose, style]) => (
+									<span
+										key={purpose}
+										className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${style.bg} ${style.border} ${style.text}`}
+									>
+										{purpose}
+									</span>
+								),
+							)}
+						</div>
+					)}
 				</CardContent>
 			</Card>
 

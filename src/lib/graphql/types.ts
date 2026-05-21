@@ -232,6 +232,7 @@ export interface UpdateStockUnitInput {
 
 export interface Rack {
 	rackId: string;
+	zoneId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
@@ -247,6 +248,7 @@ export interface RackPaginatedResponse {
 }
 
 export interface CreateRackInput {
+	zoneId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
@@ -255,6 +257,7 @@ export interface CreateRackInput {
 }
 
 export interface UpdateRackInput {
+	zoneId?: string | null;
 	rackRow?: string;
 	rackColumn?: string;
 	rackLevel?: string;
@@ -729,4 +732,131 @@ export interface PurchaseOrderFilterInput {
 	page?: number | null;
 	pageSize?: number | null;
 	pageNumber?: number | null;
+}
+
+// ============================================
+// ZONES
+// ============================================
+
+export type ZonePurpose = "GENERAL" | "WET" | "DRY" | "AMBIENT" | "DAMAGED";
+
+export interface Zone {
+	zoneId: string;
+	warehouseId: string;
+	zoneCode: string;
+	zoneName: string;
+	purpose: ZonePurpose;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface ZonePaginatedResponse {
+	query: Zone[];
+	pagination: Pagination;
+}
+
+export interface CreateZoneInput {
+	warehouseId: string;
+	zoneCode: string;
+	zoneName: string;
+	purpose?: ZonePurpose;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateZoneInput {
+	zoneCode?: string;
+	zoneName?: string;
+	purpose?: ZonePurpose;
+	updatedBy: string;
+}
+
+// ============================================
+// BINS
+// ============================================
+
+export interface Bin {
+	binId: string;
+	rackId: string;
+	binCode: string;
+	level: string;
+	column: string;
+	capacityVolume: number | null;
+	capacityWeight: number | null;
+	currentVolume: number;
+	currentWeight: number;
+	isPickFace: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface BinPaginatedResponse {
+	query: Bin[];
+	pagination: Pagination;
+}
+
+export interface CreateBinInput {
+	rackId: string;
+	binCode: string;
+	level: string;
+	column: string;
+	capacityVolume?: number | null;
+	capacityWeight?: number | null;
+	isPickFace?: boolean;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateBinInput {
+	binCode?: string;
+	level?: string;
+	column?: string;
+	capacityVolume?: number | null;
+	capacityWeight?: number | null;
+	isPickFace?: boolean;
+	updatedBy: string;
+}
+
+// ============================================
+// PUTAWAY RULES
+// ============================================
+
+export interface PutawayRule {
+	putawayRuleId: string;
+	warehouseId: string;
+	itemAttributeKey: string;
+	itemAttributeValue: string;
+	targetZonePurpose: string;
+	priority: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PutawayRulePaginatedResponse {
+	query: PutawayRule[];
+	pagination: Pagination;
+}
+
+export interface CreatePutawayRuleInput {
+	warehouseId: string;
+	itemAttributeKey: string;
+	itemAttributeValue: string;
+	targetZonePurpose: string;
+	priority?: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePutawayRuleInput {
+	itemAttributeKey?: string;
+	itemAttributeValue?: string;
+	targetZonePurpose?: string;
+	priority?: number;
+	updatedBy: string;
 }
