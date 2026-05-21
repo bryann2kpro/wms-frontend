@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Move } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -43,17 +43,17 @@ import {
 	PUTAWAY_LINES_QUERY,
 	type PutawayLineGql,
 	type PutawayLinesQueryData,
-	type PutawayLinesQueryVariables,
 	REJECT_PUTAWAY_LINE_MUTATION,
 	type RejectPutawayLineMutationData,
 	type RejectPutawayLineMutationVariables,
 } from "@/lib/graphql/putaway";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	STOCK_QUANTS_QUERY,
 	type StockQuant,
 	type StockQuantsQueryData,
-	type StockQuantsQueryVariables,
 } from "@/lib/graphql/stock-quant";
 import { requirePermission } from "@/lib/rbac";
 
@@ -205,6 +205,21 @@ function resolveStockQuant(
 	return matched[0];
 }
 
+function getPutawayErrorMessage(err: unknown, fallback: string): string {
+	if (err && typeof err === "object") {
+		const responseErrors = (
+			err as { response?: { errors?: Array<{ message?: string }> } }
+		).response?.errors;
+		if (responseErrors?.[0]?.message) return responseErrors[0].message;
+
+		const gqlErrors = (err as { graphQLErrors?: Array<{ message?: string }> })
+			.graphQLErrors;
+		if (gqlErrors?.[0]?.message) return gqlErrors[0].message;
+	}
+	if (err instanceof Error) return err.message;
+	return fallback;
+}
+
 function PutawayComponent() {
 	const [sourceRackId, setSourceRackId] = useState("");
 	const [selectedSkuId, setSelectedSkuId] = useState("");
@@ -212,62 +227,70 @@ function PutawayComponent() {
 	const [quantity, setQuantity] = useState("");
 	const [destinationRackId, setDestinationRackId] = useState("");
 
-	const { data: racksData, loading: racksLoading } = useQuery<RacksQueryData>(
-		RACKS_QUERY,
-		{
-			variables: { pageSize: RACKS_PAGE_SIZE, pageNumber: 1 },
-			fetchPolicy: "cache-first",
-		},
-	);
+	const racksVars = { pageSize: RACKS_PAGE_SIZE, pageNumber: 1 };
+	const { data: racksData, isLoading: racksLoading } = useQuery({
+		queryKey: [...qk.racks.all, "putaway"] as const,
+		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVars),
+	});
 
+	const quantsVars = {
+		filter: { rackId: sourceRackId },
+		pageSize: STOCK_QUANTS_PAGE_SIZE,
+		pageNumber: 1,
+	};
 	const {
 		data: quantsData,
-		loading: quantsLoading,
+		isLoading: quantsLoading,
 		refetch: refetchQuants,
-	} = useQuery<StockQuantsQueryData, StockQuantsQueryVariables>(
-		STOCK_QUANTS_QUERY,
-		{
-			skip: !sourceRackId,
-			variables: {
-				filter: { rackId: sourceRackId },
-				pageSize: STOCK_QUANTS_PAGE_SIZE,
-				pageNumber: 1,
-			},
-			fetchPolicy: "cache-and-network",
-		},
-	);
+	} = useQuery({
+		queryKey: qk.stockQuants.list(quantsVars),
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, quantsVars),
+		enabled: !!sourceRackId,
+	});
 
+	const draftsVars = {
+		filter: { status: "DRAFT" as const },
+		limit: 100,
+	};
 	const {
 		data: draftsData,
-		loading: draftsLoading,
+		isLoading: draftsLoading,
 		refetch: refetchDrafts,
-	} = useQuery<PutawayLinesQueryData, PutawayLinesQueryVariables>(
-		PUTAWAY_LINES_QUERY,
-		{
-			variables: {
-				filter: { status: "DRAFT" },
-				limit: 100,
-			},
-			fetchPolicy: "cache-and-network",
-		},
-	);
+	} = useQuery({
+		queryKey: qk.putaway.drafts(draftsVars),
+		queryFn: () =>
+			gqlRequest<PutawayLinesQueryData>(PUTAWAY_LINES_QUERY, draftsVars),
+	});
 
 	const draftLines: PutawayLineGql[] = draftsData?.putawayLines ?? [];
 
-	const [createPutawayDraft, { loading: createDraftLoading }] = useMutation<
-		CreatePutawayDraftMutationData,
-		CreatePutawayDraftMutationVariables
-	>(CREATE_PUTAWAY_DRAFT_MUTATION);
+	const { mutateAsync: createPutawayDraft, isPending: createDraftLoading } =
+		useMutation({
+			mutationFn: (vars: CreatePutawayDraftMutationVariables) =>
+				gqlRequest<CreatePutawayDraftMutationData>(
+					CREATE_PUTAWAY_DRAFT_MUTATION,
+					vars,
+				),
+		});
 
-	const [approvePutawayLine, { loading: approveLoading }] = useMutation<
-		ApprovePutawayLineMutationData,
-		ApprovePutawayLineMutationVariables
-	>(APPROVE_PUTAWAY_LINE_MUTATION);
+	const { mutateAsync: approvePutawayLine, isPending: approveLoading } =
+		useMutation({
+			mutationFn: (vars: ApprovePutawayLineMutationVariables) =>
+				gqlRequest<ApprovePutawayLineMutationData>(
+					APPROVE_PUTAWAY_LINE_MUTATION,
+					vars,
+				),
+		});
 
-	const [rejectPutawayLineMutation, { loading: rejectLoading }] = useMutation<
-		RejectPutawayLineMutationData,
-		RejectPutawayLineMutationVariables
-	>(REJECT_PUTAWAY_LINE_MUTATION);
+	const { mutateAsync: rejectPutawayLineMutation, isPending: rejectLoading } =
+		useMutation({
+			mutationFn: (vars: RejectPutawayLineMutationVariables) =>
+				gqlRequest<RejectPutawayLineMutationData>(
+					REJECT_PUTAWAY_LINE_MUTATION,
+					vars,
+				),
+		});
 
 	const racksSorted = useMemo(
 		() => sortRacksByLocation(racksData?.racks?.query ?? []),
@@ -423,34 +446,19 @@ function PutawayComponent() {
 
 		try {
 			await createPutawayDraft({
-				variables: {
-					input: {
-						sourceStockQuantId: quant.id,
-						destinationRackId,
-						quantity: String(qtyNum),
-						sourceLotNo: lotNoForPutawayDraft(quant, selectedLotChoice),
-					},
+				input: {
+					sourceStockQuantId: quant.id,
+					destinationRackId,
+					quantity: String(qtyNum),
+					sourceLotNo: lotNoForPutawayDraft(quant, selectedLotChoice),
 				},
 			});
 			toast.success("Saved as draft in putaway.");
 			await refetchDrafts();
 			await refetchQuants();
 		} catch (err: unknown) {
-			const gqlMsg =
-				err &&
-				typeof err === "object" &&
-				"graphQLErrors" in err &&
-				Array.isArray(
-					(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
-				)
-					? (err as { graphQLErrors: { message?: string }[] }).graphQLErrors[0]
-							?.message
-					: undefined;
 			toast.error(
-				gqlMsg ??
-					(err instanceof Error
-						? err.message
-						: "Could not save putaway draft."),
+				getPutawayErrorMessage(err, "Could not save putaway draft."),
 			);
 		}
 	}, [
@@ -470,9 +478,7 @@ function PutawayComponent() {
 	const handleTransfer = useCallback(
 		async (line: PutawayLineGql) => {
 			try {
-				const { data } = await approvePutawayLine({
-					variables: { id: line.id },
-				});
+				const data = await approvePutawayLine({ id: line.id });
 				const res = data?.approvePutawayLine;
 				if (res?.success) {
 					toast.success(res.message);
@@ -483,21 +489,8 @@ function PutawayComponent() {
 					await refetchDrafts();
 				}
 			} catch (err: unknown) {
-				const gqlMsg =
-					err &&
-					typeof err === "object" &&
-					"graphQLErrors" in err &&
-					Array.isArray(
-						(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
-					)
-						? (err as { graphQLErrors: { message?: string }[] })
-								.graphQLErrors[0]?.message
-						: undefined;
 				toast.error(
-					gqlMsg ??
-						(err instanceof Error
-							? err.message
-							: "Transfer failed. Please try again."),
+					getPutawayErrorMessage(err, "Transfer failed. Please try again."),
 				);
 				await refetchDrafts();
 			}
@@ -508,9 +501,7 @@ function PutawayComponent() {
 	const handleRejectLine = useCallback(
 		async (lineId: string) => {
 			try {
-				const { data } = await rejectPutawayLineMutation({
-					variables: { id: lineId },
-				});
+				const data = await rejectPutawayLineMutation({ id: lineId });
 				if (data?.rejectPutawayLine?.status === "REJECT") {
 					toast.success("Putaway line rejected; no stock was moved.");
 				} else {
@@ -518,17 +509,7 @@ function PutawayComponent() {
 				}
 				await refetchDrafts();
 			} catch (err: unknown) {
-				const gqlMsg =
-					err &&
-					typeof err === "object" &&
-					"graphQLErrors" in err &&
-					Array.isArray(
-						(err as { graphQLErrors?: { message?: string }[] }).graphQLErrors,
-					)
-						? (err as { graphQLErrors: { message?: string }[] })
-								.graphQLErrors[0]?.message
-						: undefined;
-				toast.error(gqlMsg ?? "Could not reject this line.");
+				toast.error(getPutawayErrorMessage(err, "Could not reject this line."));
 				await refetchDrafts();
 			}
 		},

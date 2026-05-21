@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Boxes, ChevronLeft, ChevronRight } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { requirePermission } from "@/lib/rbac";
 import { formatDate } from "@/lib/utils";
 import {
@@ -48,12 +50,14 @@ const PAGE_SIZE = 20;
 function StockQuantComponent() {
 	const [page, setPage] = useState(1);
 
-	const { data, loading } = useQuery<StockQuantsQueryData>(STOCK_QUANTS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-		},
-		fetchPolicy: "cache-and-network",
+	const queryVars = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+	};
+	const { data, isLoading: loading } = useQuery({
+		queryKey: qk.stockQuants.list(queryVars),
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, queryVars),
 	});
 
 	const items = data?.stockQuants?.query ?? [];
