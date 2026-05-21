@@ -16,9 +16,6 @@ import { SkusFormStep1, SkusFormStep2 } from "./skus-form-steps";
 export interface SkusFormValues {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number | null;
-	skuQuantity: number;
-	lossQuantity?: number;
 	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy: string;
@@ -31,9 +28,6 @@ export interface SkusFormValues {
 export interface SkusFormInitial {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number | null;
-	skuQuantity: number;
-	lossQuantity?: number;
 	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy?: string;
@@ -101,13 +95,6 @@ export function SkusFormDialog({
 	const [skuDescription, setSkuDescription] = useState(
 		initial?.skuDescription ?? "",
 	);
-	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
-	const [skuQuantity, setSkuQuantity] = useState(
-		initial?.skuQuantity?.toString() ?? "0",
-	);
-	const [lossQuantity, setLossQuantity] = useState(
-		initial?.lossQuantity?.toString() ?? "0",
-	);
 	const [skuExpiryDate, setSkuExpiryDate] = useState<Date | undefined>(
 		parseDate(initial?.skuExpiryDate),
 	);
@@ -130,8 +117,6 @@ export function SkusFormDialog({
 	const [errors, setErrors] = useState<{
 		skuCode?: string;
 		skuDescription?: string;
-		skuQuantity?: string;
-		lossQuantity?: string;
 		skuExpiryDate?: string;
 		skuUom?: string;
 	}>({});
@@ -143,9 +128,6 @@ export function SkusFormDialog({
 		const i = initialRef.current;
 		setSkuCode(i?.skuCode ?? "");
 		setSkuDescription(i?.skuDescription ?? "");
-		setSkuPrice(i?.skuPrice?.toString() ?? "");
-		setSkuQuantity(i?.skuQuantity?.toString() ?? "0");
-		setLossQuantity(i?.lossQuantity?.toString() ?? "0");
 		setSkuExpiryDate(parseDate(i?.skuExpiryDate));
 		setSkuUom(i?.skuUom ?? "");
 		setPickingStrategy(i?.pickingStrategy ?? "FIFO");
@@ -222,14 +204,6 @@ export function SkusFormDialog({
 		if (!skuCode.trim()) newErrors.skuCode = "Code is required";
 		if (!skuDescription.trim())
 			newErrors.skuDescription = "Description is required";
-		const q = String(skuQuantity ?? "").trim();
-		if (q !== "" && (isNaN(Number(q)) || Number(q) < 0)) {
-			newErrors.skuQuantity = "Quantity must be 0 or more";
-		}
-		const lossQ = String(lossQuantity ?? "").trim();
-		if (lossQ !== "" && (isNaN(Number(lossQ)) || Number(lossQ) < 0)) {
-			newErrors.lossQuantity = "Loss quantity must be 0 or more";
-		}
 		if (!skuUom) newErrors.skuUom = "Unit of measure is required";
 
 		setErrors(newErrors);
@@ -248,17 +222,9 @@ export function SkusFormDialog({
 			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
 				? skuExpiryDate.toISOString().split("T")[0]
 				: "";
-		let priceValue: number | null = null;
-		if (skuPrice.trim() !== "") {
-			const parsed = parseFloat(skuPrice);
-			if (!isNaN(parsed)) priceValue = parsed;
-		}
 		onSubmit({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
-			skuPrice: priceValue,
-			skuQuantity: Math.max(0, Number(skuQuantity) || 0),
-			lossQuantity: Math.max(0, Number(lossQuantity) || 0),
 			skuExpiryDate: expiryDateString,
 			skuUom,
 			pickingStrategy,
@@ -289,12 +255,6 @@ export function SkusFormDialog({
 						setSkuCode={setSkuCode}
 						skuDescription={skuDescription}
 						setSkuDescription={setSkuDescription}
-						skuPrice={skuPrice}
-						setSkuPrice={setSkuPrice}
-						skuQuantity={skuQuantity}
-						setSkuQuantity={setSkuQuantity}
-						lossQuantity={lossQuantity}
-						setLossQuantity={setLossQuantity}
 						skuExpiryDate={skuExpiryDate}
 						setSkuExpiryDate={setSkuExpiryDate}
 						skuUom={skuUom}
