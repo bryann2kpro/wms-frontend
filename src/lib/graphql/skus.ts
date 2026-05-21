@@ -13,10 +13,6 @@ export const SKUS_QUERY = gql`
 				skuId
 				skuCode
 				skuDescription
-				skuPrice
-				skuQuantity
-				lossQuantity
-				skuExpiryDate
 				skuUom
 				pickingStrategy
 				isLotControlled
@@ -56,9 +52,6 @@ export const SKUS_FRAGMENT = gql`
 		skuId
 		skuCode
 		skuDescription
-		skuPrice
-		skuQuantity
-		lossQuantity
 		skuExpiryDate
 		skuSuppliers {
 			supplierId
@@ -135,7 +128,6 @@ export const CREATE_SKU_MUTATION = gql`
 		createSku(input: $input) {
 			skuCode
 			skuDescription
-			skuQuantity
 			skuUom
 		}
 	}
