@@ -33,7 +33,6 @@ import {
 	sortStockQuantsByPickingStrategy,
 	type StockQuant,
 	type StockQuantsQueryData,
-	type StockQuantsQueryVariables,
 } from "@/lib/graphql/stock-quant";
 import { formatDate } from "@/lib/utils";
 
@@ -73,24 +72,25 @@ function InventoryDetailComponent() {
 	const { skuId } = Route.useSearch();
 	const navigate = useNavigate();
 
-  const balanceVars = {
+	const balanceVars = {
 		filter: { skuId },
 		pageSize: 1,
 		pageNumber: 1,
 	};
 
-	const { data: stockQuantData, loading: stockQuantLoading } = useQuery<
-		StockQuantsQueryData,
-		StockQuantsQueryVariables
-	>(STOCK_QUANTS_QUERY, {
-		variables: {
-      ...balanceVars,
-			pageSize: STOCK_QUANTS_PAGE_SIZE,
-		},
-		skip: !skuId,
-		fetchPolicy: "cache-and-network",
-  });
-	
+	const stockQuantVars = {
+		filter: { skuId },
+		pageSize: STOCK_QUANTS_PAGE_SIZE,
+		pageNumber: 1,
+	};
+
+	const { data: stockQuantData, isLoading: stockQuantLoading } = useQuery({
+		queryKey: qk.stockQuants.list(stockQuantVars),
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, stockQuantVars),
+		enabled: !!skuId,
+	});
+
 	const { data: balanceData, isLoading: balanceLoading } = useQuery({
 		queryKey: qk.inventory.list(balanceVars),
 		queryFn: () =>
@@ -98,6 +98,7 @@ function InventoryDetailComponent() {
 				INVENTORY_BALANCES_QUERY,
 				balanceVars,
 			),
+		enabled: !!skuId,
 	});
 
 	const loading = balanceLoading || stockQuantLoading;
