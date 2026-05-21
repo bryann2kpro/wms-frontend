@@ -121,9 +121,6 @@ function StockQuantComponent() {
 	const totalCount = pagination?.totalCount ?? 0;
 	const totalQuantity = Number(data?.stockQuants?.totalQuantity ?? "0");
 
-	const selectedSku = skus.find((sku) => sku.skuId === selectedSkuId);
-	const selectedRack = racks.find((rack) => rack.rackId === selectedRackId);
-
 	return (
 		<main className="container mx-auto space-y-6 p-6" aria-busy={loading}>
 			<AdminPageHeader
@@ -163,16 +160,16 @@ function StockQuantComponent() {
 											placeholder={
 												skusLoading ? "Loading SKUs..." : "All SKUs"
 											}
-										>
-											{selectedSkuId === FILTER_ALL
-												? undefined
-												: (selectedSku?.skuCode ?? "All SKUs")}
-										</SelectValue>
+										/>
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value={FILTER_ALL}>All SKUs</SelectItem>
 										{skus.map((sku) => (
-											<SelectItem key={sku.skuId} value={sku.skuId}>
+											<SelectItem
+												key={sku.skuId}
+												value={sku.skuId}
+												textValue={`${sku.skuCode} ${sku.skuDescription ?? ""}`.trim()}
+											>
 												<span className="font-mono">{sku.skuCode}</span>
 												{sku.skuDescription ? (
 													<span className="text-muted-foreground">
@@ -202,13 +199,7 @@ function StockQuantComponent() {
 											placeholder={
 												racksLoading ? "Loading racks..." : "All racks"
 											}
-										>
-											{selectedRackId === FILTER_ALL
-												? undefined
-												: selectedRack
-													? formatRackLocationLabel(selectedRack)
-													: "All racks"}
-										</SelectValue>
+										/>
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value={FILTER_ALL}>All racks</SelectItem>
