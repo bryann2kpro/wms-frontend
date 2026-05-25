@@ -23,6 +23,7 @@ export const STOCK_QUANTS_QUERY = gql`
 				skuCode
 				description
 				quantity
+				reservedQty
 				rackId
 				rackLabel
 				lotNo
@@ -53,6 +54,7 @@ export interface StockQuant {
 	skuCode: string | null;
 	description: string | null;
 	quantity: string;
+	reservedQty: string;
 	rackId: string;
 	rackLabel: string | null;
 	lotNo: string | null;

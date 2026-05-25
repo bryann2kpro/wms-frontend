@@ -55,7 +55,13 @@ export const Route = createFileRoute("/admin/inventory-detail")({
 	}),
 });
 
-const STOCK_QUANTS_PAGE_SIZE = 9999;
+const STOCK_QUANTS_PAGE_SIZE = 10;
+
+/** Inventory/stock quant pages must always reflect current DB state. */
+const LIVE_STOCK_QUERY_OPTIONS = {
+	staleTime: 0,
+	refetchOnMount: "always" as const,
+};
 
 const STRATEGY_STYLES: Record<string, string> = {
 	FIFO: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400",
@@ -89,6 +95,7 @@ function InventoryDetailComponent() {
 		queryFn: () =>
 			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, stockQuantVars),
 		enabled: !!skuId,
+		...LIVE_STOCK_QUERY_OPTIONS,
 	});
 
 	const { data: balanceData, isLoading: balanceLoading } = useQuery({
@@ -99,6 +106,7 @@ function InventoryDetailComponent() {
 				balanceVars,
 			),
 		enabled: !!skuId,
+		...LIVE_STOCK_QUERY_OPTIONS,
 	});
 
 	const loading = balanceLoading || stockQuantLoading;
@@ -259,7 +267,7 @@ function InventoryDetailComponent() {
 								) : (
 									stockQuants.map((row) => {
 										const onHandQty = Number(row.quantity ?? "0");
-										const reservedQty = 0;
+										const reservedQty = Number(row.reservedQty ?? "0");
 										const availableQty = onHandQty - reservedQty;
 										return (
 											<TableRow key={row.id}>
@@ -279,7 +287,7 @@ function InventoryDetailComponent() {
 												<TableCell className="text-right font-medium">
 													{onHandQty.toLocaleString()}
 												</TableCell>
-												<TableCell className="text-right text-muted-foreground">
+												<TableCell className={`text-right ${reservedQty > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
 													{reservedQty.toLocaleString()}
 												</TableCell>
 												<TableCell className="text-right font-semibold">
