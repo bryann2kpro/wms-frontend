@@ -85,6 +85,7 @@ export type BinsQueryVariables = {
 	filter?: {
 		binId?: string;
 		rackId?: string;
+		rackIds?: string[];
 		isPickFace?: boolean;
 	};
 	pageSize?: number;

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
+import { BINS_QUERY, type BinsQueryData } from "@/lib/graphql/bins";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	WAREHOUSES_QUERY,
@@ -123,6 +124,39 @@ function WarehouseMapComponent() {
 			(r) => r.zoneId && warehouseZoneIds.has(r.zoneId),
 		);
 	}, [allRacks, effectiveWarehouseId, warehouseZoneIds]);
+
+	const allRackIds = useMemo(() => racks.map((r) => r.rackId), [racks]);
+
+	const { data: binsData } = useQuery({
+		queryKey: [...qk.bins.all, "warehouse-map", effectiveWarehouseId] as const,
+		queryFn: () =>
+			gqlRequest<BinsQueryData>(BINS_QUERY, {
+				filter: { rackIds: allRackIds },
+				pageSize: 50000,
+				pageNumber: 1,
+			}),
+		enabled: allRackIds.length > 0,
+	});
+
+	const utilizationByCode = useMemo(() => {
+		const map = new Map<string, { total: number; occupied: number }>();
+		const allBins = binsData?.bins?.query ?? [];
+		for (const bin of allBins) {
+			const rack = allRacks.find((r) => r.rackId === bin.rackId);
+			if (!rack) continue;
+			const row = String(rack.rackRow ?? "").trim();
+			const col = String(rack.rackColumn ?? "").trim();
+			if (!row || !col) continue;
+			const code = `${row}-${col}`;
+			const entry = map.get(code) ?? { total: 0, occupied: 0 };
+			entry.total += 1;
+			if ((bin.currentVolume ?? 0) > 0 || (bin.currentWeight ?? 0) > 0) {
+				entry.occupied += 1;
+			}
+			map.set(code, entry);
+		}
+		return map;
+	}, [binsData, allRacks]);
 
 	const zonePurposeByZoneId = useMemo(() => {
 		const map = new Map<string, ZonePurpose>();
@@ -339,9 +373,29 @@ function WarehouseMapComponent() {
 													<p className={`font-semibold ${colorStyle ? colorStyle.text : "text-foreground"}`}>
 														{code}
 													</p>
-													<p className="text-[11px] text-muted-foreground">
-														L{cell.levels.length}
+													<p className="text-[10px] text-muted-foreground leading-tight">
+														{cell.levels.length <= 4
+															? cell.levels.join(" · ")
+															: `${cell.levels.length} lvls`}
 													</p>
+													{(() => {
+														const util = utilizationByCode.get(code);
+														if (!util || util.total === 0) return null;
+														const pct = Math.round((util.occupied / util.total) * 100);
+														return (
+															<div className="mt-1 w-full">
+																<div className="h-1 w-full rounded-full bg-muted-foreground/20">
+																	<div
+																		className="h-1 rounded-full bg-[var(--dashboard-accent)]"
+																		style={{ width: `${pct}%` }}
+																	/>
+																</div>
+																<p className="text-[10px] text-muted-foreground">
+																	{util.occupied}/{util.total}
+																</p>
+															</div>
+														);
+													})()}
 												</button>
 											);
 										})}
@@ -388,6 +442,22 @@ function WarehouseMapComponent() {
 								label="Levels"
 								value={selectedCell.levels.join(", ") || "-"}
 							/>
+							{(() => {
+								const util = utilizationByCode.get(selectedCell.code);
+								if (!util) return null;
+								return (
+									<>
+										<DetailCell
+											label="Bins Occupied"
+											value={`${util.occupied} / ${util.total}`}
+										/>
+										<DetailCell
+											label="Utilization"
+											value={util.total > 0 ? `${Math.round((util.occupied / util.total) * 100)}%` : "—"}
+										/>
+									</>
+								);
+							})()}
 							<div className="rounded-lg border p-3 sm:col-span-2 lg:col-span-4">
 								<p className="text-xs text-muted-foreground">Rack IDs</p>
 								<div className="mt-2 flex flex-wrap gap-2">
