@@ -69,4 +69,5 @@ export const qk = {
 	bins: { all: ["bins"] as const },
 	areas: { all: ["areas"] as const },
 	putawayRules: { all: ["putaway-rules"] as const },
+	palletLabels: { all: ["pallet-labels"] as const },
 } as const;

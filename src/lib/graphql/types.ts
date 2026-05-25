@@ -920,3 +920,56 @@ export interface UpdatePutawayRuleInput {
 	priority?: number;
 	updatedBy: string;
 }
+
+export interface PalletLabel {
+	id: string;
+	itemCode: string;
+	barCode: string | null;
+	referenceNo: string | null;
+	storageBinId: string | null;
+	storageBinCode: string | null;
+	labelCode: string;
+	description: string | null;
+	itemDesc02: string | null;
+	printedCount: number;
+	firstPrintedAt: string | null;
+	lastPrintedAt: string | null;
+	isActive: boolean;
+	isDeleted: boolean;
+	deletedAt: string | null;
+	version: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PalletLabelPaginatedResponse {
+	query: PalletLabel[];
+	pagination: Pagination;
+}
+
+export interface CreatePalletLabelInput {
+	itemCode: string;
+	barCode?: string;
+	referenceNo?: string;
+	storageBinId?: string;
+	labelCode: string;
+	description?: string;
+	itemDesc02?: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePalletLabelInput {
+	itemCode?: string;
+	barCode?: string;
+	referenceNo?: string;
+	storageBinId?: string;
+	labelCode?: string;
+	description?: string;
+	itemDesc02?: string;
+	isActive?: boolean;
+	version: number;
+	updatedBy: string;
+}

@@ -30,6 +30,7 @@ import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminRacksRouteImport } from './routes/admin/racks'
 import { Route as AdminPutawayRouteImport } from './routes/admin/putaway'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminPalletLabelsRouteImport } from './routes/admin/pallet-labels'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminMovementCrossCheckRouteImport } from './routes/admin/movement-cross-check'
 import { Route as AdminItemsRouteImport } from './routes/admin/items'
@@ -164,6 +165,11 @@ const AdminPutawayRoute = AdminPutawayRouteImport.update({
 const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   id: '/proof-of-delivery',
   path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPalletLabelsRoute = AdminPalletLabelsRouteImport.update({
+  id: '/pallet-labels',
+  path: '/pallet-labels',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminOutboundRoute = AdminOutboundRouteImport.update({
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -395,6 +402,7 @@ export interface FileRoutesByTo {
   '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -504,6 +513,7 @@ export interface FileRouteTypes {
     | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -557,6 +567,7 @@ export interface FileRouteTypes {
     | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -610,6 +621,7 @@ export interface FileRouteTypes {
     | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -808,6 +820,13 @@ declare module '@tanstack/react-router' {
       path: '/proof-of-delivery'
       fullPath: '/admin/proof-of-delivery'
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pallet-labels': {
+      id: '/admin/pallet-labels'
+      path: '/pallet-labels'
+      fullPath: '/admin/pallet-labels'
+      preLoaderRoute: typeof AdminPalletLabelsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/outbound': {
@@ -1055,6 +1074,7 @@ interface AdminRouteRouteChildren {
   AdminItemsRoute: typeof AdminItemsRoute
   AdminMovementCrossCheckRoute: typeof AdminMovementCrossCheckRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
+  AdminPalletLabelsRoute: typeof AdminPalletLabelsRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminPutawayRoute: typeof AdminPutawayRoute
   AdminRacksRoute: typeof AdminRacksRoute
@@ -1089,6 +1109,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminItemsRoute: AdminItemsRoute,
   AdminMovementCrossCheckRoute: AdminMovementCrossCheckRoute,
   AdminOutboundRoute: AdminOutboundRoute,
+  AdminPalletLabelsRoute: AdminPalletLabelsRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminPutawayRoute: AdminPutawayRoute,
   AdminRacksRoute: AdminRacksRoute,

@@ -17,6 +17,7 @@ import {
 	PackageSearch,
 	Settings,
 	Shield,
+	Tag,
 	Users,
 	Warehouse,
 } from "lucide-react";
@@ -181,6 +182,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Rack Locations",
 		href: "/admin/racks",
 		icon: LayoutGrid,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "warehouse setup",
+	},
+	{
+		key: "sidebar-pallet-labels",
+		title: "Pallet Labels",
+		href: "/admin/pallet-labels",
+		icon: Tag,
 		allowedPermission: ["Inventory"],
 		variant: "default",
 		group: "warehouse setup",
