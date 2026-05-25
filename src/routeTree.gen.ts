@@ -27,10 +27,12 @@ import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
+import { Route as AdminRacksRouteImport } from './routes/admin/racks'
 import { Route as AdminPutawayRouteImport } from './routes/admin/putaway'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminMovementCrossCheckRouteImport } from './routes/admin/movement-cross-check'
+import { Route as AdminItemsRouteImport } from './routes/admin/items'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryDetailRouteImport } from './routes/admin/inventory-detail'
@@ -149,6 +151,11 @@ const AdminRbacRoute = AdminRbacRouteImport.update({
   path: '/rbac',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminRacksRoute = AdminRacksRouteImport.update({
+  id: '/racks',
+  path: '/racks',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminPutawayRoute = AdminPutawayRouteImport.update({
   id: '/putaway',
   path: '/putaway',
@@ -167,6 +174,11 @@ const AdminOutboundRoute = AdminOutboundRouteImport.update({
 const AdminMovementCrossCheckRoute = AdminMovementCrossCheckRouteImport.update({
   id: '/movement-cross-check',
   path: '/movement-cross-check',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminItemsRoute = AdminItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -327,10 +339,12 @@ export interface FileRoutesByFullPath {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -378,10 +392,12 @@ export interface FileRoutesByTo {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -430,10 +446,12 @@ export interface FileRoutesById {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -483,10 +501,12 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -534,10 +554,12 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -585,10 +607,12 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
@@ -765,6 +789,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRbacRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/racks': {
+      id: '/admin/racks'
+      path: '/racks'
+      fullPath: '/admin/racks'
+      preLoaderRoute: typeof AdminRacksRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/putaway': {
       id: '/admin/putaway'
       path: '/putaway'
@@ -791,6 +822,13 @@ declare module '@tanstack/react-router' {
       path: '/movement-cross-check'
       fullPath: '/admin/movement-cross-check'
       preLoaderRoute: typeof AdminMovementCrossCheckRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/items': {
+      id: '/admin/items'
+      path: '/items'
+      fullPath: '/admin/items'
+      preLoaderRoute: typeof AdminItemsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -1014,10 +1052,12 @@ interface AdminRouteRouteChildren {
   AdminInventoryDetailRoute: typeof AdminInventoryDetailRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminItemsRoute: typeof AdminItemsRoute
   AdminMovementCrossCheckRoute: typeof AdminMovementCrossCheckRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminPutawayRoute: typeof AdminPutawayRoute
+  AdminRacksRoute: typeof AdminRacksRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -1046,10 +1086,12 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryDetailRoute: AdminInventoryDetailRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminItemsRoute: AdminItemsRoute,
   AdminMovementCrossCheckRoute: AdminMovementCrossCheckRoute,
   AdminOutboundRoute: AdminOutboundRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminPutawayRoute: AdminPutawayRoute,
+  AdminRacksRoute: AdminRacksRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,

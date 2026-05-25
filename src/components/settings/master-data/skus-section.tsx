@@ -320,25 +320,26 @@ export function SkusSection() {
 		},
 	});
 
-	const [updateSkus, { loading: updateLoading }] =
-		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
-			onCompleted: async (data) => {
-				updateInFlightRef.current = false;
-				if (!data?.updateSku) {
-					toast.error("Failed to update SKU", {
-						description: "No data returned from server. Check backend logs.",
-					});
-					return;
-				}
-				await refetch();
-				setEditing(null);
-				toast.success("SKU updated");
-			},
-			onError: (error) => {
-				updateInFlightRef.current = false;
-				toast.error("Failed to update SKU", { description: error.message });
-			},
-		});
+	const { mutate: updateSkus, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, variables),
+		onSuccess: async (data) => {
+			updateInFlightRef.current = false;
+			if (!data?.updateSku) {
+				toast.error("Failed to update SKU", {
+					description: "No data returned from server. Check backend logs.",
+				});
+				return;
+			}
+			await refetch();
+			setEditing(null);
+			toast.success("SKU updated");
+		},
+		onError: (error: Error) => {
+			updateInFlightRef.current = false;
+			toast.error("Failed to update SKU", { description: error.message });
+		},
+	});
 
 	const { mutate: deleteSkus, isPending: deleteLoading } = useMutation({
 		mutationFn: (variables: { id: string }) =>
@@ -873,6 +874,17 @@ export function SkusSection() {
 										originalSkuCode: s.originalSkuCode || null,
 									})) || [],
 								isActive: true,
+								barcode: values.barcode ?? null,
+								brand: values.brand ?? null,
+								category: values.category ?? null,
+								manufacturer: values.manufacturer ?? null,
+								caseRate: values.caseRate ?? null,
+								caseExtLengthMm: values.caseExtLengthMm ?? null,
+								caseExtWidthMm: values.caseExtWidthMm ?? null,
+								caseExtHeightMm: values.caseExtHeightMm ?? null,
+								caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+								casesPerLayer: values.casesPerLayer ?? null,
+								noOfLayers: values.noOfLayers ?? null,
 							},
 						},
 					});
@@ -912,6 +924,17 @@ export function SkusSection() {
 						isExpiryControlled: editing.isExpiryControlled ?? false,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
+						barcode: editing.barcode,
+						brand: editing.brand,
+						category: editing.category,
+						manufacturer: editing.manufacturer,
+						caseRate: editing.caseRate,
+						caseExtLengthMm: editing.caseExtLengthMm,
+						caseExtWidthMm: editing.caseExtWidthMm,
+						caseExtHeightMm: editing.caseExtHeightMm,
+						caseGrossWeightKg: editing.caseGrossWeightKg,
+						casesPerLayer: editing.casesPerLayer,
+						noOfLayers: editing.noOfLayers,
 					}}
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
@@ -921,9 +944,8 @@ export function SkusSection() {
 							? `${values.skuExpiryDate} 00:00:00.000000`
 							: "";
 						updateSkus({
-							variables: {
-								id: editing.skuId,
-								input: {
+							id: editing.skuId,
+							input: {
 									skuCode: values.skuCode,
 									skuDescription: values.skuDescription,
 									skuPrice:
@@ -943,7 +965,17 @@ export function SkusSection() {
 											originalSkuCode: s.originalSkuCode || null,
 										})) || [],
 									isActive: values.isActive,
-								},
+									barcode: values.barcode ?? null,
+									brand: values.brand ?? null,
+									category: values.category ?? null,
+									manufacturer: values.manufacturer ?? null,
+									caseRate: values.caseRate ?? null,
+									caseExtLengthMm: values.caseExtLengthMm ?? null,
+									caseExtWidthMm: values.caseExtWidthMm ?? null,
+									caseExtHeightMm: values.caseExtHeightMm ?? null,
+									caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+									casesPerLayer: values.casesPerLayer ?? null,
+									noOfLayers: values.noOfLayers ?? null,
 							},
 						});
 					}}

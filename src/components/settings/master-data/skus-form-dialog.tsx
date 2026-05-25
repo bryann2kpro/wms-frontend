@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
-import { SkusFormStep1, SkusFormStep2 } from "./skus-form-steps";
+import { SkusFormStep1, SkusFormStep2, SkusFormStep3 } from "./skus-form-steps";
 
 export interface SkusFormValues {
 	skuCode: string;
@@ -26,6 +26,17 @@ export interface SkusFormValues {
 	isExpiryControlled: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 export interface SkusFormInitial {
@@ -41,6 +52,17 @@ export interface SkusFormInitial {
 	isExpiryControlled?: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 function parseDate(dateValue: string | number | undefined): Date | undefined {
@@ -125,6 +147,17 @@ export function SkusFormDialog({
 		Array<{ supplierId: string; originalSkuCode: string | null }>
 	>(initial?.skuSuppliers ?? []);
 	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+	const [brand, setBrand] = useState(initial?.brand ?? "");
+	const [category, setCategory] = useState(initial?.category ?? "");
+	const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? "");
+	const [caseRate, setCaseRate] = useState(initial?.caseRate?.toString() ?? "");
+	const [caseExtLengthMm, setCaseExtLengthMm] = useState(initial?.caseExtLengthMm?.toString() ?? "");
+	const [caseExtWidthMm, setCaseExtWidthMm] = useState(initial?.caseExtWidthMm?.toString() ?? "");
+	const [caseExtHeightMm, setCaseExtHeightMm] = useState(initial?.caseExtHeightMm?.toString() ?? "");
+	const [caseGrossWeightKg, setCaseGrossWeightKg] = useState(initial?.caseGrossWeightKg?.toString() ?? "");
+	const [casesPerLayer, setCasesPerLayer] = useState(initial?.casesPerLayer?.toString() ?? "");
+	const [noOfLayers, setNoOfLayers] = useState(initial?.noOfLayers?.toString() ?? "");
 	const [step, setStep] = useState(1);
 	const [supplierSearch, setSupplierSearch] = useState("");
 	const [errors, setErrors] = useState<{
@@ -153,6 +186,17 @@ export function SkusFormDialog({
 		setIsExpiryControlled(i?.isExpiryControlled ?? false);
 		setSkuSuppliers(i?.skuSuppliers ?? []);
 		setIsActive(i?.isActive ?? true);
+		setBarcode(i?.barcode ?? "");
+		setBrand(i?.brand ?? "");
+		setCategory(i?.category ?? "");
+		setManufacturer(i?.manufacturer ?? "");
+		setCaseRate(i?.caseRate?.toString() ?? "");
+		setCaseExtLengthMm(i?.caseExtLengthMm?.toString() ?? "");
+		setCaseExtWidthMm(i?.caseExtWidthMm?.toString() ?? "");
+		setCaseExtHeightMm(i?.caseExtHeightMm?.toString() ?? "");
+		setCaseGrossWeightKg(i?.caseGrossWeightKg?.toString() ?? "");
+		setCasesPerLayer(i?.casesPerLayer?.toString() ?? "");
+		setNoOfLayers(i?.noOfLayers?.toString() ?? "");
 		setStep(1);
 		setSupplierSearch("");
 		setErrors({});
@@ -253,6 +297,12 @@ export function SkusFormDialog({
 			const parsed = parseFloat(skuPrice);
 			if (!isNaN(parsed)) priceValue = parsed;
 		}
+		const parseOptionalFloat = (v: string) => {
+			const t = v.trim();
+			if (t === "") return null;
+			const n = parseFloat(t);
+			return isNaN(n) ? null : n;
+		};
 		onSubmit({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
@@ -266,6 +316,17 @@ export function SkusFormDialog({
 			isExpiryControlled,
 			skuSuppliers,
 			isActive,
+			barcode: barcode.trim() || null,
+			brand: brand.trim() || null,
+			category: category.trim() || null,
+			manufacturer: manufacturer.trim() || null,
+			caseRate: parseOptionalFloat(caseRate),
+			caseExtLengthMm: parseOptionalFloat(caseExtLengthMm),
+			caseExtWidthMm: parseOptionalFloat(caseExtWidthMm),
+			caseExtHeightMm: parseOptionalFloat(caseExtHeightMm),
+			caseGrossWeightKg: parseOptionalFloat(caseGrossWeightKg),
+			casesPerLayer: parseOptionalFloat(casesPerLayer),
+			noOfLayers: parseOptionalFloat(noOfLayers),
 		});
 	};
 
@@ -309,7 +370,7 @@ export function SkusFormDialog({
 						errors={errors}
 						setErrors={setErrors}
 					/>
-				) : (
+				) : step === 2 ? (
 					<SkusFormStep2
 						suppliers={suppliers}
 						skuSuppliers={skuSuppliers}
@@ -319,6 +380,31 @@ export function SkusFormDialog({
 						toggleSupplier={toggleSupplier}
 						getOriginalSkuCode={getOriginalSkuCode}
 						updateOriginalSkuCode={updateOriginalSkuCode}
+					/>
+				) : (
+					<SkusFormStep3
+						barcode={barcode}
+						setBarcode={setBarcode}
+						brand={brand}
+						setBrand={setBrand}
+						category={category}
+						setCategory={setCategory}
+						manufacturer={manufacturer}
+						setManufacturer={setManufacturer}
+						caseRate={caseRate}
+						setCaseRate={setCaseRate}
+						caseExtLengthMm={caseExtLengthMm}
+						setCaseExtLengthMm={setCaseExtLengthMm}
+						caseExtWidthMm={caseExtWidthMm}
+						setCaseExtWidthMm={setCaseExtWidthMm}
+						caseExtHeightMm={caseExtHeightMm}
+						setCaseExtHeightMm={setCaseExtHeightMm}
+						caseGrossWeightKg={caseGrossWeightKg}
+						setCaseGrossWeightKg={setCaseGrossWeightKg}
+						casesPerLayer={casesPerLayer}
+						setCasesPerLayer={setCasesPerLayer}
+						noOfLayers={noOfLayers}
+						setNoOfLayers={setNoOfLayers}
 					/>
 				)}
 				{initial && (
@@ -371,11 +457,27 @@ export function SkusFormDialog({
 								{isEditMode ? "Suppliers" : "Next"}
 							</Button>
 						</>
-					) : (
+					) : step === 2 ? (
 						<>
 							<Button
 								variant="outline"
 								onClick={() => setStep(1)}
+								className="rounded-lg"
+							>
+								Back
+							</Button>
+							<Button
+								onClick={() => setStep(3)}
+								className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+							>
+								Logistics
+							</Button>
+						</>
+					) : (
+						<>
+							<Button
+								variant="outline"
+								onClick={() => setStep(2)}
 								className="rounded-lg"
 							>
 								Back

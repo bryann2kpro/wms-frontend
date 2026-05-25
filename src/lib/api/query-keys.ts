@@ -15,6 +15,7 @@ export const qk = {
 	warehouses: { all: ["warehouses"] as const },
 	racks: { all: ["racks"] as const },
 	skus: { all: ["skus"] as const },
+	items: { all: ["items"] as const },
 	stockUnits: { all: ["stock-units"] as const },
 	suppliers: { all: ["suppliers"] as const },
 	outlets: { all: ["outlets"] as const },
@@ -66,5 +67,6 @@ export const qk = {
 	reports: { all: ["reports"] as const },
 	zones: { all: ["zones"] as const },
 	bins: { all: ["bins"] as const },
+	areas: { all: ["areas"] as const },
 	putawayRules: { all: ["putaway-rules"] as const },
 } as const;

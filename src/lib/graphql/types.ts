@@ -233,9 +233,14 @@ export interface UpdateStockUnitInput {
 export interface Rack {
 	rackId: string;
 	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType: string;
+	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -249,19 +254,41 @@ export interface RackPaginatedResponse {
 
 export interface CreateRackInput {
 	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType?: string;
+	isActive?: boolean;
 	createdBy: string;
 	updatedBy: string;
 }
 
 export interface UpdateRackInput {
 	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow?: string;
 	rackColumn?: string;
 	rackLevel?: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType?: string;
+	isActive?: boolean;
 	updatedBy: string;
+}
+
+export interface Area {
+	areaId: string;
+	areaCode: string;
+	areaName: string;
+	areaDescription?: string | null;
+}
+
+export interface AreaPaginatedResponse {
+	query: Area[];
+	pagination: Pagination;
 }
 
 export interface Warehouse {
@@ -310,6 +337,17 @@ export interface Skus {
 	pickingStrategy: string;
 	isLotControlled: boolean;
 	isExpiryControlled: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -320,7 +358,7 @@ export interface Skus {
 export interface createSkusInput {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number;
+	skuPrice?: number;
 	skuQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
@@ -329,6 +367,17 @@ export interface createSkusInput {
 	isLotControlled?: boolean;
 	isExpiryControlled?: boolean;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 	initialOnHandQty?: number;
 }
 
@@ -345,6 +394,17 @@ export interface UpdateSkusInput {
 	isLotControlled?: boolean;
 	isExpiryControlled?: boolean;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 export interface SkusPaginatedResponse {
