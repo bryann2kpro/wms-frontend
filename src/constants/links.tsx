@@ -183,7 +183,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: LayoutGrid,
 		allowedPermission: ["Inventory"],
 		variant: "default",
-		group: "operations",
+		group: "warehouse setup",
 	},
 	{
 		key: "sidebar-putaway",
