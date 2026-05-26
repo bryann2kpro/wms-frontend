@@ -319,6 +319,34 @@ export interface UpdateTransportInput {
 	updatedBy: string;
 }
 
+export interface SetupArea {
+	id: string;
+	code: string;
+	description: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface SetupAreaPaginatedResponse {
+	query: SetupArea[];
+	pagination: Pagination;
+}
+
+export interface CreateSetupAreaInput {
+	code: string;
+	description: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSetupAreaInput {
+	code?: string;
+	description?: string;
+	updatedBy: string;
+}
+
 export interface Warehouse {
 	warehouseId: string;
 	warehouseName: string;

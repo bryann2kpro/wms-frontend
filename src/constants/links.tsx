@@ -194,6 +194,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "operations",
 	},
 	{
+		key: "sidebar-setup-area",
+		title: "Area",
+		href: "/admin/setup-area",
+		icon: LayoutGrid,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "operations",
+	},
+	{
 		key: "sidebar-invoices",
 		title: "Proforma Invoices",
 		href: "/admin/invoices",
