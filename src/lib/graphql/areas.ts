@@ -7,6 +7,7 @@ export const AREA_FRAGMENT = gql`
 		areaCode
 		areaName
 		areaDescription
+		warehouseName
 	}
 `;
 
@@ -34,6 +35,7 @@ export type AreasQueryVariables = {
 		areaId?: string;
 		areaCode?: string;
 		areaName?: string;
+		warehouseName?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

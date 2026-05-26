@@ -57,6 +57,10 @@ import {
 	AREAS_QUERY,
 	type AreasQueryData,
 } from "@/lib/graphql/areas";
+import {
+	ZONES_QUERY,
+	type ZonesQueryData,
+} from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
 import { Plus, Edit, Trash2, Search, LayoutGrid } from "lucide-react";
@@ -112,6 +116,11 @@ function RacksPage() {
 		queryFn: () => gqlRequest<AreasQueryData>(AREAS_QUERY, { pageSize: 500, pageNumber: 1 }),
 	});
 
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "racks-page"],
+		queryFn: () => gqlRequest<ZonesQueryData>(ZONES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+
 	const { mutate: createRack, isPending: createLoading } = useMutation({
 		mutationFn: (input: object) =>
 			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
@@ -144,11 +153,17 @@ function RacksPage() {
 	const totalPages = pagination?.totalPages ?? 1;
 	const currentPage = pagination?.currentPage ?? 1;
 	const areas = areasData?.areas?.query ?? [];
+	const zones = zonesData?.zones?.query ?? [];
 	const createdBy = user?.id ?? "";
 
-	const areaLabel = (areaId: string | null | undefined) => {
-		if (!areaId) return null;
-		return areas.find((a) => a.areaId === areaId)?.areaCode ?? null;
+	const locationLabel = (rack: { areaId?: string | null; zoneId?: string | null }) => {
+		if (rack.areaId) {
+			return areas.find((a) => a.areaId === rack.areaId)?.warehouseName ?? null;
+		}
+		if (rack.zoneId) {
+			return zones.find((z) => z.zoneId === rack.zoneId)?.warehouseName ?? null;
+		}
+		return null;
 	};
 
 	return (
@@ -292,7 +307,7 @@ function RacksPage() {
 												</Badge>
 											</TableCell>
 											<TableCell className="px-4 text-sm">
-												{areaLabel(row.areaId) ?? (
+												{locationLabel(row) ?? (
 													<span className="opacity-30">—</span>
 												)}
 											</TableCell>

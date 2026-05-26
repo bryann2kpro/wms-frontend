@@ -287,6 +287,7 @@ export interface Area {
 	areaCode: string;
 	areaName: string;
 	areaDescription?: string | null;
+	warehouseName?: string | null;
 }
 
 export interface AreaPaginatedResponse {
@@ -887,6 +888,7 @@ export interface Zone {
 	zoneCode: string;
 	zoneName: string;
 	purpose: ZonePurpose;
+	warehouseName?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
