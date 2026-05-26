@@ -23,6 +23,7 @@ import { Route as AdminUserManagementRouteImport } from './routes/admin/user-man
 import { Route as AdminStockQuantRouteImport } from './routes/admin/stock-quant'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
+import { Route as AdminSkuAssignmentsRouteImport } from './routes/admin/sku-assignments'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -30,6 +31,7 @@ import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminRacksRouteImport } from './routes/admin/racks'
 import { Route as AdminPutawayRouteImport } from './routes/admin/putaway'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminPickFaceStrategyRouteImport } from './routes/admin/pick-face-strategy'
 import { Route as AdminPalletLabelsRouteImport } from './routes/admin/pallet-labels'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminMovementCrossCheckRouteImport } from './routes/admin/movement-cross-check'
@@ -132,6 +134,11 @@ const AdminSkuMovementRoute = AdminSkuMovementRouteImport.update({
   path: '/sku-movement',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminSkuAssignmentsRoute = AdminSkuAssignmentsRouteImport.update({
+  id: '/sku-assignments',
+  path: '/sku-assignments',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSettlementRoute = AdminSettlementRouteImport.update({
   id: '/settlement',
   path: '/settlement',
@@ -165,6 +172,11 @@ const AdminPutawayRoute = AdminPutawayRouteImport.update({
 const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   id: '/proof-of-delivery',
   path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPickFaceStrategyRoute = AdminPickFaceStrategyRouteImport.update({
+  id: '/pick-face-strategy',
+  path: '/pick-face-strategy',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPalletLabelsRoute = AdminPalletLabelsRouteImport.update({
@@ -349,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -356,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -403,6 +417,7 @@ export interface FileRoutesByTo {
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -410,6 +425,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -458,6 +474,7 @@ export interface FileRoutesById {
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -465,6 +482,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -514,6 +532,7 @@ export interface FileRouteTypes {
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -521,6 +540,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -568,6 +588,7 @@ export interface FileRouteTypes {
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -575,6 +596,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -622,6 +644,7 @@ export interface FileRouteTypes {
     | '/admin/movement-cross-check'
     | '/admin/outbound'
     | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -629,6 +652,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -773,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSkuMovementRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/sku-assignments': {
+      id: '/admin/sku-assignments'
+      path: '/sku-assignments'
+      fullPath: '/admin/sku-assignments'
+      preLoaderRoute: typeof AdminSkuAssignmentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/settlement': {
       id: '/admin/settlement'
       path: '/settlement'
@@ -820,6 +851,13 @@ declare module '@tanstack/react-router' {
       path: '/proof-of-delivery'
       fullPath: '/admin/proof-of-delivery'
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pick-face-strategy': {
+      id: '/admin/pick-face-strategy'
+      path: '/pick-face-strategy'
+      fullPath: '/admin/pick-face-strategy'
+      preLoaderRoute: typeof AdminPickFaceStrategyRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/pallet-labels': {
@@ -1075,6 +1113,7 @@ interface AdminRouteRouteChildren {
   AdminMovementCrossCheckRoute: typeof AdminMovementCrossCheckRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
   AdminPalletLabelsRoute: typeof AdminPalletLabelsRoute
+  AdminPickFaceStrategyRoute: typeof AdminPickFaceStrategyRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminPutawayRoute: typeof AdminPutawayRoute
   AdminRacksRoute: typeof AdminRacksRoute
@@ -1082,6 +1121,7 @@ interface AdminRouteRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
+  AdminSkuAssignmentsRoute: typeof AdminSkuAssignmentsRoute
   AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminStockQuantRoute: typeof AdminStockQuantRoute
@@ -1110,6 +1150,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMovementCrossCheckRoute: AdminMovementCrossCheckRoute,
   AdminOutboundRoute: AdminOutboundRoute,
   AdminPalletLabelsRoute: AdminPalletLabelsRoute,
+  AdminPickFaceStrategyRoute: AdminPickFaceStrategyRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminPutawayRoute: AdminPutawayRoute,
   AdminRacksRoute: AdminRacksRoute,
@@ -1117,6 +1158,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
+  AdminSkuAssignmentsRoute: AdminSkuAssignmentsRoute,
   AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminStockQuantRoute: AdminStockQuantRoute,

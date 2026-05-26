@@ -168,6 +168,9 @@ export interface Outlet {
 	outletName: string;
 	outletCode: string;
 	address: string | null;
+	chain: string | null;
+	channel: string | null;
+	debtor: string | null;
 	regionId: string | null;
 	regionName: string | null;
 	regionCode: string | null;
@@ -971,5 +974,54 @@ export interface UpdatePalletLabelInput {
 	itemDesc02?: string;
 	isActive?: boolean;
 	version: number;
+	updatedBy: string;
+}
+
+export interface SkuAssignmentOutlet {
+	outletId: string;
+	outletName: string;
+	outletCode: string;
+	chain: string | null;
+	channel: string | null;
+	debtor: string | null;
+}
+
+export interface SkuAssignmentSku {
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	brand: string | null;
+	category: string | null;
+	manufacturer: string | null;
+}
+
+export interface SkuAssignment {
+	id: string;
+	outlet: SkuAssignmentOutlet;
+	sku: SkuAssignmentSku;
+	minExpiryMonth: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface SkuAssignmentPaginatedResponse {
+	query: SkuAssignment[];
+	pagination: Pagination;
+}
+
+export interface CreateSkuAssignmentInput {
+	outletId: string;
+	skuId: string;
+	minExpiryMonth: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSkuAssignmentInput {
+	outletId?: string;
+	skuId?: string;
+	minExpiryMonth?: number;
 	updatedBy: string;
 }

@@ -70,4 +70,6 @@ export const qk = {
 	areas: { all: ["areas"] as const },
 	putawayRules: { all: ["putaway-rules"] as const },
 	palletLabels: { all: ["pallet-labels"] as const },
+	pickFaceStrategies: { all: ["pick-face-strategies"] as const },
+	skuAssignments: { all: ["sku-assignments"] as const },
 } as const;

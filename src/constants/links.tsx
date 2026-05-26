@@ -196,6 +196,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "warehouse setup",
 	},
 	{
+		key: "sidebar-pick-face-strategy",
+		title: "Pick Face Strategy",
+		href: "/admin/pick-face-strategy",
+		icon: PackageSearch,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "warehouse setup",
+	},
+	{
 		key: "sidebar-putaway",
 		title: "Putaway",
 		href: "/admin/putaway",
