@@ -261,6 +261,64 @@ export interface UpdateRackInput {
 	updatedBy: string;
 }
 
+export interface Transport {
+	id: string;
+	code: string;
+	description?: string | null;
+	storageBinId?: string | null;
+	location?: string | null;
+	minLengthMm?: string | null;
+	minWidthMm?: string | null;
+	minHeightMm?: string | null;
+	minWeightKg?: string | null;
+	maxLengthMm?: string | null;
+	maxWidthMm?: string | null;
+	maxHeightMm?: string | null;
+	maxWeightKg?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface TransportPaginatedResponse {
+	query: Transport[];
+	pagination: Pagination;
+}
+
+export interface CreateTransportInput {
+	code: string;
+	description?: string;
+	storageBinId?: string;
+	location?: string;
+	minLengthMm?: string;
+	minWidthMm?: string;
+	minHeightMm?: string;
+	minWeightKg?: string;
+	maxLengthMm?: string;
+	maxWidthMm?: string;
+	maxHeightMm?: string;
+	maxWeightKg?: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateTransportInput {
+	code?: string;
+	description?: string;
+	storageBinId?: string;
+	location?: string;
+	minLengthMm?: string;
+	minWidthMm?: string;
+	minHeightMm?: string;
+	minWeightKg?: string;
+	maxLengthMm?: string;
+	maxWidthMm?: string;
+	maxHeightMm?: string;
+	maxWeightKg?: string;
+	updatedBy: string;
+}
+
 export interface Warehouse {
 	warehouseId: string;
 	warehouseName: string;
