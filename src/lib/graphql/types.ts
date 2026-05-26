@@ -1025,3 +1025,61 @@ export interface UpdateSkuAssignmentInput {
 	minExpiryMonth?: number;
 	updatedBy: string;
 }
+
+export interface PickingCriteria {
+	id: string;
+	userId: string;
+	category: string;
+	chain: string;
+	channel: string;
+	debtor: string;
+	deliveryPoint: string;
+	storageClass: string;
+	brand: string;
+	itemCategory: string;
+	manufacturer: string;
+	item: string;
+	minExpiryMonth: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PickingCriteriaPaginatedResponse {
+	query: PickingCriteria[];
+	pagination: Pagination;
+}
+
+export interface CreatePickingCriteriaInput {
+	userId: string;
+	category: string;
+	chain: string;
+	channel: string;
+	debtor: string;
+	deliveryPoint: string;
+	storageClass: string;
+	brand: string;
+	itemCategory: string;
+	manufacturer: string;
+	item: string;
+	minExpiryMonth: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePickingCriteriaInput {
+	userId?: string;
+	category?: string;
+	chain?: string;
+	channel?: string;
+	debtor?: string;
+	deliveryPoint?: string;
+	storageClass?: string;
+	brand?: string;
+	itemCategory?: string;
+	manufacturer?: string;
+	item?: string;
+	minExpiryMonth?: number;
+	updatedBy: string;
+}

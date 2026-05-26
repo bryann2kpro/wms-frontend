@@ -31,6 +31,7 @@ import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminRacksRouteImport } from './routes/admin/racks'
 import { Route as AdminPutawayRouteImport } from './routes/admin/putaway'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminPickingCriteriaRouteImport } from './routes/admin/picking-criteria'
 import { Route as AdminPickFaceStrategyRouteImport } from './routes/admin/pick-face-strategy'
 import { Route as AdminPalletLabelsRouteImport } from './routes/admin/pallet-labels'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
@@ -172,6 +173,11 @@ const AdminPutawayRoute = AdminPutawayRouteImport.update({
 const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   id: '/proof-of-delivery',
   path: '/proof-of-delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPickingCriteriaRoute = AdminPickingCriteriaRouteImport.update({
+  id: '/picking-criteria',
+  path: '/picking-criteria',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPickFaceStrategyRoute = AdminPickFaceStrategyRouteImport.update({
@@ -362,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -418,6 +425,7 @@ export interface FileRoutesByTo {
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/admin/outbound': typeof AdminOutboundRoute
   '/admin/pallet-labels': typeof AdminPalletLabelsRoute
   '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
   '/admin/racks': typeof AdminRacksRoute
@@ -533,6 +542,7 @@ export interface FileRouteTypes {
     | '/admin/outbound'
     | '/admin/pallet-labels'
     | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/admin/outbound'
     | '/admin/pallet-labels'
     | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -645,6 +656,7 @@ export interface FileRouteTypes {
     | '/admin/outbound'
     | '/admin/pallet-labels'
     | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
     | '/admin/racks'
@@ -851,6 +863,13 @@ declare module '@tanstack/react-router' {
       path: '/proof-of-delivery'
       fullPath: '/admin/proof-of-delivery'
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/picking-criteria': {
+      id: '/admin/picking-criteria'
+      path: '/picking-criteria'
+      fullPath: '/admin/picking-criteria'
+      preLoaderRoute: typeof AdminPickingCriteriaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/pick-face-strategy': {
@@ -1114,6 +1133,7 @@ interface AdminRouteRouteChildren {
   AdminOutboundRoute: typeof AdminOutboundRoute
   AdminPalletLabelsRoute: typeof AdminPalletLabelsRoute
   AdminPickFaceStrategyRoute: typeof AdminPickFaceStrategyRoute
+  AdminPickingCriteriaRoute: typeof AdminPickingCriteriaRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminPutawayRoute: typeof AdminPutawayRoute
   AdminRacksRoute: typeof AdminRacksRoute
@@ -1151,6 +1171,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminOutboundRoute: AdminOutboundRoute,
   AdminPalletLabelsRoute: AdminPalletLabelsRoute,
   AdminPickFaceStrategyRoute: AdminPickFaceStrategyRoute,
+  AdminPickingCriteriaRoute: AdminPickingCriteriaRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminPutawayRoute: AdminPutawayRoute,
   AdminRacksRoute: AdminRacksRoute,

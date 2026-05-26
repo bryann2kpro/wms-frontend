@@ -69,6 +69,7 @@ export const qk = {
 	bins: { all: ["bins"] as const },
 	areas: { all: ["areas"] as const },
 	putawayRules: { all: ["putaway-rules"] as const },
+	pickingCriterias: { all: ["picking-criterias"] as const },
 	palletLabels: { all: ["pallet-labels"] as const },
 	pickFaceStrategies: { all: ["pick-face-strategies"] as const },
 	skuAssignments: { all: ["sku-assignments"] as const },

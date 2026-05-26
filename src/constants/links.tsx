@@ -205,6 +205,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "warehouse setup",
 	},
 	{
+		key: "sidebar-picking-criteria",
+		title: "Picking Criteria",
+		href: "/admin/picking-criteria",
+		icon: ClipboardList,
+		allowedPermission: ["*"],
+		variant: "default",
+		group: "warehouse setup",
+	},
+	{
 		key: "sidebar-putaway",
 		title: "Putaway",
 		href: "/admin/putaway",
