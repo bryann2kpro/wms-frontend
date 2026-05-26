@@ -156,7 +156,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/warehouse-map",
 		icon: LayoutGrid,
 		allowedPermission: ["Warehouse Map"],
-    	variant: "default",
+		variant: "default",
 		group: "warehouse setup",
 	},
 	{
@@ -220,7 +220,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: ClipboardList,
 		allowedPermission: ["Inventory"],
 		variant: "default",
-		group: "operations",
+		group: "warehouse setup",
 	},
 	{
 		key: "sidebar-invoices",
