@@ -13,6 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -41,7 +48,8 @@ import {
 	type UpdateRackMutationData,
 	type DeleteRackMutationData,
 } from "@/lib/graphql/racks";
-import type { Rack } from "@/lib/graphql/types";
+import { ZONES_QUERY, type ZonesQueryData } from "@/lib/graphql/zones";
+import type { Rack, Zone } from "@/lib/graphql/types";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { PAGE_SIZE, ConfirmDeleteDialog } from "./shared";
 import { ImportDialog } from "./import-dialog";
@@ -96,11 +104,24 @@ export function RackSection() {
 		},
 	});
 
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "rack-section"],
+		queryFn: () =>
+			gqlRequest<ZonesQueryData>(ZONES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+
 	const list = data?.racks?.query ?? [];
 	const pagination = data?.racks?.pagination;
 	const totalPages = pagination?.totalPages ?? 1;
 	const currentPage = pagination?.currentPage ?? 1;
+	const zones = zonesData?.zones?.query ?? [];
 	const createdBy = user?.id ?? "";
+
+	const zoneLabel = (zoneId: string | null | undefined) => {
+		if (!zoneId) return null;
+		const z = zones.find((zone) => zone.zoneId === zoneId);
+		return z ? `${z.zoneCode} (${z.purpose})` : null;
+	};
 
 	const rackDisplayName = (rack: Rack) =>
 		`${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
@@ -182,6 +203,12 @@ export function RackSection() {
 									Level
 								</TableHead>
 								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Zone
+								</TableHead>
+								<TableHead
 									className="px-6 text-right"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
@@ -193,7 +220,7 @@ export function RackSection() {
 							{loading ? (
 								<TableRow>
 									<TableCell
-										colSpan={4}
+										colSpan={5}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										Loading...
@@ -202,7 +229,7 @@ export function RackSection() {
 							) : list.length === 0 ? (
 								<TableRow>
 									<TableCell
-										colSpan={4}
+										colSpan={5}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										No racks found.
@@ -217,6 +244,9 @@ export function RackSection() {
 										<TableCell className="px-6">{row.rackRow}</TableCell>
 										<TableCell className="px-6">{row.rackColumn}</TableCell>
 										<TableCell className="px-6">{row.rackLevel}</TableCell>
+										<TableCell className="px-6 text-sm text-muted-foreground">
+											{zoneLabel(row.zoneId) ?? <span className="opacity-40">—</span>}
+										</TableCell>
 										<TableCell className="px-6 text-right">
 											<Button
 												variant="ghost"
@@ -280,11 +310,13 @@ export function RackSection() {
 			<RackFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
+				zones={zones}
 				onSubmit={(values) =>
 					createRack({
 						rackRow: values.rackRow,
 						rackColumn: values.rackColumn,
 						rackLevel: values.rackLevel,
+						zoneId: values.zoneId,
 						createdBy,
 						updatedBy: createdBy,
 					})
@@ -299,10 +331,12 @@ export function RackSection() {
 					key={editing.rackId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
+					zones={zones}
 					initial={{
 						rackRow: editing.rackRow,
 						rackColumn: editing.rackColumn,
 						rackLevel: editing.rackLevel,
+						zoneId: editing.zoneId ?? null,
 					}}
 					onSubmit={(values) =>
 						updateRack({
@@ -311,6 +345,7 @@ export function RackSection() {
 								rackRow: values.rackRow,
 								rackColumn: values.rackColumn,
 								rackLevel: values.rackLevel,
+								zoneId: values.zoneId,
 								updatedBy: createdBy,
 							},
 						})
@@ -348,6 +383,7 @@ function RackFormDialog({
 	open,
 	onOpenChange,
 	initial,
+	zones,
 	onSubmit,
 	loading,
 	title,
@@ -355,11 +391,13 @@ function RackFormDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	initial?: { rackRow: string; rackColumn: string; rackLevel: string };
+	initial?: { rackRow: string; rackColumn: string; rackLevel: string; zoneId?: string | null };
+	zones: Zone[];
 	onSubmit: (v: {
 		rackRow: string;
 		rackColumn: string;
 		rackLevel: string;
+		zoneId?: string | null;
 	}) => void;
 	loading: boolean;
 	title: string;
@@ -368,20 +406,23 @@ function RackFormDialog({
 	const [rackRow, setRackRow] = useState(initial?.rackRow ?? "");
 	const [rackColumn, setRackColumn] = useState(initial?.rackColumn ?? "");
 	const [rackLevel, setRackLevel] = useState(initial?.rackLevel ?? "");
+	const [zoneId, setZoneId] = useState<string | null>(initial?.zoneId ?? null);
 
 	useEffect(() => {
 		if (open) {
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setZoneId(initial?.zoneId ?? null);
 		}
-	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel]);
+	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel, initial?.zoneId]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setZoneId(initial?.zoneId ?? null);
 		}
 		onOpenChange(next);
 	};
@@ -446,6 +487,27 @@ function RackFormDialog({
 							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
+					<div className="grid gap-2">
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+							Zone (optional)
+						</Label>
+						<Select
+							value={zoneId ?? "none"}
+							onValueChange={(v) => setZoneId(v === "none" ? null : v)}
+						>
+							<SelectTrigger className="rounded-lg border-muted-foreground/20">
+								<SelectValue placeholder="No zone" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">No zone</SelectItem>
+								{zones.map((z) => (
+									<SelectItem key={z.zoneId} value={z.zoneId}>
+										{z.zoneCode} — {z.zoneName} ({z.purpose})
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 				<DialogFooter className="border-t bg-muted/20">
 					<Button
@@ -467,6 +529,7 @@ function RackFormDialog({
 								rackRow: rackRow.trim(),
 								rackColumn: rackColumn.trim(),
 								rackLevel: rackLevel.trim(),
+								zoneId,
 							})
 						}
 						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"

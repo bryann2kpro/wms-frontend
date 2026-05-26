@@ -1,10 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,8 +9,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
-import { Search, X, Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { Search, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
 	getAvailablePickingStrategies,
@@ -28,8 +21,14 @@ export function SkusFormStep1({
 	setSkuCode,
 	skuDescription,
 	setSkuDescription,
-	skuExpiryDate,
-	setSkuExpiryDate,
+	skuPrice: _skuPrice,
+	setSkuPrice: _setSkuPrice,
+	skuQuantity: _skuQuantity,
+	setSkuQuantity: _setSkuQuantity,
+	lossQuantity: _lossQuantity,
+	setLossQuantity: _setLossQuantity,
+	skuExpiryDate: _skuExpiryDate,
+	setSkuExpiryDate: _setSkuExpiryDate,
 	skuUom,
 	setSkuUom,
 	pickingStrategy,
@@ -242,6 +241,191 @@ export function SkusFormStep1({
 				<p className="text-xs text-muted-foreground">
 					Determines which GRN batch to pick from first during outbound picking.
 				</p>
+			</div>
+		</div>
+	);
+}
+
+export function SkusFormStep3({
+	barcode,
+	setBarcode,
+	brand,
+	setBrand,
+	category,
+	setCategory,
+	manufacturer,
+	setManufacturer,
+	caseRate,
+	setCaseRate,
+	caseExtLengthMm,
+	setCaseExtLengthMm,
+	caseExtWidthMm,
+	setCaseExtWidthMm,
+	caseExtHeightMm,
+	setCaseExtHeightMm,
+	caseGrossWeightKg,
+	setCaseGrossWeightKg,
+	casesPerLayer,
+	setCasesPerLayer,
+	noOfLayers,
+	setNoOfLayers,
+}: {
+	barcode: string;
+	setBarcode: (v: string) => void;
+	brand: string;
+	setBrand: (v: string) => void;
+	category: string;
+	setCategory: (v: string) => void;
+	manufacturer: string;
+	setManufacturer: (v: string) => void;
+	caseRate: string;
+	setCaseRate: (v: string) => void;
+	caseExtLengthMm: string;
+	setCaseExtLengthMm: (v: string) => void;
+	caseExtWidthMm: string;
+	setCaseExtWidthMm: (v: string) => void;
+	caseExtHeightMm: string;
+	setCaseExtHeightMm: (v: string) => void;
+	caseGrossWeightKg: string;
+	setCaseGrossWeightKg: (v: string) => void;
+	casesPerLayer: string;
+	setCasesPerLayer: (v: string) => void;
+	noOfLayers: string;
+	setNoOfLayers: (v: string) => void;
+}) {
+	return (
+		<div className="grid gap-4 py-4">
+			<div className="grid grid-cols-2 gap-4">
+				<div className="grid gap-2">
+					<Label htmlFor="sku-barcode">Barcode</Label>
+					<Input
+						id="sku-barcode"
+						value={barcode}
+						onChange={(e) => setBarcode(e.target.value)}
+						placeholder="e.g. 9781234567897"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-brand">Brand</Label>
+					<Input
+						id="sku-brand"
+						value={brand}
+						onChange={(e) => setBrand(e.target.value)}
+						placeholder="Brand name"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+			</div>
+			<div className="grid grid-cols-2 gap-4">
+				<div className="grid gap-2">
+					<Label htmlFor="sku-category">Category</Label>
+					<Input
+						id="sku-category"
+						value={category}
+						onChange={(e) => setCategory(e.target.value)}
+						placeholder="Product category"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-manufacturer">Manufacturer</Label>
+					<Input
+						id="sku-manufacturer"
+						value={manufacturer}
+						onChange={(e) => setManufacturer(e.target.value)}
+						placeholder="Manufacturer name"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+			</div>
+			<div className="grid gap-2">
+				<Label htmlFor="sku-case-rate">Case Rate</Label>
+				<Input
+					id="sku-case-rate"
+					type="number"
+					step="0.01"
+					value={caseRate}
+					onChange={(e) => setCaseRate(e.target.value)}
+					placeholder="0.00"
+					className="rounded-lg border-muted-foreground/20"
+				/>
+			</div>
+			<div className="grid grid-cols-3 gap-4">
+				<div className="grid gap-2">
+					<Label htmlFor="sku-case-length">Ext Length (mm)</Label>
+					<Input
+						id="sku-case-length"
+						type="number"
+						step="0.001"
+						value={caseExtLengthMm}
+						onChange={(e) => setCaseExtLengthMm(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-case-width">Ext Width (mm)</Label>
+					<Input
+						id="sku-case-width"
+						type="number"
+						step="0.001"
+						value={caseExtWidthMm}
+						onChange={(e) => setCaseExtWidthMm(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-case-height">Ext Height (mm)</Label>
+					<Input
+						id="sku-case-height"
+						type="number"
+						step="0.001"
+						value={caseExtHeightMm}
+						onChange={(e) => setCaseExtHeightMm(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+			</div>
+			<div className="grid grid-cols-3 gap-4">
+				<div className="grid gap-2">
+					<Label htmlFor="sku-gross-weight">Gross Weight (kg)</Label>
+					<Input
+						id="sku-gross-weight"
+						type="number"
+						step="0.001"
+						value={caseGrossWeightKg}
+						onChange={(e) => setCaseGrossWeightKg(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-cases-per-layer">Cases Per Layer</Label>
+					<Input
+						id="sku-cases-per-layer"
+						type="number"
+						step="0.001"
+						value={casesPerLayer}
+						onChange={(e) => setCasesPerLayer(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
+				<div className="grid gap-2">
+					<Label htmlFor="sku-no-of-layers">No of Layers</Label>
+					<Input
+						id="sku-no-of-layers"
+						type="number"
+						step="0.001"
+						value={noOfLayers}
+						onChange={(e) => setNoOfLayers(e.target.value)}
+						placeholder="0.000"
+						className="rounded-lg border-muted-foreground/20"
+					/>
+				</div>
 			</div>
 		</div>
 	);

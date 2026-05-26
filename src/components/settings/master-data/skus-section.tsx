@@ -309,8 +309,8 @@ export function SkusSection() {
 	});
 
 	const { mutate: updateSkus, isPending: updateLoading } = useMutation({
-		mutationFn: (vars: { id: string; input: UpdateSkusInput }) =>
-			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, vars),
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, variables),
 		onSuccess: async (data) => {
 			updateInFlightRef.current = false;
 			if (!data?.updateSku) {
@@ -812,20 +812,38 @@ export function SkusSection() {
 						? `${values.skuExpiryDate} 00:00:00.000000`
 						: "";
 					createSkus({
-						input: {
-							skuCode: values.skuCode,
-							skuDescription: values.skuDescription,
-							skuExpiryDate: expiryDate,
-							skuUom: values.skuUom,
-							pickingStrategy: values.pickingStrategy,
-							isLotControlled: values.isLotControlled,
-							isExpiryControlled: values.isExpiryControlled,
-							skuSuppliers:
-								values.skuSuppliers?.map((s) => ({
-									supplierId: s.supplierId,
-									originalSkuCode: s.originalSkuCode || null,
-								})) || [],
-							isActive: true,
+						variables: {
+							input: {
+								skuCode: values.skuCode,
+								skuDescription: values.skuDescription,
+								skuPrice:
+									values.skuPrice === 0 || values.skuPrice === null
+										? null
+										: Number(values.skuPrice),
+								skuQuantity: Number(values.skuQuantity),
+								skuExpiryDate: expiryDate,
+								skuUom: values.skuUom,
+								pickingStrategy: values.pickingStrategy,
+								isLotControlled: values.isLotControlled,
+								isExpiryControlled: values.isExpiryControlled,
+								skuSuppliers:
+									values.skuSuppliers?.map((s) => ({
+										supplierId: s.supplierId,
+										originalSkuCode: s.originalSkuCode || null,
+									})) || [],
+								isActive: true,
+								barcode: values.barcode ?? null,
+								brand: values.brand ?? null,
+								category: values.category ?? null,
+								manufacturer: values.manufacturer ?? null,
+								caseRate: values.caseRate ?? null,
+								caseExtLengthMm: values.caseExtLengthMm ?? null,
+								caseExtWidthMm: values.caseExtWidthMm ?? null,
+								caseExtHeightMm: values.caseExtHeightMm ?? null,
+								caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+								casesPerLayer: values.casesPerLayer ?? null,
+								noOfLayers: values.noOfLayers ?? null,
+							},
 						},
 					});
 				}}
@@ -861,6 +879,17 @@ export function SkusSection() {
 						isExpiryControlled: editing.isExpiryControlled ?? false,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
+						barcode: editing.barcode,
+						brand: editing.brand,
+						category: editing.category,
+						manufacturer: editing.manufacturer,
+						caseRate: editing.caseRate,
+						caseExtLengthMm: editing.caseExtLengthMm,
+						caseExtWidthMm: editing.caseExtWidthMm,
+						caseExtHeightMm: editing.caseExtHeightMm,
+						caseGrossWeightKg: editing.caseGrossWeightKg,
+						casesPerLayer: editing.casesPerLayer,
+						noOfLayers: editing.noOfLayers,
 					}}
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
@@ -872,19 +901,36 @@ export function SkusSection() {
 						updateSkus({
 							id: editing.skuId,
 							input: {
-								skuCode: values.skuCode,
-								skuDescription: values.skuDescription,
-								skuExpiryDate: expiryDate,
-								skuUom: values.skuUom,
-								pickingStrategy: values.pickingStrategy,
-								isLotControlled: values.isLotControlled,
-								isExpiryControlled: values.isExpiryControlled,
-								skuSuppliers:
-									values.skuSuppliers?.map((s) => ({
-										supplierId: s.supplierId,
-										originalSkuCode: s.originalSkuCode || null,
-									})) || [],
-								isActive: values.isActive,
+									skuCode: values.skuCode,
+									skuDescription: values.skuDescription,
+									skuPrice:
+										values.skuPrice === 0 || values.skuPrice === null
+											? null
+											: Number(values.skuPrice),
+									skuQuantity: Number(values.skuQuantity),
+									lossQuantity: Number(values.lossQuantity ?? 0),
+									skuExpiryDate: expiryDate,
+									skuUom: values.skuUom,
+									pickingStrategy: values.pickingStrategy,
+									isLotControlled: values.isLotControlled,
+									isExpiryControlled: values.isExpiryControlled,
+									skuSuppliers:
+										values.skuSuppliers?.map((s) => ({
+											supplierId: s.supplierId,
+											originalSkuCode: s.originalSkuCode || null,
+										})) || [],
+									isActive: values.isActive,
+									barcode: values.barcode ?? null,
+									brand: values.brand ?? null,
+									category: values.category ?? null,
+									manufacturer: values.manufacturer ?? null,
+									caseRate: values.caseRate ?? null,
+									caseExtLengthMm: values.caseExtLengthMm ?? null,
+									caseExtWidthMm: values.caseExtWidthMm ?? null,
+									caseExtHeightMm: values.caseExtHeightMm ?? null,
+									caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+									casesPerLayer: values.casesPerLayer ?? null,
+									noOfLayers: values.noOfLayers ?? null,
 							},
 						});
 					}}
