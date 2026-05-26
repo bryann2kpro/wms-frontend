@@ -24,15 +24,21 @@ import { Route as AdminTransportRouteImport } from './routes/admin/transport'
 import { Route as AdminStockQuantRouteImport } from './routes/admin/stock-quant'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
+import { Route as AdminSkuAssignmentsRouteImport } from './routes/admin/sku-assignments'
 import { Route as AdminSetupAreaRouteImport } from './routes/admin/setup-area'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
+import { Route as AdminRacksRouteImport } from './routes/admin/racks'
 import { Route as AdminPutawayRouteImport } from './routes/admin/putaway'
 import { Route as AdminProofOfDeliveryRouteImport } from './routes/admin/proof-of-delivery'
+import { Route as AdminPickingCriteriaRouteImport } from './routes/admin/picking-criteria'
+import { Route as AdminPickFaceStrategyRouteImport } from './routes/admin/pick-face-strategy'
+import { Route as AdminPalletLabelsRouteImport } from './routes/admin/pallet-labels'
 import { Route as AdminOutboundRouteImport } from './routes/admin/outbound'
 import { Route as AdminMovementCrossCheckRouteImport } from './routes/admin/movement-cross-check'
+import { Route as AdminItemsRouteImport } from './routes/admin/items'
 import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryDetailRouteImport } from './routes/admin/inventory-detail'
@@ -136,6 +142,11 @@ const AdminSkuMovementRoute = AdminSkuMovementRouteImport.update({
   path: '/sku-movement',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminSkuAssignmentsRoute = AdminSkuAssignmentsRouteImport.update({
+  id: '/sku-assignments',
+  path: '/sku-assignments',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSetupAreaRoute = AdminSetupAreaRouteImport.update({
   id: '/setup-area',
   path: '/setup-area',
@@ -161,6 +172,11 @@ const AdminRbacRoute = AdminRbacRouteImport.update({
   path: '/rbac',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminRacksRoute = AdminRacksRouteImport.update({
+  id: '/racks',
+  path: '/racks',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminPutawayRoute = AdminPutawayRouteImport.update({
   id: '/putaway',
   path: '/putaway',
@@ -171,6 +187,21 @@ const AdminProofOfDeliveryRoute = AdminProofOfDeliveryRouteImport.update({
   path: '/proof-of-delivery',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminPickingCriteriaRoute = AdminPickingCriteriaRouteImport.update({
+  id: '/picking-criteria',
+  path: '/picking-criteria',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPickFaceStrategyRoute = AdminPickFaceStrategyRouteImport.update({
+  id: '/pick-face-strategy',
+  path: '/pick-face-strategy',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPalletLabelsRoute = AdminPalletLabelsRouteImport.update({
+  id: '/pallet-labels',
+  path: '/pallet-labels',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminOutboundRoute = AdminOutboundRouteImport.update({
   id: '/outbound',
   path: '/outbound',
@@ -179,6 +210,11 @@ const AdminOutboundRoute = AdminOutboundRouteImport.update({
 const AdminMovementCrossCheckRoute = AdminMovementCrossCheckRouteImport.update({
   id: '/movement-cross-check',
   path: '/movement-cross-check',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminItemsRoute = AdminItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
@@ -339,15 +375,21 @@ export interface FileRoutesByFullPath {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -392,15 +434,21 @@ export interface FileRoutesByTo {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -446,15 +494,21 @@ export interface FileRoutesById {
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
   '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/items': typeof AdminItemsRoute
   '/admin/movement-cross-check': typeof AdminMovementCrossCheckRoute
   '/admin/outbound': typeof AdminOutboundRoute
+  '/admin/pallet-labels': typeof AdminPalletLabelsRoute
+  '/admin/pick-face-strategy': typeof AdminPickFaceStrategyRoute
+  '/admin/picking-criteria': typeof AdminPickingCriteriaRoute
   '/admin/proof-of-delivery': typeof AdminProofOfDeliveryRoute
   '/admin/putaway': typeof AdminPutawayRoute
+  '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
+  '/admin/sku-assignments': typeof AdminSkuAssignmentsRoute
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
@@ -501,15 +555,21 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -554,15 +614,21 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -607,15 +673,21 @@ export interface FileRouteTypes {
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
     | '/admin/invoices'
+    | '/admin/items'
     | '/admin/movement-cross-check'
     | '/admin/outbound'
+    | '/admin/pallet-labels'
+    | '/admin/pick-face-strategy'
+    | '/admin/picking-criteria'
     | '/admin/proof-of-delivery'
     | '/admin/putaway'
+    | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
+    | '/admin/sku-assignments'
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
@@ -768,6 +840,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSkuMovementRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/sku-assignments': {
+      id: '/admin/sku-assignments'
+      path: '/sku-assignments'
+      fullPath: '/admin/sku-assignments'
+      preLoaderRoute: typeof AdminSkuAssignmentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/setup-area': {
       id: '/admin/setup-area'
       path: '/setup-area'
@@ -803,6 +882,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRbacRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/racks': {
+      id: '/admin/racks'
+      path: '/racks'
+      fullPath: '/admin/racks'
+      preLoaderRoute: typeof AdminRacksRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/putaway': {
       id: '/admin/putaway'
       path: '/putaway'
@@ -817,6 +903,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProofOfDeliveryRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/picking-criteria': {
+      id: '/admin/picking-criteria'
+      path: '/picking-criteria'
+      fullPath: '/admin/picking-criteria'
+      preLoaderRoute: typeof AdminPickingCriteriaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pick-face-strategy': {
+      id: '/admin/pick-face-strategy'
+      path: '/pick-face-strategy'
+      fullPath: '/admin/pick-face-strategy'
+      preLoaderRoute: typeof AdminPickFaceStrategyRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/pallet-labels': {
+      id: '/admin/pallet-labels'
+      path: '/pallet-labels'
+      fullPath: '/admin/pallet-labels'
+      preLoaderRoute: typeof AdminPalletLabelsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/outbound': {
       id: '/admin/outbound'
       path: '/outbound'
@@ -829,6 +936,13 @@ declare module '@tanstack/react-router' {
       path: '/movement-cross-check'
       fullPath: '/admin/movement-cross-check'
       preLoaderRoute: typeof AdminMovementCrossCheckRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/items': {
+      id: '/admin/items'
+      path: '/items'
+      fullPath: '/admin/items'
+      preLoaderRoute: typeof AdminItemsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/invoices': {
@@ -1052,15 +1166,21 @@ interface AdminRouteRouteChildren {
   AdminInventoryDetailRoute: typeof AdminInventoryDetailRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminItemsRoute: typeof AdminItemsRoute
   AdminMovementCrossCheckRoute: typeof AdminMovementCrossCheckRoute
   AdminOutboundRoute: typeof AdminOutboundRoute
+  AdminPalletLabelsRoute: typeof AdminPalletLabelsRoute
+  AdminPickFaceStrategyRoute: typeof AdminPickFaceStrategyRoute
+  AdminPickingCriteriaRoute: typeof AdminPickingCriteriaRoute
   AdminProofOfDeliveryRoute: typeof AdminProofOfDeliveryRoute
   AdminPutawayRoute: typeof AdminPutawayRoute
+  AdminRacksRoute: typeof AdminRacksRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminSetupAreaRoute: typeof AdminSetupAreaRoute
+  AdminSkuAssignmentsRoute: typeof AdminSkuAssignmentsRoute
   AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminStockQuantRoute: typeof AdminStockQuantRoute
@@ -1086,15 +1206,21 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryDetailRoute: AdminInventoryDetailRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminItemsRoute: AdminItemsRoute,
   AdminMovementCrossCheckRoute: AdminMovementCrossCheckRoute,
   AdminOutboundRoute: AdminOutboundRoute,
+  AdminPalletLabelsRoute: AdminPalletLabelsRoute,
+  AdminPickFaceStrategyRoute: AdminPickFaceStrategyRoute,
+  AdminPickingCriteriaRoute: AdminPickingCriteriaRoute,
   AdminProofOfDeliveryRoute: AdminProofOfDeliveryRoute,
   AdminPutawayRoute: AdminPutawayRoute,
+  AdminRacksRoute: AdminRacksRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminSetupAreaRoute: AdminSetupAreaRoute,
+  AdminSkuAssignmentsRoute: AdminSkuAssignmentsRoute,
   AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminStockQuantRoute: AdminStockQuantRoute,

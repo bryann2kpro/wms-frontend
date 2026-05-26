@@ -62,6 +62,17 @@ export const SKUS_FRAGMENT = gql`
 		isLotControlled
 		isExpiryControlled
 		isActive
+		barcode
+		brand
+		category
+		manufacturer
+		caseRate
+		caseExtLengthMm
+		caseExtWidthMm
+		caseExtHeightMm
+		caseGrossWeightKg
+		casesPerLayer
+		noOfLayers
 		createdAt
 		updatedAt
 		createdBy
@@ -153,3 +164,43 @@ export type CreateSkuInput = {
 	skuQuantity: number;
 	skuUom: string;
 };
+
+export const ITEMS_QUERY = gql`
+	query Items {
+		skus {
+			query {
+				skuId
+				skuCode
+				skuDescription
+				barcode
+				brand
+				category
+				manufacturer
+				isActive
+				caseRate
+				caseExtLengthMm
+				caseExtWidthMm
+				caseExtHeightMm
+				caseGrossWeightKg
+				casesPerLayer
+				noOfLayers
+				skuSuppliers {
+					supplierId
+					originalSkuCode
+				}
+				skuUom
+				pickingStrategy
+				isLotControlled
+				isExpiryControlled
+				createdAt
+				updatedAt
+			}
+		}
+	}
+`;
+
+export type ItemsQueryData = {
+	skus: SkusPaginatedResponse;
+};
+
+export type ItemsQueryVariables = Record<string, never>;

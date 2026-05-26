@@ -9,9 +9,15 @@ import type {
 export const RACK_FRAGMENT = gql`
 	fragment RackFields on Rack {
 		rackId
+		zoneId
+		areaId
 		rackRow
 		rackColumn
 		rackLevel
+		binCode
+		barCode
+		binType
+		isActive
 		createdAt
 		updatedAt
 		createdBy
@@ -76,6 +82,9 @@ export type RacksQueryVariables = {
 		rackColumns?: string[];
 		rackLevel?: string;
 		rackLevels?: string[];
+		binCode?: string;
+		binType?: string;
+		isActive?: boolean;
 	};
 	pageSize?: number;
 	pageNumber?: number;
