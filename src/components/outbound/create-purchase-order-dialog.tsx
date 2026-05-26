@@ -1,5 +1,6 @@
 import type * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo } from "react";
+import { useQuery, type UseMutationResult } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import {
@@ -30,7 +31,6 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Trash2, Zap } from "lucide-react";
-import type { UseMutationResult } from "@tanstack/react-query";
 import {
 	OUTLETS_QUERY,
 	type OutletsQueryData,
@@ -39,6 +39,18 @@ import {
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import { OutletCombobox } from "@/components/outbound/outlet-combobox";
 import type { CreatePurchaseOrderLineItem } from "@/lib/outbound";
+import {
+	STOCK_QUANTS_QUERY,
+	sortStockQuantsByPickingStrategy,
+	type StockQuantsQueryData,
+} from "@/lib/graphql/stock-quant";
+import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
+import { cn } from "@/lib/utils";
+
+const LIVE_STOCK_QUERY_OPTIONS = {
+	staleTime: 0,
+	refetchOnMount: "always" as const,
+};
 
 interface CreatePurchaseOrderDialogProps {
 	open: boolean;
@@ -65,6 +77,20 @@ export function CreatePurchaseOrderDialog({
 	});
 
 	const outlets = outletsData?.outlets?.query ?? [];
+
+	const { data: skusData } = useQuery({
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest<SkusQueryData>(SKUS_QUERY),
+		enabled: open,
+	});
+
+	const pickingStrategyBySkuId = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const sku of skusData?.skus?.query ?? []) {
+			map.set(sku.skuId, sku.pickingStrategy ?? "FIFO");
+		}
+		return map;
+	}, [skusData]);
 
 	const handleOpenChange = (next: boolean) => {
 		// Keep dialog open and show loading until create finishes (prevent Escape/overlay/X from closing)
@@ -289,7 +315,7 @@ export function CreatePurchaseOrderDialog({
 															onClick={() => {
 																form.setFieldValue("items", [
 																	...(items ?? []),
-																	{ skuId: "", quantity: 1 },
+																	{ skuId: "", quantity: 1, stockQuantId: "" },
 																]);
 															}}
 														>
@@ -322,15 +348,21 @@ export function CreatePurchaseOrderDialog({
 															</TableHeader>
 															<TableBody>
 																{(items ?? []).map((item, index) => (
-																	<LineItemRow
-																		key={index}
-																		index={index}
-																		item={item}
-																		items={items ?? []}
-																		form={form}
-																		canRemove={(items ?? []).length > 1}
-																	/>
-																))}
+																<LineItemRow
+																	key={index}
+																	index={index}
+																	item={item}
+																	items={items ?? []}
+																	form={form}
+																	canRemove={(items ?? []).length > 1}
+																	pickingStrategy={
+																		item.skuId
+																			? (pickingStrategyBySkuId.get(item.skuId) ??
+																				"FIFO")
+																			: "FIFO"
+																	}
+																/>
+															))}
 															</TableBody>
 														</Table>
 													</div>
@@ -413,19 +445,100 @@ function LineItemRow({
 	items,
 	form,
 	canRemove,
+	pickingStrategy,
 }: {
 	index: number;
 	item: CreatePurchaseOrderLineItem & {
 		skuCode?: string;
 		description?: string;
+		stockQuantId?: string;
 	};
 	items: (CreatePurchaseOrderLineItem & {
 		skuCode?: string;
 		description?: string;
+		stockQuantId?: string;
 	})[];
 	form: any;
 	canRemove: boolean;
+	pickingStrategy: string;
 }) {
+	const stockQuantVars = {
+		filter: { skuId: item.skuId },
+		pageSize: 9999,
+		pageNumber: 1,
+	};
+
+	const { data: stockQuantData, isLoading: stockQuantLoading } = useQuery({
+		queryKey: qk.stockQuants.list(stockQuantVars),
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, stockQuantVars),
+		enabled: !!item.skuId,
+		...LIVE_STOCK_QUERY_OPTIONS,
+	});
+
+	const stockQuantBatches = useMemo(
+		() =>
+			sortStockQuantsByPickingStrategy(
+				(stockQuantData?.stockQuants?.query ?? []).filter((row) => {
+					const onHand = Number(row.quantity ?? "0");
+					const reserved = Number(row.reservedQty ?? "0");
+					return onHand - reserved > 0;
+				}),
+				pickingStrategy,
+			),
+		[stockQuantData, pickingStrategy],
+	);
+
+	const totalAvailable = useMemo(
+		() =>
+			stockQuantBatches.reduce((sum, row) => {
+				const onHand = Number(row.quantity ?? "0");
+				const reserved = Number(row.reservedQty ?? "0");
+				return sum + (onHand - reserved);
+			}, 0),
+		[stockQuantBatches],
+	);
+
+	const selectedBatch = stockQuantBatches.find(
+		(batch) => batch.id === item.stockQuantId,
+	);
+	const selectedAvailable = selectedBatch
+		? Number(selectedBatch.quantity ?? "0") -
+			Number(selectedBatch.reservedQty ?? "0")
+		: 0;
+
+	const updateRow = useCallback(
+		(patch: Partial<typeof item>) => {
+			const next = items.map((it, i) =>
+				i === index ? { ...it, ...patch } : it,
+			);
+			form.setFieldValue("items", next);
+		},
+		[form, index, items],
+	);
+
+	useEffect(() => {
+		if (!item.skuId || stockQuantLoading) return;
+		if (stockQuantBatches.length === 0) {
+			if (item.stockQuantId) {
+				updateRow({ stockQuantId: "" });
+			}
+			return;
+		}
+		const stillValid = stockQuantBatches.some(
+			(batch) => batch.id === item.stockQuantId,
+		);
+		if (!stillValid) {
+			updateRow({ stockQuantId: stockQuantBatches[0].id });
+		}
+	}, [
+		item.skuId,
+		item.stockQuantId,
+		stockQuantBatches,
+		stockQuantLoading,
+		updateRow,
+	]);
+
 	const skuValue: SkuLineValue | null = item.skuId
 		? {
 				skuId: item.skuId,
@@ -437,61 +550,195 @@ function LineItemRow({
 			}
 		: null;
 
-	const updateRow = (patch: Partial<typeof item>) => {
-		const next = items.map((it, i) => (i === index ? { ...it, ...patch } : it));
-		form.setFieldValue("items", next);
-	};
-
 	return (
-		<TableRow className="h-12 transition-colors hover:bg-muted/50">
-			<TableCell className="align-middle py-2 px-6 text-[13px]">
-				<SkuCombobox
-					value={skuValue}
-					onChange={(v) => {
-						updateRow({
-							skuId: v.skuId,
-							skuCode: v.skuCode,
-							description: v.description,
-						});
-					}}
-					placeholder="Select SKU..."
-					usedSkuCodes={
-						items
-							.filter((_, i) => i !== index)
-							.map((it) => it.skuCode)
-							.filter(Boolean) as string[]
-					}
-				/>
-			</TableCell>
-			<TableCell className="align-middle py-2 px-6">
-				<Input
-					type="number"
-					min={1}
-					value={item.quantity}
-					onChange={(e) => updateRow({ quantity: Number(e.target.value) || 1 })}
-					className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
-				/>
-			</TableCell>
-			<TableCell className="align-middle py-2 w-12 px-6">
-				{canRemove ? (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="rounded-lg"
-						aria-label="Remove line"
-						onClick={() => {
-							form.setFieldValue(
-								"items",
-								items.filter((_, i) => i !== index),
-							);
+		<>
+			<TableRow className="h-12 transition-colors hover:bg-muted/50">
+				<TableCell className="align-middle py-2 px-6 text-[13px]">
+					<SkuCombobox
+						value={skuValue}
+						onChange={(v) => {
+							updateRow({
+								skuId: v.skuId,
+								skuCode: v.skuCode,
+								description: v.description,
+								stockQuantId: "",
+							});
 						}}
-					>
-						<Trash2 className="h-4 w-4 text-destructive" aria-hidden />
-					</Button>
-				) : null}
-			</TableCell>
-		</TableRow>
+						placeholder="Select SKU..."
+						usedSkuCodes={
+							items
+								.filter((_, i) => i !== index)
+								.map((it) => it.skuCode)
+								.filter(Boolean) as string[]
+						}
+					/>
+				</TableCell>
+				<TableCell className="align-middle py-2 px-6">
+					<Input
+						type="number"
+						min={1}
+						max={
+							selectedBatch && selectedAvailable > 0
+								? selectedAvailable
+								: undefined
+						}
+						value={item.quantity}
+						onChange={(e) =>
+							updateRow({ quantity: Number(e.target.value) || 1 })
+						}
+						className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
+					/>
+					{item.skuId &&
+					selectedBatch &&
+					item.quantity > selectedAvailable ? (
+						<p className="mt-1 text-[11px] text-destructive">
+							Exceeds selected batch ({selectedAvailable.toLocaleString()})
+						</p>
+					) : null}
+					{item.skuId && stockQuantBatches.length > 0 && !item.stockQuantId ? (
+						<p className="mt-1 text-[11px] text-destructive">
+							Select a stock quant batch below
+						</p>
+					) : null}
+				</TableCell>
+				<TableCell className="align-middle py-2 w-12 px-6">
+					{canRemove ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="rounded-lg"
+							aria-label="Remove line"
+							onClick={() => {
+								form.setFieldValue(
+									"items",
+									items.filter((_, i) => i !== index),
+								);
+							}}
+						>
+							<Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+						</Button>
+					) : null}
+				</TableCell>
+			</TableRow>
+			{item.skuId ? (
+				<TableRow className="bg-muted/20 hover:bg-muted/20">
+					<TableCell colSpan={3} className="px-6 py-3">
+						{stockQuantLoading ? (
+							<p className="text-xs text-muted-foreground">
+								Loading stock quant batches...
+							</p>
+						) : stockQuantBatches.length === 0 ? (
+							<p className="text-xs text-amber-600 dark:text-amber-400">
+								No available stock quant for this SKU at rack locations.
+							</p>
+						) : (
+							<div className="space-y-2">
+								<p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+									Select stock quant batch ({pickingStrategy}) · Total available:{" "}
+									{totalAvailable.toLocaleString()}
+								</p>
+								<div className="overflow-x-auto rounded-lg border bg-background">
+									<Table>
+										<TableHeader>
+											<TableRow className="hover:bg-transparent">
+												<TableHead className="w-10 text-xs">Select</TableHead>
+												<TableHead className="text-xs">Lot No</TableHead>
+												<TableHead className="text-xs">Rack</TableHead>
+												<TableHead className="text-xs">Expiry</TableHead>
+												<TableHead className="text-xs text-right">
+													On Hand
+												</TableHead>
+												<TableHead className="text-xs text-right">
+													Reserved
+												</TableHead>
+												<TableHead className="text-xs text-right">
+													Available
+												</TableHead>
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{stockQuantBatches.map((batch) => {
+												const onHand = Number(batch.quantity ?? "0");
+												const reserved = Number(batch.reservedQty ?? "0");
+												const available = onHand - reserved;
+												const isSelected = item.stockQuantId === batch.id;
+												return (
+													<TableRow
+														key={batch.id}
+														role="radio"
+														aria-checked={isSelected}
+														tabIndex={0}
+														className={cn(
+															"cursor-pointer transition-colors",
+															isSelected
+																? "bg-amber-500/10 hover:bg-amber-500/15"
+																: "hover:bg-muted/50",
+														)}
+														onClick={(e) => {
+															e.preventDefault();
+															updateRow({ stockQuantId: batch.id });
+														}}
+														onKeyDown={(e) => {
+															if (e.key === "Enter" || e.key === " ") {
+																e.preventDefault();
+																updateRow({ stockQuantId: batch.id });
+															}
+														}}
+													>
+														<TableCell className="w-10">
+															<input
+																type="radio"
+																name={`stock-quant-${index}`}
+																checked={isSelected}
+																onClick={(e) => e.stopPropagation()}
+																onChange={() =>
+																	updateRow({ stockQuantId: batch.id })
+																}
+																className="h-4 w-4 accent-amber-600"
+																aria-label={`Select batch ${batch.lotNo?.trim() || "no lot"} at ${batch.rackLabel || "rack"}`}
+															/>
+														</TableCell>
+														<TableCell className="font-mono text-xs">
+															{batch.lotNo?.trim() ? (
+																batch.lotNo
+															) : (
+																<span className="italic text-muted-foreground">
+																	No lot
+																</span>
+															)}
+														</TableCell>
+														<TableCell className="text-xs">
+															{batch.rackLabel?.trim() || "Unassigned"}
+														</TableCell>
+														<TableCell className="text-xs text-muted-foreground">
+															{batch.expiryDate
+																? new Date(batch.expiryDate).toLocaleDateString(
+																		"en-GB",
+																	)
+																: "—"}
+														</TableCell>
+														<TableCell className="text-right text-xs">
+															{onHand.toLocaleString()}
+														</TableCell>
+														<TableCell className="text-right text-xs text-amber-600 dark:text-amber-400">
+															{reserved.toLocaleString()}
+														</TableCell>
+														<TableCell className="text-right text-xs font-semibold">
+															{available.toLocaleString()}
+														</TableCell>
+													</TableRow>
+												);
+											})}
+										</TableBody>
+									</Table>
+								</div>
+							</div>
+						)}
+					</TableCell>
+				</TableRow>
+			) : null}
+		</>
 	);
 }
 

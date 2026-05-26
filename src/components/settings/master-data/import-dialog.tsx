@@ -26,14 +26,11 @@ import {
 } from "@/components/ui/table";
 import {
 	CREATE_SKUS_MUTATION,
-	UPDATE_SKUS_MUTATION,
 	SKUS_QUERY,
 	type CreateSkusMutationData,
 	type CreateSkusMutationVariables,
 	type SkusQueryData,
 	type SkusQueryVariables,
-	type UpdateSkusMutationData,
-	type UpdateSkusMutationVariables,
 } from "@/lib/graphql/skus";
 import {
 	CREATE_RACK_MUTATION,
@@ -69,7 +66,6 @@ type PreviewRow =
 			data: {
 				skuCode: string;
 				skuDescription: string;
-				skuPrice: string;
 				skuQuantity: string;
 				skuUomLabel: string;
 				pickingStrategy: string;
@@ -160,7 +156,6 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 						"Row",
 						"SKU Code",
 						"Description",
-						"Price",
 						"Quantity",
 						"Unit of Measure",
 						"Picking Strategy",
@@ -176,7 +171,6 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 							row.rowNumber,
 							data.skuCode,
 							data.skuDescription,
-							data.skuPrice,
 							data.skuQuantity,
 							data.skuUomLabel,
 							data.pickingStrategy,
@@ -262,13 +256,6 @@ export function ImportDialog({
 			),
 	});
 
-	const { mutateAsync: updateSku } = useMutation({
-		mutationFn: (variables: UpdateSkusMutationVariables) =>
-			gqlRequest<UpdateSkusMutationData, UpdateSkusMutationVariables>(
-				UPDATE_SKUS_MUTATION,
-				variables,
-			),
-	});
 	const { mutateAsync: createRack } = useMutation({
 		mutationFn: (variables: CreateRackMutationVariables) =>
 			gqlRequest<CreateRackMutationData, CreateRackMutationVariables>(
@@ -313,7 +300,6 @@ export function ImportDialog({
 						[
 							"SKU Code",
 							"Description",
-							"Price",
 							"Quantity",
 							"Unit of Measure",
 							"Picking Strategy",
@@ -454,7 +440,6 @@ export function ImportDialog({
 					data: {
 						skuCode: item.skuCode,
 						skuDescription: item.skuDescription,
-						skuPrice: "0",
 						skuQuantity: String(item.skuQuantity),
 						skuUomLabel: item.skuUomLabel,
 						pickingStrategy: "FIFO",
@@ -466,8 +451,6 @@ export function ImportDialog({
 							? {
 									skuCode: item.skuCode,
 									skuDescription: item.skuDescription,
-									skuPrice: 0,
-									skuQuantity: item.skuQuantity,
 									skuExpiryDate: "",
 									skuSuppliers: [],
 									skuUom: stockUnitId,
@@ -499,7 +482,6 @@ export function ImportDialog({
 			const skuCode =
 				headers["sku code"] ?? headers["item code"] ?? headers.code ?? "";
 			const skuDescription = headers.description ?? "";
-			const skuPrice = headers.price ?? "";
 			const skuQuantity = headers.quantity ?? headers["unit qty"] ?? "";
 			const skuUomLabel =
 				headers["unit of measure"] ??
@@ -519,12 +501,6 @@ export function ImportDialog({
 				errors.push("Quantity must be a number");
 			} else if (Number(skuQuantity) < 0) {
 				errors.push("Quantity must be >= 0");
-			}
-			if (
-				skuPrice &&
-				(Number.isNaN(Number(skuPrice)) || Number(skuPrice) < 0)
-			) {
-				errors.push("Price must be a number >= 0");
 			}
 			if (!skuUomLabel) {
 				errors.push("Unit of Measure is required");
@@ -551,8 +527,6 @@ export function ImportDialog({
 					? {
 							skuCode,
 							skuDescription,
-							skuPrice: skuPrice ? Number(skuPrice) : 0,
-							skuQuantity: Number(skuQuantity),
 							skuExpiryDate: expiry.db,
 							skuSuppliers: [],
 							skuUom: stockUnitId,
@@ -567,7 +541,6 @@ export function ImportDialog({
 				data: {
 					skuCode,
 					skuDescription,
-					skuPrice,
 					skuQuantity,
 					skuUomLabel,
 					pickingStrategy,
@@ -689,7 +662,6 @@ export function ImportDialog({
 
 		try {
 			let createdCount = 0;
-			let updatedCount = 0;
 
 			if (mode === "skus" && isStockTakeFormat) {
 				for (const uomLabel of newUomsToCreate) {
@@ -745,8 +717,6 @@ export function ImportDialog({
 								payload = {
 									skuCode: skuRow.data.skuCode,
 									skuDescription: skuRow.data.skuDescription,
-									skuPrice: Number(skuRow.data.skuPrice || "0"),
-									skuQuantity: Number(skuRow.data.skuQuantity),
 									skuExpiryDate: "",
 									skuSuppliers: [],
 									skuUom: stockUnitId,
@@ -769,16 +739,11 @@ export function ImportDialog({
 								);
 
 								if (existing) {
-									await updateSku({
-										id: existing.skuId,
-										input: {
-											skuQuantity: existing.skuQuantity + payload.skuQuantity,
-										},
-									});
 									return {
 										rowNumber: row.rowNumber,
-										ok: true as const,
-										action: "updated" as const,
+										ok: false as const,
+										error:
+											"SKU already exists; use Stock Adjustment to change on-hand quantity",
 									};
 								}
 
@@ -817,12 +782,6 @@ export function ImportDialog({
 						if (
 							mode === "skus" &&
 							isStockTakeFormat &&
-							result.value.action === "updated"
-						) {
-							updatedCount += 1;
-						} else if (
-							mode === "skus" &&
-							isStockTakeFormat &&
 							result.value.action === "created"
 						) {
 							createdCount += 1;
@@ -854,7 +813,7 @@ export function ImportDialog({
 			if (successCount > 0) {
 				toast.success(
 					mode === "skus" && isStockTakeFormat
-						? `SKU import complete: ${updatedCount} updated, ${createdCount} created, ${failedCount} failed.`
+						? `SKU import complete: ${createdCount} created, ${failedCount} failed.`
 						: `${mode === "skus" ? "SKU" : "Rack"} import complete: ${successCount} succeeded, ${failedCount} failed.`,
 				);
 				onImported?.();
@@ -1002,7 +961,6 @@ export function ImportDialog({
 										<>
 											<TableHead>SKU Code</TableHead>
 											<TableHead>Description</TableHead>
-											<TableHead>Price</TableHead>
 											<TableHead>Quantity</TableHead>
 											<TableHead>UOM</TableHead>
 											<TableHead>Strategy</TableHead>
@@ -1022,7 +980,7 @@ export function ImportDialog({
 								{rows.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={mode === "skus" ? 9 : 6}
+											colSpan={mode === "skus" ? 8 : 6}
 											className="h-20 text-center text-muted-foreground"
 										>
 											Upload a file to preview rows.
@@ -1041,7 +999,6 @@ export function ImportDialog({
 												<>
 													<TableCell>{row.data.skuCode}</TableCell>
 													<TableCell>{row.data.skuDescription}</TableCell>
-													<TableCell>{row.data.skuPrice}</TableCell>
 													<TableCell>{row.data.skuQuantity}</TableCell>
 													<TableCell>{row.data.skuUomLabel}</TableCell>
 													<TableCell>{row.data.pickingStrategy}</TableCell>

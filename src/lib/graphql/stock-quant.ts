@@ -16,12 +16,14 @@ export const STOCK_QUANTS_QUERY = gql`
 				hasNextPage
 				hasPrevPage
 			}
+			totalQuantity
 			query {
 				id
 				skuId
 				skuCode
 				description
 				quantity
+				reservedQty
 				rackId
 				rackLabel
 				lotNo
@@ -40,8 +42,10 @@ export type StockQuantFilterInput = {
 	id?: string;
 	skuId?: string;
 	skuIds?: string[];
+	skuCode?: string;
 	rackId?: string;
 	rackIds?: string[];
+	rackLabel?: string;
 };
 
 export interface StockQuant {
@@ -50,6 +54,7 @@ export interface StockQuant {
 	skuCode: string | null;
 	description: string | null;
 	quantity: string;
+	reservedQty: string;
 	rackId: string;
 	rackLabel: string | null;
 	lotNo: string | null;
@@ -64,6 +69,7 @@ export interface StockQuant {
 export interface StockQuantPaginatedResponse {
 	query: StockQuant[];
 	pagination: Pagination;
+	totalQuantity: string;
 }
 
 export type StockQuantsQueryData = {

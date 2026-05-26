@@ -45,12 +45,6 @@ export function SkusFormStep1({
 	setSkuCode: (v: string) => void;
 	skuDescription: string;
 	setSkuDescription: (v: string) => void;
-	skuPrice: string;
-	setSkuPrice: (v: string) => void;
-	skuQuantity: string;
-	setSkuQuantity: (v: string) => void;
-	lossQuantity: string;
-	setLossQuantity: (v: string) => void;
 	skuExpiryDate: Date | undefined;
 	setSkuExpiryDate: (v: Date | undefined) => void;
 	skuUom: string;
@@ -81,8 +75,6 @@ export function SkusFormStep1({
 					<ul className="text-sm text-destructive list-disc list-inside space-y-1">
 						{errors.skuCode && <li>Code is required</li>}
 						{errors.skuDescription && <li>Description is required</li>}
-						{errors.skuQuantity && <li>{errors.skuQuantity}</li>}
-						{errors.lossQuantity && <li>{errors.lossQuantity}</li>}
 						{errors.skuExpiryDate && <li>Expiry date is required</li>}
 						{errors.skuUom && <li>Unit of measure is required</li>}
 					</ul>
@@ -120,6 +112,53 @@ export function SkusFormStep1({
 				/>
 				{errors.skuDescription && (
 					<p className="text-sm text-destructive">{errors.skuDescription}</p>
+				)}
+			</div>
+			<div className="grid gap-2">
+				<Label htmlFor="sku-expiry-date">Expiry Date</Label>
+				<Popover>
+					<PopoverTrigger asChild>
+						<Button
+							id="sku-expiry-date"
+							variant="outline"
+							className={`w-full justify-start rounded-lg border-muted-foreground/20 text-left font-normal h-10 hover:bg-accent hover:text-accent-foreground transition-colors ${!skuExpiryDate ? "text-muted-foreground" : "text-foreground"} ${errors.skuExpiryDate ? "border-destructive" : ""}`}
+						>
+							<CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+							<span className="truncate">
+								{skuExpiryDate && !isNaN(skuExpiryDate.getTime())
+									? format(skuExpiryDate, "PPP")
+									: "Select expiry date"}
+							</span>
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						className="w-auto p-0 rounded-lg border shadow-lg bg-background"
+						align="start"
+						sideOffset={4}
+					>
+						<Calendar
+							mode="single"
+							selected={skuExpiryDate}
+							onSelect={(date) => {
+								if (date) {
+									setSkuExpiryDate(date);
+									if (errors.skuExpiryDate)
+										setErrors((prev) => ({
+											...prev,
+											skuExpiryDate: undefined,
+										}));
+								}
+							}}
+							defaultMonth={skuExpiryDate || new Date()}
+							captionLayout="dropdown"
+							showOutsideDays={true}
+							fromYear={new Date().getFullYear()}
+							toYear={new Date().getFullYear() + 10}
+						/>
+					</PopoverContent>
+				</Popover>
+				{errors.skuExpiryDate && (
+					<p className="text-sm text-destructive">{errors.skuExpiryDate}</p>
 				)}
 			</div>
 			<div className="grid gap-2">

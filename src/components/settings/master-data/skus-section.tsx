@@ -69,7 +69,12 @@ import {
 	type UpdateSkusMutationData,
 	type DeleteSkusMutationData,
 } from "@/lib/graphql/skus";
-import type { Skus, StockUnit } from "@/lib/graphql/types";
+import type {
+	Skus,
+	StockUnit,
+	createSkusInput,
+	UpdateSkusInput,
+} from "@/lib/graphql/types";
 import {
 	Plus,
 	Edit,
@@ -112,7 +117,7 @@ const SKUS_HELP_STEPS: Array<{
 		title: "Create new SKU",
 		image: `${SKUS_HELP_IMAGES_BASE}/step-3.png`,
 		description:
-			"Click Add SKU to create a new record with pricing, quantity, UOM, and suppliers.",
+			"Click Add SKU to create a new record with UOM, picking strategy, and suppliers.",
 	},
 	{
 		title: "Edit and suppliers",
@@ -122,18 +127,12 @@ const SKUS_HELP_STEPS: Array<{
 	},
 ];
 
-type SkuSortField =
-	| "CODE"
-	| "DESCRIPTION"
-	| "PRICE"
-	| "QUANTITY"
-	| "EXPIRY_DATE";
+type SkuSortField = "CODE" | "DESCRIPTION" | "EXPIRY_DATE" | "STRATEGY";
 
 const SKU_SORT_FIELDS: Array<{ value: SkuSortField; label: string }> = [
 	{ value: "CODE", label: "Code" },
 	{ value: "DESCRIPTION", label: "Description" },
-	{ value: "PRICE", label: "Price" },
-	{ value: "QUANTITY", label: "Quantity" },
+	{ value: "STRATEGY", label: "Picking strategy" },
 	{ value: "EXPIRY_DATE", label: "Expiry date" },
 ];
 
@@ -196,7 +195,6 @@ export function SkusSection() {
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [search, setSearch] = useState("");
-	const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Skus | null>(null);
@@ -220,24 +218,16 @@ export function SkusSection() {
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	const deferredSearch = useDeferredValue(search);
 
-	const LOW_STOCK_THRESHOLD = 10;
-
 	const list = useMemo(() => {
 		const query = deferredSearch.toLowerCase().trim();
-		return allSkus
-			.filter((sku) =>
-				showLowStockOnly
-					? Number(sku.skuQuantity ?? 0) <= LOW_STOCK_THRESHOLD
-					: true,
-			)
-			.filter((sku) => {
-				if (!query) return true;
-				return (
-					sku.skuCode.toLowerCase().includes(query) ||
-					sku.skuDescription.toLowerCase().includes(query)
-				);
-			});
-	}, [allSkus, deferredSearch, showLowStockOnly]);
+		return allSkus.filter((sku) => {
+			if (!query) return true;
+			return (
+				sku.skuCode.toLowerCase().includes(query) ||
+				sku.skuDescription.toLowerCase().includes(query)
+			);
+		});
+	}, [allSkus, deferredSearch]);
 
 	const sortedList = useMemo(() => {
 		return [...list].sort((a, b) => {
@@ -248,11 +238,9 @@ export function SkusSection() {
 						(a.skuDescription ?? "").localeCompare(b.skuDescription ?? "") *
 						direction
 					);
-				case "PRICE":
-					return ((a.skuPrice ?? 0) - (b.skuPrice ?? 0)) * direction;
-				case "QUANTITY":
+				case "STRATEGY":
 					return (
-						(Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) *
+						(a.pickingStrategy ?? "").localeCompare(b.pickingStrategy ?? "") *
 						direction
 					);
 				case "EXPIRY_DATE": {
@@ -307,8 +295,8 @@ export function SkusSection() {
 	const deleteInFlightRef = useRef(false);
 
 	const { mutate: createSkus, isPending: createLoading } = useMutation({
-		mutationFn: (input: object) =>
-			gqlRequest<CreateSkusMutationData>(CREATE_SKUS_MUTATION, { input }),
+		mutationFn: (vars: { input: createSkusInput }) =>
+			gqlRequest<CreateSkusMutationData>(CREATE_SKUS_MUTATION, vars),
 		onSuccess: async () => {
 			createInFlightRef.current = false;
 			await refetch();
@@ -379,29 +367,11 @@ export function SkusSection() {
 				),
 			},
 			{
-				id: "skuPrice",
-				accessorKey: "skuPrice",
-				header: "Price (RM)",
-				size: 110,
-				cell: (info) => {
-					const val = info.getValue<number | null>();
-					return val != null ? Number(val).toFixed(2) : "N/A";
-				},
-			},
-			{
-				id: "skuQuantity",
-				accessorKey: "skuQuantity",
-				header: "Quantity",
-				size: 100,
-				cell: (info) => Number(info.getValue<string | number>()).toFixed(2),
-			},
-			{
-				id: "lossQuantity",
-				accessorKey: "lossQuantity",
-				header: "Loss",
+				id: "pickingStrategy",
+				accessorKey: "pickingStrategy",
+				header: "Picking",
 				size: 90,
-				cell: (info) =>
-					Number(info.getValue<string | number>() ?? 0).toFixed(2),
+				cell: (info) => info.getValue<string>() ?? "FIFO",
 			},
 			{
 				id: "skuExpiryDate",
@@ -626,18 +596,6 @@ export function SkusSection() {
 								aria-label="Search SKUs by code or description"
 							/>
 						</div>
-						<Button
-							variant={showLowStockOnly ? "secondary" : "outline"}
-							size="sm"
-							onClick={() => {
-								setShowLowStockOnly((v) => !v);
-								setPage(1);
-							}}
-							aria-pressed={showLowStockOnly}
-							className="rounded-lg"
-						>
-							Low stock only
-						</Button>
 						<div className="flex items-center gap-1.5">
 							<ArrowUpDown
 								className="h-4 w-4 text-muted-foreground"
@@ -914,9 +872,6 @@ export function SkusSection() {
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuPrice: editing.skuPrice,
-						skuQuantity: editing.skuQuantity,
-						lossQuantity: editing.lossQuantity ?? 0,
 						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",

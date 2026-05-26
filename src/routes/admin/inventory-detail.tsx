@@ -33,7 +33,6 @@ import {
 	sortStockQuantsByPickingStrategy,
 	type StockQuant,
 	type StockQuantsQueryData,
-	type StockQuantsQueryVariables,
 } from "@/lib/graphql/stock-quant";
 import { formatDate } from "@/lib/utils";
 
@@ -56,7 +55,13 @@ export const Route = createFileRoute("/admin/inventory-detail")({
 	}),
 });
 
-const STOCK_QUANTS_PAGE_SIZE = 9999;
+const STOCK_QUANTS_PAGE_SIZE = 10;
+
+/** Inventory/stock quant pages must always reflect current DB state. */
+const LIVE_STOCK_QUERY_OPTIONS = {
+	staleTime: 0,
+	refetchOnMount: "always" as const,
+};
 
 const STRATEGY_STYLES: Record<string, string> = {
 	FIFO: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400",
@@ -73,24 +78,26 @@ function InventoryDetailComponent() {
 	const { skuId } = Route.useSearch();
 	const navigate = useNavigate();
 
-  const balanceVars = {
+	const balanceVars = {
 		filter: { skuId },
 		pageSize: 1,
 		pageNumber: 1,
 	};
 
-	const { data: stockQuantData, loading: stockQuantLoading } = useQuery<
-		StockQuantsQueryData,
-		StockQuantsQueryVariables
-	>(STOCK_QUANTS_QUERY, {
-		variables: {
-      ...balanceVars,
-			pageSize: STOCK_QUANTS_PAGE_SIZE,
-		},
-		skip: !skuId,
-		fetchPolicy: "cache-and-network",
-  });
-	
+	const stockQuantVars = {
+		filter: { skuId },
+		pageSize: STOCK_QUANTS_PAGE_SIZE,
+		pageNumber: 1,
+	};
+
+	const { data: stockQuantData, isLoading: stockQuantLoading } = useQuery({
+		queryKey: qk.stockQuants.list(stockQuantVars),
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, stockQuantVars),
+		enabled: !!skuId,
+		...LIVE_STOCK_QUERY_OPTIONS,
+	});
+
 	const { data: balanceData, isLoading: balanceLoading } = useQuery({
 		queryKey: qk.inventory.list(balanceVars),
 		queryFn: () =>
@@ -98,6 +105,8 @@ function InventoryDetailComponent() {
 				INVENTORY_BALANCES_QUERY,
 				balanceVars,
 			),
+		enabled: !!skuId,
+		...LIVE_STOCK_QUERY_OPTIONS,
 	});
 
 	const loading = balanceLoading || stockQuantLoading;
@@ -258,7 +267,7 @@ function InventoryDetailComponent() {
 								) : (
 									stockQuants.map((row) => {
 										const onHandQty = Number(row.quantity ?? "0");
-										const reservedQty = 0;
+										const reservedQty = Number(row.reservedQty ?? "0");
 										const availableQty = onHandQty - reservedQty;
 										return (
 											<TableRow key={row.id}>
@@ -278,7 +287,7 @@ function InventoryDetailComponent() {
 												<TableCell className="text-right font-medium">
 													{onHandQty.toLocaleString()}
 												</TableCell>
-												<TableCell className="text-right text-muted-foreground">
+												<TableCell className={`text-right ${reservedQty > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
 													{reservedQty.toLocaleString()}
 												</TableCell>
 												<TableCell className="text-right font-semibold">

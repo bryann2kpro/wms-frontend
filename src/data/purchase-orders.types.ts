@@ -84,6 +84,7 @@ export interface CreatePurchaseOrderLineItemInput {
 	skuCode?: string;
 	description?: string;
 	quantity: number;
+	stockQuantId: string;
 }
 
 export interface CreatePurchaseOrderInput {

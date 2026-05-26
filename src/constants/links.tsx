@@ -18,6 +18,7 @@ import {
 	Settings,
 	Shield,
 	Tag,
+	Truck,
 	Users,
 	Warehouse,
 } from "lucide-react";
@@ -230,6 +231,24 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		allowedPermission: ["Inventory"],
 		variant: "default",
 		group: "warehouse setup",
+	},
+	{
+		key: "sidebar-transport",
+		title: "Transport",
+		href: "/admin/transport",
+		icon: Truck,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-setup-area",
+		title: "Area",
+		href: "/admin/setup-area",
+		icon: LayoutGrid,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "operations",
 	},
 	{
 		key: "sidebar-invoices",

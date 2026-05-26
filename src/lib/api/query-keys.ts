@@ -14,6 +14,14 @@ export const qk = {
 	},
 	warehouses: { all: ["warehouses"] as const },
 	racks: { all: ["racks"] as const },
+	transports: {
+		all: ["transports"] as const,
+		list: (f: object) => ["transports", "list", f] as const,
+	},
+	setupAreas: {
+		all: ["setup-areas"] as const,
+		list: (f: object) => ["setup-areas", "list", f] as const,
+	},
 	skus: { all: ["skus"] as const },
 	items: { all: ["items"] as const },
 	stockUnits: { all: ["stock-units"] as const },
