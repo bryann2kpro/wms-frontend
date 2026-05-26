@@ -121,7 +121,7 @@ function PickFaceStrategyPage() {
 		queryKey: [...qk.skus.all, "pick-face-page"],
 		queryFn: () => gqlRequest<SkusQueryData>(SKUS_QUERY),
 	});
-	
+
 
 	const { mutate: createStrategy, isPending: createLoading } = useMutation({
 		mutationFn: (input: object) =>
@@ -170,9 +170,12 @@ function PickFaceStrategyPage() {
 
 	const filteredList = debouncedSearch.trim()
 		? list.filter((row) =>
-				row.itemCode.toLowerCase().includes(debouncedSearch.toLowerCase()),
-			)
+			row.itemCode.toLowerCase().includes(debouncedSearch.toLowerCase()),
+		)
 		: list;
+
+	console.log('filteredList', filteredList);
+
 
 	return (
 		<ClientOnly>
@@ -257,7 +260,7 @@ function PickFaceStrategyPage() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-								{loading ? (
+									{loading ? (
 										<TableRow>
 											<TableCell
 												colSpan={7}
@@ -327,7 +330,7 @@ function PickFaceStrategyPage() {
 								</TableBody>
 							</Table>
 						</div>
-					{pagination && totalPages > 1 && (
+						{pagination && totalPages > 1 && (
 							<div className="mx-6 mt-4 flex items-center justify-between">
 								<p
 									className="text-sm text-muted-foreground"
@@ -369,9 +372,10 @@ function PickFaceStrategyPage() {
 					onOpenChange={setIsCreateOpen}
 					racks={racks}
 					skus={skus}
-					onSubmit={(values) =>
-						createStrategy({ ...values, createdBy, updatedBy: createdBy })
-					}
+					onSubmit={(values) => {
+						const { isActive, ...rest } = values;
+						createStrategy({ ...rest, createdBy, updatedBy: createdBy });
+					}}
 					loading={createLoading}
 					title="Add Pick Face Assignment"
 					description="Assign a storage bin to an item for picking."
@@ -385,12 +389,13 @@ function PickFaceStrategyPage() {
 						racks={racks}
 						skus={skus}
 						initial={editing}
-						onSubmit={(values) =>
+						onSubmit={(values) => {
+							const { itemCode, ...rest } = values;
 							updateStrategy({
 								id: editing.id,
-								input: { ...values, updatedBy: createdBy },
-							})
-						}
+								input: { ...rest, updatedBy: createdBy },
+							});
+						}}
 						loading={updateLoading}
 						title="Edit Pick Face Assignment"
 						description="Update storage bin assignment details."
@@ -484,7 +489,7 @@ function PickFaceStrategyFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent className="max-w-lg rounded-2xl border-2 border-border bg-background shadow-xl">
+			<DialogContent className="max-w-2xl rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50 px-6 py-4">
 					<DialogTitle
 						className="text-xl"
