@@ -23,8 +23,9 @@ export const locations = [
 ];
 
 const createPurchaseOrderLineItemSchema = z.object({
-	skuId: z.string().min(1, "Stock is required"),
-	quantity: z.coerce.number().min(1, "Amount must be at least 1"),
+  skuId: z.string().min(1, "Stock is required"),
+  quantity: z.coerce.number().min(1, "Amount must be at least 1"),
+  stockQuantId: z.string().min(1, "Select a stock quant batch"),
 });
 
 export type CreatePurchaseOrderLineItem = z.infer<

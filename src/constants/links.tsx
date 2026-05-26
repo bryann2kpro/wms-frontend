@@ -17,6 +17,7 @@ import {
 	PackageSearch,
 	Settings,
 	Shield,
+	Truck,
 	Users,
 	Warehouse,
 } from "lucide-react";
@@ -179,6 +180,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		title: "Stock Adjustment",
 		href: "/admin/stock-adjustment",
 		icon: ClipboardList,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-transport",
+		title: "Transport",
+		href: "/admin/transport",
+		icon: Truck,
 		allowedPermission: ["Inventory"],
 		variant: "default",
 		group: "operations",
