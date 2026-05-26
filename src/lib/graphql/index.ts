@@ -6,3 +6,4 @@ export * from "./outlets";
 export * from "./stock-units";
 export * from "./racks";
 export * from "./transports";
+export * from "./setup-areas";
