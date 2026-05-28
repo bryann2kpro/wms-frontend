@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -50,6 +51,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Table,
 	TableBody,
@@ -59,8 +68,8 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { SkusFormDialog } from "@/components/settings/master-data/skus-form-dialog";
 import { SkusSuppliersViewDialog } from "@/components/settings/master-data/skus-suppliers-view-dialog";
 import { ConfirmDeleteDialog } from "@/components/settings/master-data/shared";
 import { ImportDialog } from "@/components/settings/master-data/import-dialog";
@@ -85,6 +94,136 @@ export const Route = createFileRoute("/admin/items")({
 });
 
 type ItemSortField = "CODE" | "DESCRIPTION";
+
+type ItemFormValues = {
+	skuCode: string;
+	skuDescription: string;
+	barcode: string | null;
+	brand: string | null;
+	category: string | null;
+	manufacturer: string | null;
+	isActive: boolean;
+	caseRate: number | null;
+	caseExtLengthMm: number | null;
+	caseExtWidthMm: number | null;
+	caseExtHeightMm: number | null;
+	caseGrossWeightKg: number | null;
+	casesPerLayer: number | null;
+	noOfLayers: number | null;
+};
+
+function ItemFormDialog({
+	open,
+	onOpenChange,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	initial?: Partial<ItemFormValues>;
+	onSubmit: (values: ItemFormValues) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
+	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
+	const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+	const [brand, setBrand] = useState(initial?.brand ?? "");
+	const [category, setCategory] = useState(initial?.category ?? "");
+	const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? "");
+	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [caseRate, setCaseRate] = useState(initial?.caseRate?.toString() ?? "");
+	const [caseExtLengthMm, setCaseExtLengthMm] = useState(initial?.caseExtLengthMm?.toString() ?? "");
+	const [caseExtWidthMm, setCaseExtWidthMm] = useState(initial?.caseExtWidthMm?.toString() ?? "");
+	const [caseExtHeightMm, setCaseExtHeightMm] = useState(initial?.caseExtHeightMm?.toString() ?? "");
+	const [caseGrossWeightKg, setCaseGrossWeightKg] = useState(initial?.caseGrossWeightKg?.toString() ?? "");
+	const [casesPerLayer, setCasesPerLayer] = useState(initial?.casesPerLayer?.toString() ?? "");
+	const [noOfLayers, setNoOfLayers] = useState(initial?.noOfLayers?.toString() ?? "");
+
+	useEffect(() => {
+		if (!open) return;
+		setSkuCode(initial?.skuCode ?? "");
+		setSkuDescription(initial?.skuDescription ?? "");
+		setBarcode(initial?.barcode ?? "");
+		setBrand(initial?.brand ?? "");
+		setCategory(initial?.category ?? "");
+		setManufacturer(initial?.manufacturer ?? "");
+		setIsActive(initial?.isActive ?? true);
+		setCaseRate(initial?.caseRate?.toString() ?? "");
+		setCaseExtLengthMm(initial?.caseExtLengthMm?.toString() ?? "");
+		setCaseExtWidthMm(initial?.caseExtWidthMm?.toString() ?? "");
+		setCaseExtHeightMm(initial?.caseExtHeightMm?.toString() ?? "");
+		setCaseGrossWeightKg(initial?.caseGrossWeightKg?.toString() ?? "");
+		setCasesPerLayer(initial?.casesPerLayer?.toString() ?? "");
+		setNoOfLayers(initial?.noOfLayers?.toString() ?? "");
+	}, [open, initial]);
+
+	const parseOptionalFloat = (v: string) => {
+		const t = v.trim();
+		if (!t) return null;
+		const n = Number.parseFloat(t);
+		return Number.isNaN(n) ? null : n;
+	};
+
+	const submit = () => {
+		onSubmit({
+			skuCode: skuCode.trim(),
+			skuDescription: skuDescription.trim(),
+			barcode: barcode.trim() || null,
+			brand: brand.trim() || null,
+			category: category.trim() || null,
+			manufacturer: manufacturer.trim() || null,
+			isActive,
+			caseRate: parseOptionalFloat(caseRate),
+			caseExtLengthMm: parseOptionalFloat(caseExtLengthMm),
+			caseExtWidthMm: parseOptionalFloat(caseExtWidthMm),
+			caseExtHeightMm: parseOptionalFloat(caseExtHeightMm),
+			caseGrossWeightKg: parseOptionalFloat(caseGrossWeightKg),
+			casesPerLayer: parseOptionalFloat(casesPerLayer),
+			noOfLayers: parseOptionalFloat(noOfLayers),
+		});
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-4xl rounded-2xl">
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div className="grid gap-2"><Label>Code</Label><Input value={skuCode} onChange={(e) => setSkuCode(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Description</Label><Input value={skuDescription} onChange={(e) => setSkuDescription(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Barcode</Label><Input value={barcode} onChange={(e) => setBarcode(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Brand</Label><Input value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Category</Label><Input value={category} onChange={(e) => setCategory(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Manufacturer</Label><Input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} /></div>
+					<div className="flex items-center justify-between rounded-lg border px-3 py-2">
+						<Label>Status</Label>
+						<Switch checked={isActive} onCheckedChange={setIsActive} />
+					</div>
+					<div className="grid gap-2"><Label>Case Rate</Label><Input type="number" step="0.01" value={caseRate} onChange={(e) => setCaseRate(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Length (mm)</Label><Input type="number" step="0.001" value={caseExtLengthMm} onChange={(e) => setCaseExtLengthMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Width (mm)</Label><Input type="number" step="0.001" value={caseExtWidthMm} onChange={(e) => setCaseExtWidthMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Height (mm)</Label><Input type="number" step="0.001" value={caseExtHeightMm} onChange={(e) => setCaseExtHeightMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Gross Weight (kg)</Label><Input type="number" step="0.001" value={caseGrossWeightKg} onChange={(e) => setCaseGrossWeightKg(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Cases Per Layer</Label><Input type="number" step="0.001" value={casesPerLayer} onChange={(e) => setCasesPerLayer(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>No Of Layers</Label><Input type="number" step="0.001" value={noOfLayers} onChange={(e) => setNoOfLayers(e.target.value)} /></div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+					<Button onClick={submit} disabled={loading || !skuCode.trim() || !skuDescription.trim()}>
+						{loading ? "Saving..." : "Save"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
 function getCommonPinningStyles(column: Column<Skus>): CSSProperties {
 	const isPinned = column.getIsPinned();
@@ -186,6 +325,15 @@ function ItemsComponent() {
 			),
 	});
 	const stockUnits: StockUnit[] = stockUnitsData?.stockUnits.query ?? [];
+	const defaultStockUnitId =
+		stockUnits.find(
+			(u) =>
+				u.isActive &&
+				(u.unitCode?.trim().toLowerCase() === "ctn" ||
+					u.unitName?.trim().toLowerCase() === "ctn"),
+		)?.stockUnitId ??
+		stockUnits.find((u) => u.isActive)?.stockUnitId ??
+		stockUnits[0]?.stockUnitId;
 
 	const filtered = useMemo(() => {
 		const q = debouncedSearch.toLowerCase().trim();
@@ -760,29 +908,27 @@ function ItemsComponent() {
 				suppliers={suppliers}
 			/>
 
-			<SkusFormDialog
+			<ItemFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
-				suppliers={suppliers}
-				stockUnits={stockUnits}
 				onSubmit={(values) => {
 					if (createInFlightRef.current || createLoading) return;
+					if (!defaultStockUnitId) {
+						toast.error("No stock unit found. Please create CTN stock unit first.");
+						return;
+					}
 					createInFlightRef.current = true;
-					createItem({
+					void createItem({
 						input: {
 							skuCode: values.skuCode,
 							skuDescription: values.skuDescription,
 							skuExpiryDate: "",
-							skuUom: values.skuUom,
-							pickingStrategy: values.pickingStrategy,
-							isLotControlled: values.isLotControlled,
-							isExpiryControlled: values.isExpiryControlled,
-							skuSuppliers:
-								values.skuSuppliers?.map((s) => ({
-									supplierId: s.supplierId,
-									originalSkuCode: s.originalSkuCode || null,
-								})) || [],
-							isActive: true,
+							skuUom: defaultStockUnitId,
+							pickingStrategy: "FIFO",
+							isLotControlled: false,
+							isExpiryControlled: false,
+							skuSuppliers: [],
+							isActive: values.isActive,
 							barcode: values.barcode ?? null,
 							brand: values.brand ?? null,
 							category: values.category ?? null,
@@ -799,13 +945,14 @@ function ItemsComponent() {
 				}}
 				loading={createLoading}
 				title="Add Item"
-				description="Create a new item with logistics and packaging details"
+				description="Create item using import format columns"
 			/>
 
 			<ImportDialog
 				open={isImportOpen}
 				onOpenChange={setIsImportOpen}
 				mode="skus"
+				skuFormat="items"
 				createdBy={createdBy}
 				onImported={() => {
 					void refetch();
@@ -813,20 +960,13 @@ function ItemsComponent() {
 			/>
 
 			{editing && (
-				<SkusFormDialog
+				<ItemFormDialog
 					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
-					suppliers={suppliers}
-					stockUnits={stockUnits}
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuUom: editing.skuUom,
-						pickingStrategy: editing.pickingStrategy ?? "FIFO",
-						isLotControlled: editing.isLotControlled ?? false,
-						isExpiryControlled: editing.isExpiryControlled ?? false,
-						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 						barcode: editing.barcode,
 						brand: editing.brand,
@@ -843,21 +983,17 @@ function ItemsComponent() {
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
-						updateItem({
+						void updateItem({
 							id: editing.skuId,
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
 								skuExpiryDate: "",
-								skuUom: values.skuUom,
-								pickingStrategy: values.pickingStrategy,
-								isLotControlled: values.isLotControlled,
-								isExpiryControlled: values.isExpiryControlled,
-								skuSuppliers:
-									values.skuSuppliers?.map((s) => ({
-										supplierId: s.supplierId,
-										originalSkuCode: s.originalSkuCode || null,
-									})) || [],
+								skuUom: editing.skuUom,
+								pickingStrategy: editing.pickingStrategy ?? "FIFO",
+								isLotControlled: editing.isLotControlled ?? false,
+								isExpiryControlled: editing.isExpiryControlled ?? false,
+								skuSuppliers: editing.skuSuppliers ?? [],
 								isActive: values.isActive,
 								barcode: values.barcode ?? null,
 								brand: values.brand ?? null,
@@ -875,7 +1011,7 @@ function ItemsComponent() {
 					}}
 					loading={updateLoading}
 					title="Edit Item"
-					description="Update item details including logistics and packaging dimensions"
+					description="Update item using import format columns"
 				/>
 			)}
 
