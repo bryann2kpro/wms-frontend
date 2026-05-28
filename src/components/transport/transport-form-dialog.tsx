@@ -26,6 +26,7 @@ export type TransportFormValues = {
 	maxWidthMm: string;
 	maxHeightMm: string;
 	maxWeightKg: string;
+	numberOfPallets: string;
 };
 
 const EMPTY_VALUES: TransportFormValues = {
@@ -41,6 +42,7 @@ const EMPTY_VALUES: TransportFormValues = {
 	maxWidthMm: "",
 	maxHeightMm: "",
 	maxWeightKg: "",
+	numberOfPallets: "",
 };
 
 function transportToFormValues(transport?: Transport | null): TransportFormValues {
@@ -58,6 +60,7 @@ function transportToFormValues(transport?: Transport | null): TransportFormValue
 		maxWidthMm: transport.maxWidthMm ?? "",
 		maxHeightMm: transport.maxHeightMm ?? "",
 		maxWeightKg: transport.maxWeightKg ?? "",
+		numberOfPallets: transport.numberOfPallets != null ? String(transport.numberOfPallets) : "",
 	};
 }
 
@@ -83,6 +86,7 @@ export function toCreateTransportInput(
 		maxWidthMm: optionalField(values.maxWidthMm),
 		maxHeightMm: optionalField(values.maxHeightMm),
 		maxWeightKg: optionalField(values.maxWeightKg),
+		numberOfPallets: values.numberOfPallets.trim() ? Number(values.numberOfPallets) : undefined,
 		createdBy: userId,
 		updatedBy: userId,
 	};
@@ -105,6 +109,7 @@ export function toUpdateTransportInput(
 		maxWidthMm: optionalField(values.maxWidthMm),
 		maxHeightMm: optionalField(values.maxHeightMm),
 		maxWeightKg: optionalField(values.maxWeightKg),
+		numberOfPallets: values.numberOfPallets.trim() ? Number(values.numberOfPallets) : undefined,
 		updatedBy: userId,
 	};
 }
@@ -302,6 +307,19 @@ export function TransportFormDialog({
 								/>
 							</div>
 						</div>
+					</div>
+
+					<div className="grid gap-2 sm:w-1/4">
+						<Label htmlFor="number-of-pallets">Number of Pallets</Label>
+						<Input
+							id="number-of-pallets"
+							type="number"
+							min={0}
+							step={1}
+							value={values.numberOfPallets}
+							onChange={(e) => setField("numberOfPallets", e.target.value)}
+							placeholder="e.g. 10"
+						/>
 					</div>
 				</div>
 
