@@ -808,9 +808,6 @@ export function SkusSection() {
 					if (createInFlightRef.current || createLoading) return;
 					createInFlightRef.current = true;
 
-					const expiryDate = values.skuExpiryDate
-						? `${values.skuExpiryDate} 00:00:00.000000`
-						: "";
 					createSkus({
 						variables: {
 							input: {
@@ -821,7 +818,7 @@ export function SkusSection() {
 										? null
 										: Number(values.skuPrice),
 								skuQuantity: Number(values.skuQuantity),
-								skuExpiryDate: expiryDate,
+								skuExpiryDate: "",
 								skuUom: values.skuUom,
 								pickingStrategy: values.pickingStrategy,
 								isLotControlled: values.isLotControlled,
@@ -872,7 +869,6 @@ export function SkusSection() {
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
 						isLotControlled: editing.isLotControlled ?? false,
@@ -895,9 +891,6 @@ export function SkusSection() {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
 
-						const expiryDate = values.skuExpiryDate
-							? `${values.skuExpiryDate} 00:00:00.000000`
-							: "";
 						updateSkus({
 							id: editing.skuId,
 							input: {
@@ -909,7 +902,7 @@ export function SkusSection() {
 											: Number(values.skuPrice),
 									skuQuantity: Number(values.skuQuantity),
 									lossQuantity: Number(values.lossQuantity ?? 0),
-									skuExpiryDate: expiryDate,
+									skuExpiryDate: "",
 									skuUom: values.skuUom,
 									pickingStrategy: values.pickingStrategy,
 									isLotControlled: values.isLotControlled,

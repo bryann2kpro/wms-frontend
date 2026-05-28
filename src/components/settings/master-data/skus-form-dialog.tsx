@@ -16,7 +16,6 @@ import { SkusFormStep1, SkusFormStep2, SkusFormStep3 } from "./skus-form-steps";
 export interface SkusFormValues {
 	skuCode: string;
 	skuDescription: string;
-	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy: string;
 	isLotControlled: boolean;
@@ -39,7 +38,6 @@ export interface SkusFormValues {
 export interface SkusFormInitial {
 	skuCode: string;
 	skuDescription: string;
-	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy?: string;
 	isLotControlled?: boolean;
@@ -57,39 +55,6 @@ export interface SkusFormInitial {
 	caseGrossWeightKg?: number | null;
 	casesPerLayer?: number | null;
 	noOfLayers?: number | null;
-}
-
-function parseDate(dateValue: string | number | undefined): Date | undefined {
-	if (!dateValue) return undefined;
-
-	try {
-		if (typeof dateValue === "number") {
-			const date = new Date(dateValue);
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		if (typeof dateValue === "string" && /^\d+$/.test(dateValue.trim())) {
-			const date = new Date(Number(dateValue));
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		const dateMatch = dateValue.match(/(\d{4}-\d{2}-\d{2})/);
-		if (dateMatch) {
-			const datePart = dateMatch[1];
-			const [year, month, day] = datePart.split("-").map(Number);
-			const date = new Date(year, month - 1, day);
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		const date = new Date(dateValue);
-		if (isNaN(date.getTime())) return undefined;
-		return date;
-	} catch {
-		return undefined;
-	}
 }
 
 export function SkusFormDialog({
@@ -116,9 +81,6 @@ export function SkusFormDialog({
 	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
 	const [skuDescription, setSkuDescription] = useState(
 		initial?.skuDescription ?? "",
-	);
-	const [skuExpiryDate, setSkuExpiryDate] = useState<Date | undefined>(
-		parseDate(initial?.skuExpiryDate),
 	);
 	const [skuUom, setSkuUom] = useState(initial?.skuUom ?? "");
 	const [pickingStrategy, setPickingStrategy] = useState(
@@ -150,7 +112,6 @@ export function SkusFormDialog({
 	const [errors, setErrors] = useState<{
 		skuCode?: string;
 		skuDescription?: string;
-		skuExpiryDate?: string;
 		skuUom?: string;
 	}>({});
 
@@ -161,7 +122,6 @@ export function SkusFormDialog({
 		const i = initialRef.current;
 		setSkuCode(i?.skuCode ?? "");
 		setSkuDescription(i?.skuDescription ?? "");
-		setSkuExpiryDate(parseDate(i?.skuExpiryDate));
 		setSkuUom(i?.skuUom ?? "");
 		setPickingStrategy(i?.pickingStrategy ?? "FIFO");
 		setIsLotControlled(i?.isLotControlled ?? false);
@@ -242,6 +202,31 @@ export function SkusFormDialog({
 
 	const canProceedToStep2 = skuCode.trim() && skuDescription.trim() && skuUom;
 
+	useEffect(() => {
+		// #region agent log
+		fetch("http://127.0.0.1:7725/ingest/20db73c8-0fb7-4781-a984-2cc888a5a871", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "8952bb",
+			},
+			body: JSON.stringify({
+				sessionId: "8952bb",
+				runId: "post-fix",
+				hypothesisId: "H4",
+				location: "src/components/settings/master-data/skus-form-dialog.tsx:SkusFormDialog",
+				message: "skus form state snapshot",
+				data: {
+					open,
+					step,
+					skuCodeLength: skuCode.length,
+				},
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
+	}, [open, step, skuCode.length]);
+
 	const validateStep1 = () => {
 		const newErrors: typeof errors = {};
 
@@ -262,15 +247,6 @@ export function SkusFormDialog({
 	};
 
 	const handleSubmit = () => {
-		const expiryDateString =
-			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
-				? skuExpiryDate.toISOString().split("T")[0]
-				: "";
-		let priceValue: number | null = null;
-		if (skuPrice.trim() !== "") {
-			const parsed = parseFloat(skuPrice);
-			if (!isNaN(parsed)) priceValue = parsed;
-		}
 		const parseOptionalFloat = (v: string) => {
 			const t = v.trim();
 			if (t === "") return null;
@@ -280,7 +256,6 @@ export function SkusFormDialog({
 		onSubmit({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
-			skuExpiryDate: expiryDateString,
 			skuUom,
 			pickingStrategy,
 			isLotControlled,
@@ -321,8 +296,6 @@ export function SkusFormDialog({
 						setSkuCode={setSkuCode}
 						skuDescription={skuDescription}
 						setSkuDescription={setSkuDescription}
-						skuExpiryDate={skuExpiryDate}
-						setSkuExpiryDate={setSkuExpiryDate}
 						skuUom={skuUom}
 						setSkuUom={setSkuUom}
 						pickingStrategy={pickingStrategy}

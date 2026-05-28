@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -133,6 +133,31 @@ function ItemsComponent() {
 	const [editing, setEditing] = useState<Skus | null>(null);
 	const [deleting, setDeleting] = useState<Skus | null>(null);
 	const [viewingSuppliers, setViewingSuppliers] = useState<Skus | null>(null);
+
+	const sendDebugLog = (
+		hypothesisId: string,
+		message: string,
+		data: Record<string, unknown>,
+	) => {
+		// #region agent log
+		fetch("http://127.0.0.1:7725/ingest/20db73c8-0fb7-4781-a984-2cc888a5a871", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "8952bb",
+			},
+			body: JSON.stringify({
+				sessionId: "8952bb",
+				runId: "pre-fix",
+				hypothesisId,
+				location: "src/routes/admin/items.tsx:ItemsComponent",
+				message,
+				data,
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
+	};
 
 	const { data, isLoading, refetch } = useQuery({
 		queryKey: qk.items.all,
@@ -425,6 +450,67 @@ function ItemsComponent() {
 		},
 	});
 
+	useEffect(() => {
+		const links = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+			rel: link.rel,
+			href: link.getAttribute("href"),
+		}));
+		sendDebugLog("H1", "items route mounted", {
+			isCreateOpen,
+			isImportOpen,
+			editingId: editing?.skuId ?? null,
+			deletingId: deleting?.skuId ?? null,
+			viewingSuppliersId: viewingSuppliers?.skuId ?? null,
+			headLinkCount: links.length,
+			headLinks: links.slice(0, 8),
+		});
+
+		return () => {
+			const unmountLinks = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+				rel: link.rel,
+				href: link.getAttribute("href"),
+			}));
+			sendDebugLog("H1", "items route unmount cleanup", {
+				headLinkCount: unmountLinks.length,
+				headLinks: unmountLinks.slice(0, 8),
+			});
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	useEffect(() => {
+		const links = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+			rel: link.rel,
+			href: link.getAttribute("href"),
+		}));
+		sendDebugLog("H2", "items ui state changed", {
+			isCreateOpen,
+			isImportOpen,
+			editingId: editing?.skuId ?? null,
+			deletingId: deleting?.skuId ?? null,
+			viewingSuppliersId: viewingSuppliers?.skuId ?? null,
+			page,
+			totalItems,
+			headLinkCount: links.length,
+		});
+	}, [
+		isCreateOpen,
+		isImportOpen,
+		editing,
+		deleting,
+		viewingSuppliers,
+		page,
+		totalItems,
+	]);
+
+	useEffect(() => {
+		sendDebugLog("H3", "items data/loading state changed", {
+			isLoading,
+			paginatedLength: paginated.length,
+			allItemsLength: allItems.length,
+		});
+	}, [isLoading, paginated.length, allItems.length]);
+
 	return (
 		<main
 			aria-labelledby="items-title"
@@ -558,9 +644,9 @@ function ItemsComponent() {
 												{header.isPlaceholder
 													? null
 													: flexRender(
-															header.column.columnDef.header,
-															header.getContext(),
-														)}
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
 											</TableHead>
 										))}
 									</TableRow>
@@ -682,19 +768,11 @@ function ItemsComponent() {
 				onSubmit={(values) => {
 					if (createInFlightRef.current || createLoading) return;
 					createInFlightRef.current = true;
-					const expiryDate = values.skuExpiryDate
-						? `${values.skuExpiryDate} 00:00:00.000000`
-						: "";
 					createItem({
 						input: {
 							skuCode: values.skuCode,
 							skuDescription: values.skuDescription,
-							skuPrice:
-								values.skuPrice === 0 || values.skuPrice === null
-									? undefined
-									: Number(values.skuPrice),
-							skuQuantity: Number(values.skuQuantity),
-							skuExpiryDate: expiryDate,
+							skuExpiryDate: "",
 							skuUom: values.skuUom,
 							pickingStrategy: values.pickingStrategy,
 							isLotControlled: values.isLotControlled,
@@ -744,10 +822,6 @@ function ItemsComponent() {
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuPrice: editing.skuPrice,
-						skuQuantity: editing.skuQuantity,
-						lossQuantity: editing.lossQuantity ?? 0,
-						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
 						isLotControlled: editing.isLotControlled ?? false,
@@ -769,21 +843,12 @@ function ItemsComponent() {
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
-						const expiryDate = values.skuExpiryDate
-							? `${values.skuExpiryDate} 00:00:00.000000`
-							: "";
 						updateItem({
 							id: editing.skuId,
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
-								skuPrice:
-									values.skuPrice === 0 || values.skuPrice === null
-										? undefined
-										: Number(values.skuPrice),
-								skuQuantity: Number(values.skuQuantity),
-								lossQuantity: Number(values.lossQuantity ?? 0),
-								skuExpiryDate: expiryDate,
+								skuExpiryDate: "",
 								skuUom: values.skuUom,
 								pickingStrategy: values.pickingStrategy,
 								isLotControlled: values.isLotControlled,
