@@ -243,6 +243,7 @@ function TransportPage() {
 									<TableHead>Min Size</TableHead>
 									<TableHead>Max Size</TableHead>
 									<TableHead>Max Weight</TableHead>
+									<TableHead>No. of Pallets</TableHead>
 									<TableHead>Updated At</TableHead>
 									<TableHead className="w-[90px]" />
 								</TableRow>
@@ -251,7 +252,7 @@ function TransportPage() {
 								{transports.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={9}
+											colSpan={10}
 											className="text-center py-8 text-muted-foreground"
 										>
 											{loading ? "Loading..." : "No transport records found."}
@@ -288,6 +289,9 @@ function TransportPage() {
 												{transport.maxWeightKg
 													? `${transport.maxWeightKg} kg`
 													: "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.numberOfPallets != null ? transport.numberOfPallets : "-"}
 											</TableCell>
 											<TableCell className="text-sm text-muted-foreground whitespace-nowrap">
 												{formatDate(transport.updatedAt)}
