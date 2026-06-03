@@ -63,7 +63,7 @@ import {
 } from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
-import { Plus, Edit, Trash2, Search, LayoutGrid } from "lucide-react";
+import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown } from "lucide-react";
 import type { Rack, Area } from "@/lib/graphql/types";
 
 const PAGE_SIZE = 20;
@@ -92,6 +92,8 @@ function RacksPage() {
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [editing, setEditing] = useState<Rack | null>(null);
 	const [deleting, setDeleting] = useState<Rack | null>(null);
@@ -99,6 +101,7 @@ function RacksPage() {
 	const racksVars: RacksQueryVariables = {
 		pageSize: PAGE_SIZE,
 		pageNumber: page,
+		sort: { sortBy: sortField, sortOrder: sortDirection },
 		...(debouncedSearch.trim() ? { filter: { binCode: debouncedSearch.trim() } } : {}),
 	};
 
@@ -201,6 +204,44 @@ function RacksPage() {
 									}}
 									className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-56"
 								/>
+							</div>
+							<div className="flex items-center gap-1">
+								<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+								<Select
+									value={sortField}
+									onValueChange={(v) => {
+										setSortField(v);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-9 w-36 rounded-lg text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="BIN_CODE">Bin Code</SelectItem>
+										<SelectItem value="RACK_ROW">Storage Row</SelectItem>
+										<SelectItem value="RACK_COLUMN">Storage Bay</SelectItem>
+										<SelectItem value="RACK_LEVEL">Level</SelectItem>
+										<SelectItem value="BIN_TYPE">Bin Type</SelectItem>
+										<SelectItem value="UPDATED_AT">Last Updated</SelectItem>
+										<SelectItem value="CREATED_AT">Created</SelectItem>
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortDirection}
+									onValueChange={(v) => {
+										setSortDirection(v as "ASC" | "DESC");
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-9 w-20 rounded-lg text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ASC">ASC</SelectItem>
+										<SelectItem value="DESC">DESC</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 							<Button
 								onClick={() => setIsCreateOpen(true)}

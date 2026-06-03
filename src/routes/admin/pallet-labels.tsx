@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/graphql/pallet-labels";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Plus, Edit, Trash2, Search, Database } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Database, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import type { PalletLabel, Rack } from "@/lib/graphql/types";
 
@@ -51,6 +52,8 @@ function StorageBinItemsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const [sortField, setSortField] = useState<string>("UPDATED_AT");
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<PalletLabel | null>(null);
   const [deleting, setDeleting] = useState<PalletLabel | null>(null);
@@ -59,7 +62,7 @@ function StorageBinItemsPage() {
   const queryVars: PalletLabelsQueryVariables = {
     pageSize: PAGE_SIZE,
     pageNumber: page,
-    sort: { sortBy: "UPDATED_AT", direction: "DESC" },
+    sort: { sortBy: sortField, direction: sortDirection },
     filter: debouncedSearch.trim()
       ? { search: debouncedSearch.trim() }
       : undefined,
@@ -135,15 +138,157 @@ function StorageBinItemsPage() {
   });
 
   return (
-    <ClientOnly>
-      <div className="space-y-6 p-6">
-        <AdminPageHeader
-          icon={Database}
-          title="Storage Bin Items"
-          description="Manage item placement by storage bin"
-          titleId="storage-bin-items-title"
-          descriptionId="storage-bin-items-description"
-        />
+  <ClientOnly>
+    <div className="space-y-6 p-6">
+      <AdminPageHeader
+        icon={Database}
+        title="Storage Bin Items"
+        description="Manage item placement by storage bin"
+        titleId="storage-bin-items-title"
+        descriptionId="storage-bin-items-description"
+      />
+
+      <Card className="dashboard-card">
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>
+                Storage Bin Item Mapping
+              </CardTitle>
+              <CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+                CRUD with pagination, search, edit, and bulk delete
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search item code or description..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-64"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <Select
+                  value={sortField}
+                  onValueChange={(v) => {
+                    setSortField(v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-36 rounded-lg text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STORAGE_BIN">Storage Bin</SelectItem>
+                    <SelectItem value="ITEM_CODE">Item Code</SelectItem>
+                    <SelectItem value="DESCRIPTION">Description</SelectItem>
+                    <SelectItem value="ITEM_DESC_02">Item Desc 02</SelectItem>
+                    <SelectItem value="UPDATED_AT">Last Updated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={sortDirection}
+                  onValueChange={(v) => {
+                    setSortDirection(v as "ASC" | "DESC");
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-20 rounded-lg text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ASC">ASC</SelectItem>
+                    <SelectItem value="DESC">DESC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                variant="destructive"
+                disabled={!createdBy || selectedIds.length === 0 || bulkDeleteLoading}
+                onClick={() => bulkDelete({ ids: selectedIds, updatedBy: createdBy })}
+                className="rounded-lg"
+              >
+                Delete Selected ({selectedIds.length})
+              </Button>
+              <Button
+                onClick={() => setIsCreateOpen(true)}
+                disabled={!createdBy}
+                className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Record
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="relative px-0 pb-6">
+          <GlobalLoadingShadow />
+          <div className="mx-6 overflow-x-auto rounded-xl border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10 px-4">
+                    <Checkbox checked={allVisibleSelected} onCheckedChange={(v) => toggleSelectAllVisible(Boolean(v))} />
+                  </TableHead>
+                  <TableHead className="px-4 text-xs font-medium">Storage Bin</TableHead>
+                  <TableHead className="px-4 text-xs font-medium">Item Code</TableHead>
+                  <TableHead className="px-4 text-xs font-medium">Description</TableHead>
+                  <TableHead className="px-4 text-xs font-medium">Item Desc 02</TableHead>
+                  <TableHead className="px-4 text-right text-xs font-medium">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
+                  </TableRow>
+                ) : list.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No records found.</TableCell>
+                  </TableRow>
+                ) : (
+                  list.map((row) => (
+                    <TableRow key={row.id} className="transition-colors hover:bg-muted/50">
+                      <TableCell className="px-4">
+                        <Checkbox
+                          checked={selectedIds.includes(row.id)}
+                          onCheckedChange={(v) => {
+                            if (v) setSelectedIds((prev) => [...prev, row.id]);
+                            else setSelectedIds((prev) => prev.filter((id) => id !== row.id));
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="px-4 font-mono text-sm">{row.storageBinCode ?? "—"}</TableCell>
+                      <TableCell className="px-4 font-mono text-sm">{row.itemCode}</TableCell>
+                      <TableCell className="px-4 text-sm">{row.description ?? "—"}</TableCell>
+                      <TableCell className="px-4 text-sm">{row.itemDesc02 ?? "—"}</TableCell>
+                      <TableCell className="px-4 text-right">
+                        <Button variant="ghost" size="icon" onClick={() => setEditing(row)} className="rounded-lg">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-lg text-destructive"
+                          onClick={() => setDeleting(row)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
 
         <Card className="dashboard-card">
           <CardHeader>
