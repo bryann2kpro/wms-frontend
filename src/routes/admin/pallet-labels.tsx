@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClientOnly, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
@@ -138,7 +138,6 @@ function StorageBinItemsPage() {
   });
 
   return (
-  <ClientOnly>
     <div className="space-y-6 p-6">
       <AdminPageHeader
         icon={Database}
@@ -289,194 +288,87 @@ function StorageBinItemsPage() {
             </Table>
           </div>
 
-
-        <Card className="dashboard-card">
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>
-                  Storage Bin Item Mapping
-                </CardTitle>
-                <CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-                  CRUD with pagination, search, edit, and bulk delete
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search item code or description..."
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-64"
-                  />
-                </div>
+          {pagination && (pagination.totalPages ?? 1) > 1 && (
+            <div className="mx-6 mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
+                Page <span className="font-semibold tabular-nums text-foreground">{pagination.currentPage}</span> of {pagination.totalPages} ({pagination.totalCount} total)
+              </p>
+              <div className="flex gap-2">
                 <Button
-                  variant="destructive"
-                  disabled={!createdBy || selectedIds.length === 0 || bulkDeleteLoading}
-                  onClick={() => bulkDelete({ ids: selectedIds, updatedBy: createdBy })}
+                  variant="outline"
+                  size="sm"
+                  disabled={!pagination.hasPrevPage}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   className="rounded-lg"
                 >
-                  Delete Selected ({selectedIds.length})
+                  Previous
                 </Button>
                 <Button
-                  onClick={() => setIsCreateOpen(true)}
-                  disabled={!createdBy}
-                  className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+                  variant="outline"
+                  size="sm"
+                  disabled={!pagination.hasNextPage}
+                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  className="rounded-lg"
                 >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Record
+                  Next
                 </Button>
               </div>
             </div>
-          </CardHeader>
+          )}
+        </CardContent>
+      </Card>
 
-          <CardContent className="relative px-0 pb-6">
-            <GlobalLoadingShadow />
-            <div className="mx-6 overflow-x-auto rounded-xl border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-10 px-4">
-                      <Checkbox checked={allVisibleSelected} onCheckedChange={(v) => toggleSelectAllVisible(Boolean(v))} />
-                    </TableHead>
-                    <TableHead className="px-4 text-xs font-medium">Storage Bin</TableHead>
-                    <TableHead className="px-4 text-xs font-medium">Item Code</TableHead>
-                    <TableHead className="px-4 text-xs font-medium">Description</TableHead>
-                    <TableHead className="px-4 text-xs font-medium">Item Desc 02</TableHead>
-                    <TableHead className="px-4 text-right text-xs font-medium">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
-                    </TableRow>
-                  ) : list.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No records found.</TableCell>
-                    </TableRow>
-                  ) : (
-                    list.map((row) => (
-                      <TableRow key={row.id} className="transition-colors hover:bg-muted/50">
-                        <TableCell className="px-4">
-                          <Checkbox
-                            checked={selectedIds.includes(row.id)}
-                            onCheckedChange={(v) => {
-                              if (v) setSelectedIds((prev) => [...prev, row.id]);
-                              else setSelectedIds((prev) => prev.filter((id) => id !== row.id));
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell className="px-4 font-mono text-sm">{row.storageBinCode ?? "—"}</TableCell>
-                        <TableCell className="px-4 font-mono text-sm">{row.itemCode}</TableCell>
-                        <TableCell className="px-4 text-sm">{row.description ?? "—"}</TableCell>
-                        <TableCell className="px-4 text-sm">{row.itemDesc02 ?? "—"}</TableCell>
-                        <TableCell className="px-4 text-right">
-                          <Button variant="ghost" size="icon" onClick={() => setEditing(row)} className="rounded-lg">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-lg text-destructive"
-                            onClick={() => setDeleting(row)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+      <StorageBinItemFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        racks={racks}
+        onSubmit={(values) =>
+          createItem({
+            ...values,
+            createdBy,
+            updatedBy: createdBy,
+            labelCode: values.itemCode,
+          })
+        }
+        loading={createLoading}
+        title="Add Storage Bin Item"
+        description="Create a new mapping between storage bin and item code."
+      />
 
-            {pagination && (pagination.totalPages ?? 1) > 1 && (
-              <div className="mx-6 mt-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground" style={{ fontFamily: "var(--dashboard-body)" }}>
-                  Page <span className="font-semibold tabular-nums text-foreground">{pagination.currentPage}</span> of {pagination.totalPages} ({pagination.totalCount} total)
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasPrevPage}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded-lg"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!pagination.hasNextPage}
-                    onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                    className="rounded-lg"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+      {editing && (
         <StorageBinItemFormDialog
-          open={isCreateOpen}
-          onOpenChange={setIsCreateOpen}
+          key={editing.id}
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditing(null)}
           racks={racks}
+          initial={editing}
           onSubmit={(values) =>
-            createItem({
-              ...values,
-              createdBy,
-              updatedBy: createdBy,
-              labelCode: values.itemCode,
+            updateItem({
+              id: editing.id,
+              input: {
+                ...values,
+                labelCode: values.itemCode,
+                version: editing.version,
+                updatedBy: createdBy,
+              },
             })
           }
-          loading={createLoading}
-          title="Add Storage Bin Item"
-          description="Create a new mapping between storage bin and item code."
+          loading={updateLoading}
+          title="Edit Storage Bin Item"
+          description="Update storage bin item details."
         />
+      )}
 
-        {editing && (
-          <StorageBinItemFormDialog
-            key={editing.id}
-            open={!!editing}
-            onOpenChange={(open) => !open && setEditing(null)}
-            racks={racks}
-            initial={editing}
-            onSubmit={(values) =>
-              updateItem({
-                id: editing.id,
-                input: {
-                  ...values,
-                  labelCode: values.itemCode,
-                  version: editing.version,
-                  updatedBy: createdBy,
-                },
-              })
-            }
-            loading={updateLoading}
-            title="Edit Storage Bin Item"
-            description="Update storage bin item details."
-          />
-        )}
-
-        {deleting && (
-          <ConfirmDeleteDialog
-            open={!!deleting}
-            onOpenChange={(open) => !open && setDeleting(null)}
-            itemName={`${deleting.itemCode} @ ${deleting.storageBinCode ?? "No Bin"}`}
-            onConfirm={() => deleteItem({ id: deleting.id, updatedBy: createdBy })}
-            loading={deleteLoading}
-          />
-        )}
-      </div>
-    </ClientOnly>
+      {deleting && (
+        <ConfirmDeleteDialog
+          open={!!deleting}
+          onOpenChange={(open) => !open && setDeleting(null)}
+          itemName={`${deleting.itemCode} @ ${deleting.storageBinCode ?? "No Bin"}`}
+          onConfirm={() => deleteItem({ id: deleting.id, updatedBy: createdBy })}
+          loading={deleteLoading}
+        />
+      )}
+    </div>
   );
 }
 
