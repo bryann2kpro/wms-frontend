@@ -31,10 +31,11 @@ export const PICKING_CRITERIA_FRAGMENT = gql`
 export const PICKING_CRITERIAS_QUERY = gql`
 	query PickingCriterias(
 		$filter: PickingCriteriaFilterInput
+		$sort: PickingCriteriaSortInput
 		$pageSize: Int
 		$pageNumber: Int
 	) {
-		pickingCriterias(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
+		pickingCriterias(filter: $filter, sort: $sort, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				...PickingCriteriaFields
 			}
@@ -89,6 +90,10 @@ export type PickingCriteriasQueryVariables = {
 		itemCategory?: string;
 		manufacturer?: string;
 		item?: string;
+	};
+	sort?: {
+		sortBy?: string;
+		sortOrder?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

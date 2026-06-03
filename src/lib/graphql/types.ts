@@ -309,6 +309,7 @@ export interface Transport {
 	maxWidthMm?: string | null;
 	maxHeightMm?: string | null;
 	maxWeightKg?: string | null;
+	numberOfPallets?: number | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -333,6 +334,7 @@ export interface CreateTransportInput {
 	maxWidthMm?: string;
 	maxHeightMm?: string;
 	maxWeightKg?: string;
+	numberOfPallets?: number;
 	createdBy: string;
 	updatedBy: string;
 }
@@ -350,6 +352,7 @@ export interface UpdateTransportInput {
 	maxWidthMm?: string;
 	maxHeightMm?: string;
 	maxWeightKg?: string;
+	numberOfPallets?: number;
 	updatedBy: string;
 }
 

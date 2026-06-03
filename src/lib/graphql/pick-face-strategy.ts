@@ -47,11 +47,13 @@ export const PICK_FACE_STRATEGY_FRAGMENT = gql`
 export const PICK_FACE_STRATEGIES_QUERY = gql`
 	query PickFaceStrategies(
 		$filter: PickFaceStrategyFilterInput
+		$sort: PickFaceStrategySortInput
 		$pageSize: Int
 		$pageNumber: Int
 	) {
 		pickFaceStrategies(
 			filter: $filter
+			sort: $sort
 			pageSize: $pageSize
 			pageNumber: $pageNumber
 		) {
@@ -104,6 +106,10 @@ export type PickFaceStrategiesQueryVariables = {
 		skuId?: string;
 		storageBinId?: string;
 		binType?: string;
+	};
+	sort?: {
+		sortBy?: string;
+		sortOrder?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

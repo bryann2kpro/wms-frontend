@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 
 export const PUTAWAY_LINES_QUERY = gql`
 	query PutawayLines($filter: PutawayLinesFilterInput, $limit: Int) {

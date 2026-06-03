@@ -28,10 +28,11 @@ export const RACK_FRAGMENT = gql`
 export const RACKS_QUERY = gql`
 	query Racks(
 		$filter: RackFilterInput
+		$sort: RackSortInput
 		$pageSize: Int
 		$pageNumber: Int
 	) {
-		racks(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
+		racks(filter: $filter, sort: $sort, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				...RackFields
 			}
@@ -85,6 +86,10 @@ export type RacksQueryVariables = {
 		binCode?: string;
 		binType?: string;
 		isActive?: boolean;
+	};
+	sort?: {
+		sortBy?: string;
+		sortOrder?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

@@ -56,6 +56,7 @@ interface ImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode: ImportMode;
+	skuFormat?: "default" | "items";
 	createdBy: string;
 	onImported?: () => void;
 }
@@ -206,6 +207,7 @@ export function ImportDialog({
 	open,
 	onOpenChange,
 	mode,
+	skuFormat = "default",
 	createdBy,
 	onImported,
 }: ImportDialogProps) {
@@ -296,16 +298,33 @@ export function ImportDialog({
 	function downloadTemplate() {
 		const headers =
 			mode === "skus"
-				? [
-						[
-							"SKU Code",
+				? skuFormat === "items"
+					? [[
+							"Code",
 							"Description",
-							"Quantity",
-							"Unit of Measure",
-							"Picking Strategy",
-							"Expiry Date",
-						],
-					]
+							"Barcode",
+							"Brand",
+							"Category",
+							"Manufacturer",
+							"Status",
+							"Case Rate",
+							"Case Ext Length (mm)",
+							"Case Ext Width ((mm)",
+							"Case Ext Height (mm)",
+							"Case Gross Weight (kg)",
+							"Cases Per Layer",
+							"No Of Layers",
+						]]
+					: [
+							[
+								"SKU Code",
+								"Description",
+								"Quantity",
+								"Unit of Measure",
+								"Picking Strategy",
+								"Expiry Date",
+							],
+						]
 				: [["Row", "Column", "Level"]];
 		const worksheet = utils.aoa_to_sheet(headers);
 		const workbook = utils.book_new();
@@ -315,6 +334,15 @@ export function ImportDialog({
 
 	function parseSkuRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
 		const stockUnits = stockUnitsData?.stockUnits.query ?? [];
+		const defaultStockUnitId =
+			stockUnits.find(
+				(u) =>
+					u.isActive &&
+					(u.unitCode?.trim().toLowerCase() === "ctn" ||
+						u.unitName?.trim().toLowerCase() === "ctn"),
+			)?.stockUnitId ??
+			stockUnits.find((u) => u.isActive)?.stockUnitId ??
+			stockUnits[0]?.stockUnitId;
 		const uomLookup = new Map(
 			stockUnits.map((unit) => [
 				normalizeKey(`${unit.unitName} ${unit.unitCode}`),
@@ -459,6 +487,80 @@ export function ImportDialog({
 									initialOnHandQty: item.skuQuantity,
 								}
 							: undefined,
+				};
+			});
+		}
+
+		if (skuFormat === "items") {
+			return rawRows.map((row, index) => {
+				const headers = rowToHeaders(row);
+				const skuCode = headers.code ?? headers["sku code"] ?? headers["item code"] ?? "";
+				const skuDescription = headers.description ?? "";
+				const barcode = headers.barcode ?? "";
+				const brand = headers.brand ?? "";
+				const category = headers.category ?? "";
+				const manufacturer = headers.manufacturer ?? "";
+				const statusRaw = (headers.status ?? "active").toLowerCase();
+				const isActive = !["inactive", "0", "false", "no"].includes(statusRaw);
+				const parseNum = (v: string) => {
+					const t = v.trim();
+					if (!t) return null;
+					const n = Number(t);
+					return Number.isNaN(n) ? null : n;
+				};
+				const caseRate = parseNum(headers["case rate"] ?? "");
+				const caseExtLengthMm = parseNum(headers["case ext length mm"] ?? "");
+				const caseExtWidthMm =
+					parseNum(headers["case ext width mm"] ?? "") ??
+					parseNum(headers["case ext width ((mm"] ?? "");
+				const caseExtHeightMm = parseNum(headers["case ext height mm"] ?? "");
+				const caseGrossWeightKg = parseNum(headers["case gross weight kg"] ?? "");
+				const casesPerLayer = parseNum(headers["cases per layer"] ?? "");
+				const noOfLayers = parseNum(headers["no of layers"] ?? "");
+
+				const errors: string[] = [];
+				if (!skuCode) errors.push("Code is required");
+				if (!skuDescription) errors.push("Description is required");
+				if (!defaultStockUnitId) errors.push("No stock unit available (expected CTN)");
+
+				const payload =
+					errors.length === 0 && defaultStockUnitId
+						? {
+								skuCode,
+								skuDescription,
+								skuExpiryDate: "",
+								skuSuppliers: [],
+								skuUom: defaultStockUnitId,
+								pickingStrategy: "FIFO",
+								isLotControlled: false,
+								isExpiryControlled: false,
+								isActive,
+								barcode: barcode || null,
+								brand: brand || null,
+								category: category || null,
+								manufacturer: manufacturer || null,
+								caseRate,
+								caseExtLengthMm,
+								caseExtWidthMm,
+								caseExtHeightMm,
+								caseGrossWeightKg,
+								casesPerLayer,
+								noOfLayers,
+							}
+						: undefined;
+
+				return {
+					rowNumber: index + 2,
+					data: {
+						skuCode,
+						skuDescription,
+						skuQuantity: "",
+						skuUomLabel: "CTN",
+						pickingStrategy: "FIFO",
+						skuExpiryDate: "",
+					},
+					errors,
+					skuPayload: payload,
 				};
 			});
 		}
@@ -958,6 +1060,16 @@ export function ImportDialog({
 								<TableRow className="bg-muted/40">
 									<TableHead className="w-16">Row</TableHead>
 									{mode === "skus" ? (
+									skuFormat === "items" ? (
+										<>
+											<TableHead>Code</TableHead>
+											<TableHead>Description</TableHead>
+											<TableHead>Barcode</TableHead>
+											<TableHead>Brand</TableHead>
+											<TableHead>Category</TableHead>
+											<TableHead>Manufacturer</TableHead>
+										</>
+									) : (
 										<>
 											<TableHead>SKU Code</TableHead>
 											<TableHead>Description</TableHead>
@@ -966,6 +1078,7 @@ export function ImportDialog({
 											<TableHead>Strategy</TableHead>
 											<TableHead>Expiry</TableHead>
 										</>
+									)
 									) : (
 										<>
 											<TableHead>Row</TableHead>
@@ -996,14 +1109,25 @@ export function ImportDialog({
 										>
 											<TableCell>{row.rowNumber}</TableCell>
 											{isSkuRow(row) ? (
-												<>
-													<TableCell>{row.data.skuCode}</TableCell>
-													<TableCell>{row.data.skuDescription}</TableCell>
-													<TableCell>{row.data.skuQuantity}</TableCell>
-													<TableCell>{row.data.skuUomLabel}</TableCell>
-													<TableCell>{row.data.pickingStrategy}</TableCell>
-													<TableCell>{row.data.skuExpiryDate}</TableCell>
-												</>
+												skuFormat === "items" ? (
+													<>
+														<TableCell>{row.data.skuCode}</TableCell>
+														<TableCell>{row.data.skuDescription}</TableCell>
+														<TableCell>{(row.skuPayload?.barcode as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.brand as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.category as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.manufacturer as string | null) ?? ""}</TableCell>
+													</>
+												) : (
+													<>
+														<TableCell>{row.data.skuCode}</TableCell>
+														<TableCell>{row.data.skuDescription}</TableCell>
+														<TableCell>{row.data.skuQuantity}</TableCell>
+														<TableCell>{row.data.skuUomLabel}</TableCell>
+														<TableCell>{row.data.pickingStrategy}</TableCell>
+														<TableCell>{row.data.skuExpiryDate}</TableCell>
+													</>
+												)
 											) : (
 												<>
 													<TableCell>{row.data.rackRow}</TableCell>
