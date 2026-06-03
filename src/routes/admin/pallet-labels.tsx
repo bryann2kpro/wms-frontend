@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/graphql/pallet-labels";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Plus, Edit, Trash2, Search, Database } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Database, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import type { PalletLabel, Rack } from "@/lib/graphql/types";
 
@@ -51,6 +52,8 @@ function StorageBinItemsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const [sortField, setSortField] = useState<string>("UPDATED_AT");
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editing, setEditing] = useState<PalletLabel | null>(null);
   const [deleting, setDeleting] = useState<PalletLabel | null>(null);
@@ -59,7 +62,7 @@ function StorageBinItemsPage() {
   const queryVars: PalletLabelsQueryVariables = {
     pageSize: PAGE_SIZE,
     pageNumber: page,
-    sort: { sortBy: "UPDATED_AT", direction: "DESC" },
+    sort: { sortBy: sortField, direction: sortDirection },
     filter: debouncedSearch.trim()
       ? { search: debouncedSearch.trim() }
       : undefined,
@@ -167,6 +170,42 @@ function StorageBinItemsPage() {
                   }}
                   className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-64"
                 />
+              </div>
+              <div className="flex items-center gap-1">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <Select
+                  value={sortField}
+                  onValueChange={(v) => {
+                    setSortField(v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-36 rounded-lg text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STORAGE_BIN">Storage Bin</SelectItem>
+                    <SelectItem value="ITEM_CODE">Item Code</SelectItem>
+                    <SelectItem value="DESCRIPTION">Description</SelectItem>
+                    <SelectItem value="ITEM_DESC_02">Item Desc 02</SelectItem>
+                    <SelectItem value="UPDATED_AT">Last Updated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={sortDirection}
+                  onValueChange={(v) => {
+                    setSortDirection(v as "ASC" | "DESC");
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-20 rounded-lg text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ASC">ASC</SelectItem>
+                    <SelectItem value="DESC">DESC</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 variant="destructive"
