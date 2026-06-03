@@ -13,6 +13,7 @@ export const ZONE_FRAGMENT = gql`
 		zoneCode
 		zoneName
 		purpose
+		warehouseName
 		createdAt
 		updatedAt
 		createdBy

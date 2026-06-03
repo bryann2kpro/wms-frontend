@@ -239,7 +239,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: Truck,
 		allowedPermission: ["Inventory"],
 		variant: "default",
-		group: "operations",
+		group: "warehouse setup",
 	},
 	{
 		key: "sidebar-setup-area",
@@ -248,7 +248,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		icon: LayoutGrid,
 		allowedPermission: ["Inventory"],
 		variant: "default",
-		group: "operations",
+		group: "warehouse setup",
 	},
 	{
 		key: "sidebar-invoices",

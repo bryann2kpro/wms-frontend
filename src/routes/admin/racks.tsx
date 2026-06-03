@@ -57,6 +57,10 @@ import {
 	AREAS_QUERY,
 	type AreasQueryData,
 } from "@/lib/graphql/areas";
+import {
+	ZONES_QUERY,
+	type ZonesQueryData,
+} from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
 import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown } from "lucide-react";
@@ -66,6 +70,12 @@ const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const BIN_TYPES = ["FIXED", "PICK_FACE", "RESERVE", "BULK"] as const;
+
+const formatLevel = (lvl: string | null | undefined): string => {
+	if (!lvl) return "";
+	const match = lvl.trim().match(/\d+/);
+	return match ? match[0].padStart(2, "0") : lvl.trim();
+};
 
 export const Route = createFileRoute("/admin/racks")({
 	beforeLoad: async ({ context }) => {
@@ -109,6 +119,11 @@ function RacksPage() {
 		queryFn: () => gqlRequest<AreasQueryData>(AREAS_QUERY, { pageSize: 500, pageNumber: 1 }),
 	});
 
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "racks-page"],
+		queryFn: () => gqlRequest<ZonesQueryData>(ZONES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+
 	const { mutate: createRack, isPending: createLoading } = useMutation({
 		mutationFn: (input: object) =>
 			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
@@ -141,11 +156,17 @@ function RacksPage() {
 	const totalPages = pagination?.totalPages ?? 1;
 	const currentPage = pagination?.currentPage ?? 1;
 	const areas = areasData?.areas?.query ?? [];
+	const zones = zonesData?.zones?.query ?? [];
 	const createdBy = user?.id ?? "";
 
-	const areaLabel = (areaId: string | null | undefined) => {
-		if (!areaId) return null;
-		return areas.find((a) => a.areaId === areaId)?.areaCode ?? null;
+	const locationLabel = (rack: { areaId?: string | null; zoneId?: string | null }) => {
+		if (rack.areaId) {
+			return areas.find((a) => a.areaId === rack.areaId)?.warehouseName ?? null;
+		}
+		if (rack.zoneId) {
+			return zones.find((z) => z.zoneId === rack.zoneId)?.warehouseName ?? null;
+		}
+		return null;
 	};
 
 	return (
@@ -296,7 +317,7 @@ function RacksPage() {
 												<Checkbox />
 											</TableCell>
 											<TableCell className="px-4 font-mono text-sm">
-												{row.binCode ?? <span className="opacity-30">—</span>}
+												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
 											</TableCell>
 											<TableCell className="px-4">
 												{row.barCode ? (
@@ -311,13 +332,13 @@ function RacksPage() {
 												)}
 											</TableCell>
 											<TableCell className="px-4 text-sm text-muted-foreground">
-												{row.binCode ?? <span className="opacity-30">—</span>}
+												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
 											</TableCell>
 											<TableCell className="px-4 font-medium">
 												{row.rackRow}
 											</TableCell>
-											<TableCell className="px-4">{row.rackColumn}</TableCell>
-											<TableCell className="px-4">{row.rackLevel}</TableCell>
+											<TableCell className="px-4">{`${row.rackRow}-${row.rackColumn}`}</TableCell>
+											<TableCell className="px-4">{formatLevel(row.rackLevel)}</TableCell>
 											<TableCell className="px-4">
 												<Badge
 													variant="secondary"
@@ -327,7 +348,7 @@ function RacksPage() {
 												</Badge>
 											</TableCell>
 											<TableCell className="px-4 text-sm">
-												{areaLabel(row.areaId) ?? (
+												{locationLabel(row) ?? (
 													<span className="opacity-30">—</span>
 												)}
 											</TableCell>
@@ -495,6 +516,7 @@ function RackFormDialog({
 	const [binType, setBinType] = useState(initial?.binType ?? "FIXED");
 	const [areaId, setAreaId] = useState<string | null>(initial?.areaId ?? null);
 	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [isBinCodeManuallyEdited, setIsBinCodeManuallyEdited] = useState(!!initial?.binCode);
 
 	useEffect(() => {
 		if (open) {
@@ -506,6 +528,7 @@ function RackFormDialog({
 			setBinType(initial?.binType ?? "FIXED");
 			setAreaId(initial?.areaId ?? null);
 			setIsActive(initial?.isActive ?? true);
+			setIsBinCodeManuallyEdited(!!initial?.binCode);
 		}
 	}, [open, initial?.rackId]);
 
@@ -519,9 +542,22 @@ function RackFormDialog({
 			setBinType(initial?.binType ?? "FIXED");
 			setAreaId(initial?.areaId ?? null);
 			setIsActive(initial?.isActive ?? true);
+			setIsBinCodeManuallyEdited(!!initial?.binCode);
 		}
 		onOpenChange(next);
 	};
+
+	useEffect(() => {
+		if (!isBinCodeManuallyEdited) {
+			const parts = [];
+			if (rackRow.trim()) parts.push(rackRow.trim());
+			if (rackColumn.trim()) parts.push(rackColumn.trim());
+			if (rackLevel.trim()) {
+				parts.push(formatLevel(rackLevel));
+			}
+			setBinCode(parts.join("-"));
+		}
+	}, [rackRow, rackColumn, rackLevel, isBinCodeManuallyEdited]);
 
 	const canSubmit =
 		rackRow.trim() && rackColumn.trim() && rackLevel.trim() && !loading;
@@ -587,7 +623,10 @@ function RackFormDialog({
 							<Input
 								id="bin-code"
 								value={binCode}
-								onChange={(e) => setBinCode(e.target.value)}
+								onChange={(e) => {
+									setBinCode(e.target.value);
+									setIsBinCodeManuallyEdited(true);
+								}}
 								placeholder="e.g. A1-L1-01"
 								className="rounded-lg border-muted-foreground/20 font-mono"
 							/>
@@ -674,7 +713,7 @@ function RackFormDialog({
 							onSubmit({
 								rackRow: rackRow.trim(),
 								rackColumn: rackColumn.trim(),
-								rackLevel: rackLevel.trim(),
+								rackLevel: formatLevel(rackLevel),
 								binCode: binCode.trim() || null,
 								barCode: barCode.trim() || null,
 								binType,
