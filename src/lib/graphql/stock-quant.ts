@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type { Pagination } from "./types";
 
 export const STOCK_QUANTS_QUERY = gql`
