@@ -17,6 +17,11 @@ export const RACK_FRAGMENT = gql`
 		binCode
 		barCode
 		binType
+		length
+		width
+		height
+		weight
+		maxPallet
 		isActive
 		createdAt
 		updatedAt

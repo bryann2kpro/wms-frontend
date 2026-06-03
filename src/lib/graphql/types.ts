@@ -243,6 +243,11 @@ export interface Rack {
 	binCode?: string | null;
 	barCode?: string | null;
 	binType: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -264,6 +269,11 @@ export interface CreateRackInput {
 	binCode?: string | null;
 	barCode?: string | null;
 	binType?: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
 	isActive?: boolean;
 	createdBy: string;
 	updatedBy: string;
@@ -278,6 +288,11 @@ export interface UpdateRackInput {
 	binCode?: string | null;
 	barCode?: string | null;
 	binType?: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
 	isActive?: boolean;
 	updatedBy: string;
 }
