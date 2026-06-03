@@ -52,6 +52,17 @@ import { excelSerialToDateString } from "@/lib/utils";
 
 export type ImportMode = "skus" | "racks";
 
+const STORAGE_TYPE_TO_BIN_TYPE: Record<string, string> = {
+	PICK_FACE: "PICK_FACE",
+	RESERVE_STORAGE: "RESERVE",
+	BULK_STORAGE: "BULK",
+};
+
+function mapStorageToBinType(storageType: string): string {
+	const upper = storageType.trim().toUpperCase();
+	return STORAGE_TYPE_TO_BIN_TYPE[upper] ?? (upper.includes("RESERVE") ? "RESERVE" : upper.includes("BULK") ? "BULK" : "FIXED");
+}
+
 interface ImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -81,6 +92,10 @@ type PreviewRow =
 				rackRow: string;
 				rackColumn: string;
 				rackLevel: string;
+				binCode?: string;
+				barCode?: string;
+				binType?: string;
+				isActive?: boolean;
 			};
 			errors: string[];
 			rackPayload?: CreateRackMutationVariables["input"];
@@ -181,7 +196,7 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 					}),
 				]
 			: [
-					["Row", "Row", "Column", "Level", "Errors"],
+					["Row", "Code", "Barcode", "Storage Row", "Bay", "Level", "Bin Type", "Status", "Errors"],
 					...failed.map((row) => {
 						const data = row.data as Extract<
 							PreviewRow,
@@ -189,9 +204,13 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 						>["data"];
 						return [
 							row.rowNumber,
+							data.binCode ?? "",
+							data.barCode ?? "",
 							data.rackRow,
 							data.rackColumn,
 							data.rackLevel,
+							data.binType ?? "",
+							data.isActive === undefined ? "" : data.isActive ? "ACTIVE" : "INACTIVE",
 							row.errors.join("; "),
 						];
 					}),
@@ -217,6 +236,7 @@ export function ImportDialog({
 	const [isImporting, setIsImporting] = useState(false);
 	const [processedCount, setProcessedCount] = useState(0);
 	const [isStockTakeFormat, setIsStockTakeFormat] = useState(false);
+	const [isStorageBinFormat, setIsStorageBinFormat] = useState(false);
 	const [newRacksToCreate, setNewRacksToCreate] = useState<
 		CreateRackMutationVariables["input"][]
 	>([]);
@@ -325,7 +345,16 @@ export function ImportDialog({
 								"Expiry Date",
 							],
 						]
-				: [["Row", "Column", "Level"]];
+				: [[
+						"CODE",
+						"BARCODE",
+						"DESC_01",
+						"STATUS",
+						"ROW",
+						"BAY",
+						"LEVEL",
+						"STORAGE_TYPE",
+					]];
 		const worksheet = utils.aoa_to_sheet(headers);
 		const workbook = utils.book_new();
 		utils.book_append_sheet(workbook, worksheet, "Template");
@@ -662,19 +691,48 @@ export function ImportDialog({
 		);
 		const inFileKeys = new Map<string, number>();
 
+		// Detect storage bin format by presence of CODE/BAY columns
+		const firstHeaders = Object.fromEntries(
+			Object.entries(rawRows[0] ?? {}).map(([k]) => [normalizeKey(k), true]),
+		);
+		const isBinFormat = Boolean(firstHeaders["code"] || firstHeaders["bay"]);
+		setIsStorageBinFormat(isBinFormat);
+
 		return rawRows.map((row, index) => {
 			const headers: Record<string, string> = Object.fromEntries(
 				Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
 			);
-			const rackRow = headers.row ?? "";
-			const rackColumn = headers.column ?? "";
-			const rackLevel = headers.level ?? "";
+
+			let rackRow: string;
+			let rackColumn: string;
+			let rackLevel: string;
+			let binCode: string | undefined;
+			let barCode: string | undefined;
+			let binType: string | undefined;
+			let isActive: boolean | undefined;
+
+			if (isBinFormat) {
+				rackRow = headers["row"] ?? "";
+				rackColumn = headers["bay"] ?? "";
+				rackLevel = headers["level"] ?? "";
+				binCode = headers["code"] || undefined;
+				barCode = headers["barcode"] || undefined;
+				const storageType = headers["storage type"] ?? headers["storage_type"] ?? headers["storagetype"] ?? "";
+				binType = storageType ? mapStorageToBinType(storageType) : "FIXED";
+				const statusRaw = (headers["status"] ?? "active").trim().toUpperCase();
+				isActive = statusRaw !== "INACTIVE";
+			} else {
+				rackRow = headers["row"] ?? "";
+				rackColumn = headers["column"] ?? "";
+				rackLevel = headers["level"] ?? "";
+			}
+
 			const key = normalizeKey(`${rackRow}|${rackColumn}|${rackLevel}`);
 			inFileKeys.set(key, (inFileKeys.get(key) ?? 0) + 1);
 
 			const errors: string[] = [];
 			if (!rackRow) errors.push("Row is required");
-			if (!rackColumn) errors.push("Column is required");
+			if (!rackColumn) errors.push(isBinFormat ? "Bay is required" : "Column is required");
 			if (!rackLevel) errors.push("Level is required");
 			if (key && (inFileKeys.get(key) ?? 0) > 1) {
 				errors.push("Duplicate rack in file");
@@ -685,7 +743,7 @@ export function ImportDialog({
 
 			return {
 				rowNumber: index + 2,
-				data: { rackRow, rackColumn, rackLevel },
+				data: { rackRow, rackColumn, rackLevel, binCode, barCode, binType, isActive },
 				errors,
 				rackPayload:
 					errors.length === 0
@@ -693,6 +751,10 @@ export function ImportDialog({
 								rackRow,
 								rackColumn,
 								rackLevel,
+								binCode: binCode ?? null,
+								barCode: barCode ?? null,
+								binType: binType ?? "FIXED",
+								isActive: isActive ?? true,
 								createdBy,
 								updatedBy: createdBy,
 							}
@@ -706,6 +768,7 @@ export function ImportDialog({
 		setIsParsing(true);
 		setRows([]);
 		setIsStockTakeFormat(false);
+		setIsStorageBinFormat(false);
 		setNewRacksToCreate([]);
 		setNewUomsToCreate([]);
 		try {
@@ -1079,6 +1142,16 @@ export function ImportDialog({
 											<TableHead>Expiry</TableHead>
 										</>
 									)
+									) : isStorageBinFormat ? (
+										<>
+											<TableHead>Code</TableHead>
+											<TableHead>Barcode</TableHead>
+											<TableHead>Row</TableHead>
+											<TableHead>Bay</TableHead>
+											<TableHead>Level</TableHead>
+											<TableHead>Bin Type</TableHead>
+											<TableHead>Status</TableHead>
+										</>
 									) : (
 										<>
 											<TableHead>Row</TableHead>
@@ -1093,7 +1166,7 @@ export function ImportDialog({
 								{rows.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={mode === "skus" ? 8 : 6}
+											colSpan={mode === "skus" ? 8 : isStorageBinFormat ? 9 : 5}
 											className="h-20 text-center text-muted-foreground"
 										>
 											Upload a file to preview rows.
@@ -1128,6 +1201,16 @@ export function ImportDialog({
 														<TableCell>{row.data.skuExpiryDate}</TableCell>
 													</>
 												)
+											) : isStorageBinFormat ? (
+												<>
+													<TableCell className="font-mono text-xs">{row.data.binCode ?? ""}</TableCell>
+													<TableCell className="font-mono text-xs">{row.data.barCode ?? ""}</TableCell>
+													<TableCell>{row.data.rackRow}</TableCell>
+													<TableCell>{row.data.rackColumn}</TableCell>
+													<TableCell>{row.data.rackLevel}</TableCell>
+													<TableCell>{row.data.binType ?? ""}</TableCell>
+													<TableCell>{row.data.isActive === undefined ? "" : row.data.isActive ? "ACTIVE" : "INACTIVE"}</TableCell>
+												</>
 											) : (
 												<>
 													<TableCell>{row.data.rackRow}</TableCell>

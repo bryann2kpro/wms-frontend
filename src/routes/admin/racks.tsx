@@ -63,8 +63,9 @@ import {
 } from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
-import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown, Upload } from "lucide-react";
 import type { Rack, Area } from "@/lib/graphql/types";
+import { ImportDialog } from "@/components/settings/master-data/import-dialog";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -95,6 +96,7 @@ function RacksPage() {
 	const [sortField, setSortField] = useState<string>("UPDATED_AT");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Rack | null>(null);
 	const [deleting, setDeleting] = useState<Rack | null>(null);
 
@@ -243,6 +245,15 @@ function RacksPage() {
 									</SelectContent>
 								</Select>
 							</div>
+							<Button
+								variant="outline"
+								onClick={() => setIsImportOpen(true)}
+								disabled={!createdBy}
+								className="rounded-lg"
+							>
+								<Upload className="mr-2 h-4 w-4" />
+								Import Excel
+							</Button>
 							<Button
 								onClick={() => setIsCreateOpen(true)}
 								disabled={!createdBy}
@@ -427,6 +438,14 @@ function RacksPage() {
 					)}
 				</CardContent>
 			</Card>
+
+			<ImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				mode="racks"
+				createdBy={createdBy}
+				onImported={() => void refetch()}
+			/>
 
 			<RackFormDialog
 				open={isCreateOpen}
