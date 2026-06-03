@@ -60,9 +60,10 @@ import {
 } from "@/lib/graphql/racks";
 import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Plus, Edit, Trash2, Search, PackageSearch, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, Search, PackageSearch, ArrowUpDown, Upload } from "lucide-react";
 import type { Rack } from "@/lib/graphql/types";
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import { PickFaceImportDialog } from "@/components/settings/master-data/pick-face-import-dialog";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -86,6 +87,7 @@ function PickFaceStrategyPage() {
 	const [sortField, setSortField] = useState<string>("UPDATED_AT");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<PickFaceStrategy | null>(null);
 	const [deleting, setDeleting] = useState<PickFaceStrategy | null>(null);
 
@@ -254,6 +256,15 @@ function PickFaceStrategyPage() {
 									</Select>
 								</div>
 								<Button
+									variant="outline"
+									onClick={() => setIsImportOpen(true)}
+									disabled={!createdBy}
+									className="rounded-lg"
+								>
+									<Upload className="mr-2 h-4 w-4" />
+									Import Excel
+								</Button>
+								<Button
 									onClick={() => setIsCreateOpen(true)}
 									disabled={!createdBy}
 									className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
@@ -405,6 +416,13 @@ function PickFaceStrategyPage() {
 						)}
 					</CardContent>
 				</Card>
+
+				<PickFaceImportDialog
+					open={isImportOpen}
+					onOpenChange={setIsImportOpen}
+					createdBy={createdBy}
+					onImported={() => void refetch()}
+				/>
 
 				<PickFaceStrategyFormDialog
 					open={isCreateOpen}

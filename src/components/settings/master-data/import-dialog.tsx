@@ -521,11 +521,37 @@ export function ImportDialog({
 		}
 
 		if (skuFormat === "items") {
+			// Detect item_excel format: has DESC_01 / RETRIEVAL / BATCH_SERIAL_CONTROL headers
+			const firstHeaders = rowToHeaders(rawRows[0] ?? {});
+			const isItemExcelFormat =
+				Boolean(firstHeaders["desc 01"]) ||
+				Boolean(firstHeaders["retrieval"]) ||
+				Boolean(firstHeaders["batch serial control"]);
+
+			const mapRetrieval = (v: string): string => {
+				const u = v.trim().toUpperCase();
+				if (u.includes("EXPIRED") || u === "FEFO") return "FEFO";
+				if (u.includes("LAST") || u === "LIFO") return "LIFO";
+				return "FIFO";
+			};
+
+			const mapBatchControl = (v: string): { isExpiryControlled: boolean; isLotControlled: boolean } => {
+				const u = v.trim().toUpperCase();
+				if (u === "BOTH") return { isExpiryControlled: true, isLotControlled: true };
+				if (u === "LOT_CONTROL_ONLY") return { isExpiryControlled: false, isLotControlled: true };
+				if (u === "EXPIRY_CONTROL_ONLY") return { isExpiryControlled: true, isLotControlled: false };
+				return { isExpiryControlled: false, isLotControlled: false };
+			};
+
 			return rawRows.map((row, index) => {
 				const headers = rowToHeaders(row);
 				const skuCode = headers.code ?? headers["sku code"] ?? headers["item code"] ?? "";
-				const skuDescription = headers.description ?? "";
-				const barcode = headers.barcode ?? "";
+				const skuDescription = isItemExcelFormat
+					? (headers["desc 01"] ?? headers.description ?? "")
+					: (headers.description ?? "");
+				const barcode = isItemExcelFormat
+					? (headers["unit barcode"] ?? headers.barcode ?? "")
+					: (headers.barcode ?? "");
 				const brand = headers.brand ?? "";
 				const category = headers.category ?? "";
 				const manufacturer = headers.manufacturer ?? "";
@@ -533,7 +559,7 @@ export function ImportDialog({
 				const isActive = !["inactive", "0", "false", "no"].includes(statusRaw);
 				const parseNum = (v: string) => {
 					const t = v.trim();
-					if (!t) return null;
+					if (!t || t === "0" || t === "0.0") return null;
 					const n = Number(t);
 					return Number.isNaN(n) ? null : n;
 				};
@@ -547,22 +573,38 @@ export function ImportDialog({
 				const casesPerLayer = parseNum(headers["cases per layer"] ?? "");
 				const noOfLayers = parseNum(headers["no of layers"] ?? "");
 
+				// item_excel-specific fields
+				const pickingStrategy = isItemExcelFormat
+					? mapRetrieval(headers["retrieval"] ?? "")
+					: "FIFO";
+				const { isExpiryControlled, isLotControlled } = isItemExcelFormat
+					? mapBatchControl(headers["batch serial control"] ?? "")
+					: { isExpiryControlled: false, isLotControlled: false };
+
+				// UOM: item_excel uses CASE_UOM column; fall back to default CTN
+				const caseUomLabel = isItemExcelFormat
+					? (headers["case uom"] ?? headers["unit uom"] ?? "")
+					: "";
+				const resolvedUomId = caseUomLabel
+					? (uomLookup.get(normalizeKey(caseUomLabel)) ?? defaultStockUnitId)
+					: defaultStockUnitId;
+
 				const errors: string[] = [];
 				if (!skuCode) errors.push("Code is required");
 				if (!skuDescription) errors.push("Description is required");
-				if (!defaultStockUnitId) errors.push("No stock unit available (expected CTN)");
+				if (!resolvedUomId) errors.push("No stock unit available (expected CTN)");
 
 				const payload =
-					errors.length === 0 && defaultStockUnitId
+					errors.length === 0 && resolvedUomId
 						? {
 								skuCode,
 								skuDescription,
 								skuExpiryDate: "",
 								skuSuppliers: [],
-								skuUom: defaultStockUnitId,
-								pickingStrategy: "FIFO",
-								isLotControlled: false,
-								isExpiryControlled: false,
+								skuUom: resolvedUomId,
+								pickingStrategy,
+								isLotControlled,
+								isExpiryControlled,
 								isActive,
 								barcode: barcode || null,
 								brand: brand || null,
@@ -584,8 +626,8 @@ export function ImportDialog({
 						skuCode,
 						skuDescription,
 						skuQuantity: "",
-						skuUomLabel: "CTN",
-						pickingStrategy: "FIFO",
+						skuUomLabel: caseUomLabel || "CTN",
+						pickingStrategy,
 						skuExpiryDate: "",
 					},
 					errors,
