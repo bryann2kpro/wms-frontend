@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 
 export const GENERATE_DELIVERY_ORDER_PDF_MUTATION = gql`
 	mutation GenerateDeliveryOrderPdf($deliveryOrderId: ID!) {

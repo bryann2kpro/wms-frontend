@@ -28,6 +28,13 @@ const persister =
 			})
 		: undefined;
 
+// Live operational data must not be served from persisted cache after DB changes.
+const LIVE_QUERY_ROOTS = new Set([
+	"stock-quants",
+	"inventory",
+	"inventory-movements",
+]);
+
 export function getContext() {
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -46,6 +53,17 @@ export function getContext() {
 		persistQueryClient({
 			queryClient,
 			persister,
+			// Bump when persisted query shape changes (e.g. stockQuant.reservedQty).
+			buster: "2026-05-21-stock-quant-reserved",
+			dehydrateOptions: {
+				shouldDehydrateQuery: (query) => {
+					const root = query.queryKey[0];
+					if (typeof root === "string" && LIVE_QUERY_ROOTS.has(root)) {
+						return false;
+					}
+					return query.state.status === "success";
+				},
+			},
 		});
 	}
 

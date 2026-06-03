@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,65 +11,50 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
-import { SkusFormStep1, SkusFormStep2 } from "./skus-form-steps";
+import { SkusFormStep1, SkusFormStep2, SkusFormStep3 } from "./skus-form-steps";
 
 export interface SkusFormValues {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number | null;
-	skuQuantity: number;
-	lossQuantity?: number;
-	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy: string;
+	isLotControlled: boolean;
+	isExpiryControlled: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 export interface SkusFormInitial {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number | null;
-	skuQuantity: number;
-	lossQuantity?: number;
-	skuExpiryDate: string;
 	skuUom: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
 	isActive?: boolean;
-}
-
-function parseDate(dateValue: string | number | undefined): Date | undefined {
-	if (!dateValue) return undefined;
-
-	try {
-		if (typeof dateValue === "number") {
-			const date = new Date(dateValue);
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		if (typeof dateValue === "string" && /^\d+$/.test(dateValue.trim())) {
-			const date = new Date(Number(dateValue));
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		const dateMatch = dateValue.match(/(\d{4}-\d{2}-\d{2})/);
-		if (dateMatch) {
-			const datePart = dateMatch[1];
-			const [year, month, day] = datePart.split("-").map(Number);
-			const date = new Date(year, month - 1, day);
-			if (isNaN(date.getTime())) return undefined;
-			return date;
-		}
-
-		const date = new Date(dateValue);
-		if (isNaN(date.getTime())) return undefined;
-		return date;
-	} catch {
-		return undefined;
-	}
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 export function SkusFormDialog({
@@ -97,71 +82,83 @@ export function SkusFormDialog({
 	const [skuDescription, setSkuDescription] = useState(
 		initial?.skuDescription ?? "",
 	);
-	const [skuPrice, setSkuPrice] = useState(initial?.skuPrice?.toString() ?? "");
-	const [skuQuantity, setSkuQuantity] = useState(
-		initial?.skuQuantity?.toString() ?? "0",
-	);
-	const [lossQuantity, setLossQuantity] = useState(
-		initial?.lossQuantity?.toString() ?? "0",
-	);
-	const [skuExpiryDate, setSkuExpiryDate] = useState<Date | undefined>(
-		parseDate(initial?.skuExpiryDate),
-	);
 	const [skuUom, setSkuUom] = useState(initial?.skuUom ?? "");
 	const [pickingStrategy, setPickingStrategy] = useState(
 		initial?.pickingStrategy ?? "FIFO",
+	);
+	const [isLotControlled, setIsLotControlled] = useState(
+		initial?.isLotControlled ?? false,
+	);
+	const [isExpiryControlled, setIsExpiryControlled] = useState(
+		initial?.isExpiryControlled ?? false,
 	);
 	const [skuSuppliers, setSkuSuppliers] = useState<
 		Array<{ supplierId: string; originalSkuCode: string | null }>
 	>(initial?.skuSuppliers ?? []);
 	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+	const [brand, setBrand] = useState(initial?.brand ?? "");
+	const [category, setCategory] = useState(initial?.category ?? "");
+	const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? "");
+	const [caseRate, setCaseRate] = useState(initial?.caseRate?.toString() ?? "");
+	const [caseExtLengthMm, setCaseExtLengthMm] = useState(initial?.caseExtLengthMm?.toString() ?? "");
+	const [caseExtWidthMm, setCaseExtWidthMm] = useState(initial?.caseExtWidthMm?.toString() ?? "");
+	const [caseExtHeightMm, setCaseExtHeightMm] = useState(initial?.caseExtHeightMm?.toString() ?? "");
+	const [caseGrossWeightKg, setCaseGrossWeightKg] = useState(initial?.caseGrossWeightKg?.toString() ?? "");
+	const [casesPerLayer, setCasesPerLayer] = useState(initial?.casesPerLayer?.toString() ?? "");
+	const [noOfLayers, setNoOfLayers] = useState(initial?.noOfLayers?.toString() ?? "");
 	const [step, setStep] = useState(1);
 	const [supplierSearch, setSupplierSearch] = useState("");
 	const [errors, setErrors] = useState<{
 		skuCode?: string;
 		skuDescription?: string;
-		skuQuantity?: string;
-		lossQuantity?: string;
-		skuExpiryDate?: string;
 		skuUom?: string;
 	}>({});
 
+	const initialRef = useRef(initial);
+	initialRef.current = initial;
+
+	const resetFormFromInitial = () => {
+		const i = initialRef.current;
+		setSkuCode(i?.skuCode ?? "");
+		setSkuDescription(i?.skuDescription ?? "");
+		setSkuUom(i?.skuUom ?? "");
+		setPickingStrategy(i?.pickingStrategy ?? "FIFO");
+		setIsLotControlled(i?.isLotControlled ?? false);
+		setIsExpiryControlled(i?.isExpiryControlled ?? false);
+		setSkuSuppliers(i?.skuSuppliers ?? []);
+		setIsActive(i?.isActive ?? true);
+		setBarcode(i?.barcode ?? "");
+		setBrand(i?.brand ?? "");
+		setCategory(i?.category ?? "");
+		setManufacturer(i?.manufacturer ?? "");
+		setCaseRate(i?.caseRate?.toString() ?? "");
+		setCaseExtLengthMm(i?.caseExtLengthMm?.toString() ?? "");
+		setCaseExtWidthMm(i?.caseExtWidthMm?.toString() ?? "");
+		setCaseExtHeightMm(i?.caseExtHeightMm?.toString() ?? "");
+		setCaseGrossWeightKg(i?.caseGrossWeightKg?.toString() ?? "");
+		setCasesPerLayer(i?.casesPerLayer?.toString() ?? "");
+		setNoOfLayers(i?.noOfLayers?.toString() ?? "");
+		setStep(1);
+		setSupplierSearch("");
+		setErrors({});
+	};
+
+	// Only reset when the dialog opens — not when parent re-renders (inline `initial` object).
 	useEffect(() => {
 		if (open) {
-			setSkuCode(initial?.skuCode ?? "");
-			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
-			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
-			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
-			setSkuUom(initial?.skuUom ?? "");
-			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
-			setSkuSuppliers(initial?.skuSuppliers ?? []);
-			setIsActive(initial?.isActive ?? true);
-			setStep(1);
-			setSupplierSearch("");
-			setErrors({});
+			resetFormFromInitial();
 		}
-	}, [open, initial]);
+	}, [open]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
-			setSkuCode(initial?.skuCode ?? "");
-			setSkuDescription(initial?.skuDescription ?? "");
-			setSkuPrice(initial?.skuPrice?.toString() ?? "");
-			setSkuQuantity(initial?.skuQuantity?.toString() ?? "0");
-			setLossQuantity(initial?.lossQuantity?.toString() ?? "0");
-			setSkuExpiryDate(parseDate(initial?.skuExpiryDate));
-			setSkuUom(initial?.skuUom ?? "");
-			setPickingStrategy(initial?.pickingStrategy ?? "FIFO");
-			setSkuSuppliers(initial?.skuSuppliers ?? []);
-			setIsActive(initial?.isActive ?? true);
-			setStep(1);
-			setSupplierSearch("");
-			setErrors({});
+			resetFormFromInitial();
 		}
 		onOpenChange(next);
 	};
+
+	const isEditMode = Boolean(initial);
 
 	const toggleSupplier = (supplierId: string) => {
 		setSkuSuppliers((prev) => {
@@ -205,20 +202,37 @@ export function SkusFormDialog({
 
 	const canProceedToStep2 = skuCode.trim() && skuDescription.trim() && skuUom;
 
+	useEffect(() => {
+		// #region agent log
+		fetch("http://127.0.0.1:7725/ingest/20db73c8-0fb7-4781-a984-2cc888a5a871", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "8952bb",
+			},
+			body: JSON.stringify({
+				sessionId: "8952bb",
+				runId: "post-fix",
+				hypothesisId: "H4",
+				location: "src/components/settings/master-data/skus-form-dialog.tsx:SkusFormDialog",
+				message: "skus form state snapshot",
+				data: {
+					open,
+					step,
+					skuCodeLength: skuCode.length,
+				},
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
+	}, [open, step, skuCode.length]);
+
 	const validateStep1 = () => {
 		const newErrors: typeof errors = {};
 
 		if (!skuCode.trim()) newErrors.skuCode = "Code is required";
 		if (!skuDescription.trim())
 			newErrors.skuDescription = "Description is required";
-		const q = String(skuQuantity ?? "").trim();
-		if (q !== "" && (isNaN(Number(q)) || Number(q) < 0)) {
-			newErrors.skuQuantity = "Quantity must be 0 or more";
-		}
-		const lossQ = String(lossQuantity ?? "").trim();
-		if (lossQ !== "" && (isNaN(Number(lossQ)) || Number(lossQ) < 0)) {
-			newErrors.lossQuantity = "Loss quantity must be 0 or more";
-		}
 		if (!skuUom) newErrors.skuUom = "Unit of measure is required";
 
 		setErrors(newErrors);
@@ -233,26 +247,32 @@ export function SkusFormDialog({
 	};
 
 	const handleSubmit = () => {
-		const expiryDateString =
-			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
-				? skuExpiryDate.toISOString().split("T")[0]
-				: "";
-		let priceValue: number | null = null;
-		if (skuPrice.trim() !== "") {
-			const parsed = parseFloat(skuPrice);
-			if (!isNaN(parsed)) priceValue = parsed;
-		}
+		const parseOptionalFloat = (v: string) => {
+			const t = v.trim();
+			if (t === "") return null;
+			const n = parseFloat(t);
+			return isNaN(n) ? null : n;
+		};
 		onSubmit({
 			skuCode: skuCode.trim(),
 			skuDescription: skuDescription.trim(),
-			skuPrice: priceValue,
-			skuQuantity: Math.max(0, Number(skuQuantity) || 0),
-			lossQuantity: Math.max(0, Number(lossQuantity) || 0),
-			skuExpiryDate: expiryDateString,
 			skuUom,
 			pickingStrategy,
+			isLotControlled,
+			isExpiryControlled,
 			skuSuppliers,
 			isActive,
+			barcode: barcode.trim() || null,
+			brand: brand.trim() || null,
+			category: category.trim() || null,
+			manufacturer: manufacturer.trim() || null,
+			caseRate: parseOptionalFloat(caseRate),
+			caseExtLengthMm: parseOptionalFloat(caseExtLengthMm),
+			caseExtWidthMm: parseOptionalFloat(caseExtWidthMm),
+			caseExtHeightMm: parseOptionalFloat(caseExtHeightMm),
+			caseGrossWeightKg: parseOptionalFloat(caseGrossWeightKg),
+			casesPerLayer: parseOptionalFloat(casesPerLayer),
+			noOfLayers: parseOptionalFloat(noOfLayers),
 		});
 	};
 
@@ -276,23 +296,19 @@ export function SkusFormDialog({
 						setSkuCode={setSkuCode}
 						skuDescription={skuDescription}
 						setSkuDescription={setSkuDescription}
-						skuPrice={skuPrice}
-						setSkuPrice={setSkuPrice}
-						skuQuantity={skuQuantity}
-						setSkuQuantity={setSkuQuantity}
-						lossQuantity={lossQuantity}
-						setLossQuantity={setLossQuantity}
-						skuExpiryDate={skuExpiryDate}
-						setSkuExpiryDate={setSkuExpiryDate}
 						skuUom={skuUom}
 						setSkuUom={setSkuUom}
 						pickingStrategy={pickingStrategy}
 						setPickingStrategy={setPickingStrategy}
+						isLotControlled={isLotControlled}
+						setIsLotControlled={setIsLotControlled}
+						isExpiryControlled={isExpiryControlled}
+						setIsExpiryControlled={setIsExpiryControlled}
 						stockUnits={stockUnits}
 						errors={errors}
 						setErrors={setErrors}
 					/>
-				) : (
+				) : step === 2 ? (
 					<SkusFormStep2
 						suppliers={suppliers}
 						skuSuppliers={skuSuppliers}
@@ -302,6 +318,31 @@ export function SkusFormDialog({
 						toggleSupplier={toggleSupplier}
 						getOriginalSkuCode={getOriginalSkuCode}
 						updateOriginalSkuCode={updateOriginalSkuCode}
+					/>
+				) : (
+					<SkusFormStep3
+						barcode={barcode}
+						setBarcode={setBarcode}
+						brand={brand}
+						setBrand={setBrand}
+						category={category}
+						setCategory={setCategory}
+						manufacturer={manufacturer}
+						setManufacturer={setManufacturer}
+						caseRate={caseRate}
+						setCaseRate={setCaseRate}
+						caseExtLengthMm={caseExtLengthMm}
+						setCaseExtLengthMm={setCaseExtLengthMm}
+						caseExtWidthMm={caseExtWidthMm}
+						setCaseExtWidthMm={setCaseExtWidthMm}
+						caseExtHeightMm={caseExtHeightMm}
+						setCaseExtHeightMm={setCaseExtHeightMm}
+						caseGrossWeightKg={caseGrossWeightKg}
+						setCaseGrossWeightKg={setCaseGrossWeightKg}
+						casesPerLayer={casesPerLayer}
+						setCasesPerLayer={setCasesPerLayer}
+						noOfLayers={noOfLayers}
+						setNoOfLayers={setNoOfLayers}
 					/>
 				)}
 				{initial && (
@@ -328,17 +369,53 @@ export function SkusFormDialog({
 						Cancel
 					</Button>
 					{step === 1 ? (
-						<Button
-							onClick={handleNext}
-							className={`rounded-lg ${!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : "bg-amber-600 text-white hover:bg-amber-700"}`}
-						>
-							Next
-						</Button>
-					) : (
+						<>
+							{isEditMode && (
+								<Button
+									onClick={() => {
+										if (validateStep1()) {
+											handleSubmit();
+										}
+									}}
+									disabled={loading}
+									className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+								>
+									{loading ? "Saving..." : "Save"}
+								</Button>
+							)}
+							<Button
+								onClick={handleNext}
+								variant={isEditMode ? "outline" : "default"}
+								className={
+									isEditMode
+										? "rounded-lg"
+										: `rounded-lg ${!canProceedToStep2 ? "opacity-75 cursor-not-allowed" : "bg-amber-600 text-white hover:bg-amber-700"}`
+								}
+							>
+								{isEditMode ? "Suppliers" : "Next"}
+							</Button>
+						</>
+					) : step === 2 ? (
 						<>
 							<Button
 								variant="outline"
 								onClick={() => setStep(1)}
+								className="rounded-lg"
+							>
+								Back
+							</Button>
+							<Button
+								onClick={() => setStep(3)}
+								className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+							>
+								Logistics
+							</Button>
+						</>
+					) : (
+						<>
+							<Button
+								variant="outline"
+								onClick={() => setStep(2)}
 								className="rounded-lg"
 							>
 								Back

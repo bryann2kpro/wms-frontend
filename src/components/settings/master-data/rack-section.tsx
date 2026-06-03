@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -10,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -39,7 +48,8 @@ import {
 	type UpdateRackMutationData,
 	type DeleteRackMutationData,
 } from "@/lib/graphql/racks";
-import type { Rack } from "@/lib/graphql/types";
+import { ZONES_QUERY, type ZonesQueryData } from "@/lib/graphql/zones";
+import type { Rack, Zone } from "@/lib/graphql/types";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { PAGE_SIZE, ConfirmDeleteDialog } from "./shared";
 import { ImportDialog } from "./import-dialog";
@@ -53,47 +63,68 @@ export function RackSection() {
 	const [editing, setEditing] = useState<Rack | null>(null);
 	const [deleting, setDeleting] = useState<Rack | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		RacksQueryData,
-		RacksQueryVariables
-	>(RACKS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(search.trim() ? { filter: { rackRow: search.trim() } } : {}),
+	const racksVars: RacksQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(search.trim() ? { filter: { rackRow: search.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.racks.all, racksVars],
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, racksVars),
+	});
+
+	const { mutate: createRack, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateRack, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateRackMutationData>(UPDATE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteRack, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteRackMutationData>(DELETE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
 		},
 	});
 
-	const [createRack, { loading: createLoading }] =
-		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateRack, { loading: updateLoading }] =
-		useMutation<UpdateRackMutationData>(UPDATE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteRack, { loading: deleteLoading }] =
-		useMutation<DeleteRackMutationData>(DELETE_RACK_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "rack-section"],
+		queryFn: () =>
+			gqlRequest<ZonesQueryData>(ZONES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
 
 	const list = data?.racks?.query ?? [];
 	const pagination = data?.racks?.pagination;
 	const totalPages = pagination?.totalPages ?? 1;
 	const currentPage = pagination?.currentPage ?? 1;
+	const zones = zonesData?.zones?.query ?? [];
 	const createdBy = user?.id ?? "";
 
+	const zoneLabel = (zoneId: string | null | undefined) => {
+		if (!zoneId) return null;
+		const z = zones.find((zone) => zone.zoneId === zoneId);
+		return z ? `${z.zoneCode} (${z.purpose})` : null;
+	};
+
 	const rackDisplayName = (rack: Rack) =>
-		`${rack.rackRow}-${rack.rackColumn}-${rack.rackLevel}`;
+		`${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
 
 	return (
 		<Card className="dashboard-card">
@@ -172,6 +203,12 @@ export function RackSection() {
 									Level
 								</TableHead>
 								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Zone
+								</TableHead>
+								<TableHead
 									className="px-6 text-right"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
@@ -183,7 +220,7 @@ export function RackSection() {
 							{loading ? (
 								<TableRow>
 									<TableCell
-										colSpan={4}
+										colSpan={5}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										Loading...
@@ -192,7 +229,7 @@ export function RackSection() {
 							) : list.length === 0 ? (
 								<TableRow>
 									<TableCell
-										colSpan={4}
+										colSpan={5}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										No racks found.
@@ -207,6 +244,9 @@ export function RackSection() {
 										<TableCell className="px-6">{row.rackRow}</TableCell>
 										<TableCell className="px-6">{row.rackColumn}</TableCell>
 										<TableCell className="px-6">{row.rackLevel}</TableCell>
+										<TableCell className="px-6 text-sm text-muted-foreground">
+											{zoneLabel(row.zoneId) ?? <span className="opacity-40">—</span>}
+										</TableCell>
 										<TableCell className="px-6 text-right">
 											<Button
 												variant="ghost"
@@ -270,17 +310,15 @@ export function RackSection() {
 			<RackFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
+				zones={zones}
 				onSubmit={(values) =>
 					createRack({
-						variables: {
-							input: {
-								rackRow: values.rackRow,
-								rackColumn: values.rackColumn,
-								rackLevel: values.rackLevel,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						rackRow: values.rackRow,
+						rackColumn: values.rackColumn,
+						rackLevel: values.rackLevel,
+						zoneId: values.zoneId,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -293,21 +331,22 @@ export function RackSection() {
 					key={editing.rackId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
+					zones={zones}
 					initial={{
 						rackRow: editing.rackRow,
 						rackColumn: editing.rackColumn,
 						rackLevel: editing.rackLevel,
+						zoneId: editing.zoneId ?? null,
 					}}
 					onSubmit={(values) =>
 						updateRack({
-							variables: {
-								id: editing.rackId,
-								input: {
-									rackRow: values.rackRow,
-									rackColumn: values.rackColumn,
-									rackLevel: values.rackLevel,
-									updatedBy: createdBy,
-								},
+							id: editing.rackId,
+							input: {
+								rackRow: values.rackRow,
+								rackColumn: values.rackColumn,
+								rackLevel: values.rackLevel,
+								zoneId: values.zoneId,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -322,7 +361,7 @@ export function RackSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={rackDisplayName(deleting)}
-					onConfirm={() => deleteRack({ variables: { id: deleting.rackId } })}
+					onConfirm={() => deleteRack({ id: deleting.rackId })}
 					loading={deleteLoading}
 				/>
 			)}
@@ -344,6 +383,7 @@ function RackFormDialog({
 	open,
 	onOpenChange,
 	initial,
+	zones,
 	onSubmit,
 	loading,
 	title,
@@ -351,11 +391,13 @@ function RackFormDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	initial?: { rackRow: string; rackColumn: string; rackLevel: string };
+	initial?: { rackRow: string; rackColumn: string; rackLevel: string; zoneId?: string | null };
+	zones: Zone[];
 	onSubmit: (v: {
 		rackRow: string;
 		rackColumn: string;
 		rackLevel: string;
+		zoneId?: string | null;
 	}) => void;
 	loading: boolean;
 	title: string;
@@ -364,20 +406,23 @@ function RackFormDialog({
 	const [rackRow, setRackRow] = useState(initial?.rackRow ?? "");
 	const [rackColumn, setRackColumn] = useState(initial?.rackColumn ?? "");
 	const [rackLevel, setRackLevel] = useState(initial?.rackLevel ?? "");
+	const [zoneId, setZoneId] = useState<string | null>(initial?.zoneId ?? null);
 
 	useEffect(() => {
 		if (open) {
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setZoneId(initial?.zoneId ?? null);
 		}
-	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel]);
+	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel, initial?.zoneId]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setZoneId(initial?.zoneId ?? null);
 		}
 		onOpenChange(next);
 	};
@@ -442,6 +487,27 @@ function RackFormDialog({
 							className="rounded-lg border-muted-foreground/20"
 						/>
 					</div>
+					<div className="grid gap-2">
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+							Zone (optional)
+						</Label>
+						<Select
+							value={zoneId ?? "none"}
+							onValueChange={(v) => setZoneId(v === "none" ? null : v)}
+						>
+							<SelectTrigger className="rounded-lg border-muted-foreground/20">
+								<SelectValue placeholder="No zone" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">No zone</SelectItem>
+								{zones.map((z) => (
+									<SelectItem key={z.zoneId} value={z.zoneId}>
+										{z.zoneCode} — {z.zoneName} ({z.purpose})
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 				<DialogFooter className="border-t bg-muted/20">
 					<Button
@@ -463,6 +529,7 @@ function RackFormDialog({
 								rackRow: rackRow.trim(),
 								rackColumn: rackColumn.trim(),
 								rackLevel: rackLevel.trim(),
+								zoneId,
 							})
 						}
 						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"

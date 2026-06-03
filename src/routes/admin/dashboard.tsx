@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -53,10 +55,10 @@ export const Route = createFileRoute("/admin/dashboard")({
 function DashboardComponent() {
 	const { user } = useCurrentUser();
 
-	const { data: queryData, loading } = useQuery<DashboardQueryData>(
-		DASHBOARD_QUERY,
-		{ fetchPolicy: "cache-and-network" },
-	);
+	const { data: queryData, isLoading: loading } = useQuery({
+		queryKey: qk.dashboard.all,
+		queryFn: () => gqlRequest<DashboardQueryData>(DASHBOARD_QUERY),
+	});
 
 	const data: DashboardData | undefined =
 		queryData?.dashboard != null

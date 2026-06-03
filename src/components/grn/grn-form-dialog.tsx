@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Dialog,
 	DialogContent,
@@ -21,11 +23,12 @@ import {
 } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import { RackCombobox } from "@/components/grn/rack-combobox";
+import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import type { Rack } from "@/lib/graphql/types";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
 	Package,
-	Calendar,
+	Calendar as CalendarIcon,
 	FileText,
 	Upload,
 	XCircle,
@@ -36,6 +39,14 @@ import {
 	CalendarDays,
 	AlertTriangle,
 } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import type { GrnDetailForList } from "@/lib/graphql/types";
 import type { Skus } from "@/lib/graphql/types";
 import {
@@ -52,8 +63,95 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import type { Supplier } from "@/lib/graphql/types";
+import {
+	getGrnLineSkuControls,
+	grnLineDuplicateKey,
+} from "@/lib/grn-sku-line-controls";
 
-/** Get a user-facing message from Apollo or generic errors */
+function parseGrnExpiryDate(value: string): Date | undefined {
+	const trimmed = value?.trim();
+	if (!trimmed) return undefined;
+	const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (iso) {
+		const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+		if (!isNaN(date.getTime())) return date;
+	}
+	const parsed = new Date(trimmed);
+	return isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function GrnLineExpiryDatePicker({
+	value,
+	onChange,
+	allowClear,
+}: {
+	value: string;
+	onChange: (yyyyMmDd: string) => void;
+	allowClear?: boolean;
+}) {
+	const selected = parseGrnExpiryDate(value);
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button
+					type="button"
+					variant="outline"
+					className={cn(
+						"h-8 w-full justify-start rounded-lg border-muted-foreground/20 px-2 text-left font-normal hover:bg-accent hover:text-accent-foreground",
+						!selected && "text-muted-foreground",
+					)}
+				>
+					<CalendarIcon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+					<span className="truncate font-mono text-xs">
+						{selected ? format(selected, "yyyy-MM-dd") : "Select date"}
+					</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent
+				className="w-auto p-0 rounded-lg border shadow-lg bg-background"
+				align="start"
+				sideOffset={4}
+			>
+				<Calendar
+					mode="single"
+					selected={selected}
+					onSelect={(date) => {
+						if (date) onChange(format(date, "yyyy-MM-dd"));
+					}}
+					defaultMonth={selected ?? new Date()}
+					captionLayout="dropdown"
+					showOutsideDays
+					fromYear={new Date().getFullYear() - 1}
+					toYear={new Date().getFullYear() + 15}
+				/>
+				{allowClear && selected ? (
+					<div className="border-t p-2">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-7 w-full text-xs"
+							onClick={() => onChange("")}
+						>
+							Clear date
+						</Button>
+					</div>
+				) : null}
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+/** Get a user-facing message from GraphQL or generic errors */
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
 		const first = (
@@ -64,6 +162,26 @@ function getErrorMessage(err: unknown): string {
 				}>;
 			}
 		).graphQLErrors?.[0];
+		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
+			return "Internal Server Error";
+		const gql = first?.message;
+		if (gql)
+			return toUserFriendlyMessage(
+				gql,
+				"Something went wrong. Please try again.",
+			);
+	}
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as {
+				response?: {
+					errors?: Array<{
+						message?: string;
+						extensions?: { code?: string };
+					}>;
+				};
+			}
+		).response?.errors?.[0];
 		if (first?.extensions?.code === "INTERNAL_SERVER_ERROR")
 			return "Internal Server Error";
 		const gql = first?.message;
@@ -104,11 +222,16 @@ export type GRNLineItemForm = {
 	expiryDate: string;
 	/** Lot number assigned by supplier/manufacturer. Optional. */
 	lotNo: string;
-	/** Rack IDs (at least one required per line). Same SKU allowed with different expiry/racks. */
-	rackIds: string[];
+	/** Rack location (one per line). Same SKU allowed with different expiry/rack. */
+	rackId: string;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
+
+function grnApiRackIds(item: Pick<GRNLineItemForm, "rackId">): string[] {
+	const id = item.rackId?.trim();
+	return id ? [id] : [];
+}
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
 function normalizeFieldErrors(
@@ -266,7 +389,6 @@ function GRNLineRow({
 	}>;
 	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
-	const rackIds = item.rackIds ?? [];
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
@@ -294,6 +416,12 @@ function GRNLineRow({
 		);
 		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
+
+	const { requireLot, requireExpiry } = useMemo(
+		() =>
+			getGrnLineSkuControls(item.skuCode, skuOptions, item.asnLotTracked),
+		[item.skuCode, skuOptions, item.asnLotTracked],
+	);
 
 	return (
 		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
@@ -354,19 +482,25 @@ function GRNLineRow({
 						</Button>
 					</div>
 
-					{item.asnLotTracked ? (
+					{(requireLot || requireExpiry) && item.skuCode?.trim() ? (
 						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
-							<Badge
-								variant="outline"
-								className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
-							>
-								Lot-tracked (ASN)
-							</Badge>
+							{item.asnLotTracked ? (
+								<Badge
+									variant="outline"
+									className="h-5 border-amber-500/70 bg-amber-100/80 text-[10px] font-semibold text-amber-900 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-200"
+								>
+									Lot-tracked (ASN)
+								</Badge>
+							) : null}
 							<p
 								className="text-[10px] text-muted-foreground"
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Lot-tracked — Lot No. and Expiry Date are required before saving.
+								{requireLot && requireExpiry
+									? "This SKU requires Lot No. and Expiry Date."
+									: requireLot
+										? "This SKU requires a Lot No."
+										: "This SKU requires an Expiry Date."}
 							</p>
 						</div>
 					) : null}
@@ -422,107 +556,93 @@ function GRNLineRow({
 							/>
 						</div>
 						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								<CalendarDays className="h-2.5 w-2.5" />
-								Expiry
-							</label>
-							<Input
-								type="text"
-								value={item.expiryDate ?? ""}
-								onChange={(e) => {
-									const newItems = [...items];
-									newItems[index] = {
-										...newItems[index],
-										expiryDate: e.target.value,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="YYYY-MM-DD"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
+								<label
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									<CalendarDays className="h-2.5 w-2.5" />
+									Expiry
+									{requireExpiry ? (
+										<span className="text-destructive">*</span>
+									) : null}
+								</label>
+								<GrnLineExpiryDatePicker
+									value={item.expiryDate ?? ""}
+									allowClear={!requireExpiry}
+									onChange={(expiryDate) => {
+										const newItems = [...items];
+										newItems[index] = {
+											...newItems[index],
+											expiryDate,
+										};
+										onItemsChange(newItems);
+									}}
+								/>
+							</div>
 						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Lot No.
-							</label>
-							<Input
-								type="text"
-								value={item.lotNo ?? ""}
-								onChange={(e) => {
-									const newItems = [...items];
-									newItems[index] = {
-										...newItems[index],
-										lotNo: e.target.value,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="e.g. LOT-2026-001"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
+								<label
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Lot No.
+									{requireLot ? (
+										<span className="text-destructive">*</span>
+									) : null}
+								</label>
+								<Input
+									type="text"
+									value={item.lotNo ?? ""}
+									onChange={(e) => {
+										const newItems = [...items];
+										newItems[index] = {
+											...newItems[index],
+											lotNo: e.target.value,
+										};
+										onItemsChange(newItems);
+									}}
+									placeholder="e.g. LOT-2026-001"
+									className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+								/>
+							</div>
 					</div>
 
-					{/* Row 3: Racks */}
+					{/* Row 3: Rack */}
 					<div className="space-y-1">
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
-							Racks <span className="text-destructive">*</span>
+							Rack <span className="text-destructive">*</span>
 						</label>
-						<div className="flex flex-wrap items-center gap-1.5">
-							{rackIds.map((rid) => {
-								const r = racks.find((x) => x.rackId === rid);
-								const label = r
-									? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}`
-									: rid;
-								return (
-									<Badge
-										key={rid}
-										variant="secondary"
-										className="gap-1 pr-1 font-mono text-xs font-normal h-6"
-									>
-										{label}
-										<button
-											type="button"
-											onClick={() => {
-												const newItems = [...items];
-												newItems[index] = {
-													...newItems[index],
-													rackIds: rackIds.filter((id) => id !== rid),
-												};
-												onItemsChange(newItems);
-											}}
-											className="rounded-full p-0.5 hover:bg-muted/80"
-											aria-label={`Remove rack ${label}`}
-										>
-											<XCircle className="h-3 w-3" />
-										</button>
-									</Badge>
-								);
-							})}
-							<RackCombobox
-								racks={racks}
-								selectedRackIds={rackIds}
-								onToggle={(rackId) => {
-									const newRackIds = rackIds.includes(rackId)
-										? rackIds.filter((id) => id !== rackId)
-										: [...rackIds, rackId];
+						<div className="flex flex-wrap items-center gap-2">
+							<div className="min-w-0 flex-1">
+							<RackLocationCombobox
+								racks={racks as Rack[]}
+								value={item.rackId ?? ""}
+								onChange={(rackId) => {
 									const newItems = [...items];
 									newItems[index] = {
 										...newItems[index],
-										rackIds: newRackIds,
+										rackId,
 									};
 									onItemsChange(newItems);
 								}}
-								onCreateRack={() => onOpenCreateRack?.(index)}
+								placeholder="Select rack…"
+								className="h-8"
 							/>
+							</div>
+							{onOpenCreateRack ? (
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
+									onClick={() => onOpenCreateRack(index)}
+								>
+									<Plus className="h-3 w-3" />
+									New
+								</Button>
+							) : null}
 						</div>
 					</div>
 				</div>
@@ -535,6 +655,7 @@ function GRNLineRow({
 export type GrnCreateSubmitPayload = {
 	grnNumber: string;
 	poReference: string;
+	supplierId: string;
 	supplierDO: string;
 	receivedDate: string;
 	notes: string;
@@ -564,6 +685,10 @@ export type GrnFormDialogProps = {
 		rackColumn: string;
 		rackLevel: string;
 	}>;
+	/** Suppliers from m_suppliers for receipt details */
+	suppliers: Supplier[];
+	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
+	supplierSelectionOptional?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -595,6 +720,8 @@ export function GrnFormDialog({
 	stockUnits,
 	warehouses: _warehouses,
 	racks,
+	suppliers,
+	supplierSelectionOptional = false,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -605,6 +732,7 @@ export function GrnFormDialog({
 	initialValues,
 }: GrnFormDialogProps) {
 	const { user } = useCurrentUser();
+	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	const [createRackOpen, setCreateRackOpen] = useState(false);
@@ -612,49 +740,61 @@ export function GrnFormDialog({
 		number | null
 	>(null);
 
-	const [updateGRN] = useMutation(UPDATE_GRN_MUTATION, {
-		onCompleted: () => {
+	const { mutateAsync: updateGRN } = useMutation({
+		mutationFn: (variables: { id: string; input: unknown }) =>
+			gqlRequest(UPDATE_GRN_MUTATION, variables),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: qk.grns.all });
 			onSuccess?.();
 			if (mode === "edit") onOpenChange(false);
 		},
 	});
 
-	const [deleteGRN, { loading: deleteLoading }] = useMutation(
-		DELETE_GRN_MUTATION,
-		{
-			onError: (err) => {
-				toast.error(getErrorMessage(err));
-			},
-			onCompleted: () => {
-				onSuccess?.();
-				onOpenChange(false);
-			},
+	const { mutate: deleteGRN, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest(DELETE_GRN_MUTATION, variables),
+		onError: (err) => {
+			toast.error(getErrorMessage(err));
 		},
-	);
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: qk.grns.all });
+			onSuccess?.();
+			onOpenChange(false);
+		},
+	});
 
 	const createdBy = user?.id ?? "";
 	const updateItemsWithRackRef = useRef<
 		((lineIndex: number, rackId: string) => void) | null
 	>(null);
-	const [createRack, { loading: createRackLoading }] =
-		useMutation<CreateRackMutationData>(CREATE_RACK_MUTATION, {
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: (data) => {
-				const rack = data?.createRack;
-				if (rack && createRackForLineIndex != null) {
-					updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
-					onRackCreated?.();
-					setCreateRackOpen(false);
-					setCreateRackForLineIndex(null);
-					toast.success("Rack created.");
-				}
-			},
-		});
+	const { mutate: createRack, isPending: createRackLoading } = useMutation({
+		mutationFn: (input: {
+			rackRow: string;
+			rackColumn: string;
+			rackLevel: string;
+			createdBy: string;
+			updatedBy: string;
+		}) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: (data) => {
+			const rack = data?.createRack;
+			if (rack && createRackForLineIndex != null) {
+				updateItemsWithRackRef.current?.(createRackForLineIndex, rack.rackId);
+				queryClient.invalidateQueries({ queryKey: qk.racks.all });
+				onRackCreated?.();
+				setCreateRackOpen(false);
+				setCreateRackForLineIndex(null);
+				toast.success("Rack created.");
+			}
+		},
+	});
 
 	const form = useForm({
 		defaultValues: {
 			grnNumber: "",
 			poReference: initialValues?.poReference ?? "",
+			supplierId: "",
 			supplierDO: "",
 			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
@@ -663,10 +803,15 @@ export function GrnFormDialog({
 		},
 		validators: {
 			onSubmit: ({ value }) => {
-				console.log("value", value);
 				const fields: Partial<Record<string, string>> = {};
 				if (!value.poReference?.trim())
 					fields.poReference = "PO Reference is required";
+				if (
+					!supplierSelectionOptional &&
+					!(value.supplierId ?? "").trim()
+				) {
+					fields.supplierId = "Supplier is required";
+				}
 				if (!value.supplierDO?.trim())
 					fields.supplierDO = "Supplier DO is required";
 				if (!value.receivedDate?.trim())
@@ -682,32 +827,43 @@ export function GrnFormDialog({
 						fields.items =
 							"Each line item must have total quantity (Carton + Loss) greater than zero.";
 					} else {
-						const missingLotFields = items.find(
-							(i) =>
-								i.asnLotTracked &&
-								(!i.lotNo?.trim() || !i.expiryDate?.trim()),
-						);
-						console.log("missingLotFields", missingLotFields);
-						if (missingLotFields) {
+						const missingControlledFields = items.find((i) => {
+							if (!i.skuCode?.trim()) return false;
+							const { requireLot, requireExpiry } = getGrnLineSkuControls(
+								i.skuCode,
+								skuOptions,
+								i.asnLotTracked,
+							);
+							if (requireLot && !i.lotNo?.trim()) return true;
+							if (requireExpiry && !i.expiryDate?.trim()) return true;
+							return false;
+						});
+						if (missingControlledFields) {
 							fields.items =
-								"Lot-tracked items require both a Lot No. and an Expiry Date before saving.";
+								"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.";
 						} else {
 							const missingRack = items.find(
-								(i) => !(i.rackIds ?? []).length,
+								(i) => !(i.rackId ?? "").trim(),
 							);
 							if (missingRack) {
-								fields.items = "Each line item must have at least one rack.";
+								fields.items = "Each line item must have a rack.";
 							} else {
 								const seen = new Set<string>();
 								const hasDuplicate = items.some((i) => {
-									const key = `${i.skuCode}::${i.expiryDate?.trim() || ""}`;
+									const key = grnLineDuplicateKey(
+										i.skuCode,
+										skuOptions,
+										i.expiryDate ?? "",
+										i.lotNo ?? "",
+										i.asnLotTracked,
+									);
 									if (seen.has(key)) return true;
 									seen.add(key);
 									return false;
 								});
 								if (hasDuplicate) {
 									fields.items =
-										"Duplicate line items: two or more rows share the same SKU and expiry date. Use a different expiry date or merge the quantities into one row.";
+										"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.";
 								}
 							}
 						}
@@ -727,6 +883,7 @@ export function GrnFormDialog({
 				const payload: GrnCreateSubmitPayload = {
 					grnNumber: value.grnNumber,
 					poReference: value.poReference ?? "",
+					supplierId: value.supplierId ?? "",
 					supplierDO: value.supplierDO,
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
@@ -741,7 +898,7 @@ export function GrnFormDialog({
 						unitPrice: i.unitPrice,
 						expiryDate: i.expiryDate ?? "",
 						lotNo: i.lotNo ?? "",
-						rackIds: i.rackIds ?? [],
+						rackId: i.rackId ?? "",
 					})),
 				};
 
@@ -764,41 +921,39 @@ export function GrnFormDialog({
 			const status = (grn.status ?? "Draft") as GRNStatus;
 			try {
 				await updateGRN({
-					variables: {
-						id: grn.id,
-						input: {
-							grnNo: value.grnNumber || undefined,
-							supplierId: grn.supplierId,
-							supplierDeliveryId: grn.supplierDeliveryId ?? null,
-							supplierDeliveryNo: value.supplierDO || undefined,
-							poNo: value.poReference || undefined,
-							receivedAt: parsedDate?.toISOString() ?? undefined,
-							status: UI_STATUS_TO_GQL[status],
-							notes: value.notes || undefined,
-							warehouseId: value.warehouseId?.trim() || undefined,
-							items: (value.items ?? []).map((i) => {
-								const uomId = i.uom
-									? (stockUnits.find((u) => u.unitCode === i.uom)
-										?.stockUnitId ?? i.uom)
-									: undefined;
-								const rackIds = (i.rackIds ?? []).filter((id) =>
-									(id ?? "").trim(),
-								);
-								return {
-									skuId:
-										skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
-										undefined,
-									skuCode: i.skuCode,
-									skuDescription: i.description ?? undefined,
-									qty: String(i.carton),
-									lossQty: String(i.loss),
-									skuUom: uomId ?? undefined,
-									expiryDate: (i.expiryDate ?? "").trim() || undefined,
-									lotNo: (i.lotNo ?? "").trim() || undefined,
-									...(rackIds.length > 0 && { rackIds }),
-								};
-							}),
-						},
+					id: grn.id,
+					input: {
+						grnNo: value.grnNumber || undefined,
+						supplierId: grn.supplierId,
+						supplierDeliveryId: grn.supplierDeliveryId ?? null,
+						supplierDeliveryNo: value.supplierDO || undefined,
+						poNo: value.poReference || undefined,
+						receivedAt: parsedDate?.toISOString() ?? undefined,
+						status: UI_STATUS_TO_GQL[status],
+						notes: value.notes || undefined,
+						warehouseId: value.warehouseId?.trim() || undefined,
+						items: (value.items ?? []).map((i) => {
+							const uomId = i.uom
+								? (stockUnits.find((u) => u.unitCode === i.uom)
+									?.stockUnitId ?? i.uom)
+								: undefined;
+							const rackIds = (i.rackIds ?? []).filter((id) =>
+								(id ?? "").trim(),
+							);
+							return {
+								skuId:
+									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
+									undefined,
+								skuCode: i.skuCode,
+								skuDescription: i.description ?? undefined,
+								qty: String(i.carton),
+								lossQty: String(i.loss),
+								skuUom: uomId ?? undefined,
+								expiryDate: (i.expiryDate ?? "").trim() || undefined,
+								lotNo: (i.lotNo ?? "").trim() || undefined,
+								...(rackIds.length > 0 && { rackIds }),
+							};
+						}),
 					},
 				});
 			} catch (err) {
@@ -818,8 +973,9 @@ export function GrnFormDialog({
 					)
 					: undefined;
 				const rack = it.rack;
-				const rackIds =
-					(it as { rackIds?: string[] }).rackIds ?? (rack ? [rack.rackId] : []);
+				const legacyRackIds = (it as { rackIds?: string[] }).rackIds;
+				const rackId =
+					legacyRackIds?.[0] ?? rack?.rackId ?? (it as { rackId?: string }).rackId ?? "";
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
 				return {
@@ -831,12 +987,13 @@ export function GrnFormDialog({
 					unitPrice: 0,
 					expiryDate,
 					lotNo,
-					rackIds,
+					rackId,
 				};
 			});
 			form.reset({
 				grnNumber: grn.grnNo ?? "",
 				poReference: grn.poNo ?? "",
+				supplierId: grn.supplierId ?? "",
 				supplierDO: grn.supplierDeliveryNo ?? grn.supplierDeliveryId ?? "",
 				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
@@ -847,6 +1004,7 @@ export function GrnFormDialog({
 			form.reset({
 				grnNumber: "",
 				poReference: initialValues?.poReference ?? "",
+				supplierId: "",
 				supplierDO: "",
 				receivedDate: initialValues?.receivedDate ?? "",
 				notes: "",
@@ -869,19 +1027,17 @@ export function GrnFormDialog({
 		if (!grn?.id || grn.status !== "Draft") return;
 		const items = form.state.values.items ?? [];
 		const missingRack = items.find(
-			(i: { rackIds?: string[] }) => !(i.rackIds ?? []).length,
+			(i: { rackId?: string }) => !(i.rackId ?? "").trim(),
 		);
 		if (missingRack) {
 			toast.error(
-				"Each line item must have at least one rack before submitting for approval.",
+				"Each line item must have a rack before submitting for approval.",
 			);
 			return;
 		}
 		updateGRN({
-			variables: {
-				id: grn.id,
-				input: { status: UI_STATUS_TO_GQL["Submitted"] },
-			},
+			id: grn.id,
+			input: { status: UI_STATUS_TO_GQL["Submitted"] },
 		});
 	};
 
@@ -893,7 +1049,7 @@ export function GrnFormDialog({
 			)
 		)
 			return;
-		deleteGRN({ variables: { id: grn.id } });
+		deleteGRN({ id: grn.id });
 	};
 
 	const isCreate = mode === "create";
@@ -904,6 +1060,15 @@ export function GrnFormDialog({
 			initialValues?.receivedDate?.trim() ||
 			(initialValues?.items?.length ?? 0) > 0
 		);
+	const sortedSuppliers = useMemo(
+		() =>
+			[...suppliers].sort((a, b) =>
+				a.supplierName.localeCompare(b.supplierName, undefined, {
+					sensitivity: "base",
+				}),
+			),
+		[suppliers],
+	);
 	const title = isCreate ? "Create New GRN" : "Edit GRN";
 	const description = isCreate
 		? "Enter the details for the new goods receipt note"
@@ -1003,6 +1168,69 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
+								</div>
+								<div className="grid gap-4 sm:grid-cols-2">
+									<form.Field name="supplierId">
+										{(field) => {
+											const isInvalid = field.state.meta.errors.length > 0;
+											const required =
+												isCreate && !supplierSelectionOptional;
+											return (
+												<Field data-invalid={isInvalid}>
+													<FieldLabel
+														htmlFor={field.name}
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													>
+														Supplier{" "}
+														{required ? (
+															<span className="text-destructive">*</span>
+														) : null}
+													</FieldLabel>
+													<Select
+														value={field.state.value || undefined}
+														onValueChange={(v) => field.handleChange(v)}
+													>
+														<SelectTrigger
+															id={field.name}
+															className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
+															aria-invalid={isInvalid}
+														>
+															<SelectValue placeholder="Select supplier…" />
+														</SelectTrigger>
+														<SelectContent>
+															{sortedSuppliers.map((s) => (
+																<SelectItem
+																	key={s.supplierId}
+																	value={s.supplierId}
+																>
+																	{s.supplierCode} — {s.supplierName}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													{sortedSuppliers.length === 0 ? (
+														<p className="text-xs text-amber-600 mt-1">
+															No suppliers in master data. Add suppliers in
+															Settings first.
+														</p>
+													) : null}
+													{supplierSelectionOptional ? (
+														<p className="text-xs text-muted-foreground mt-1">
+															Optional when created from ASN; backend can
+															resolve supplier from the notice.
+														</p>
+													) : null}
+													{isInvalid && (
+														<FieldError
+															errors={normalizeFieldErrors(
+																field.state.meta.errors,
+															)}
+														/>
+													)}
+												</Field>
+											);
+										}}
+									</form.Field>
 									<form.Field name="supplierDO">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -1047,7 +1275,7 @@ export function GrnFormDialog({
 													className="flex items-center gap-1.5"
 													style={{ fontFamily: "var(--dashboard-body)" }}
 												>
-													<Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+													<CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
 													Received Date/Time{" "}
 													<span className="text-destructive">*</span>
 												</FieldLabel>
@@ -1109,7 +1337,7 @@ export function GrnFormDialog({
 															loss: 0,
 															expiryDate: "",
 															lotNo: "",
-															rackIds: [],
+															rackId: "",
 														},
 													]);
 												}}
@@ -1129,11 +1357,9 @@ export function GrnFormDialog({
 											[]) as GRNLineItemForm[];
 										if (current[lineIndex] == null) return;
 										const next = [...current];
-										const existing = next[lineIndex].rackIds ?? [];
-										if (existing.includes(rackId)) return;
 										next[lineIndex] = {
 											...next[lineIndex],
-											rackIds: [...existing, rackId],
+											rackId,
 										};
 										field.handleChange(next);
 									};
@@ -1198,15 +1424,11 @@ export function GrnFormDialog({
 												}}
 												onSubmit={(values) =>
 													createRack({
-														variables: {
-															input: {
-																rackRow: values.rackRow,
-																rackColumn: values.rackColumn,
-																rackLevel: values.rackLevel,
-																createdBy,
-																updatedBy: createdBy,
-															},
-														},
+														rackRow: values.rackRow,
+														rackColumn: values.rackColumn,
+														rackLevel: values.rackLevel,
+														createdBy,
+														updatedBy: createdBy,
 													})
 												}
 												loading={createRackLoading}

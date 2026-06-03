@@ -6,3 +6,6 @@ export { OutletSection } from "./outlet-section";
 export { StockUnitSection } from "./stock-unit-section";
 export { RackSection } from "./rack-section";
 export { SkusSection } from "./skus-section";
+export { ZoneSection } from "./zone-section";
+export { BinSection } from "./bin-section";
+export { PutawayRuleSection } from "./putaway-rule-section";

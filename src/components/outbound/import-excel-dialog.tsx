@@ -1,4 +1,6 @@
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { format } from "date-fns";
 import {
 	AlertTriangle,
@@ -123,19 +125,22 @@ export function ImportExcelDialog({
 
 	const {
 		data: outletsData,
-		loading: outletsLoading,
+		isLoading: outletsLoading,
 		refetch: refetchOutlets,
-	} = useQuery<OutletsQueryData, OutletsQueryVariables>(OUTLETS_QUERY, {
-		variables: { pageSize: 500, pageNumber: 1 },
-		skip: !open,
+	} = useQuery({
+		queryKey: [...qk.outlets.all, { pageSize: 500, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<OutletsQueryData, OutletsQueryVariables>(OUTLETS_QUERY, {
+				pageSize: 500,
+				pageNumber: 1,
+			}),
+		enabled: open,
 	});
 
-	const { data: skusData, loading: skusLoading } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, {
-		variables: {},
-		skip: !open,
+	const { data: skusData, isLoading: skusLoading } = useQuery({
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {}),
+		enabled: open,
 	});
 
 	const outletsRaw = outletsData?.outlets?.query ?? [];

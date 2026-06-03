@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	Rack,
 	RackPaginatedResponse,
@@ -9,9 +9,15 @@ import type {
 export const RACK_FRAGMENT = gql`
 	fragment RackFields on Rack {
 		rackId
+		zoneId
+		areaId
 		rackRow
 		rackColumn
 		rackLevel
+		binCode
+		barCode
+		binType
+		isActive
 		createdAt
 		updatedAt
 		createdBy
@@ -22,10 +28,11 @@ export const RACK_FRAGMENT = gql`
 export const RACKS_QUERY = gql`
 	query Racks(
 		$filter: RackFilterInput
+		$sort: RackSortInput
 		$pageSize: Int
 		$pageNumber: Int
 	) {
-		racks(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
+		racks(filter: $filter, sort: $sort, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				...RackFields
 			}
@@ -76,6 +83,13 @@ export type RacksQueryVariables = {
 		rackColumns?: string[];
 		rackLevel?: string;
 		rackLevels?: string[];
+		binCode?: string;
+		binType?: string;
+		isActive?: boolean;
+	};
+	sort?: {
+		sortBy?: string;
+		sortOrder?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

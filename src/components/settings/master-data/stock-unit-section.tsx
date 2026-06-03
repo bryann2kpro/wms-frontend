@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -46,42 +48,69 @@ export function StockUnitSection() {
 	const [editing, setEditing] = useState<StockUnit | null>(null);
 	const [deleting, setDeleting] = useState<StockUnit | null>(null);
 
-	const { data, loading, refetch } = useQuery<
-		StockUnitsQueryData,
-		StockUnitsQueryVariables
-	>(STOCK_UNITS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			...(search.trim() ? { filter: { unitName: search.trim() } } : {}),
-		},
+	const stockUnitsVars: StockUnitsQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		...(search.trim() ? { filter: { unitName: search.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.stockUnits.all, stockUnitsVars],
+		queryFn: () =>
+			gqlRequest<StockUnitsQueryData, StockUnitsQueryVariables>(
+				STOCK_UNITS_QUERY,
+				stockUnitsVars,
+			),
 	});
 
-	const [createStockUnit, { loading: createLoading }] =
-		useMutation<CreateStockUnitMutationData>(CREATE_STOCK_UNIT_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateStockUnit, { loading: updateLoading }] =
-		useMutation<UpdateStockUnitMutationData>(UPDATE_STOCK_UNIT_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [toggleActive] = useMutation<ToggleStockUnitActiveMutationData>(
-		TOGGLE_STOCK_UNIT_ACTIVE_MUTATION,
-		{ onCompleted: () => refetch() },
-	);
-	const [deleteStockUnit, { loading: deleteLoading }] =
-		useMutation<DeleteStockUnitMutationData>(DELETE_STOCK_UNIT_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { mutate: createStockUnit, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateStockUnitMutationData>(CREATE_STOCK_UNIT_MUTATION, {
+				input,
+			}),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateStockUnit, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateStockUnitMutationData>(
+				UPDATE_STOCK_UNIT_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: toggleActive } = useMutation({
+		mutationFn: (variables: {
+			id: string;
+			isActive: boolean;
+			updatedBy: string;
+		}) =>
+			gqlRequest<ToggleStockUnitActiveMutationData>(
+				TOGGLE_STOCK_UNIT_ACTIVE_MUTATION,
+				variables,
+			),
+		onSuccess: () => refetch(),
+	});
+	const { mutate: deleteStockUnit, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteStockUnitMutationData>(
+				DELETE_STOCK_UNIT_MUTATION,
+				variables,
+			),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const list = data?.stockUnits?.query ?? [];
 	const pagination = data?.stockUnits?.pagination;
@@ -213,11 +242,9 @@ export function StockUnitSection() {
 												size="sm"
 												onClick={() =>
 													toggleActive({
-														variables: {
-															id: row.stockUnitId,
-															isActive: !row.isActive,
-															updatedBy: createdBy,
-														},
+														id: row.stockUnitId,
+														isActive: !row.isActive,
+														updatedBy: createdBy,
 													})
 												}
 												title={row.isActive ? "Deactivate" : "Activate"}
@@ -289,15 +316,11 @@ export function StockUnitSection() {
 				onOpenChange={setIsCreateOpen}
 				onSubmit={(values) =>
 					createStockUnit({
-						variables: {
-							input: {
-								unitName: values.unitName,
-								unitCode: values.unitCode,
-								isActive: values.isActive ?? true,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						unitName: values.unitName,
+						unitCode: values.unitCode,
+						isActive: values.isActive ?? true,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -317,14 +340,12 @@ export function StockUnitSection() {
 					}}
 					onSubmit={(values) =>
 						updateStockUnit({
-							variables: {
-								id: editing.stockUnitId,
-								input: {
-									unitName: values.unitName,
-									unitCode: values.unitCode,
-									isActive: values.isActive,
-									updatedBy: createdBy,
-								},
+							id: editing.stockUnitId,
+							input: {
+								unitName: values.unitName,
+								unitCode: values.unitCode,
+								isActive: values.isActive,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -339,9 +360,7 @@ export function StockUnitSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.unitName}
-					onConfirm={() =>
-						deleteStockUnit({ variables: { id: deleting.stockUnitId } })
-					}
+					onConfirm={() => deleteStockUnit({ id: deleting.stockUnitId })}
 					loading={deleteLoading}
 				/>
 			)}

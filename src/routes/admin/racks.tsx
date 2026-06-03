@@ -1,0 +1,793 @@
+import { useState, useEffect } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
+import { requirePermission } from "@/lib/rbac";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import {
+	RACKS_QUERY,
+	CREATE_RACK_MUTATION,
+	UPDATE_RACK_MUTATION,
+	DELETE_RACK_MUTATION,
+	type RacksQueryData,
+	type RacksQueryVariables,
+	type CreateRackMutationData,
+	type UpdateRackMutationData,
+	type DeleteRackMutationData,
+} from "@/lib/graphql/racks";
+import {
+	AREAS_QUERY,
+	type AreasQueryData,
+} from "@/lib/graphql/areas";
+import {
+	ZONES_QUERY,
+	type ZonesQueryData,
+} from "@/lib/graphql/zones";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { formatDate } from "@/lib/utils";
+import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown, Upload } from "lucide-react";
+import type { Rack, Area } from "@/lib/graphql/types";
+import { ImportDialog } from "@/components/settings/master-data/import-dialog";
+
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
+
+const BIN_TYPES = ["FIXED", "PICK_FACE", "RESERVE", "BULK"] as const;
+
+const formatLevel = (lvl: string | null | undefined): string => {
+	if (!lvl) return "";
+	const match = lvl.trim().match(/\d+/);
+	return match ? match[0].padStart(2, "0") : lvl.trim();
+};
+
+export const Route = createFileRoute("/admin/racks")({
+	beforeLoad: async ({ context }) => {
+		await requirePermission(context.queryClient, ["Inventory"]);
+	},
+	component: RacksPage,
+	head: () => ({
+		meta: [{ title: "Rack Locations - SME Edaran WMS" }],
+	}),
+});
+
+function RacksPage() {
+	const { user } = useCurrentUser();
+	const [page, setPage] = useState(1);
+	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
+	const [editing, setEditing] = useState<Rack | null>(null);
+	const [deleting, setDeleting] = useState<Rack | null>(null);
+
+	const racksVars: RacksQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		sort: { sortBy: sortField, sortOrder: sortDirection },
+		...(debouncedSearch.trim() ? { filter: { binCode: debouncedSearch.trim() } } : {}),
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.racks.all, racksVars],
+		queryFn: () => gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, racksVars),
+	});
+
+	const { data: areasData } = useQuery({
+		queryKey: [...qk.areas.all, "racks-page"],
+		queryFn: () => gqlRequest<AreasQueryData>(AREAS_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+
+	const { data: zonesData } = useQuery({
+		queryKey: [...qk.zones.all, "racks-page"],
+		queryFn: () => gqlRequest<ZonesQueryData>(ZONES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+
+	const { mutate: createRack, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onSuccess: () => {
+			void refetch();
+			setIsCreateOpen(false);
+		},
+	});
+
+	const { mutate: updateRack, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateRackMutationData>(UPDATE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			void refetch();
+			setEditing(null);
+		},
+	});
+
+	const { mutate: deleteRack, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteRackMutationData>(DELETE_RACK_MUTATION, variables),
+		onSuccess: () => {
+			void refetch();
+			setDeleting(null);
+		},
+	});
+
+	const list = data?.racks?.query ?? [];
+	const pagination = data?.racks?.pagination;
+	const totalPages = pagination?.totalPages ?? 1;
+	const currentPage = pagination?.currentPage ?? 1;
+	const areas = areasData?.areas?.query ?? [];
+	const zones = zonesData?.zones?.query ?? [];
+	const createdBy = user?.id ?? "";
+
+	const locationLabel = (rack: { areaId?: string | null; zoneId?: string | null }) => {
+		if (rack.areaId) {
+			return areas.find((a) => a.areaId === rack.areaId)?.warehouseName ?? null;
+		}
+		if (rack.zoneId) {
+			return zones.find((z) => z.zoneId === rack.zoneId)?.warehouseName ?? null;
+		}
+		return null;
+	};
+
+	return (
+		<div className="space-y-6 p-6">
+			<AdminPageHeader
+				icon={LayoutGrid}
+				title="Rack Locations"
+				description="Storage bin locations across warehouse areas"
+				titleId="racks-title"
+				descriptionId="racks-description"
+			/>
+			<Card className="dashboard-card">
+				<CardHeader>
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<CardTitle
+								className="text-xl"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								Storage Bins
+							</CardTitle>
+							<CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
+								Manage warehouse rack locations
+							</CardDescription>
+						</div>
+						<div className="flex flex-wrap items-center justify-end gap-2">
+							<div className="relative">
+								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									placeholder="Search by bin code..."
+									value={search}
+									onChange={(e) => {
+										setSearch(e.target.value);
+										setPage(1);
+									}}
+									className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-56"
+								/>
+							</div>
+							<div className="flex items-center gap-1">
+								<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+								<Select
+									value={sortField}
+									onValueChange={(v) => {
+										setSortField(v);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-9 w-36 rounded-lg text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="BIN_CODE">Bin Code</SelectItem>
+										<SelectItem value="RACK_ROW">Storage Row</SelectItem>
+										<SelectItem value="RACK_COLUMN">Storage Bay</SelectItem>
+										<SelectItem value="RACK_LEVEL">Level</SelectItem>
+										<SelectItem value="BIN_TYPE">Bin Type</SelectItem>
+										<SelectItem value="UPDATED_AT">Last Updated</SelectItem>
+										<SelectItem value="CREATED_AT">Created</SelectItem>
+									</SelectContent>
+								</Select>
+								<Select
+									value={sortDirection}
+									onValueChange={(v) => {
+										setSortDirection(v as "ASC" | "DESC");
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-9 w-20 rounded-lg text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ASC">ASC</SelectItem>
+										<SelectItem value="DESC">DESC</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<Button
+								variant="outline"
+								onClick={() => setIsImportOpen(true)}
+								disabled={!createdBy}
+								className="rounded-lg"
+							>
+								<Upload className="mr-2 h-4 w-4" />
+								Import Excel
+							</Button>
+							<Button
+								onClick={() => setIsCreateOpen(true)}
+								disabled={!createdBy}
+								className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+							>
+								<Plus className="mr-2 h-4 w-4" />
+								Add Rack
+							</Button>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent className="relative px-0 pb-6">
+					<GlobalLoadingShadow />
+					<div className="mx-6 overflow-x-auto rounded-xl border">
+						<Table>
+							<TableHeader>
+								<TableRow className="hover:bg-transparent">
+									<TableHead className="w-10 px-4">
+										<Checkbox disabled />
+									</TableHead>
+									{[
+										"Code",
+										"Barcode",
+										"Description",
+										"Storage Row",
+										"Storage Bay",
+										"Level",
+										"Storage Type",
+										"Location",
+										"Status",
+										"Last Count Date",
+									].map((col) => (
+										<TableHead
+											key={col}
+											className="px-4 text-xs font-medium"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											{col}
+										</TableHead>
+									))}
+									<TableHead className="px-4 text-right text-xs font-medium">
+										Actions
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{loading ? (
+									<TableRow>
+										<TableCell
+											colSpan={12}
+											className="h-24 text-center text-muted-foreground"
+										>
+											Loading...
+										</TableCell>
+									</TableRow>
+								) : list.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={12}
+											className="h-24 text-center text-muted-foreground"
+										>
+											No racks found.
+										</TableCell>
+									</TableRow>
+								) : (
+									list.map((row) => (
+										<TableRow
+											key={row.rackId}
+											className="transition-colors hover:bg-muted/50"
+										>
+											<TableCell className="px-4">
+												<Checkbox />
+											</TableCell>
+											<TableCell className="px-4 font-mono text-sm">
+												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
+											</TableCell>
+											<TableCell className="px-4">
+												{row.barCode ? (
+													<Badge
+														variant="outline"
+														className="border-blue-400 font-mono text-blue-600"
+													>
+														{row.barCode}
+													</Badge>
+												) : (
+													<span className="opacity-30">—</span>
+												)}
+											</TableCell>
+											<TableCell className="px-4 text-sm text-muted-foreground">
+												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
+											</TableCell>
+											<TableCell className="px-4 font-medium">
+												{row.rackRow}
+											</TableCell>
+											<TableCell className="px-4">{`${row.rackRow}-${row.rackColumn}`}</TableCell>
+											<TableCell className="px-4">{formatLevel(row.rackLevel)}</TableCell>
+											<TableCell className="px-4">
+												<Badge
+													variant="secondary"
+													className="text-xs font-medium"
+												>
+													{row.binType}
+												</Badge>
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{locationLabel(row) ?? (
+													<span className="opacity-30">—</span>
+												)}
+											</TableCell>
+											<TableCell className="px-4">
+												<Badge
+													variant={row.isActive ? "default" : "outline"}
+													className={
+														row.isActive
+															? "bg-green-100 text-green-700 hover:bg-green-100"
+															: "text-muted-foreground"
+													}
+												>
+													{row.isActive ? "ACTIVE" : "INACTIVE"}
+												</Badge>
+											</TableCell>
+											<TableCell className="px-4 text-sm text-muted-foreground">
+												{formatDate(row.updatedAt)}
+											</TableCell>
+											<TableCell className="px-4 text-right">
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => setEditing(row)}
+													className="rounded-lg"
+												>
+													<Edit className="h-4 w-4" />
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="rounded-lg text-destructive"
+													onClick={() => setDeleting(row)}
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</TableCell>
+										</TableRow>
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					{pagination && totalPages > 1 && (
+						<div className="mx-6 mt-4 flex items-center justify-between">
+							<p
+								className="text-sm text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								Page{" "}
+								<span className="font-semibold tabular-nums text-foreground">
+									{currentPage}
+								</span>{" "}
+								of {totalPages} ({pagination.totalCount} total)
+							</p>
+							<div className="flex gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									disabled={!pagination.hasPrevPage}
+									onClick={() => setPage((p) => Math.max(1, p - 1))}
+									className="rounded-lg"
+								>
+									Previous
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									disabled={!pagination.hasNextPage}
+									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+									className="rounded-lg"
+								>
+									Next
+								</Button>
+							</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			<ImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				mode="racks"
+				createdBy={createdBy}
+				onImported={() => void refetch()}
+			/>
+
+			<RackFormDialog
+				open={isCreateOpen}
+				onOpenChange={setIsCreateOpen}
+				areas={areas}
+				onSubmit={(values) =>
+					createRack({
+						...values,
+						createdBy,
+						updatedBy: createdBy,
+					})
+				}
+				loading={createLoading}
+				title="Add Rack Location"
+				description="Create a new storage bin location."
+			/>
+
+			{editing && (
+				<RackFormDialog
+					key={editing.rackId}
+					open={!!editing}
+					onOpenChange={(open) => !open && setEditing(null)}
+					areas={areas}
+					initial={editing}
+					onSubmit={(values) =>
+						updateRack({
+							id: editing.rackId,
+							input: { ...values, updatedBy: createdBy },
+						})
+					}
+					loading={updateLoading}
+					title="Edit Rack Location"
+					description="Update storage bin details."
+				/>
+			)}
+
+			{deleting && (
+				<ConfirmDeleteDialog
+					open={!!deleting}
+					onOpenChange={(open) => !open && setDeleting(null)}
+					itemName={deleting.binCode ?? `${deleting.rackRow}-${deleting.rackColumn}-${deleting.rackLevel}`}
+					onConfirm={() => deleteRack({ id: deleting.rackId })}
+					loading={deleteLoading}
+				/>
+			)}
+		</div>
+	);
+}
+
+// ─── Form Dialog ─────────────────────────────────────────────────────────────
+
+type FormValues = {
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+	binCode: string;
+	barCode: string;
+	binType: string;
+	areaId: string | null;
+	isActive: boolean;
+};
+
+function RackFormDialog({
+	open,
+	onOpenChange,
+	initial,
+	areas,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	initial?: Rack;
+	areas: Area[];
+	onSubmit: (v: Omit<FormValues, "binCode" | "barCode"> & { binCode?: string | null; barCode?: string | null }) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [rackRow, setRackRow] = useState(initial?.rackRow ?? "");
+	const [rackColumn, setRackColumn] = useState(initial?.rackColumn ?? "");
+	const [rackLevel, setRackLevel] = useState(initial?.rackLevel ?? "");
+	const [binCode, setBinCode] = useState(initial?.binCode ?? "");
+	const [barCode, setBarCode] = useState(initial?.barCode ?? "");
+	const [binType, setBinType] = useState(initial?.binType ?? "FIXED");
+	const [areaId, setAreaId] = useState<string | null>(initial?.areaId ?? null);
+	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [isBinCodeManuallyEdited, setIsBinCodeManuallyEdited] = useState(!!initial?.binCode);
+
+	useEffect(() => {
+		if (open) {
+			setRackRow(initial?.rackRow ?? "");
+			setRackColumn(initial?.rackColumn ?? "");
+			setRackLevel(initial?.rackLevel ?? "");
+			setBinCode(initial?.binCode ?? "");
+			setBarCode(initial?.barCode ?? "");
+			setBinType(initial?.binType ?? "FIXED");
+			setAreaId(initial?.areaId ?? null);
+			setIsActive(initial?.isActive ?? true);
+			setIsBinCodeManuallyEdited(!!initial?.binCode);
+		}
+	}, [open, initial?.rackId]);
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) {
+			setRackRow(initial?.rackRow ?? "");
+			setRackColumn(initial?.rackColumn ?? "");
+			setRackLevel(initial?.rackLevel ?? "");
+			setBinCode(initial?.binCode ?? "");
+			setBarCode(initial?.barCode ?? "");
+			setBinType(initial?.binType ?? "FIXED");
+			setAreaId(initial?.areaId ?? null);
+			setIsActive(initial?.isActive ?? true);
+			setIsBinCodeManuallyEdited(!!initial?.binCode);
+		}
+		onOpenChange(next);
+	};
+
+	useEffect(() => {
+		if (!isBinCodeManuallyEdited) {
+			const parts = [];
+			if (rackRow.trim()) parts.push(rackRow.trim());
+			if (rackColumn.trim()) parts.push(rackColumn.trim());
+			if (rackLevel.trim()) {
+				parts.push(formatLevel(rackLevel));
+			}
+			setBinCode(parts.join("-"));
+		}
+	}, [rackRow, rackColumn, rackLevel, isBinCodeManuallyEdited]);
+
+	const canSubmit =
+		rackRow.trim() && rackColumn.trim() && rackLevel.trim() && !loading;
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent className="max-w-lg rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader className="border-b bg-muted/50 px-6 py-4">
+					<DialogTitle
+						className="text-xl"
+						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+					>
+						{title}
+					</DialogTitle>
+					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
+						{description}
+					</DialogDescription>
+				</DialogHeader>
+				<div className="grid gap-4 px-6 py-4">
+					<div className="grid grid-cols-3 gap-3">
+						<div className="grid gap-2">
+							<Label htmlFor="rack-row" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Storage Row <span className="text-destructive">*</span>
+							</Label>
+							<Input
+								id="rack-row"
+								value={rackRow}
+								onChange={(e) => setRackRow(e.target.value)}
+								placeholder="e.g. A"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-col" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Storage Bay <span className="text-destructive">*</span>
+							</Label>
+							<Input
+								id="rack-col"
+								value={rackColumn}
+								onChange={(e) => setRackColumn(e.target.value)}
+								placeholder="e.g. A-101"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-level" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Level <span className="text-destructive">*</span>
+							</Label>
+							<Input
+								id="rack-level"
+								value={rackLevel}
+								onChange={(e) => setRackLevel(e.target.value)}
+								placeholder="e.g. 1"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
+						<div className="grid gap-2">
+							<Label htmlFor="bin-code" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Bin Code
+							</Label>
+							<Input
+								id="bin-code"
+								value={binCode}
+								onChange={(e) => {
+									setBinCode(e.target.value);
+									setIsBinCodeManuallyEdited(true);
+								}}
+								placeholder="e.g. A1-L1-01"
+								className="rounded-lg border-muted-foreground/20 font-mono"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="barcode" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Barcode
+							</Label>
+							<Input
+								id="barcode"
+								value={barCode}
+								onChange={(e) => setBarCode(e.target.value)}
+								placeholder="e.g. ZZ000001"
+								className="rounded-lg border-muted-foreground/20 font-mono"
+							/>
+						</div>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
+						<div className="grid gap-2">
+							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Storage Type
+							</Label>
+							<Select value={binType} onValueChange={setBinType}>
+								<SelectTrigger className="rounded-lg border-muted-foreground/20">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{BIN_TYPES.map((t) => (
+										<SelectItem key={t} value={t}>
+											{t}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="grid gap-2">
+							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Location (Area)
+							</Label>
+							<Select
+								value={areaId ?? "none"}
+								onValueChange={(v) => setAreaId(v === "none" ? null : v)}
+							>
+								<SelectTrigger className="rounded-lg border-muted-foreground/20">
+									<SelectValue placeholder="No area" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">No area</SelectItem>
+									{areas.map((a) => (
+										<SelectItem key={a.areaId} value={a.areaId}>
+											{a.areaCode} — {a.areaName}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<Checkbox
+							id="is-active"
+							checked={isActive}
+							onCheckedChange={(v) => setIsActive(!!v)}
+						/>
+						<Label
+							htmlFor="is-active"
+							className="cursor-pointer"
+							style={{ fontFamily: '"Figtree", sans-serif' }}
+						>
+							Active
+						</Label>
+					</div>
+				</div>
+				<DialogFooter className="border-t bg-muted/20 px-6 py-3">
+					<Button
+						variant="outline"
+						onClick={() => handleOpenChange(false)}
+						className="rounded-lg"
+					>
+						Cancel
+					</Button>
+					<Button
+						disabled={!canSubmit}
+						onClick={() =>
+							onSubmit({
+								rackRow: rackRow.trim(),
+								rackColumn: rackColumn.trim(),
+								rackLevel: formatLevel(rackLevel),
+								binCode: binCode.trim() || null,
+								barCode: barCode.trim() || null,
+								binType,
+								areaId,
+								isActive,
+							})
+						}
+						className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+					>
+						{loading ? "Saving..." : "Save"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+// ─── Confirm Delete ───────────────────────────────────────────────────────────
+
+function ConfirmDeleteDialog({
+	open,
+	onOpenChange,
+	itemName,
+	onConfirm,
+	loading,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	itemName: string;
+	onConfirm: () => void;
+	loading: boolean;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="rounded-2xl border-2 border-border bg-background shadow-xl">
+				<DialogHeader>
+					<DialogTitle>Delete Rack</DialogTitle>
+					<DialogDescription>
+						Are you sure you want to delete "{itemName}"? This action cannot be
+						undone.
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						variant="destructive"
+						disabled={loading}
+						onClick={onConfirm}
+					>
+						{loading ? "Deleting..." : "Delete"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}

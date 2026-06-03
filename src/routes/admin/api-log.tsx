@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useState, useMemo } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Activity,
 	Calendar,
@@ -165,12 +167,18 @@ function InboundTab() {
 		return f;
 	}, [dateFrom, dateTo, selectedStatus]);
 
-	const { data, loading, error } = useQuery<
-		EsAdvanceNoticeLogsQueryData,
-		EsAdvanceNoticeLogsQueryVariables
-	>(ES_ADVANCE_NOTICE_LOGS_QUERY, {
-		variables: { filter, pageSize: PAGE_SIZE, pageNumber: currentPage },
-		fetchPolicy: "cache-and-network",
+	const inboundVars: EsAdvanceNoticeLogsQueryVariables = {
+		filter,
+		pageSize: PAGE_SIZE,
+		pageNumber: currentPage,
+	};
+	const { data, isLoading: loading, error } = useQuery({
+		queryKey: [...qk.esApiLogs.all, "inbound", inboundVars] as const,
+		queryFn: () =>
+			gqlRequest<
+				EsAdvanceNoticeLogsQueryData,
+				EsAdvanceNoticeLogsQueryVariables
+			>(ES_ADVANCE_NOTICE_LOGS_QUERY, inboundVars),
 	});
 
 	const logs = data?.esAdvanceNoticeLogs.query ?? [];
@@ -239,7 +247,7 @@ function InboundTab() {
 				<CardContent className="px-0 pb-6">
 					{error && (
 						<div className="mx-6 mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600">
-							Error loading logs: {error.message}
+							Error loading logs: {(error as Error).message}
 						</div>
 					)}
 					<div className="overflow-x-auto rounded-lg border mx-6">
@@ -450,12 +458,18 @@ function OutboundTab() {
 		return f;
 	}, [dateFrom, dateTo, poNumber, selectedStatus]);
 
-	const { data, loading, error } = useQuery<
-		EsItemReceiptsQueryData,
-		EsItemReceiptsQueryVariables
-	>(ES_ITEM_RECEIPTS_QUERY, {
-		variables: { filter, pageSize: PAGE_SIZE, pageNumber: currentPage },
-		fetchPolicy: "cache-and-network",
+	const outboundVars: EsItemReceiptsQueryVariables = {
+		filter,
+		pageSize: PAGE_SIZE,
+		pageNumber: currentPage,
+	};
+	const { data, isLoading: loading, error } = useQuery({
+		queryKey: [...qk.esApiLogs.all, "outbound", outboundVars] as const,
+		queryFn: () =>
+			gqlRequest<EsItemReceiptsQueryData, EsItemReceiptsQueryVariables>(
+				ES_ITEM_RECEIPTS_QUERY,
+				outboundVars,
+			),
 	});
 
 	const receipts = data?.esItemReceipts.query ?? [];
@@ -528,7 +542,7 @@ function OutboundTab() {
 				<CardContent className="px-0 pb-6">
 					{error && (
 						<div className="mx-6 mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600">
-							Error loading records: {error.message}
+							Error loading records: {(error as Error).message}
 						</div>
 					)}
 					<div className="overflow-x-auto rounded-lg border mx-6">

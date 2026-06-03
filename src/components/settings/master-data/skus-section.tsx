@@ -5,7 +5,9 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	useReactTable,
 	getCoreRowModel,
@@ -67,7 +69,12 @@ import {
 	type UpdateSkusMutationData,
 	type DeleteSkusMutationData,
 } from "@/lib/graphql/skus";
-import type { Skus, StockUnit } from "@/lib/graphql/types";
+import type {
+	Skus,
+	StockUnit,
+	createSkusInput,
+	UpdateSkusInput,
+} from "@/lib/graphql/types";
 import {
 	Plus,
 	Edit,
@@ -110,7 +117,7 @@ const SKUS_HELP_STEPS: Array<{
 		title: "Create new SKU",
 		image: `${SKUS_HELP_IMAGES_BASE}/step-3.png`,
 		description:
-			"Click Add SKU to create a new record with pricing, quantity, UOM, and suppliers.",
+			"Click Add SKU to create a new record with UOM, picking strategy, and suppliers.",
 	},
 	{
 		title: "Edit and suppliers",
@@ -120,18 +127,12 @@ const SKUS_HELP_STEPS: Array<{
 	},
 ];
 
-type SkuSortField =
-	| "CODE"
-	| "DESCRIPTION"
-	| "PRICE"
-	| "QUANTITY"
-	| "EXPIRY_DATE";
+type SkuSortField = "CODE" | "DESCRIPTION" | "EXPIRY_DATE" | "STRATEGY";
 
 const SKU_SORT_FIELDS: Array<{ value: SkuSortField; label: string }> = [
 	{ value: "CODE", label: "Code" },
 	{ value: "DESCRIPTION", label: "Description" },
-	{ value: "PRICE", label: "Price" },
-	{ value: "QUANTITY", label: "Quantity" },
+	{ value: "STRATEGY", label: "Picking strategy" },
 	{ value: "EXPIRY_DATE", label: "Expiry date" },
 ];
 
@@ -194,7 +195,6 @@ export function SkusSection() {
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
 	const [search, setSearch] = useState("");
-	const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Skus | null>(null);
@@ -205,31 +205,29 @@ export function SkusSection() {
 	const [sortField, setSortField] = useState<SkuSortField>("CODE");
 	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 
-	const { data, loading, refetch } = useQuery<
-		SkusQueryData,
-		SkusQueryVariables
-	>(SKUS_QUERY, { variables: {}, fetchPolicy: "no-cache" });
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: qk.skus.all,
+		queryFn: () => gqlRequest<SkusQueryData, SkusQueryVariables>(SKUS_QUERY, {}),
+		staleTime: 0,
+		gcTime: 0,
+	});
 	const allSkus: Skus[] = data?.skus?.query ?? [];
 	const deferredSearch = useDeferredValue(search);
 
-	const LOW_STOCK_THRESHOLD = 10;
-
 	const list = useMemo(() => {
 		const query = deferredSearch.toLowerCase().trim();
-		return allSkus
-			.filter((sku) =>
-				showLowStockOnly
-					? Number(sku.skuQuantity ?? 0) <= LOW_STOCK_THRESHOLD
-					: true,
-			)
-			.filter((sku) => {
-				if (!query) return true;
-				return (
-					sku.skuCode.toLowerCase().includes(query) ||
-					sku.skuDescription.toLowerCase().includes(query)
-				);
-			});
-	}, [allSkus, deferredSearch, showLowStockOnly]);
+		return allSkus.filter((sku) => {
+			if (!query) return true;
+			return (
+				sku.skuCode.toLowerCase().includes(query) ||
+				sku.skuDescription.toLowerCase().includes(query)
+			);
+		});
+	}, [allSkus, deferredSearch]);
 
 	const sortedList = useMemo(() => {
 		return [...list].sort((a, b) => {
@@ -240,11 +238,9 @@ export function SkusSection() {
 						(a.skuDescription ?? "").localeCompare(b.skuDescription ?? "") *
 						direction
 					);
-				case "PRICE":
-					return ((a.skuPrice ?? 0) - (b.skuPrice ?? 0)) * direction;
-				case "QUANTITY":
+				case "STRATEGY":
 					return (
-						(Number(a.skuQuantity ?? 0) - Number(b.skuQuantity ?? 0)) *
+						(a.pickingStrategy ?? "").localeCompare(b.pickingStrategy ?? "") *
 						direction
 					);
 				case "EXPIRY_DATE": {
@@ -274,60 +270,78 @@ export function SkusSection() {
 
 	const createdBy = user?.id ?? "";
 
-	const { data: suppliersData } = useQuery<
-		SuppliersQueryData,
-		SuppliersQueryVariables
-	>(SUPPLIERS_QUERY, { variables: {} });
+	const { data: suppliersData } = useQuery({
+		queryKey: qk.suppliers.all,
+		queryFn: () =>
+			gqlRequest<SuppliersQueryData, SuppliersQueryVariables>(
+				SUPPLIERS_QUERY,
+				{},
+			),
+	});
 	const suppliers = suppliersData?.suppliers.query ?? [];
 
-	const { data: stockUnitsData } = useQuery<
-		StockUnitsQueryData,
-		StockUnitsQueryVariables
-	>(STOCK_UNITS_QUERY, { variables: {} });
+	const { data: stockUnitsData } = useQuery({
+		queryKey: qk.stockUnits.all,
+		queryFn: () =>
+			gqlRequest<StockUnitsQueryData, StockUnitsQueryVariables>(
+				STOCK_UNITS_QUERY,
+				{},
+			),
+	});
 	const stockUnits = stockUnitsData?.stockUnits.query ?? [];
 
 	const createInFlightRef = useRef(false);
 	const updateInFlightRef = useRef(false);
 	const deleteInFlightRef = useRef(false);
 
-	const [createSkus, { loading: createLoading }] =
-		useMutation<CreateSkusMutationData>(CREATE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				createInFlightRef.current = false;
-				await refetch();
-				setIsCreateOpen(false);
-			},
-			onError: (error) => {
-				createInFlightRef.current = false;
-				toast.error("Failed to create SKU", { description: error.message });
-			},
-		});
+	const { mutate: createSkus, isPending: createLoading } = useMutation({
+		mutationFn: (vars: { input: createSkusInput }) =>
+			gqlRequest<CreateSkusMutationData>(CREATE_SKUS_MUTATION, vars),
+		onSuccess: async () => {
+			createInFlightRef.current = false;
+			await refetch();
+			setIsCreateOpen(false);
+		},
+		onError: (error: Error) => {
+			createInFlightRef.current = false;
+			toast.error("Failed to create SKU", { description: error.message });
+		},
+	});
 
-	const [updateSkus, { loading: updateLoading }] =
-		useMutation<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				updateInFlightRef.current = false;
-				await refetch();
-				setEditing(null);
-			},
-			onError: (error) => {
-				updateInFlightRef.current = false;
-				toast.error("Failed to update SKU", { description: error.message });
-			},
-		});
+	const { mutate: updateSkus, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateSkusMutationData>(UPDATE_SKUS_MUTATION, variables),
+		onSuccess: async (data) => {
+			updateInFlightRef.current = false;
+			if (!data?.updateSku) {
+				toast.error("Failed to update SKU", {
+					description: "No data returned from server. Check backend logs.",
+				});
+				return;
+			}
+			await refetch();
+			setEditing(null);
+			toast.success("SKU updated");
+		},
+		onError: (error: Error) => {
+			updateInFlightRef.current = false;
+			toast.error("Failed to update SKU", { description: error.message });
+		},
+	});
 
-	const [deleteSkus, { loading: deleteLoading }] =
-		useMutation<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, {
-			onCompleted: async () => {
-				deleteInFlightRef.current = false;
-				await refetch();
-				setDeleting(null);
-			},
-			onError: (error) => {
-				deleteInFlightRef.current = false;
-				toast.error("Failed to delete SKU", { description: error.message });
-			},
-		});
+	const { mutate: deleteSkus, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteSkusMutationData>(DELETE_SKUS_MUTATION, variables),
+		onSuccess: async () => {
+			deleteInFlightRef.current = false;
+			await refetch();
+			setDeleting(null);
+		},
+		onError: (error: Error) => {
+			deleteInFlightRef.current = false;
+			toast.error("Failed to delete SKU", { description: error.message });
+		},
+	});
 
 	const columns = useMemo<ColumnDef<Skus>[]>(
 		() => [
@@ -353,29 +367,11 @@ export function SkusSection() {
 				),
 			},
 			{
-				id: "skuPrice",
-				accessorKey: "skuPrice",
-				header: "Price (RM)",
-				size: 110,
-				cell: (info) => {
-					const val = info.getValue<number | null>();
-					return val != null ? Number(val).toFixed(2) : "N/A";
-				},
-			},
-			{
-				id: "skuQuantity",
-				accessorKey: "skuQuantity",
-				header: "Quantity",
-				size: 100,
-				cell: (info) => Number(info.getValue<string | number>()).toFixed(2),
-			},
-			{
-				id: "lossQuantity",
-				accessorKey: "lossQuantity",
-				header: "Loss",
+				id: "pickingStrategy",
+				accessorKey: "pickingStrategy",
+				header: "Picking",
 				size: 90,
-				cell: (info) =>
-					Number(info.getValue<string | number>() ?? 0).toFixed(2),
+				cell: (info) => info.getValue<string>() ?? "FIFO",
 			},
 			{
 				id: "skuExpiryDate",
@@ -600,18 +596,6 @@ export function SkusSection() {
 								aria-label="Search SKUs by code or description"
 							/>
 						</div>
-						<Button
-							variant={showLowStockOnly ? "secondary" : "outline"}
-							size="sm"
-							onClick={() => {
-								setShowLowStockOnly((v) => !v);
-								setPage(1);
-							}}
-							aria-pressed={showLowStockOnly}
-							className="rounded-lg"
-						>
-							Low stock only
-						</Button>
 						<div className="flex items-center gap-1.5">
 							<ArrowUpDown
 								className="h-4 w-4 text-muted-foreground"
@@ -824,9 +808,6 @@ export function SkusSection() {
 					if (createInFlightRef.current || createLoading) return;
 					createInFlightRef.current = true;
 
-					const expiryDate = values.skuExpiryDate
-						? `${values.skuExpiryDate} 00:00:00.000000`
-						: "";
 					createSkus({
 						variables: {
 							input: {
@@ -837,15 +818,28 @@ export function SkusSection() {
 										? null
 										: Number(values.skuPrice),
 								skuQuantity: Number(values.skuQuantity),
-								skuExpiryDate: expiryDate,
+								skuExpiryDate: "",
 								skuUom: values.skuUom,
 								pickingStrategy: values.pickingStrategy,
+								isLotControlled: values.isLotControlled,
+								isExpiryControlled: values.isExpiryControlled,
 								skuSuppliers:
 									values.skuSuppliers?.map((s) => ({
 										supplierId: s.supplierId,
 										originalSkuCode: s.originalSkuCode || null,
 									})) || [],
 								isActive: true,
+								barcode: values.barcode ?? null,
+								brand: values.brand ?? null,
+								category: values.category ?? null,
+								manufacturer: values.manufacturer ?? null,
+								caseRate: values.caseRate ?? null,
+								caseExtLengthMm: values.caseExtLengthMm ?? null,
+								caseExtWidthMm: values.caseExtWidthMm ?? null,
+								caseExtHeightMm: values.caseExtHeightMm ?? null,
+								caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+								casesPerLayer: values.casesPerLayer ?? null,
+								noOfLayers: values.noOfLayers ?? null,
 							},
 						},
 					});
@@ -867,6 +861,7 @@ export function SkusSection() {
 
 			{editing && (
 				<SkusFormDialog
+					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
 					suppliers={suppliers}
@@ -874,26 +869,31 @@ export function SkusSection() {
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuPrice: editing.skuPrice,
-						skuQuantity: editing.skuQuantity,
-						lossQuantity: editing.lossQuantity ?? 0,
-						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
+						isLotControlled: editing.isLotControlled ?? false,
+						isExpiryControlled: editing.isExpiryControlled ?? false,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
+						barcode: editing.barcode,
+						brand: editing.brand,
+						category: editing.category,
+						manufacturer: editing.manufacturer,
+						caseRate: editing.caseRate,
+						caseExtLengthMm: editing.caseExtLengthMm,
+						caseExtWidthMm: editing.caseExtWidthMm,
+						caseExtHeightMm: editing.caseExtHeightMm,
+						caseGrossWeightKg: editing.caseGrossWeightKg,
+						casesPerLayer: editing.casesPerLayer,
+						noOfLayers: editing.noOfLayers,
 					}}
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
 
-						const expiryDate = values.skuExpiryDate
-							? `${values.skuExpiryDate} 00:00:00.000000`
-							: "";
 						updateSkus({
-							variables: {
-								id: editing.skuId,
-								input: {
+							id: editing.skuId,
+							input: {
 									skuCode: values.skuCode,
 									skuDescription: values.skuDescription,
 									skuPrice:
@@ -902,16 +902,28 @@ export function SkusSection() {
 											: Number(values.skuPrice),
 									skuQuantity: Number(values.skuQuantity),
 									lossQuantity: Number(values.lossQuantity ?? 0),
-									skuExpiryDate: expiryDate,
+									skuExpiryDate: "",
 									skuUom: values.skuUom,
 									pickingStrategy: values.pickingStrategy,
+									isLotControlled: values.isLotControlled,
+									isExpiryControlled: values.isExpiryControlled,
 									skuSuppliers:
 										values.skuSuppliers?.map((s) => ({
 											supplierId: s.supplierId,
 											originalSkuCode: s.originalSkuCode || null,
 										})) || [],
 									isActive: values.isActive,
-								},
+									barcode: values.barcode ?? null,
+									brand: values.brand ?? null,
+									category: values.category ?? null,
+									manufacturer: values.manufacturer ?? null,
+									caseRate: values.caseRate ?? null,
+									caseExtLengthMm: values.caseExtLengthMm ?? null,
+									caseExtWidthMm: values.caseExtWidthMm ?? null,
+									caseExtHeightMm: values.caseExtHeightMm ?? null,
+									caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+									casesPerLayer: values.casesPerLayer ?? null,
+									noOfLayers: values.noOfLayers ?? null,
 							},
 						});
 					}}
@@ -929,7 +941,7 @@ export function SkusSection() {
 					onConfirm={() => {
 						if (deleteInFlightRef.current || deleteLoading) return;
 						deleteInFlightRef.current = true;
-						deleteSkus({ variables: { id: deleting.skuId } });
+						deleteSkus({ id: deleting.skuId });
 					}}
 					loading={deleteLoading}
 				/>

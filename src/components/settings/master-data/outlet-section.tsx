@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Card,
 	CardContent,
@@ -58,10 +60,14 @@ export function OutletSection() {
 	const [editing, setEditing] = useState<Outlet | null>(null);
 	const [deleting, setDeleting] = useState<Outlet | null>(null);
 
-	const { data: regionsData } = useQuery<
-		RegionsQueryData,
-		RegionsQueryVariables
-	>(REGIONS_QUERY, { variables: { pageSize: 200, pageNumber: 1 } });
+	const { data: regionsData } = useQuery({
+		queryKey: [...qk.regions.all, { pageSize: 200, pageNumber: 1 }],
+		queryFn: () =>
+			gqlRequest<RegionsQueryData, RegionsQueryVariables>(REGIONS_QUERY, {
+				pageSize: 200,
+				pageNumber: 1,
+			}),
+	});
 	const regions = regionsData?.regions?.query ?? [];
 
 	const filter: OutletsQueryVariables["filter"] = {
@@ -69,38 +75,49 @@ export function OutletSection() {
 		...(regionIdFilter ? { regionId: regionIdFilter } : {}),
 	};
 
-	const { data, loading, refetch } = useQuery<
-		OutletsQueryData,
-		OutletsQueryVariables
-	>(OUTLETS_QUERY, {
-		variables: {
-			pageSize: PAGE_SIZE,
-			pageNumber: page,
-			filter: Object.keys(filter).length > 0 ? filter : undefined,
-		},
+	const outletsVars: OutletsQueryVariables = {
+		pageSize: PAGE_SIZE,
+		pageNumber: page,
+		filter: Object.keys(filter).length > 0 ? filter : undefined,
+	};
+
+	const {
+		data,
+		isLoading: loading,
+		refetch,
+	} = useQuery({
+		queryKey: [...qk.outlets.all, outletsVars],
+		queryFn: () =>
+			gqlRequest<OutletsQueryData, OutletsQueryVariables>(
+				OUTLETS_QUERY,
+				outletsVars,
+			),
 	});
 
-	const [createOutlet, { loading: createLoading }] =
-		useMutation<CreateOutletMutationData>(CREATE_OUTLET_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setIsCreateOpen(false);
-			},
-		});
-	const [updateOutlet, { loading: updateLoading }] =
-		useMutation<UpdateOutletMutationData>(UPDATE_OUTLET_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setEditing(null);
-			},
-		});
-	const [deleteOutlet, { loading: deleteLoading }] =
-		useMutation<DeleteOutletMutationData>(DELETE_OUTLET_MUTATION, {
-			onCompleted: () => {
-				refetch();
-				setDeleting(null);
-			},
-		});
+	const { mutate: createOutlet, isPending: createLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateOutletMutationData>(CREATE_OUTLET_MUTATION, { input }),
+		onSuccess: () => {
+			refetch();
+			setIsCreateOpen(false);
+		},
+	});
+	const { mutate: updateOutlet, isPending: updateLoading } = useMutation({
+		mutationFn: (variables: { id: string; input: object }) =>
+			gqlRequest<UpdateOutletMutationData>(UPDATE_OUTLET_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setEditing(null);
+		},
+	});
+	const { mutate: deleteOutlet, isPending: deleteLoading } = useMutation({
+		mutationFn: (variables: { id: string }) =>
+			gqlRequest<DeleteOutletMutationData>(DELETE_OUTLET_MUTATION, variables),
+		onSuccess: () => {
+			refetch();
+			setDeleting(null);
+		},
+	});
 
 	const outletsList = data?.outlets?.query ?? [];
 	const outletsPagination = data?.outlets?.pagination;
@@ -323,16 +340,12 @@ export function OutletSection() {
 				regions={regions}
 				onSubmit={(values) =>
 					createOutlet({
-						variables: {
-							input: {
-								outletName: values.outletName,
-								outletCode: values.outletCode,
-								address: values.address || undefined,
-								regionId: values.regionId || null,
-								createdBy,
-								updatedBy: createdBy,
-							},
-						},
+						outletName: values.outletName,
+						outletCode: values.outletCode,
+						address: values.address || undefined,
+						regionId: values.regionId || null,
+						createdBy,
+						updatedBy: createdBy,
 					})
 				}
 				loading={createLoading}
@@ -354,15 +367,13 @@ export function OutletSection() {
 					}}
 					onSubmit={(values) =>
 						updateOutlet({
-							variables: {
-								id: editing.outletId,
-								input: {
-									outletName: values.outletName,
-									outletCode: values.outletCode,
-									address: values.address || undefined,
-									regionId: values.regionId || null,
-									updatedBy: createdBy,
-								},
+							id: editing.outletId,
+							input: {
+								outletName: values.outletName,
+								outletCode: values.outletCode,
+								address: values.address || undefined,
+								regionId: values.regionId || null,
+								updatedBy: createdBy,
 							},
 						})
 					}
@@ -377,9 +388,7 @@ export function OutletSection() {
 					open={!!deleting}
 					onOpenChange={(open) => !open && setDeleting(null)}
 					itemName={deleting.outletName}
-					onConfirm={() =>
-						deleteOutlet({ variables: { id: deleting.outletId } })
-					}
+					onConfirm={() => deleteOutlet({ id: deleting.outletId })}
 					loading={deleteLoading}
 				/>
 			)}

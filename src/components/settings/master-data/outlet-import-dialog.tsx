@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { useApolloClient } from "@apollo/client/react";
+import { gqlRequest } from "@/lib/api/gql";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -58,7 +58,6 @@ export function OutletImportDialog({
 	createdBy: string;
 	onComplete: () => void;
 }) {
-	const client = useApolloClient();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [rows, setRows] = useState<ImportRow[]>([]);
 	const [fileName, setFileName] = useState<string>("");
@@ -122,17 +121,13 @@ export function OutletImportDialog({
 			let existingCodes = new Set<string>();
 			if (codesToCheck.length > 0) {
 				try {
-					const { data: existingData } = await client.query<
+					const existingData = await gqlRequest<
 						OutletsQueryData,
 						OutletsQueryVariables
-					>({
-						query: OUTLETS_QUERY,
-						variables: {
-							filter: { outletCodes: codesToCheck },
-							pageSize: codesToCheck.length,
-							pageNumber: 1,
-						},
-						fetchPolicy: "network-only",
+					>(OUTLETS_QUERY, {
+						filter: { outletCodes: codesToCheck },
+						pageSize: codesToCheck.length,
+						pageNumber: 1,
 					});
 					existingCodes = new Set(
 						existingData.outlets.query.map(
@@ -186,17 +181,14 @@ export function OutletImportDialog({
 		for (let i = 0; i < validRows.length; i++) {
 			const row = validRows[i];
 			try {
-				await client.mutate({
-					mutation: CREATE_OUTLET_MUTATION,
-					variables: {
-						input: {
-							outletName: row.outletName,
-							outletCode: row.outletCode,
-							address: row.address || undefined,
-							regionId: row.regionId ?? null,
-							createdBy,
-							updatedBy: createdBy,
-						},
+				await gqlRequest(CREATE_OUTLET_MUTATION, {
+					input: {
+						outletName: row.outletName,
+						outletCode: row.outletCode,
+						address: row.address || undefined,
+						regionId: row.regionId ?? null,
+						createdBy,
+						updatedBy: createdBy,
 					},
 				});
 				success++;

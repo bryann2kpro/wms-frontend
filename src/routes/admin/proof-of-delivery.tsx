@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
-import {
-	useQuery as useApolloQuery,
-	useMutation as useApolloMutation,
-} from "@apollo/client/react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -203,29 +202,34 @@ function DeliveryProofComponent() {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [justCompleted, setJustCompleted] = useState<string | null>(null);
 
+	const queryVars: DeliveryOrdersQueryVariables = {
+		filter: {
+			status: "SHIPPED",
+			...(searchTerm.trim() ? { doNo: searchTerm.trim() } : {}),
+		},
+		pageSize,
+		pageNumber: page,
+	};
 	const {
 		data,
-		loading: isLoading,
+		isLoading,
 		refetch,
-	} = useApolloQuery<DeliveryOrdersQueryData, DeliveryOrdersQueryVariables>(
-		DELIVERY_ORDERS_QUERY,
-		{
-			variables: {
-				filter: {
-					status: "SHIPPED",
-					...(searchTerm.trim() ? { doNo: searchTerm.trim() } : {}),
-				},
-				pageSize,
-				pageNumber: page,
-			},
-			fetchPolicy: "cache-and-network",
-		},
-	);
+	} = useQuery({
+		queryKey: [...qk.dos.all, "proof-of-delivery", queryVars] as const,
+		queryFn: () =>
+			gqlRequest<DeliveryOrdersQueryData, DeliveryOrdersQueryVariables>(
+				DELIVERY_ORDERS_QUERY,
+				queryVars,
+			),
+	});
 
-	const [submitDeliveryProof] = useApolloMutation<
-		SubmitDeliveryProofMutationData,
-		SubmitDeliveryProofMutationVariables
-	>(SUBMIT_DELIVERY_PROOF_MUTATION);
+	const { mutateAsync: submitDeliveryProof } = useMutation({
+		mutationFn: (vars: SubmitDeliveryProofMutationVariables) =>
+			gqlRequest<
+				SubmitDeliveryProofMutationData,
+				SubmitDeliveryProofMutationVariables
+			>(SUBMIT_DELIVERY_PROOF_MUTATION, vars),
+	});
 
 	const dos = data?.deliveryOrders?.query ?? [];
 	const pagination = data?.deliveryOrders?.pagination;
@@ -289,13 +293,11 @@ function DeliveryProofComponent() {
 
 			// Step 2 — record proof + advance DO to DELIVERED
 			await submitDeliveryProof({
-				variables: {
-					doId: selectedDO.id,
-					fileUrl: uploadData.url,
-					fileName: uploadData.originalName,
-					fileSizeBytes: uploadData.size,
-					mimeType: uploadData.mimetype,
-				},
+				doId: selectedDO.id,
+				fileUrl: uploadData.url,
+				fileName: uploadData.originalName,
+				fileSizeBytes: uploadData.size,
+				mimeType: uploadData.mimetype,
 			});
 
 			setJustCompleted(selectedDO.doNo);

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { gqlRequest } from "@/lib/api/gql";
 import { getSocket } from "@/lib/socket";
 import {
 	BULK_GENERATE_DELIVERY_ORDERS_PDF_MUTATION,
@@ -72,10 +73,13 @@ export function useBulkDeliveryOrderPdf() {
 		total: 0,
 	});
 
-	const [mutate] = useMutation<
-		BulkGenerateDeliveryOrdersPdfData,
-		BulkGenerateDeliveryOrdersPdfVariables
-	>(BULK_GENERATE_DELIVERY_ORDERS_PDF_MUTATION);
+	const { mutateAsync } = useMutation({
+		mutationFn: (variables: BulkGenerateDeliveryOrdersPdfVariables) =>
+			gqlRequest<
+				BulkGenerateDeliveryOrdersPdfData,
+				BulkGenerateDeliveryOrdersPdfVariables
+			>(BULK_GENERATE_DELIVERY_ORDERS_PDF_MUTATION, variables),
+	});
 
 	const startBulkExport = useCallback(
 		async (deliveryOrderIds: string[]) => {
@@ -87,8 +91,8 @@ export function useBulkDeliveryOrderPdf() {
 			if (!socket.connected) socket.connect();
 
 			try {
-				const { data } = await mutate({ variables: { deliveryOrderIds } });
-				const jobId = data!.bulkGenerateDeliveryOrdersPdf.jobId;
+				const data = await mutateAsync({ deliveryOrderIds });
+				const jobId = data.bulkGenerateDeliveryOrdersPdf.jobId;
 
 				socket.emit("join-room", `job:${jobId}`);
 
@@ -139,7 +143,7 @@ export function useBulkDeliveryOrderPdf() {
 				);
 			}
 		},
-		[mutate],
+		[mutateAsync],
 	);
 
 	const reset = useCallback(
