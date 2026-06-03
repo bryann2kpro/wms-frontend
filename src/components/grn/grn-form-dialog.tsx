@@ -75,6 +75,10 @@ import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
 } from "@/lib/grn-sku-line-controls";
+import {
+	SUGGEST_INBOUND_RACK_QUERY,
+	type SuggestInboundRackQueryData,
+} from "@/lib/graphql/inbound-putaway";
 
 function parseGrnExpiryDate(value: string): Date | undefined {
 	const trimmed = value?.trim();
@@ -224,6 +228,8 @@ export type GRNLineItemForm = {
 	lotNo: string;
 	/** Rack location (one per line). Same SKU allowed with different expiry/rack. */
 	rackId: string;
+	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
+	rackAutoSuggested?: boolean;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
@@ -422,6 +428,79 @@ function GRNLineRow({
 			getGrnLineSkuControls(item.skuCode, skuOptions, item.asnLotTracked),
 		[item.skuCode, skuOptions, item.asnLotTracked],
 	);
+
+	const [rackSuggestionMessage, setRackSuggestionMessage] = useState<
+		string | null
+	>(null);
+
+	const resolvedSkuId = useMemo(() => {
+		if (!item.skuCode?.trim()) return "";
+		return skuOptions.find((s) => s.skuCode === item.skuCode)?.skuId ?? "";
+	}, [item.skuCode, skuOptions]);
+
+	const inboundQty = Math.max(0, Number(item.carton) || 0);
+
+	useEffect(() => {
+		if (!item.skuCode?.trim()) {
+			setRackSuggestionMessage(null);
+			return;
+		}
+
+		const canAutoApply =
+			!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
+		if (!canAutoApply) return;
+
+		let cancelled = false;
+		(async () => {
+			try {
+				const data = await gqlRequest<SuggestInboundRackQueryData>(
+					SUGGEST_INBOUND_RACK_QUERY,
+					{
+						skuId: resolvedSkuId || null,
+						skuCode: item.skuCode,
+						quantity: inboundQty > 0 ? inboundQty : 1,
+					},
+				);
+				if (cancelled) return;
+				const suggestion = data.suggestInboundRack;
+				setRackSuggestionMessage(suggestion.message);
+
+				if (!suggestion.rackId || !canAutoApply) return;
+				if (
+					item.rackId === suggestion.rackId &&
+					item.rackAutoSuggested === true
+				) {
+					return;
+				}
+
+				onItemsChange(
+					items.map((row, i) =>
+						i === index
+							? {
+									...row,
+									rackId: suggestion.rackId!,
+									rackAutoSuggested: true,
+								}
+							: row,
+					),
+				);
+			} catch {
+				if (!cancelled) setRackSuggestionMessage(null);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty or auto-suggest state changes
+	}, [
+		item.skuCode,
+		resolvedSkuId,
+		inboundQty,
+		item.rackId,
+		item.rackAutoSuggested,
+		index,
+	]);
 
 	return (
 		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
@@ -624,6 +703,7 @@ function GRNLineRow({
 									newItems[index] = {
 										...newItems[index],
 										rackId,
+										rackAutoSuggested: false,
 									};
 									onItemsChange(newItems);
 								}}
@@ -644,6 +724,19 @@ function GRNLineRow({
 								</Button>
 							) : null}
 						</div>
+						{rackSuggestionMessage ? (
+							<p className="text-[11px] text-muted-foreground leading-snug">
+								{item.rackAutoSuggested ? (
+									<Badge
+										variant="outline"
+										className="mr-1.5 h-4 px-1 text-[10px] font-normal"
+									>
+										Suggested
+									</Badge>
+								) : null}
+								{rackSuggestionMessage}
+							</p>
+						) : null}
 					</div>
 				</div>
 			</div>
@@ -937,8 +1030,8 @@ export function GrnFormDialog({
 								? (stockUnits.find((u) => u.unitCode === i.uom)
 									?.stockUnitId ?? i.uom)
 								: undefined;
-							const rackIds = (i.rackIds ?? []).filter((id) =>
-								(id ?? "").trim(),
+							const rackIds = grnApiRackIds(i).filter((id: string) =>
+								id.trim(),
 							);
 							return {
 								skuId:
