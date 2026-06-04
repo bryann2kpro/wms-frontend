@@ -603,8 +603,6 @@ export function ImportDialog({
 								skuSuppliers: [],
 								skuUom: resolvedUomId,
 								pickingStrategy,
-								isLotControlled,
-								isExpiryControlled,
 								isActive,
 								barcode: barcode || null,
 								brand: brand || null,
@@ -855,7 +853,7 @@ export function ImportDialog({
 
 		setIsImporting(true);
 		setProcessedCount(0);
-		const batchSize = 5;
+		const batchSize = 100;
 		const mutableRows = [...rows];
 		const uomLookup = new Map<string, string>();
 		for (const unit of stockUnitsData?.stockUnits.query ?? []) {
