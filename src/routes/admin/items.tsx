@@ -23,12 +23,7 @@ import {
 	type UpdateSkusMutationVariables,
 	type DeleteSkusMutationVariables,
 } from "@/lib/graphql/skus";
-import type { Skus, Supplier, StockUnit } from "@/lib/graphql/types";
-import {
-	SUPPLIERS_QUERY,
-	type SuppliersQueryData,
-	type SuppliersQueryVariables,
-} from "@/lib/graphql/suppliers";
+import type { Skus, StockUnit } from "@/lib/graphql/types";
 import {
 	STOCK_UNITS_QUERY,
 	type StockUnitsQueryData,
@@ -60,8 +55,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { SkusFormDialog } from "@/components/settings/master-data/skus-form-dialog";
-import { SkusSuppliersViewDialog } from "@/components/settings/master-data/skus-suppliers-view-dialog";
+import { ItemFormDialog } from "@/components/settings/master-data/item-form-dialog";
+import { ItemViewDialog } from "@/components/settings/master-data/item-view-dialog";
 import { ConfirmDeleteDialog } from "@/components/settings/master-data/shared";
 import { ImportDialog } from "@/components/settings/master-data/import-dialog";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -132,7 +127,7 @@ function ItemsComponent() {
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Skus | null>(null);
 	const [deleting, setDeleting] = useState<Skus | null>(null);
-	const [viewingSuppliers, setViewingSuppliers] = useState<Skus | null>(null);
+	const [viewingItem, setViewingItem] = useState<Skus | null>(null);
 
 	const { data, isLoading, refetch } = useQuery({
 		queryKey: qk.items.all,
@@ -141,16 +136,6 @@ function ItemsComponent() {
 		gcTime: 0,
 	});
 	const allItems: Skus[] = data?.skus?.query ?? [];
-
-	const { data: suppliersData } = useQuery({
-		queryKey: qk.suppliers.all,
-		queryFn: () =>
-			gqlRequest<SuppliersQueryData, SuppliersQueryVariables>(
-				SUPPLIERS_QUERY,
-				{},
-			),
-	});
-	const suppliers: Supplier[] = suppliersData?.suppliers.query ?? [];
 
 	const { data: stockUnitsData } = useQuery({
 		queryKey: qk.stockUnits.all,
@@ -382,8 +367,8 @@ function ItemsComponent() {
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={() => setViewingSuppliers(row)}
-								title="View Suppliers"
+								onClick={() => setViewingItem(row)}
+								title="View Item"
 								className="rounded-lg"
 							>
 								<Eye className="h-4 w-4" />
@@ -665,45 +650,29 @@ function ItemsComponent() {
 				</CardContent>
 			</Card>
 
-			<SkusSuppliersViewDialog
-				open={viewingSuppliers !== null}
+			<ItemViewDialog
+				open={viewingItem !== null}
 				onOpenChange={(open) => {
-					if (!open) setViewingSuppliers(null);
+					if (!open) setViewingItem(null);
 				}}
-				sku={viewingSuppliers}
-				suppliers={suppliers}
+				item={viewingItem}
+				stockUnits={stockUnits}
 			/>
 
-			<SkusFormDialog
+			<ItemFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
-				suppliers={suppliers}
 				stockUnits={stockUnits}
 				onSubmit={(values) => {
 					if (createInFlightRef.current || createLoading) return;
 					createInFlightRef.current = true;
-					const expiryDate = values.skuExpiryDate
-						? `${values.skuExpiryDate} 00:00:00.000000`
-						: "";
 					createItem({
 						input: {
 							skuCode: values.skuCode,
 							skuDescription: values.skuDescription,
-							skuPrice:
-								values.skuPrice === 0 || values.skuPrice === null
-									? undefined
-									: Number(values.skuPrice),
-							skuQuantity: Number(values.skuQuantity),
-							skuExpiryDate: expiryDate,
 							skuUom: values.skuUom,
-							pickingStrategy: values.pickingStrategy,
-							isLotControlled: values.isLotControlled,
-							isExpiryControlled: values.isExpiryControlled,
-							skuSuppliers:
-								values.skuSuppliers?.map((s) => ({
-									supplierId: s.supplierId,
-									originalSkuCode: s.originalSkuCode || null,
-								})) || [],
+							skuExpiryDate: "",
+							skuSuppliers: [],
 							isActive: true,
 							barcode: values.barcode ?? null,
 							brand: values.brand ?? null,
@@ -735,24 +704,15 @@ function ItemsComponent() {
 			/>
 
 			{editing && (
-				<SkusFormDialog
+				<ItemFormDialog
 					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
-					suppliers={suppliers}
 					stockUnits={stockUnits}
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
-						skuPrice: editing.skuPrice,
-						skuQuantity: editing.skuQuantity,
-						lossQuantity: editing.lossQuantity ?? 0,
-						skuExpiryDate: editing.skuExpiryDate,
 						skuUom: editing.skuUom,
-						pickingStrategy: editing.pickingStrategy ?? "FIFO",
-						isLotControlled: editing.isLotControlled ?? false,
-						isExpiryControlled: editing.isExpiryControlled ?? false,
-						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 						barcode: editing.barcode,
 						brand: editing.brand,
@@ -769,30 +729,12 @@ function ItemsComponent() {
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
-						const expiryDate = values.skuExpiryDate
-							? `${values.skuExpiryDate} 00:00:00.000000`
-							: "";
 						updateItem({
 							id: editing.skuId,
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
-								skuPrice:
-									values.skuPrice === 0 || values.skuPrice === null
-										? undefined
-										: Number(values.skuPrice),
-								skuQuantity: Number(values.skuQuantity),
-								lossQuantity: Number(values.lossQuantity ?? 0),
-								skuExpiryDate: expiryDate,
 								skuUom: values.skuUom,
-								pickingStrategy: values.pickingStrategy,
-								isLotControlled: values.isLotControlled,
-								isExpiryControlled: values.isExpiryControlled,
-								skuSuppliers:
-									values.skuSuppliers?.map((s) => ({
-										supplierId: s.supplierId,
-										originalSkuCode: s.originalSkuCode || null,
-									})) || [],
 								isActive: values.isActive,
 								barcode: values.barcode ?? null,
 								brand: values.brand ?? null,

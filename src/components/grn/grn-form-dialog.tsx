@@ -77,8 +77,34 @@ import {
 } from "@/lib/grn-sku-line-controls";
 import {
 	SUGGEST_INBOUND_RACK_QUERY,
+	type RackSkuCapacityGql,
 	type SuggestInboundRackQueryData,
 } from "@/lib/graphql/inbound-putaway";
+
+function formatRackCapacityHint(
+	cap: RackSkuCapacityGql | null | undefined,
+	unitLabel: string | null,
+	incomingQty: number,
+): string | null {
+	if (!cap) return null;
+	const unit = unitLabel ?? "cartons";
+	const used = cap.currentQuantity ?? 0;
+	if (cap.maxCapacity == null) {
+		if (used > 0) {
+			return `${used} ${unit} already in this rack. Add rack dimensions to see remaining capacity.`;
+		}
+		return "Add rack and SKU dimensions to calculate remaining capacity.";
+	}
+	const available =
+		cap.availableCapacity ?? Math.max(0, cap.maxCapacity - used);
+	const fits =
+		incomingQty <= 0 || used + incomingQty <= cap.maxCapacity;
+	let text = `${available} of ${cap.maxCapacity} ${unit} available (${used} in use)`;
+	if (incomingQty > 0 && !fits) {
+		text += ` — receiving ${incomingQty} ${unit} would exceed capacity`;
+	}
+	return text;
+}
 
 function parseGrnExpiryDate(value: string): Date | undefined {
 	const trimmed = value?.trim();
@@ -429,8 +455,8 @@ function GRNLineRow({
 		[item.skuCode, skuOptions, item.asnLotTracked],
 	);
 
-	const [rackSuggestionMessage, setRackSuggestionMessage] = useState<
-		string | null
+	const [rackSuggestion, setRackSuggestion] = useState<
+		SuggestInboundRackQueryData["suggestInboundRack"] | null
 	>(null);
 
 	const resolvedSkuId = useMemo(() => {
@@ -440,15 +466,25 @@ function GRNLineRow({
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
 
+	const rackCapacityHint = useMemo(
+		() =>
+			item.rackId?.trim()
+				? formatRackCapacityHint(
+						rackSuggestion?.capacityForRack,
+						uomLabel,
+						inboundQty,
+					)
+				: null,
+		[rackSuggestion?.capacityForRack, item.rackId, uomLabel, inboundQty],
+	);
+
+	const rackSuggestionMessage = rackSuggestion?.message ?? null;
+
 	useEffect(() => {
 		if (!item.skuCode?.trim()) {
-			setRackSuggestionMessage(null);
+			setRackSuggestion(null);
 			return;
 		}
-
-		const canAutoApply =
-			!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
-		if (!canAutoApply) return;
 
 		let cancelled = false;
 		(async () => {
@@ -459,12 +495,15 @@ function GRNLineRow({
 						skuId: resolvedSkuId || null,
 						skuCode: item.skuCode,
 						quantity: inboundQty > 0 ? inboundQty : 1,
+						forRackId: item.rackId?.trim() || null,
 					},
 				);
 				if (cancelled) return;
 				const suggestion = data.suggestInboundRack;
-				setRackSuggestionMessage(suggestion.message);
+				setRackSuggestion(suggestion);
 
+				const canAutoApply =
+					!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
 				if (!suggestion.rackId || !canAutoApply) return;
 				if (
 					item.rackId === suggestion.rackId &&
@@ -485,14 +524,14 @@ function GRNLineRow({
 					),
 				);
 			} catch {
-				if (!cancelled) setRackSuggestionMessage(null);
+				if (!cancelled) setRackSuggestion(null);
 			}
 		})();
 
 		return () => {
 			cancelled = true;
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty or auto-suggest state changes
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty/rack or auto-suggest state changes
 	}, [
 		item.skuCode,
 		resolvedSkuId,
@@ -724,6 +763,14 @@ function GRNLineRow({
 								</Button>
 							) : null}
 						</div>
+						{rackCapacityHint ? (
+							<p
+								className="text-[11px] font-medium text-foreground/80 leading-snug"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{rackCapacityHint}
+							</p>
+						) : null}
 						{rackSuggestionMessage ? (
 							<p className="text-[11px] text-muted-foreground leading-snug">
 								{item.rackAutoSuggested ? (

@@ -266,11 +266,6 @@ export function SkusFormDialog({
 			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
 				? skuExpiryDate.toISOString().split("T")[0]
 				: "";
-		let priceValue: number | null = null;
-		if (skuPrice.trim() !== "") {
-			const parsed = parseFloat(skuPrice);
-			if (!isNaN(parsed)) priceValue = parsed;
-		}
 		const parseOptionalFloat = (v: string) => {
 			const t = v.trim();
 			if (t === "") return null;

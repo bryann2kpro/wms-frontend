@@ -5,11 +5,13 @@ export const SUGGEST_INBOUND_RACK_QUERY = gql`
 		$skuId: ID
 		$skuCode: String
 		$quantity: Float!
+		$forRackId: ID
 	) {
 		suggestInboundRack(
 			skuId: $skuId
 			skuCode: $skuCode
 			quantity: $quantity
+			forRackId: $forRackId
 		) {
 			rackId
 			rackLabel
@@ -20,9 +22,22 @@ export const SUGGEST_INBOUND_RACK_QUERY = gql`
 			currentQuantity
 			availableCapacity
 			message
+			capacityForRack {
+				rackId
+				maxCapacity
+				currentQuantity
+				availableCapacity
+			}
 		}
 	}
 `;
+
+export type RackSkuCapacityGql = {
+	rackId: string;
+	maxCapacity: number | null;
+	currentQuantity: number;
+	availableCapacity: number | null;
+};
 
 export type InboundRackSuggestionGql = {
 	rackId: string | null;
@@ -34,6 +49,7 @@ export type InboundRackSuggestionGql = {
 	currentQuantity: number | null;
 	availableCapacity: number | null;
 	message: string | null;
+	capacityForRack: RackSkuCapacityGql | null;
 };
 
 export type SuggestInboundRackQueryData = {
@@ -44,4 +60,5 @@ export type SuggestInboundRackQueryVariables = {
 	skuId?: string | null;
 	skuCode?: string | null;
 	quantity: number;
+	forRackId?: string | null;
 };

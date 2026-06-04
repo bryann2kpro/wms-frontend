@@ -9,7 +9,14 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
-import { Search, X } from "lucide-react";
+import { Calendar as CalendarIcon, Search, X } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
 	getAvailablePickingStrategies,
@@ -21,14 +28,8 @@ export function SkusFormStep1({
 	setSkuCode,
 	skuDescription,
 	setSkuDescription,
-	skuPrice: _skuPrice,
-	setSkuPrice: _setSkuPrice,
-	skuQuantity: _skuQuantity,
-	setSkuQuantity: _setSkuQuantity,
-	lossQuantity: _lossQuantity,
-	setLossQuantity: _setLossQuantity,
-	skuExpiryDate: _skuExpiryDate,
-	setSkuExpiryDate: _setSkuExpiryDate,
+	skuExpiryDate,
+	setSkuExpiryDate,
 	skuUom,
 	setSkuUom,
 	pickingStrategy,
