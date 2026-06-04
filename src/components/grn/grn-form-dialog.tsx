@@ -99,7 +99,7 @@ function formatRackCapacityHint(
 		cap.availableCapacity ?? Math.max(0, cap.maxCapacity - used);
 	const fits =
 		incomingQty <= 0 || used + incomingQty <= cap.maxCapacity;
-	let text = `${available} of ${cap.maxCapacity} ${unit} available (${used} in use)`;
+	let text = `${available} of ${cap.maxCapacity} ${unit} available (${used} in use on rack)`;
 	if (incomingQty > 0 && !fits) {
 		text += ` — receiving ${incomingQty} ${unit} would exceed capacity`;
 	}
