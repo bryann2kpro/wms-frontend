@@ -23,12 +23,7 @@ import {
 	type UpdateSkusMutationVariables,
 	type DeleteSkusMutationVariables,
 } from "@/lib/graphql/skus";
-import type { Skus, Supplier, StockUnit } from "@/lib/graphql/types";
-import {
-	SUPPLIERS_QUERY,
-	type SuppliersQueryData,
-	type SuppliersQueryVariables,
-} from "@/lib/graphql/suppliers";
+import type { Skus, StockUnit } from "@/lib/graphql/types";
 import {
 	STOCK_UNITS_QUERY,
 	type StockUnitsQueryData,
@@ -70,7 +65,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { SkusSuppliersViewDialog } from "@/components/settings/master-data/skus-suppliers-view-dialog";
+import { ItemFormDialog } from "@/components/settings/master-data/item-form-dialog";
+import { ItemViewDialog } from "@/components/settings/master-data/item-view-dialog";
 import { ConfirmDeleteDialog } from "@/components/settings/master-data/shared";
 import { ImportDialog } from "@/components/settings/master-data/import-dialog";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -271,7 +267,7 @@ function ItemsComponent() {
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Skus | null>(null);
 	const [deleting, setDeleting] = useState<Skus | null>(null);
-	const [viewingSuppliers, setViewingSuppliers] = useState<Skus | null>(null);
+	const [viewingItem, setViewingItem] = useState<Skus | null>(null);
 
 	const sendDebugLog = (
 		hypothesisId: string,
@@ -305,16 +301,6 @@ function ItemsComponent() {
 		gcTime: 0,
 	});
 	const allItems: Skus[] = data?.skus?.query ?? [];
-
-	const { data: suppliersData } = useQuery({
-		queryKey: qk.suppliers.all,
-		queryFn: () =>
-			gqlRequest<SuppliersQueryData, SuppliersQueryVariables>(
-				SUPPLIERS_QUERY,
-				{},
-			),
-	});
-	const suppliers: Supplier[] = suppliersData?.suppliers.query ?? [];
 
 	const { data: stockUnitsData } = useQuery({
 		queryKey: qk.stockUnits.all,
@@ -555,8 +541,8 @@ function ItemsComponent() {
 							<Button
 								variant="ghost"
 								size="icon"
-								onClick={() => setViewingSuppliers(row)}
-								title="View Suppliers"
+								onClick={() => setViewingItem(row)}
+								title="View Item"
 								className="rounded-lg"
 							>
 								<Eye className="h-4 w-4" />
@@ -899,18 +885,19 @@ function ItemsComponent() {
 				</CardContent>
 			</Card>
 
-			<SkusSuppliersViewDialog
-				open={viewingSuppliers !== null}
+			<ItemViewDialog
+				open={viewingItem !== null}
 				onOpenChange={(open) => {
-					if (!open) setViewingSuppliers(null);
+					if (!open) setViewingItem(null);
 				}}
-				sku={viewingSuppliers}
-				suppliers={suppliers}
+				item={viewingItem}
+				stockUnits={stockUnits}
 			/>
 
 			<ItemFormDialog
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
+				stockUnits={stockUnits}
 				onSubmit={(values) => {
 					if (createInFlightRef.current || createLoading) return;
 					if (!defaultStockUnitId) {
@@ -918,17 +905,14 @@ function ItemsComponent() {
 						return;
 					}
 					createInFlightRef.current = true;
-					void createItem({
+					createItem({
 						input: {
 							skuCode: values.skuCode,
 							skuDescription: values.skuDescription,
+							skuUom: values.skuUom,
 							skuExpiryDate: "",
-							skuUom: defaultStockUnitId,
-							pickingStrategy: "FIFO",
-							isLotControlled: false,
-							isExpiryControlled: false,
 							skuSuppliers: [],
-							isActive: values.isActive,
+							isActive: true,
 							barcode: values.barcode ?? null,
 							brand: values.brand ?? null,
 							category: values.category ?? null,
@@ -964,9 +948,11 @@ function ItemsComponent() {
 					key={editing.skuId}
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
+					stockUnits={stockUnits}
 					initial={{
 						skuCode: editing.skuCode,
 						skuDescription: editing.skuDescription,
+						skuUom: editing.skuUom,
 						isActive: editing.isActive,
 						barcode: editing.barcode,
 						brand: editing.brand,
@@ -983,17 +969,12 @@ function ItemsComponent() {
 					onSubmit={(values) => {
 						if (updateInFlightRef.current || updateLoading) return;
 						updateInFlightRef.current = true;
-						void updateItem({
+						updateItem({
 							id: editing.skuId,
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
-								skuExpiryDate: "",
-								skuUom: editing.skuUom,
-								pickingStrategy: editing.pickingStrategy ?? "FIFO",
-								isLotControlled: editing.isLotControlled ?? false,
-								isExpiryControlled: editing.isExpiryControlled ?? false,
-								skuSuppliers: editing.skuSuppliers ?? [],
+								skuUom: values.skuUom,
 								isActive: values.isActive,
 								barcode: values.barcode ?? null,
 								brand: values.brand ?? null,

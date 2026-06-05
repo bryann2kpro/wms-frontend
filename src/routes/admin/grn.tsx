@@ -687,6 +687,7 @@ function GRNRouteComponent() {
 				expiryDate?: string;
 				lotNo?: string;
 				rackIds?: string[];
+				rackAllocations?: Array<{ rackId: string; quantity: number }>;
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
@@ -702,6 +703,9 @@ function GRNRouteComponent() {
 				const uomId = i.uom
 					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
+				const rackAllocations = (i.rackAllocations ?? []).filter(
+					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
+				);
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
 				return {
 					skuId:
@@ -713,7 +717,11 @@ function GRNRouteComponent() {
 					skuUom: uomId ?? undefined,
 					expiryDate: (i.expiryDate ?? "").trim() || undefined,
 					lotNo: (i.lotNo ?? "").trim() || undefined,
-					...(rackIds.length > 0 && { rackIds }),
+					...(rackAllocations.length > 0
+						? { rackAllocations }
+						: rackIds.length > 0
+							? { rackIds }
+							: {}),
 				};
 			});
 			const baseInput = {
@@ -1073,6 +1081,7 @@ function GRNRouteComponent() {
 													expiryDate: i.expiryDate ?? "",
 													lotNo: i.lotNo ?? "",
 													rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
+													rackAllocations: i.rackAllocations,
 												})),
 											});
 										}}
