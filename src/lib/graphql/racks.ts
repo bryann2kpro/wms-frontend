@@ -90,6 +90,7 @@ export type RacksQueryVariables = {
 		binCode?: string;
 		binType?: string;
 		isActive?: boolean;
+		search?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

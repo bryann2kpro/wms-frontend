@@ -104,6 +104,7 @@ export type PickFaceStrategiesQueryVariables = {
 		skuId?: string;
 		storageBinId?: string;
 		binType?: string;
+		search?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;
