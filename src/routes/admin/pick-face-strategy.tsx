@@ -55,7 +55,7 @@ import {
 } from "@/lib/graphql/pick-face-strategy";
 import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Plus, Edit, Trash2, Search, PackageSearch } from "lucide-react";
+import { Plus, Edit, Trash2, Search, PackageSearch, ArrowUpDown, Upload } from "lucide-react";
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { PickFaceImportDialog } from "@/components/settings/master-data/pick-face-import-dialog";
 
