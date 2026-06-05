@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -45,6 +46,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Table,
 	TableBody,
@@ -54,6 +63,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { ItemFormDialog } from "@/components/settings/master-data/item-form-dialog";
 import { ItemViewDialog } from "@/components/settings/master-data/item-view-dialog";
@@ -80,6 +90,136 @@ export const Route = createFileRoute("/admin/items")({
 });
 
 type ItemSortField = "CODE" | "DESCRIPTION";
+
+type ItemFormValues = {
+	skuCode: string;
+	skuDescription: string;
+	barcode: string | null;
+	brand: string | null;
+	category: string | null;
+	manufacturer: string | null;
+	isActive: boolean;
+	caseRate: number | null;
+	caseExtLengthMm: number | null;
+	caseExtWidthMm: number | null;
+	caseExtHeightMm: number | null;
+	caseGrossWeightKg: number | null;
+	casesPerLayer: number | null;
+	noOfLayers: number | null;
+};
+
+function ItemFormDialog({
+	open,
+	onOpenChange,
+	initial,
+	onSubmit,
+	loading,
+	title,
+	description,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	initial?: Partial<ItemFormValues>;
+	onSubmit: (values: ItemFormValues) => void;
+	loading: boolean;
+	title: string;
+	description: string;
+}) {
+	const [skuCode, setSkuCode] = useState(initial?.skuCode ?? "");
+	const [skuDescription, setSkuDescription] = useState(initial?.skuDescription ?? "");
+	const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+	const [brand, setBrand] = useState(initial?.brand ?? "");
+	const [category, setCategory] = useState(initial?.category ?? "");
+	const [manufacturer, setManufacturer] = useState(initial?.manufacturer ?? "");
+	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+	const [caseRate, setCaseRate] = useState(initial?.caseRate?.toString() ?? "");
+	const [caseExtLengthMm, setCaseExtLengthMm] = useState(initial?.caseExtLengthMm?.toString() ?? "");
+	const [caseExtWidthMm, setCaseExtWidthMm] = useState(initial?.caseExtWidthMm?.toString() ?? "");
+	const [caseExtHeightMm, setCaseExtHeightMm] = useState(initial?.caseExtHeightMm?.toString() ?? "");
+	const [caseGrossWeightKg, setCaseGrossWeightKg] = useState(initial?.caseGrossWeightKg?.toString() ?? "");
+	const [casesPerLayer, setCasesPerLayer] = useState(initial?.casesPerLayer?.toString() ?? "");
+	const [noOfLayers, setNoOfLayers] = useState(initial?.noOfLayers?.toString() ?? "");
+
+	useEffect(() => {
+		if (!open) return;
+		setSkuCode(initial?.skuCode ?? "");
+		setSkuDescription(initial?.skuDescription ?? "");
+		setBarcode(initial?.barcode ?? "");
+		setBrand(initial?.brand ?? "");
+		setCategory(initial?.category ?? "");
+		setManufacturer(initial?.manufacturer ?? "");
+		setIsActive(initial?.isActive ?? true);
+		setCaseRate(initial?.caseRate?.toString() ?? "");
+		setCaseExtLengthMm(initial?.caseExtLengthMm?.toString() ?? "");
+		setCaseExtWidthMm(initial?.caseExtWidthMm?.toString() ?? "");
+		setCaseExtHeightMm(initial?.caseExtHeightMm?.toString() ?? "");
+		setCaseGrossWeightKg(initial?.caseGrossWeightKg?.toString() ?? "");
+		setCasesPerLayer(initial?.casesPerLayer?.toString() ?? "");
+		setNoOfLayers(initial?.noOfLayers?.toString() ?? "");
+	}, [open, initial]);
+
+	const parseOptionalFloat = (v: string) => {
+		const t = v.trim();
+		if (!t) return null;
+		const n = Number.parseFloat(t);
+		return Number.isNaN(n) ? null : n;
+	};
+
+	const submit = () => {
+		onSubmit({
+			skuCode: skuCode.trim(),
+			skuDescription: skuDescription.trim(),
+			barcode: barcode.trim() || null,
+			brand: brand.trim() || null,
+			category: category.trim() || null,
+			manufacturer: manufacturer.trim() || null,
+			isActive,
+			caseRate: parseOptionalFloat(caseRate),
+			caseExtLengthMm: parseOptionalFloat(caseExtLengthMm),
+			caseExtWidthMm: parseOptionalFloat(caseExtWidthMm),
+			caseExtHeightMm: parseOptionalFloat(caseExtHeightMm),
+			caseGrossWeightKg: parseOptionalFloat(caseGrossWeightKg),
+			casesPerLayer: parseOptionalFloat(casesPerLayer),
+			noOfLayers: parseOptionalFloat(noOfLayers),
+		});
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-4xl rounded-2xl">
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div className="grid gap-2"><Label>Code</Label><Input value={skuCode} onChange={(e) => setSkuCode(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Description</Label><Input value={skuDescription} onChange={(e) => setSkuDescription(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Barcode</Label><Input value={barcode} onChange={(e) => setBarcode(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Brand</Label><Input value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Category</Label><Input value={category} onChange={(e) => setCategory(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Manufacturer</Label><Input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} /></div>
+					<div className="flex items-center justify-between rounded-lg border px-3 py-2">
+						<Label>Status</Label>
+						<Switch checked={isActive} onCheckedChange={setIsActive} />
+					</div>
+					<div className="grid gap-2"><Label>Case Rate</Label><Input type="number" step="0.01" value={caseRate} onChange={(e) => setCaseRate(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Length (mm)</Label><Input type="number" step="0.001" value={caseExtLengthMm} onChange={(e) => setCaseExtLengthMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Width (mm)</Label><Input type="number" step="0.001" value={caseExtWidthMm} onChange={(e) => setCaseExtWidthMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Ext Height (mm)</Label><Input type="number" step="0.001" value={caseExtHeightMm} onChange={(e) => setCaseExtHeightMm(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Case Gross Weight (kg)</Label><Input type="number" step="0.001" value={caseGrossWeightKg} onChange={(e) => setCaseGrossWeightKg(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>Cases Per Layer</Label><Input type="number" step="0.001" value={casesPerLayer} onChange={(e) => setCasesPerLayer(e.target.value)} /></div>
+					<div className="grid gap-2"><Label>No Of Layers</Label><Input type="number" step="0.001" value={noOfLayers} onChange={(e) => setNoOfLayers(e.target.value)} /></div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+					<Button onClick={submit} disabled={loading || !skuCode.trim() || !skuDescription.trim()}>
+						{loading ? "Saving..." : "Save"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
 function getCommonPinningStyles(column: Column<Skus>): CSSProperties {
 	const isPinned = column.getIsPinned();
@@ -129,6 +269,31 @@ function ItemsComponent() {
 	const [deleting, setDeleting] = useState<Skus | null>(null);
 	const [viewingItem, setViewingItem] = useState<Skus | null>(null);
 
+	const sendDebugLog = (
+		hypothesisId: string,
+		message: string,
+		data: Record<string, unknown>,
+	) => {
+		// #region agent log
+		fetch("http://127.0.0.1:7725/ingest/20db73c8-0fb7-4781-a984-2cc888a5a871", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "8952bb",
+			},
+			body: JSON.stringify({
+				sessionId: "8952bb",
+				runId: "pre-fix",
+				hypothesisId,
+				location: "src/routes/admin/items.tsx:ItemsComponent",
+				message,
+				data,
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
+	};
+
 	const { data, isLoading, refetch } = useQuery({
 		queryKey: qk.items.all,
 		queryFn: () => gqlRequest<ItemsQueryData>(ITEMS_QUERY, {}),
@@ -146,6 +311,15 @@ function ItemsComponent() {
 			),
 	});
 	const stockUnits: StockUnit[] = stockUnitsData?.stockUnits.query ?? [];
+	const defaultStockUnitId =
+		stockUnits.find(
+			(u) =>
+				u.isActive &&
+				(u.unitCode?.trim().toLowerCase() === "ctn" ||
+					u.unitName?.trim().toLowerCase() === "ctn"),
+		)?.stockUnitId ??
+		stockUnits.find((u) => u.isActive)?.stockUnitId ??
+		stockUnits[0]?.stockUnitId;
 
 	const filtered = useMemo(() => {
 		const q = debouncedSearch.toLowerCase().trim();
@@ -246,7 +420,7 @@ function ItemsComponent() {
 			{
 				id: "skuCode",
 				accessorKey: "skuCode",
-				header: "Code",
+				header: "SKU Code",
 				size: 140,
 				cell: (info) => info.getValue<string>(),
 			},
@@ -310,42 +484,42 @@ function ItemsComponent() {
 			{
 				id: "caseRate",
 				accessorKey: "caseRate",
-				header: "Case Rate",
+				header: "Ctn Rate",
 				size: 110,
 				cell: (info) => formatNum(info.getValue<number | null>(), 2),
 			},
 			{
 				id: "caseExtLengthMm",
 				accessorKey: "caseExtLengthMm",
-				header: "Case Ext Length (mm)",
+				header: "Ctn Ext Length (mm)",
 				size: 170,
 				cell: (info) => formatNum(info.getValue<number | null>(), 3),
 			},
 			{
 				id: "caseExtWidthMm",
 				accessorKey: "caseExtWidthMm",
-				header: "Case Ext Width (mm)",
+				header: "Ctn Ext Width (mm)",
 				size: 165,
 				cell: (info) => formatNum(info.getValue<number | null>(), 3),
 			},
 			{
 				id: "caseExtHeightMm",
 				accessorKey: "caseExtHeightMm",
-				header: "Case Ext Height (mm)",
+				header: "Ctn Ext Height (mm)",
 				size: 170,
 				cell: (info) => formatNum(info.getValue<number | null>(), 3),
 			},
 			{
 				id: "caseGrossWeightKg",
 				accessorKey: "caseGrossWeightKg",
-				header: "Case Gross Weight (kg)",
+				header: "Ctn Gross Weight (kg)",
 				size: 175,
 				cell: (info) => formatNum(info.getValue<number | null>(), 3),
 			},
 			{
 				id: "casesPerLayer",
 				accessorKey: "casesPerLayer",
-				header: "Cases Per Layer",
+				header: "Ctns Per Layer",
 				size: 140,
 				cell: (info) => formatNum(info.getValue<number | null>(), 3),
 			},
@@ -409,6 +583,67 @@ function ItemsComponent() {
 			},
 		},
 	});
+
+	useEffect(() => {
+		const links = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+			rel: link.rel,
+			href: link.getAttribute("href"),
+		}));
+		sendDebugLog("H1", "items route mounted", {
+			isCreateOpen,
+			isImportOpen,
+			editingId: editing?.skuId ?? null,
+			deletingId: deleting?.skuId ?? null,
+			viewingSuppliersId: viewingSuppliers?.skuId ?? null,
+			headLinkCount: links.length,
+			headLinks: links.slice(0, 8),
+		});
+
+		return () => {
+			const unmountLinks = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+				rel: link.rel,
+				href: link.getAttribute("href"),
+			}));
+			sendDebugLog("H1", "items route unmount cleanup", {
+				headLinkCount: unmountLinks.length,
+				headLinks: unmountLinks.slice(0, 8),
+			});
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	useEffect(() => {
+		const links = Array.from(document.head.querySelectorAll("link")).map((link) => ({
+			rel: link.rel,
+			href: link.getAttribute("href"),
+		}));
+		sendDebugLog("H2", "items ui state changed", {
+			isCreateOpen,
+			isImportOpen,
+			editingId: editing?.skuId ?? null,
+			deletingId: deleting?.skuId ?? null,
+			viewingSuppliersId: viewingSuppliers?.skuId ?? null,
+			page,
+			totalItems,
+			headLinkCount: links.length,
+		});
+	}, [
+		isCreateOpen,
+		isImportOpen,
+		editing,
+		deleting,
+		viewingSuppliers,
+		page,
+		totalItems,
+	]);
+
+	useEffect(() => {
+		sendDebugLog("H3", "items data/loading state changed", {
+			isLoading,
+			paginatedLength: paginated.length,
+			allItemsLength: allItems.length,
+		});
+	}, [isLoading, paginated.length, allItems.length]);
 
 	return (
 		<main
@@ -543,9 +778,9 @@ function ItemsComponent() {
 												{header.isPlaceholder
 													? null
 													: flexRender(
-															header.column.columnDef.header,
-															header.getContext(),
-														)}
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
 											</TableHead>
 										))}
 									</TableRow>
@@ -665,6 +900,10 @@ function ItemsComponent() {
 				stockUnits={stockUnits}
 				onSubmit={(values) => {
 					if (createInFlightRef.current || createLoading) return;
+					if (!defaultStockUnitId) {
+						toast.error("No stock unit found. Please create CTN stock unit first.");
+						return;
+					}
 					createInFlightRef.current = true;
 					createItem({
 						input: {
@@ -690,13 +929,14 @@ function ItemsComponent() {
 				}}
 				loading={createLoading}
 				title="Add Item"
-				description="Create a new item with logistics and packaging details"
+				description="Create item using import format columns"
 			/>
 
 			<ImportDialog
 				open={isImportOpen}
 				onOpenChange={setIsImportOpen}
 				mode="skus"
+				skuFormat="items"
 				createdBy={createdBy}
 				onImported={() => {
 					void refetch();
@@ -752,7 +992,7 @@ function ItemsComponent() {
 					}}
 					loading={updateLoading}
 					title="Edit Item"
-					description="Update item details including logistics and packaging dimensions"
+					description="Update item using import format columns"
 				/>
 			)}
 

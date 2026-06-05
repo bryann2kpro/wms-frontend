@@ -52,10 +52,22 @@ import { excelSerialToDateString } from "@/lib/utils";
 
 export type ImportMode = "skus" | "racks";
 
+const STORAGE_TYPE_TO_BIN_TYPE: Record<string, string> = {
+	PICK_FACE: "PICK_FACE",
+	RESERVE_STORAGE: "RESERVE",
+	BULK_STORAGE: "BULK",
+};
+
+function mapStorageToBinType(storageType: string): string {
+	const upper = storageType.trim().toUpperCase();
+	return STORAGE_TYPE_TO_BIN_TYPE[upper] ?? (upper.includes("RESERVE") ? "RESERVE" : upper.includes("BULK") ? "BULK" : "FIXED");
+}
+
 interface ImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode: ImportMode;
+	skuFormat?: "default" | "items";
 	createdBy: string;
 	onImported?: () => void;
 }
@@ -80,6 +92,10 @@ type PreviewRow =
 				rackRow: string;
 				rackColumn: string;
 				rackLevel: string;
+				binCode?: string;
+				barCode?: string;
+				binType?: string;
+				isActive?: boolean;
 			};
 			errors: string[];
 			rackPayload?: CreateRackMutationVariables["input"];
@@ -180,7 +196,7 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 					}),
 				]
 			: [
-					["Row", "Row", "Column", "Level", "Errors"],
+					["Row", "Code", "Barcode", "Storage Row", "Bay", "Level", "Bin Type", "Status", "Errors"],
 					...failed.map((row) => {
 						const data = row.data as Extract<
 							PreviewRow,
@@ -188,9 +204,13 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 						>["data"];
 						return [
 							row.rowNumber,
+							data.binCode ?? "",
+							data.barCode ?? "",
 							data.rackRow,
 							data.rackColumn,
 							data.rackLevel,
+							data.binType ?? "",
+							data.isActive === undefined ? "" : data.isActive ? "ACTIVE" : "INACTIVE",
 							row.errors.join("; "),
 						];
 					}),
@@ -206,6 +226,7 @@ export function ImportDialog({
 	open,
 	onOpenChange,
 	mode,
+	skuFormat = "default",
 	createdBy,
 	onImported,
 }: ImportDialogProps) {
@@ -215,6 +236,7 @@ export function ImportDialog({
 	const [isImporting, setIsImporting] = useState(false);
 	const [processedCount, setProcessedCount] = useState(0);
 	const [isStockTakeFormat, setIsStockTakeFormat] = useState(false);
+	const [isStorageBinFormat, setIsStorageBinFormat] = useState(false);
 	const [newRacksToCreate, setNewRacksToCreate] = useState<
 		CreateRackMutationVariables["input"][]
 	>([]);
@@ -296,17 +318,43 @@ export function ImportDialog({
 	function downloadTemplate() {
 		const headers =
 			mode === "skus"
-				? [
-						[
-							"SKU Code",
+				? skuFormat === "items"
+					? [[
+							"Code",
 							"Description",
-							"Quantity",
-							"Unit of Measure",
-							"Picking Strategy",
-							"Expiry Date",
-						],
-					]
-				: [["Row", "Column", "Level"]];
+							"Barcode",
+							"Brand",
+							"Category",
+							"Manufacturer",
+							"Status",
+							"Case Rate",
+							"Case Ext Length (mm)",
+							"Case Ext Width ((mm)",
+							"Case Ext Height (mm)",
+							"Case Gross Weight (kg)",
+							"Cases Per Layer",
+							"No Of Layers",
+						]]
+					: [
+							[
+								"SKU Code",
+								"Description",
+								"Quantity",
+								"Unit of Measure",
+								"Picking Strategy",
+								"Expiry Date",
+							],
+						]
+				: [[
+						"CODE",
+						"BARCODE",
+						"DESC_01",
+						"STATUS",
+						"ROW",
+						"BAY",
+						"LEVEL",
+						"STORAGE_TYPE",
+					]];
 		const worksheet = utils.aoa_to_sheet(headers);
 		const workbook = utils.book_new();
 		utils.book_append_sheet(workbook, worksheet, "Template");
@@ -315,6 +363,15 @@ export function ImportDialog({
 
 	function parseSkuRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
 		const stockUnits = stockUnitsData?.stockUnits.query ?? [];
+		const defaultStockUnitId =
+			stockUnits.find(
+				(u) =>
+					u.isActive &&
+					(u.unitCode?.trim().toLowerCase() === "ctn" ||
+						u.unitName?.trim().toLowerCase() === "ctn"),
+			)?.stockUnitId ??
+			stockUnits.find((u) => u.isActive)?.stockUnitId ??
+			stockUnits[0]?.stockUnitId;
 		const uomLookup = new Map(
 			stockUnits.map((unit) => [
 				normalizeKey(`${unit.unitName} ${unit.unitCode}`),
@@ -463,6 +520,122 @@ export function ImportDialog({
 			});
 		}
 
+		if (skuFormat === "items") {
+			// Detect item_excel format: has DESC_01 / RETRIEVAL / BATCH_SERIAL_CONTROL headers
+			const firstHeaders = rowToHeaders(rawRows[0] ?? {});
+			const isItemExcelFormat =
+				Boolean(firstHeaders["desc 01"]) ||
+				Boolean(firstHeaders["retrieval"]) ||
+				Boolean(firstHeaders["batch serial control"]);
+
+			const mapRetrieval = (v: string): string => {
+				const u = v.trim().toUpperCase();
+				if (u.includes("EXPIRED") || u === "FEFO") return "FEFO";
+				if (u.includes("LAST") || u === "LIFO") return "LIFO";
+				return "FIFO";
+			};
+
+			const mapBatchControl = (v: string): { isExpiryControlled: boolean; isLotControlled: boolean } => {
+				const u = v.trim().toUpperCase();
+				if (u === "BOTH") return { isExpiryControlled: true, isLotControlled: true };
+				if (u === "LOT_CONTROL_ONLY") return { isExpiryControlled: false, isLotControlled: true };
+				if (u === "EXPIRY_CONTROL_ONLY") return { isExpiryControlled: true, isLotControlled: false };
+				return { isExpiryControlled: false, isLotControlled: false };
+			};
+
+			return rawRows.map((row, index) => {
+				const headers = rowToHeaders(row);
+				const skuCode = headers.code ?? headers["sku code"] ?? headers["item code"] ?? "";
+				const skuDescription = isItemExcelFormat
+					? (headers["desc 01"] ?? headers.description ?? "")
+					: (headers.description ?? "");
+				const barcode = isItemExcelFormat
+					? (headers["unit barcode"] ?? headers.barcode ?? "")
+					: (headers.barcode ?? "");
+				const brand = headers.brand ?? "";
+				const category = headers.category ?? "";
+				const manufacturer = headers.manufacturer ?? "";
+				const statusRaw = (headers.status ?? "active").toLowerCase();
+				const isActive = !["inactive", "0", "false", "no"].includes(statusRaw);
+				const parseNum = (v: string) => {
+					const t = v.trim();
+					if (!t || t === "0" || t === "0.0") return null;
+					const n = Number(t);
+					return Number.isNaN(n) ? null : n;
+				};
+				const caseRate = parseNum(headers["case rate"] ?? "");
+				const caseExtLengthMm = parseNum(headers["case ext length mm"] ?? "");
+				const caseExtWidthMm =
+					parseNum(headers["case ext width mm"] ?? "") ??
+					parseNum(headers["case ext width ((mm"] ?? "");
+				const caseExtHeightMm = parseNum(headers["case ext height mm"] ?? "");
+				const caseGrossWeightKg = parseNum(headers["case gross weight kg"] ?? "");
+				const casesPerLayer = parseNum(headers["cases per layer"] ?? "");
+				const noOfLayers = parseNum(headers["no of layers"] ?? "");
+
+				// item_excel-specific fields
+				const pickingStrategy = isItemExcelFormat
+					? mapRetrieval(headers["retrieval"] ?? "")
+					: "FIFO";
+				const { isExpiryControlled, isLotControlled } = isItemExcelFormat
+					? mapBatchControl(headers["batch serial control"] ?? "")
+					: { isExpiryControlled: false, isLotControlled: false };
+
+				// UOM: item_excel uses CASE_UOM column; fall back to default CTN
+				const caseUomLabel = isItemExcelFormat
+					? (headers["case uom"] ?? headers["unit uom"] ?? "")
+					: "";
+				const resolvedUomId = caseUomLabel
+					? (uomLookup.get(normalizeKey(caseUomLabel)) ?? defaultStockUnitId)
+					: defaultStockUnitId;
+
+				const errors: string[] = [];
+				if (!skuCode) errors.push("Code is required");
+				if (!skuDescription) errors.push("Description is required");
+				if (!resolvedUomId) errors.push("No stock unit available (expected CTN)");
+
+				const payload =
+					errors.length === 0 && resolvedUomId
+						? {
+								skuCode,
+								skuDescription,
+								skuExpiryDate: "",
+								skuSuppliers: [],
+								skuUom: resolvedUomId,
+								pickingStrategy,
+								isLotControlled,
+								isExpiryControlled,
+								isActive,
+								barcode: barcode || null,
+								brand: brand || null,
+								category: category || null,
+								manufacturer: manufacturer || null,
+								caseRate,
+								caseExtLengthMm,
+								caseExtWidthMm,
+								caseExtHeightMm,
+								caseGrossWeightKg,
+								casesPerLayer,
+								noOfLayers,
+							}
+						: undefined;
+
+				return {
+					rowNumber: index + 2,
+					data: {
+						skuCode,
+						skuDescription,
+						skuQuantity: "",
+						skuUomLabel: caseUomLabel || "CTN",
+						pickingStrategy,
+						skuExpiryDate: "",
+					},
+					errors,
+					skuPayload: payload,
+				};
+			});
+		}
+
 		setNewRacksToCreate([]);
 		setNewUomsToCreate([]);
 
@@ -560,19 +733,48 @@ export function ImportDialog({
 		);
 		const inFileKeys = new Map<string, number>();
 
+		// Detect storage bin format by presence of CODE/BAY columns
+		const firstHeaders = Object.fromEntries(
+			Object.entries(rawRows[0] ?? {}).map(([k]) => [normalizeKey(k), true]),
+		);
+		const isBinFormat = Boolean(firstHeaders["code"] || firstHeaders["bay"]);
+		setIsStorageBinFormat(isBinFormat);
+
 		return rawRows.map((row, index) => {
 			const headers: Record<string, string> = Object.fromEntries(
 				Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
 			);
-			const rackRow = headers.row ?? "";
-			const rackColumn = headers.column ?? "";
-			const rackLevel = headers.level ?? "";
+
+			let rackRow: string;
+			let rackColumn: string;
+			let rackLevel: string;
+			let binCode: string | undefined;
+			let barCode: string | undefined;
+			let binType: string | undefined;
+			let isActive: boolean | undefined;
+
+			if (isBinFormat) {
+				rackRow = headers["row"] ?? "";
+				rackColumn = headers["bay"] ?? "";
+				rackLevel = headers["level"] ?? "";
+				binCode = headers["code"] || undefined;
+				barCode = headers["barcode"] || undefined;
+				const storageType = headers["storage type"] ?? headers["storage_type"] ?? headers["storagetype"] ?? "";
+				binType = storageType ? mapStorageToBinType(storageType) : "FIXED";
+				const statusRaw = (headers["status"] ?? "active").trim().toUpperCase();
+				isActive = statusRaw !== "INACTIVE";
+			} else {
+				rackRow = headers["row"] ?? "";
+				rackColumn = headers["column"] ?? "";
+				rackLevel = headers["level"] ?? "";
+			}
+
 			const key = normalizeKey(`${rackRow}|${rackColumn}|${rackLevel}`);
 			inFileKeys.set(key, (inFileKeys.get(key) ?? 0) + 1);
 
 			const errors: string[] = [];
 			if (!rackRow) errors.push("Row is required");
-			if (!rackColumn) errors.push("Column is required");
+			if (!rackColumn) errors.push(isBinFormat ? "Bay is required" : "Column is required");
 			if (!rackLevel) errors.push("Level is required");
 			if (key && (inFileKeys.get(key) ?? 0) > 1) {
 				errors.push("Duplicate rack in file");
@@ -583,7 +785,7 @@ export function ImportDialog({
 
 			return {
 				rowNumber: index + 2,
-				data: { rackRow, rackColumn, rackLevel },
+				data: { rackRow, rackColumn, rackLevel, binCode, barCode, binType, isActive },
 				errors,
 				rackPayload:
 					errors.length === 0
@@ -591,6 +793,10 @@ export function ImportDialog({
 								rackRow,
 								rackColumn,
 								rackLevel,
+								binCode: binCode ?? null,
+								barCode: barCode ?? null,
+								binType: binType ?? "FIXED",
+								isActive: isActive ?? true,
 								createdBy,
 								updatedBy: createdBy,
 							}
@@ -604,6 +810,7 @@ export function ImportDialog({
 		setIsParsing(true);
 		setRows([]);
 		setIsStockTakeFormat(false);
+		setIsStorageBinFormat(false);
 		setNewRacksToCreate([]);
 		setNewUomsToCreate([]);
 		try {
@@ -958,6 +1165,16 @@ export function ImportDialog({
 								<TableRow className="bg-muted/40">
 									<TableHead className="w-16">Row</TableHead>
 									{mode === "skus" ? (
+									skuFormat === "items" ? (
+										<>
+											<TableHead>Code</TableHead>
+											<TableHead>Description</TableHead>
+											<TableHead>Barcode</TableHead>
+											<TableHead>Brand</TableHead>
+											<TableHead>Category</TableHead>
+											<TableHead>Manufacturer</TableHead>
+										</>
+									) : (
 										<>
 											<TableHead>SKU Code</TableHead>
 											<TableHead>Description</TableHead>
@@ -965,6 +1182,17 @@ export function ImportDialog({
 											<TableHead>UOM</TableHead>
 											<TableHead>Strategy</TableHead>
 											<TableHead>Expiry</TableHead>
+										</>
+									)
+									) : isStorageBinFormat ? (
+										<>
+											<TableHead>Code</TableHead>
+											<TableHead>Barcode</TableHead>
+											<TableHead>Row</TableHead>
+											<TableHead>Bay</TableHead>
+											<TableHead>Level</TableHead>
+											<TableHead>Bin Type</TableHead>
+											<TableHead>Status</TableHead>
 										</>
 									) : (
 										<>
@@ -980,7 +1208,7 @@ export function ImportDialog({
 								{rows.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={mode === "skus" ? 8 : 6}
+											colSpan={mode === "skus" ? 8 : isStorageBinFormat ? 9 : 5}
 											className="h-20 text-center text-muted-foreground"
 										>
 											Upload a file to preview rows.
@@ -996,13 +1224,34 @@ export function ImportDialog({
 										>
 											<TableCell>{row.rowNumber}</TableCell>
 											{isSkuRow(row) ? (
+												skuFormat === "items" ? (
+													<>
+														<TableCell>{row.data.skuCode}</TableCell>
+														<TableCell>{row.data.skuDescription}</TableCell>
+														<TableCell>{(row.skuPayload?.barcode as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.brand as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.category as string | null) ?? ""}</TableCell>
+														<TableCell>{(row.skuPayload?.manufacturer as string | null) ?? ""}</TableCell>
+													</>
+												) : (
+													<>
+														<TableCell>{row.data.skuCode}</TableCell>
+														<TableCell>{row.data.skuDescription}</TableCell>
+														<TableCell>{row.data.skuQuantity}</TableCell>
+														<TableCell>{row.data.skuUomLabel}</TableCell>
+														<TableCell>{row.data.pickingStrategy}</TableCell>
+														<TableCell>{row.data.skuExpiryDate}</TableCell>
+													</>
+												)
+											) : isStorageBinFormat ? (
 												<>
-													<TableCell>{row.data.skuCode}</TableCell>
-													<TableCell>{row.data.skuDescription}</TableCell>
-													<TableCell>{row.data.skuQuantity}</TableCell>
-													<TableCell>{row.data.skuUomLabel}</TableCell>
-													<TableCell>{row.data.pickingStrategy}</TableCell>
-													<TableCell>{row.data.skuExpiryDate}</TableCell>
+													<TableCell className="font-mono text-xs">{row.data.binCode ?? ""}</TableCell>
+													<TableCell className="font-mono text-xs">{row.data.barCode ?? ""}</TableCell>
+													<TableCell>{row.data.rackRow}</TableCell>
+													<TableCell>{row.data.rackColumn}</TableCell>
+													<TableCell>{row.data.rackLevel}</TableCell>
+													<TableCell>{row.data.binType ?? ""}</TableCell>
+													<TableCell>{row.data.isActive === undefined ? "" : row.data.isActive ? "ACTIVE" : "INACTIVE"}</TableCell>
 												</>
 											) : (
 												<>

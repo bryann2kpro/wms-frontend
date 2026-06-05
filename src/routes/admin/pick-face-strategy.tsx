@@ -57,6 +57,7 @@ import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus, Edit, Trash2, Search, PackageSearch } from "lucide-react";
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import { PickFaceImportDialog } from "@/components/settings/master-data/pick-face-import-dialog";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -77,13 +78,17 @@ function PickFaceStrategyPage() {
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+	const [sortField, setSortField] = useState<string>("UPDATED_AT");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<PickFaceStrategy | null>(null);
 	const [deleting, setDeleting] = useState<PickFaceStrategy | null>(null);
 
 	const queryVars: PickFaceStrategiesQueryVariables = {
 		pageSize: PAGE_SIZE,
 		pageNumber: page,
+		sort: { sortBy: sortField, sortOrder: sortDirection },
 		...(debouncedSearch.trim()
 			? { filter: { search: debouncedSearch.trim() } }
 			: {}),
@@ -189,6 +194,51 @@ function PickFaceStrategyPage() {
 										className="w-full rounded-lg border-muted-foreground/20 pl-9 sm:w-56"
 									/>
 								</div>
+								<div className="flex items-center gap-1">
+									<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+									<Select
+										value={sortField}
+										onValueChange={(v) => {
+											setSortField(v);
+											setPage(1);
+										}}
+									>
+										<SelectTrigger className="h-9 w-36 rounded-lg text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="STORAGE_BIN">Storage Bin</SelectItem>
+											<SelectItem value="ITEM_CODE">Item Code</SelectItem>
+											<SelectItem value="BIN_TYPE">Bin Type</SelectItem>
+											<SelectItem value="UPDATED_AT">Last Updated</SelectItem>
+											<SelectItem value="CREATED_AT">Created</SelectItem>
+										</SelectContent>
+									</Select>
+									<Select
+										value={sortDirection}
+										onValueChange={(v) => {
+											setSortDirection(v as "ASC" | "DESC");
+											setPage(1);
+										}}
+									>
+										<SelectTrigger className="h-9 w-20 rounded-lg text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="ASC">ASC</SelectItem>
+											<SelectItem value="DESC">DESC</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								<Button
+									variant="outline"
+									onClick={() => setIsImportOpen(true)}
+									disabled={!createdBy}
+									className="rounded-lg"
+								>
+									<Upload className="mr-2 h-4 w-4" />
+									Import Excel
+								</Button>
 								<Button
 									onClick={() => setIsCreateOpen(true)}
 									disabled={!createdBy}
@@ -341,6 +391,13 @@ function PickFaceStrategyPage() {
 						)}
 					</CardContent>
 				</Card>
+
+				<PickFaceImportDialog
+					open={isImportOpen}
+					onOpenChange={setIsImportOpen}
+					createdBy={createdBy}
+					onImported={() => void refetch()}
+				/>
 
 				<PickFaceStrategyFormDialog
 					open={isCreateOpen}
