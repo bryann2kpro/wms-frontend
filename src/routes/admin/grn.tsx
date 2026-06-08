@@ -12,6 +12,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,17 @@ import {
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+
+/**
+ * True when a GRN's send-to-ES was blocked server-side because its PO/ASN still has
+ * outstanding qty (see grns.resolvers.ts `computePoFulfillment` — message format:
+ * "PO <poNo> not fully received yet — outstanding: ..."). Distinguishes this from a
+ * genuine NetSuite rejection so the UI can remind staff *why*: another GRN already
+ * exists against this PO and it isn't done yet.
+ */
+function isPoFulfillmentBlock(nsError?: string | null): boolean {
+	return !!nsError && nsError.includes("not fully received yet");
+}
 
 function getGrnErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "response" in err) {
@@ -1314,8 +1326,13 @@ function GRNRouteComponent() {
 												const showApprove =
 													canApproveGrn && grn.status === "Submitted";
 												console.log("")
+												// poFulfilled === false means the PO/ASN still has outstanding qty —
+												// sending now is guaranteed to be rejected by NetSuite (see
+												// computePoFulfillment on the backend). Hide the action entirely
+												// rather than let staff hit a doomed send.
+												const poBlocked = grn.poFulfilled === false;
 												const showSend =
-													canApproveGrn && grn.status === "Approved";
+													canApproveGrn && grn.status === "Approved" && !poBlocked;
 												const showRetry = canApproveGrn && grn.status === "Failed";
 												return (
 													<TableRow
@@ -1338,14 +1355,25 @@ function GRNRouteComponent() {
 														</TableCell>
 														<TableCell className="px-6">
 															{grn.status ? (
-																<Badge
-																	variant="outline"
-																	className={getStatusColor(
-																		grn.status as GRNStatus,
-																	)}
-																>
-																	{formatStatus(grn.status)}
-																</Badge>
+																<div className="flex items-center gap-1.5">
+																	<Badge
+																		variant="outline"
+																		className={getStatusColor(
+																			grn.status as GRNStatus,
+																		)}
+																	>
+																		{formatStatus(grn.status)}
+																	</Badge>
+																	{isPoFulfillmentBlock(grn.nsError) ? (
+																		<span
+																			title={grn.nsError ?? undefined}
+																			className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+																		>
+																			<Ban className="h-3 w-3" />
+																			PO not fully received
+																		</span>
+																	) : null}
+																</div>
 															) : (
 																<span className="text-muted-foreground">-</span>
 															)}
@@ -1395,6 +1423,16 @@ function GRNRouteComponent() {
 																		<Send className="h-4 w-4 text-purple-600" />
 																	</Button>
 																)}
+																{canApproveGrn &&
+																grn.status === "Approved" &&
+																poBlocked ? (
+																	<span
+																		title={`PO ${grn.poNo ?? ""} still has another delivery outstanding — wait until it's fully received before sending to ES.`}
+																		className="inline-flex h-8 w-8 items-center justify-center rounded-md text-amber-500/70"
+																	>
+																		<Ban className="h-4 w-4" />
+																	</span>
+																) : null}
 																{showRetry && (
 																	<Button
 																		variant="ghost"
@@ -1708,11 +1746,54 @@ function GRNRouteComponent() {
 											</div>
 										</div>
 
+										{selectedGRN.status === "Failed" &&
+										isPoFulfillmentBlock(selectedGRN.nsError) ? (
+											<>
+												<Separator />
+												<div className="relative overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5 p-3.5">
+													<div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
+													<div className="flex items-start gap-2.5 pl-1.5">
+														<span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
+															<Ban className="h-3.5 w-3.5" />
+														</span>
+														<div className="space-y-1">
+															<p className="text-sm font-semibold text-amber-800">
+																Blocked — this PO already has a delivery in progress
+															</p>
+															<p className="text-xs leading-relaxed text-amber-700/90">
+																{selectedGRN.poNo ? (
+																	<>
+																		PO{" "}
+																		<span className="font-mono font-medium">
+																			{selectedGRN.poNo}
+																		</span>{" "}
+																	</>
+																) : (
+																	"This PO "
+																)}
+																isn't fully received yet — another GRN was created
+																for it before, and NetSuite expects the whole PO
+																to land before accepting an item receipt. Sending
+																was skipped to avoid a guaranteed rejection.
+															</p>
+															<p className="rounded-md bg-amber-500/10 px-2 py-1 font-mono text-[11px] text-amber-800">
+																{selectedGRN.nsError}
+															</p>
+															<p className="text-xs text-amber-700/90">
+																Wait for the remaining delivery(ies) on this PO,
+																then resend once it's fully received.
+															</p>
+														</div>
+													</div>
+												</div>
+											</>
+										) : null}
+
 										{(selectedGRN.status === "Sent-to-ES" ||
 											selectedGRN.status === "Failed") && (
 											<>
 												<Separator />
-												
+
 												{/* Integration */}
 												<IntegrationLogPanel
 													entityId={selectedGRN.id}
@@ -1747,7 +1828,9 @@ function GRNRouteComponent() {
 												: "Approve"}
 										</Button>
 									)}
-									{canApproveGrn && selectedGRN?.status === "Approved" && (
+									{canApproveGrn &&
+									selectedGRN?.status === "Approved" &&
+									selectedGRN.poFulfilled !== false && (
 										<Button
 											onClick={() => {
 												handleUpdateStatus(selectedGRN.id, "Sent-to-ES");
@@ -1761,6 +1844,17 @@ function GRNRouteComponent() {
 												? "Sending…"
 												: "Send to ES"}
 										</Button>
+									)}
+									{canApproveGrn &&
+									selectedGRN?.status === "Approved" &&
+									selectedGRN.poFulfilled === false && (
+										<div
+											title={`PO ${selectedGRN.poNo ?? ""} still has another delivery outstanding — wait until it's fully received before sending to ES.`}
+											className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700"
+										>
+											<Ban className="h-3.5 w-3.5" />
+											Send to ES blocked — PO not fully received
+										</div>
 									)}
 									{canApproveGrn && selectedGRN?.status === "Failed" && (
 										<Button

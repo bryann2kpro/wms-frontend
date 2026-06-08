@@ -533,6 +533,10 @@ export interface Grn {
 	approvedAt: string | null;
 	notes: string | null;
 	proofUrl: string | null;
+	/** NetSuite error message when status is Failed (incl. our PO-not-fully-fulfilled block message). */
+	nsError?: string | null;
+	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
+	poFulfilled?: boolean | null;
 	createdAt: string;
 	updatedAt: string;
 	createdByUser: GrnAuditUser | null;
@@ -692,6 +696,10 @@ export interface GrnDetailForList {
 	updatedBy: string | null;
 	notes?: string;
 	proofUrl?: string | null;
+	/** NetSuite error message when status is Failed (incl. our PO-not-fully-fulfilled block message). */
+	nsError?: string | null;
+	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
+	poFulfilled?: boolean | null;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;

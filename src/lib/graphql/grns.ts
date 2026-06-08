@@ -36,6 +36,8 @@ export const GRNS_QUERY = gql`
 				approvedAt
 				notes
 				proofUrl
+				nsError
+				poFulfilled
 				createdAt
 				updatedAt
 				createdByUser {
@@ -459,6 +461,8 @@ export function mapGrnsQueryToResult(
 			updatedBy: g.updatedByUser?.displayName ?? null,
 			notes: g.notes ?? undefined,
 			proofUrl: g.proofUrl ?? null,
+			nsError: g.nsError ?? null,
+			poFulfilled: g.poFulfilled ?? null,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,
