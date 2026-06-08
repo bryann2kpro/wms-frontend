@@ -212,6 +212,7 @@ export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
 			entity
 			duedate
 			receivedAt
+			fulfillmentStatus
 			lines {
 				lineuniquekey
 				itemid
@@ -222,6 +223,22 @@ export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
 				islotitem
 				lotNo
 				expiryDate
+			}
+		}
+	}
+`;
+
+/** Look up the advance notice (linked or not) for a PO — used to compute remaining-to-receive qty. */
+export const ADVANCE_NOTICE_BY_PO_NO_QUERY = gql`
+	query AdvanceNoticeByPoNo($poNo: String!) {
+		advanceNoticeByPoNo(poNo: $poNo) {
+			id
+			tranid
+			lines {
+				itemid
+				displayname
+				quantity
+				units
 			}
 		}
 	}
@@ -325,11 +342,23 @@ export type AdvanceNotice = {
 	entity: string;
 	duedate: string;
 	receivedAt: string;
+	/** PENDING = no GRN yet; PARTIAL = a GRN exists but qty remains outstanding for this PO. */
+	fulfillmentStatus: "PENDING" | "PARTIAL" | string;
 	lines: AdvanceNoticeLine[];
 };
 
 export type ListPendingAdvanceNoticesQueryData = {
 	listPendingAdvanceNotices: AdvanceNotice[];
+};
+
+export type AdvanceNoticeByPoNoQueryVariables = {
+	poNo: string;
+};
+
+export type AdvanceNoticeByPoNoQueryData = {
+	advanceNoticeByPoNo: Pick<AdvanceNotice, "id" | "tranid"> & {
+		lines: Array<Pick<AdvanceNoticeLine, "itemid" | "displayname" | "quantity" | "units">>;
+	} | null;
 };
 
 // ---------------------------------------------------------------------------

@@ -64,6 +64,7 @@ import { Plus, Edit, Trash2, Search, PackageSearch, ArrowUpDown, Upload } from "
 import type { Rack } from "@/lib/graphql/types";
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { PickFaceImportDialog } from "@/components/settings/master-data/pick-face-import-dialog";
+import { SkuCombobox } from "@/components/grn/sku-combobox";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -522,12 +523,6 @@ function PickFaceStrategyFormDialog({
 		}
 	}, [open, initial?.id]);
 
-	const handleSkuChange = (id: string) => {
-		setSkuId(id);
-		const sku = skus.find((s) => s.skuId === id);
-		if (sku) setItemCode(sku.skuCode);
-	};
-
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			setStorageBinId(initial?.storageBinId ?? "");
@@ -576,7 +571,7 @@ function PickFaceStrategyFormDialog({
 							</SelectContent>
 						</Select> */}
 						<RackLocationCombobox
-							racks={racks}
+							// racks={racks}
 							value={storageBinId}
 							onChange={(rackId) => setStorageBinId(rackId)}
 							placeholder="Select a rack location..."
@@ -587,7 +582,7 @@ function PickFaceStrategyFormDialog({
 						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
 							SKU <span className="text-destructive">*</span>
 						</Label>
-						<Select value={skuId} onValueChange={handleSkuChange}>
+						{/* <Select value={skuId} onValueChange={handleSkuChange}>
 							<SelectTrigger className="rounded-lg border-muted-foreground/20">
 								<SelectValue placeholder="Select a SKU..." />
 							</SelectTrigger>
@@ -598,7 +593,27 @@ function PickFaceStrategyFormDialog({
 									</SelectItem>
 								))}
 							</SelectContent>
-						</Select>
+						</Select> */}
+						<SkuCombobox
+							onChange={(v) => {
+								setSkuId(v.skuId);
+								setItemCode(v.skuCode);
+							}}
+							value={(() => {
+								if (!skuId) return null;
+								const s = skus.find((x) => x.skuId === skuId);
+								return {
+									skuId,
+									sku: s?.skuCode ?? skuId,
+									skuCode: s?.skuCode ?? skuId,
+									description: s?.skuDescription ?? "",
+									uom: "",
+									isActive: s?.isActive ?? true,
+								};
+							})()}
+							placeholder="Select a SKU..."
+							className="h-8"
+						/>
 					</div>
 					<div className="grid gap-2">
 						<Label htmlFor="item-code" style={{ fontFamily: '"Figtree", sans-serif' }}>

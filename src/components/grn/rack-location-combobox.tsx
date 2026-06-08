@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 
@@ -12,6 +10,10 @@ import {
 } from "@/components/ui/popover";
 import type { Rack } from "@/lib/graphql/types";
 import { cn } from "@/lib/utils";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
+import { RACKS_QUERY, RacksQueryData, RacksQueryVariables } from "@/lib/graphql";
+import { gqlRequest } from "@/lib/api/gql";
 
 /** Display: `rackRow-rackLevel-rackColumn` (matches stock quant `rackLabel` / DB convention). */
 export function formatRackLocationLabel(
@@ -37,7 +39,7 @@ export function sortRacksByLocation(racks: Rack[]): Rack[] {
 }
 
 export type RackLocationComboboxProps = {
-	racks: Rack[];
+	// racks: Rack[];
 	value: string;
 	onChange: (rackId: string) => void;
 	disabled?: boolean;
@@ -49,7 +51,7 @@ export type RackLocationComboboxProps = {
 };
 
 export function RackLocationCombobox({
-	racks,
+	// racks,
 	value,
 	onChange,
 	disabled = false,
@@ -61,22 +63,25 @@ export function RackLocationCombobox({
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 
-	const filtered = useMemo(() => {
-		const q = search.trim().toLowerCase();
-		const base = q
-			? racks.filter((r) => {
-					const label = formatRackLocationLabel(r).toLowerCase();
-					return (
-						label.includes(q) ||
-						r.rackId.toLowerCase().includes(q) ||
-						r.rackRow.toLowerCase().includes(q) ||
-						r.rackColumn.toLowerCase().includes(q) ||
-						r.rackLevel.toLowerCase().includes(q)
-					);
-				})
-			: racks;
-		return sortRacksByLocation(base);
-	}, [racks, search]);
+	const { data: racksData } = useInfiniteQuery<RacksQueryData>({
+		queryKey: [...qk.racks.all, "infinite", search],
+		queryFn: async ({ pageParam }) => {
+			return await gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
+				pageSize: 10,
+				pageNumber: Number(pageParam),
+				filter: search.trim() ? { binCode: search.trim() } : undefined,
+			});
+		},
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => {
+			const p = lastPage.racks.pagination;
+			return p.hasNextPage ? p.currentPage + 1 : undefined;
+		},
+	});
+
+	const racks = racksData?.pages.flatMap((page) => page.racks.query) ?? [];
+
+	const filtered = useMemo(() => sortRacksByLocation(racks), [racks]);
 
 	const selected = racks.find((r) => r.rackId === value);
 	const displayLabel = selected ? formatRackLocationLabel(selected) : null;

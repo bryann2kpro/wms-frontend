@@ -53,7 +53,13 @@ import {
 	UPDATE_GRN_MUTATION,
 	DELETE_GRN_MUTATION,
 	UI_STATUS_TO_GQL,
+	GQL_STATUS_TO_UI,
+	GRNS_QUERY,
+	type GrnsQueryData,
+	ADVANCE_NOTICE_BY_PO_NO_QUERY,
+	type AdvanceNoticeByPoNoQueryData,
 } from "@/lib/graphql/grns";
+import type { Grn, GrnItem } from "@/lib/graphql/types";
 import {
 	CREATE_RACK_MUTATION,
 	type CreateRackMutationData,
@@ -234,6 +240,18 @@ function grnApiRackIds(item: Pick<GRNLineItemForm, "rackId">): string[] {
 }
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
+/** Status badge colors for the PO fulfillment-history hint (matches grn.tsx getStatusColor). */
+function grnHistoryStatusColor(status: string | null | undefined): string {
+	const colors: Record<string, string> = {
+		Draft: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+		Submitted: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+		Approved: "bg-green-500/10 text-green-600 border-green-500/20",
+		"Sent-to-ES": "bg-purple-500/10 text-purple-600 border-purple-500/20",
+		Failed: "bg-red-500/10 text-red-600 border-red-500/20",
+	};
+	return (status && colors[status]) || "bg-gray-500/10 text-gray-600 border-gray-500/20";
+}
+
 function normalizeFieldErrors(
 	errors: unknown[],
 ): Array<{ message?: string } | undefined> {
@@ -735,6 +753,73 @@ export function GrnFormDialog({
 	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
+	/** Prior GRNs found for a manually-typed PO — shown as a "fulfillment history" hint. */
+	const [poHistory, setPoHistory] = useState<
+		Array<
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt" | "supplierDeliveryNo"> & {
+				items: Array<Pick<GrnItem, "skuId" | "skuCode" | "skuDescription" | "qty">>;
+			}
+		>
+	>([]);
+	const [poHistoryLoading, setPoHistoryLoading] = useState(false);
+	/** Remaining-to-receive qty per SKU = ASN expected qty minus what prior GRNs already received. */
+	const [poRemaining, setPoRemaining] = useState<
+		Array<{ skuCode: string; displayName: string | null; expected: number; received: number; remaining: number; units: string }>
+	>([]);
+	const lastLookedUpPoRef = useRef<string>("");
+	const lookupPoHistory = async (poNo: string) => {
+		const trimmed = poNo.trim();
+		if (!trimmed || trimmed === lastLookedUpPoRef.current) return;
+		lastLookedUpPoRef.current = trimmed;
+		setPoHistoryLoading(true);
+		try {
+			const [historyResult, asnResult] = await Promise.all([
+				gqlRequest<GrnsQueryData>(GRNS_QUERY, {
+					filter: { poNo: trimmed },
+					pageSize: 10,
+				}),
+				gqlRequest<AdvanceNoticeByPoNoQueryData>(ADVANCE_NOTICE_BY_PO_NO_QUERY, {
+					poNo: trimmed,
+				}).catch(() => null),
+			]);
+			const history = historyResult?.grns?.query ?? [];
+			setPoHistory(history);
+
+			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
+			if (asnLines.length > 0) {
+				const receivedBySku = new Map<string, number>();
+				for (const grn of history) {
+					for (const item of grn.items ?? []) {
+						if (!item.skuCode) continue;
+						receivedBySku.set(
+							item.skuCode,
+							(receivedBySku.get(item.skuCode) ?? 0) + Number(item.qty || 0),
+						);
+					}
+				}
+				setPoRemaining(
+					asnLines.map((line) => {
+						const received = receivedBySku.get(line.itemid) ?? 0;
+						return {
+							skuCode: line.itemid,
+							displayName: line.displayname,
+							expected: line.quantity,
+							received,
+							remaining: line.quantity - received,
+							units: line.units,
+						};
+					}),
+				);
+			} else {
+				setPoRemaining([]);
+			}
+		} catch {
+			setPoHistory([]);
+			setPoRemaining([]);
+		} finally {
+			setPoHistoryLoading(false);
+		}
+	};
 	const [createRackOpen, setCreateRackOpen] = useState(false);
 	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<
 		number | null
@@ -1145,7 +1230,12 @@ export function GrnFormDialog({
 														id={field.name}
 														value={field.state.value}
 														placeholder="PO-2024-001"
-														onBlur={field.handleBlur}
+														onBlur={() => {
+															field.handleBlur();
+															if (isCreate && !isAsnPrefilledCreate) {
+																lookupPoHistory(field.state.value);
+															}
+														}}
 														onChange={(e) => field.handleChange(e.target.value)}
 														disabled={isAsnPrefilledCreate}
 														required
@@ -1164,6 +1254,86 @@ export function GrnFormDialog({
 															)}
 														/>
 													)}
+													{isCreate &&
+													!isAsnPrefilledCreate &&
+													!poHistoryLoading &&
+													poHistory.length > 0 ? (
+														<div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs">
+															<p className="mb-1.5 font-medium text-amber-700">
+																Existing deliveries for this PO
+															</p>
+															<ul className="space-y-1">
+																{poHistory.map((g) => (
+																	<li
+																		key={g.id}
+																		className="flex flex-wrap items-center gap-1.5 text-muted-foreground"
+																	>
+																		<span className="font-mono font-medium text-foreground">
+																			{g.grnNo}
+																		</span>
+																		{g.receivedAt ? (
+																			<span>
+																				·{" "}
+																				{format(
+																					new Date(g.receivedAt),
+																					"yyyy-MM-dd",
+																				)}
+																			</span>
+																		) : null}
+																		{g.supplierDeliveryNo ? (
+																			<span className="font-mono">
+																				· {g.supplierDeliveryNo}
+																			</span>
+																		) : null}
+																		<Badge
+																			variant="outline"
+																			className={`text-[10px] ${grnHistoryStatusColor(GQL_STATUS_TO_UI[g.status ?? ""] ?? g.status)}`}
+																		>
+																			{GQL_STATUS_TO_UI[g.status ?? ""] ?? g.status}
+																		</Badge>
+																	</li>
+																))}
+															</ul>
+														</div>
+													) : null}
+													{isCreate &&
+													!isAsnPrefilledCreate &&
+													!poHistoryLoading &&
+													poRemaining.length > 0 ? (
+														<div className="mt-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-2.5 text-xs">
+															<p className="mb-1.5 font-medium text-blue-700">
+																Remaining to receive (PO qty − already received)
+															</p>
+															<ul className="space-y-1">
+																{poRemaining.map((line) => (
+																	<li
+																		key={line.skuCode}
+																		className="flex flex-wrap items-center gap-1.5 text-muted-foreground"
+																	>
+																		<span className="font-mono font-medium text-foreground">
+																			{line.skuCode}
+																		</span>
+																		{line.displayName ? (
+																			<span>{line.displayName}</span>
+																		) : null}
+																		<span>
+																			{line.expected} − {line.received} ={" "}
+																			<span
+																				className={
+																					line.remaining <= 0
+																						? "font-medium text-green-600"
+																						: "font-medium text-foreground"
+																				}
+																			>
+																				{line.remaining}
+																			</span>{" "}
+																			{line.units} remaining
+																		</span>
+																	</li>
+																))}
+															</ul>
+														</div>
+													) : null}
 												</Field>
 											);
 										}}
