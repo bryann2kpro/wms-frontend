@@ -789,7 +789,7 @@ function GRNLineRow({
 					) : null}
 
 					{/* Row 2: Carton + Loss + Expiry + Lot No. */}
-					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
 						<div className="space-y-1">
 							<label
 								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
