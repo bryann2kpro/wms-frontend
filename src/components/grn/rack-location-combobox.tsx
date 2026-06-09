@@ -19,10 +19,6 @@ import {
 } from "@/lib/graphql/racks";
 import type { Rack } from "@/lib/graphql/types";
 import { cn } from "@/lib/utils";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { qk } from "@/lib/api/query-keys";
-import { RACKS_QUERY, RacksQueryData, RacksQueryVariables } from "@/lib/graphql";
-import { gqlRequest } from "@/lib/api/gql";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const REMOTE_SEARCH_PAGE_SIZE = 200;
@@ -109,24 +105,6 @@ export function RackLocationCombobox({
 
 	const remoteRacks = remoteData?.racks?.query ?? [];
 	const racks = remoteSearch ? remoteRacks : racksProp;
-
-	const { data: racksData } = useInfiniteQuery<RacksQueryData>({
-		queryKey: [...qk.racks.all, "infinite", search],
-		queryFn: async ({ pageParam }) => {
-			return await gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
-				pageSize: 10,
-				pageNumber: Number(pageParam),
-				filter: search.trim() ? { binCode: search.trim() } : undefined,
-			});
-		},
-		initialPageParam: 1,
-		getNextPageParam: (lastPage) => {
-			const p = lastPage.racks.pagination;
-			return p.hasNextPage ? p.currentPage + 1 : undefined;
-		},
-	});
-
-	const racks = racksData?.pages.flatMap((page) => page.racks.query) ?? [];
 
 	const filtered = useMemo(() => {
 		if (remoteSearch) return sortRacksByLocation(racks);
