@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
-import { qk } from "@/lib/api/query-keys";
 import { read, utils, writeFile } from "xlsx";
 import { toast } from "sonner";
 import { Upload, Download, FileSpreadsheet } from "lucide-react";
@@ -25,18 +24,13 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	CREATE_PICK_FACE_STRATEGY_MUTATION,
-	type CreatePickFaceStrategyInput,
-	type CreatePickFaceStrategyMutationData,
-} from "@/lib/graphql/pick-face-strategy";
-import {
-	RACKS_QUERY,
-	type RacksQueryData,
-	type RacksQueryVariables,
-} from "@/lib/graphql/racks";
-import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
+	CREATE_PICKING_CRITERIA_MUTATION,
+	type CreatePickingCriteriaMutationData,
+	type CreatePickingCriteriaMutationVariables,
+} from "@/lib/graphql/picking-criteria";
+import type { CreatePickingCriteriaInput } from "@/lib/graphql/types";
 
-interface PickFaceImportDialogProps {
+interface PickingCriteriaImportDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	createdBy: string;
@@ -46,13 +40,14 @@ interface PickFaceImportDialogProps {
 type PreviewRow = {
 	rowNumber: number;
 	data: {
-		storageBinCode: string;
+		deliveryPoint: string;
 		itemCode: string;
 		description: string;
-		binType: string;
+		storageClass: string;
+		minExpiryMonth: string;
 	};
 	errors: string[];
-	payload?: CreatePickFaceStrategyInput;
+	payload?: CreatePickingCriteriaInput;
 };
 
 function normalize(value: unknown): string {
@@ -70,55 +65,40 @@ function downloadErrorReport(rows: PreviewRow[]) {
 	const failed = rows.filter((row) => row.errors.length > 0);
 	if (failed.length === 0) return;
 	const sheetData = [
-		["Row", "Storage Bin Code", "Item Code", "Description", "Bin Type", "Errors"],
+		["Row", "Delivery Point", "Item Code", "Description", "Storage Class", "Min Expiry Month", "Errors"],
 		...failed.map((row) => [
 			row.rowNumber,
-			row.data.storageBinCode,
+			row.data.deliveryPoint,
 			row.data.itemCode,
 			row.data.description,
-			row.data.binType,
+			row.data.storageClass,
+			row.data.minExpiryMonth,
 			row.errors.join("; "),
 		]),
 	];
 	const worksheet = utils.aoa_to_sheet(sheetData);
 	const workbook = utils.book_new();
 	utils.book_append_sheet(workbook, worksheet, "Import Errors");
-	writeFile(workbook, "pick-face-import-errors.xlsx");
+	writeFile(workbook, "picking-criteria-import-errors.xlsx");
 }
 
-export function PickFaceImportDialog({
+export function PickingCriteriaImportDialog({
 	open,
 	onOpenChange,
 	createdBy,
 	onImported,
-}: PickFaceImportDialogProps) {
+}: PickingCriteriaImportDialogProps) {
 	const [fileName, setFileName] = useState("");
 	const [rows, setRows] = useState<PreviewRow[]>([]);
 	const [isParsing, setIsParsing] = useState(false);
 	const [isImporting, setIsImporting] = useState(false);
 	const [processedCount, setProcessedCount] = useState(0);
 
-	const { data: racksData } = useQuery({
-		queryKey: [...qk.racks.all, { pageSize: 5000, pageNumber: 1 }],
-		queryFn: () =>
-			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
-				pageSize: 5000,
-				pageNumber: 1,
-			}),
-		enabled: open,
-	});
-
-	const { data: skusData } = useQuery({
-		queryKey: qk.skus.all,
-		queryFn: () => gqlRequest<SkusQueryData>(SKUS_QUERY),
-		enabled: open,
-	});
-
-	const { mutateAsync: createStrategy } = useMutation({
-		mutationFn: (input: CreatePickFaceStrategyInput) =>
-			gqlRequest<CreatePickFaceStrategyMutationData>(
-				CREATE_PICK_FACE_STRATEGY_MUTATION,
-				{ input },
+	const { mutateAsync: createCriteria } = useMutation({
+		mutationFn: (variables: CreatePickingCriteriaMutationVariables) =>
+			gqlRequest<CreatePickingCriteriaMutationData, CreatePickingCriteriaMutationVariables>(
+				CREATE_PICKING_CRITERIA_MUTATION,
+				variables,
 			),
 	});
 
@@ -130,38 +110,29 @@ export function PickFaceImportDialog({
 
 	function downloadTemplate() {
 		const worksheet = utils.aoa_to_sheet([
-			["LINE_NO", "STORAGE_BIN_CODE", "ITEM_CODE", "DESC_01", "REPLN_TYPE"],
+			[
+				"LINE_NO",
+				"USERNAME",
+				"DEBTOR_GROUP_01_CODE",
+				"DEBTOR_GROUP_02_CODE",
+				"DEBTOR_GROUP_03_CODE",
+				"DEBTOR_CODE",
+				"DELIVERY_POINT_CODE",
+				"STORAGE_CLASS",
+				"ITEM_GROUP_01_CODE",
+				"ITEM_GROUP_02_CODE",
+				"ITEM_GROUP_03_CODE",
+				"ITEM_CODE",
+				"DESC_01",
+				"MIN_EXPIRY_MONTH",
+			],
 		]);
 		const workbook = utils.book_new();
 		utils.book_append_sheet(workbook, worksheet, "Template");
-		writeFile(workbook, "pick-face-strategy-template.xlsx");
+		writeFile(workbook, "picking-criteria-template.xlsx");
 	}
 
 	function parseRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
-		const racks = racksData?.racks.query ?? [];
-		const skus = skusData?.skus?.query ?? [];
-
-		// Build lookup maps — keyed by binCode when set, else auto-generated rackRow-rackColumn-rackLevel
-		const fmtLevel = (lvl: string) => {
-			const m = lvl.trim().match(/\d+/);
-			return m ? m[0].padStart(2, "0") : lvl.trim();
-		};
-		const rackByBinCode = new Map(
-			racks.map((r) => {
-				const key = r.binCode
-					? r.binCode.trim().toUpperCase()
-					: `${r.rackRow}-${r.rackColumn}-${fmtLevel(r.rackLevel ?? "")}`.toUpperCase();
-				return [key, r];
-			}),
-		);
-
-		// console.log("Rack by bin code:", rackByBinCode);
-		const skuByCode = new Map(
-			skus.map((s) => [s.skuCode.trim().toUpperCase(), s]),
-		);
-
-		// console.log("SKU by code:", skuByCode);
-
 		const inFileKeys = new Map<string, number>();
 
 		return rawRows.map((row, index) => {
@@ -169,10 +140,10 @@ export function PickFaceImportDialog({
 				Object.entries(row).map(([k, v]) => [normalizeKey(k), normalize(v)]),
 			);
 
-			const storageBinCode =
-				headers["storage bin code"] ??
-				headers["storagebincode"] ??
-				headers["storage bin"] ??
+			const deliveryPoint =
+				headers["delivery point code"] ??
+				headers["deliverypoint"] ??
+				headers["delivery point"] ??
 				"";
 			const itemCode =
 				headers["item code"] ??
@@ -183,52 +154,61 @@ export function PickFaceImportDialog({
 				headers["desc 01"] ??
 				headers["desc01"] ??
 				headers["description"] ??
-				headers["desc"] ??
 				"";
-			const replnType =
-				headers["repln type"] ??
-				headers["replntype"] ??
-				headers["repln"] ??
-				headers["bin type"] ??
-				"FIXED_BIN";
+			const storageClassRaw =
+				headers["storage class"] ??
+				headers["storageclass"] ??
+				"";
+			// "*" = wildcard "match all" — backend requires min(1) on all these fields
+			const orWild = (v: string) => v || "*";
+			const storageClassRaw2 = storageClassRaw.toUpperCase() === "NULL" ? "" : storageClassRaw;
+			const storageClass = orWild(storageClassRaw2);
+			const minExpiryMonthRaw =
+				headers["min expiry month"] ??
+				headers["minexpirymonth"] ??
+				"0";
+			const minExpiryMonth = Math.max(0, Math.floor(Number(minExpiryMonthRaw) || 0));
 
-			const binType = replnType.trim() || "FIXED_BIN";
-			const key = normalizeKey(`${storageBinCode}|${itemCode}`);
+			// Optional debtor hierarchy fields — default to "*" when empty
+			const category = orWild(headers["debtor group 01 code"] ?? headers["debtorgroup01code"] ?? "");
+			const chain = orWild(headers["debtor group 02 code"] ?? headers["debtorgroup02code"] ?? "");
+			const channel = orWild(headers["debtor group 03 code"] ?? headers["debtorgroup03code"] ?? "");
+			const debtor = orWild(headers["debtor code"] ?? headers["debtorcode"] ?? "");
+			const brand = orWild(headers["item group 01 code"] ?? headers["itemgroup01code"] ?? "");
+			const itemCategory = orWild(headers["item group 02 code"] ?? headers["itemgroup02code"] ?? "");
+			const manufacturer = orWild(headers["item group 03 code"] ?? headers["itemgroup03code"] ?? "");
+			const userId = orWild(headers["username"] ?? "");
+
+			const key = normalizeKey(`${deliveryPoint}|${itemCode}`);
 			inFileKeys.set(key, (inFileKeys.get(key) ?? 0) + 1);
 
 			const errors: string[] = [];
-			if (!storageBinCode) errors.push("Storage Bin Code is required");
-			if (!itemCode) errors.push("Item Code is required");
-
-			const rack = storageBinCode
-				? rackByBinCode.get(storageBinCode.trim().toUpperCase())
-				: undefined;
-			if (storageBinCode && !rack) {
-				errors.push(`Bin "${storageBinCode}" not found in racks`);
+			if (!deliveryPoint && !itemCode) {
+				errors.push("At least Delivery Point or Item Code is required");
 			}
-
-			const sku = itemCode
-				? skuByCode.get(itemCode.trim().toUpperCase())
-				: undefined;
-			if (itemCode && !sku) {
-				errors.push(`Item "${itemCode}" not found in SKUs`);
-			}
-
 			if (key && (inFileKeys.get(key) ?? 0) > 1) {
-				errors.push("Duplicate bin+item combination in file");
+				errors.push("Duplicate delivery point + item combination in file");
 			}
 
 			return {
 				rowNumber: index + 2,
-				data: { storageBinCode, itemCode, description, binType },
+				data: { deliveryPoint, itemCode, description, storageClass, minExpiryMonth: String(minExpiryMonth) },
 				errors,
 				payload:
-					errors.length === 0 && rack && sku
+					errors.length === 0
 						? {
-								storageBinId: rack.rackId,
-								skuId: sku.skuId,
-								itemCode: sku.skuCode,
-								binType,
+								userId,
+								category,
+								chain,
+								channel,
+								debtor,
+								deliveryPoint,
+								storageClass,
+								brand,
+								itemCategory,
+								manufacturer,
+								item: itemCode,
+								minExpiryMonth,
 								createdBy,
 								updatedBy: createdBy,
 							}
@@ -287,7 +267,7 @@ export function PickFaceImportDialog({
 				const settled = await Promise.allSettled(
 					batch.map(async (row) => {
 						if (!row.payload) throw new Error("Missing payload");
-						await createStrategy(row.payload);
+						await createCriteria({ input: row.payload });
 						return { rowNumber: row.rowNumber, ok: true as const };
 					}),
 				);
@@ -312,7 +292,7 @@ export function PickFaceImportDialog({
 			const successCount = validRows.length - failedCount;
 			if (successCount > 0) {
 				toast.success(
-					`Pick face import complete: ${successCount} succeeded, ${failedCount} failed.`,
+					`Picking criteria import complete: ${successCount} succeeded, ${failedCount} failed.`,
 				);
 				onImported?.();
 			} else {
@@ -344,13 +324,13 @@ export function PickFaceImportDialog({
 								className="text-xl"
 								style={{ fontFamily: "var(--dashboard-display)" }}
 							>
-								Import Pick Face Strategy from Excel
+								Import Picking Criteria from Excel
 							</DialogTitle>
 							<DialogDescription
 								className="mt-1"
 								style={{ fontFamily: "var(--dashboard-body)" }}
 							>
-								Upload an Excel file with STORAGE_BIN_CODE, ITEM_CODE, and REPLN_TYPE columns.
+								Upload an Excel file with DELIVERY_POINT_CODE, ITEM_CODE, and MIN_EXPIRY_MONTH columns.
 							</DialogDescription>
 						</div>
 						<div className="flex flex-wrap items-center gap-2 text-xs">
@@ -434,10 +414,11 @@ export function PickFaceImportDialog({
 							<TableHeader>
 								<TableRow className="bg-muted/40">
 									<TableHead className="w-16">Row</TableHead>
-									<TableHead>Storage Bin</TableHead>
+									<TableHead>Delivery Point</TableHead>
 									<TableHead>Item Code</TableHead>
 									<TableHead>Description</TableHead>
-									<TableHead>Bin Type</TableHead>
+									<TableHead>Storage Class</TableHead>
+									<TableHead>Min Expiry</TableHead>
 									<TableHead className="min-w-[260px]">Validation</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -445,7 +426,7 @@ export function PickFaceImportDialog({
 								{rows.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={6}
+											colSpan={7}
 											className="h-20 text-center text-muted-foreground"
 										>
 											Upload a file to preview rows.
@@ -459,7 +440,7 @@ export function PickFaceImportDialog({
 										>
 											<TableCell>{row.rowNumber}</TableCell>
 											<TableCell className="font-mono text-xs">
-												{row.data.storageBinCode}
+												{row.data.deliveryPoint}
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{row.data.itemCode}
@@ -468,7 +449,10 @@ export function PickFaceImportDialog({
 												{row.data.description}
 											</TableCell>
 											<TableCell className="text-xs">
-												{row.data.binType}
+												{row.data.storageClass || "—"}
+											</TableCell>
+											<TableCell className="text-xs">
+												{row.data.minExpiryMonth}
 											</TableCell>
 											<TableCell className="text-xs">
 												{row.errors.length > 0

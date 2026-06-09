@@ -240,9 +240,14 @@ function TransportPage() {
 									<TableHead>Description</TableHead>
 									<TableHead>Location</TableHead>
 									<TableHead>Storage Bin</TableHead>
-									<TableHead>Min Size</TableHead>
-									<TableHead>Max Size</TableHead>
-									<TableHead>Max Weight</TableHead>
+									<TableHead>Min Length(mm)</TableHead>
+									<TableHead>Min Width(mm)</TableHead>
+									<TableHead>Min Height(mm)</TableHead>
+									<TableHead>Min Weight(kg)</TableHead>
+									<TableHead>Max Length(mm)</TableHead>
+									<TableHead>Max Width(mm)</TableHead>
+									<TableHead>Max Height(mm)</TableHead>
+									<TableHead>Max Weight(kg)</TableHead>
 									<TableHead>No. of Pallets</TableHead>
 									<TableHead>Updated At</TableHead>
 									<TableHead className="w-[90px]" />
@@ -252,7 +257,7 @@ function TransportPage() {
 								{transports.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={10}
+											colSpan={15}
 											className="text-center py-8 text-muted-foreground"
 										>
 											{loading ? "Loading..." : "No transport records found."}
@@ -272,23 +277,28 @@ function TransportPage() {
 												{transport.storageBinId || "-"}
 											</TableCell>
 											<TableCell className="text-sm whitespace-nowrap">
-												{formatDimensions(
-													transport.minLengthMm,
-													transport.minWidthMm,
-													transport.minHeightMm,
-												)}
+												{transport.minLengthMm ?? "-"}
 											</TableCell>
 											<TableCell className="text-sm whitespace-nowrap">
-												{formatDimensions(
-													transport.maxLengthMm,
-													transport.maxWidthMm,
-													transport.maxHeightMm,
-												)}
+												{transport.minWidthMm ?? "-"}
 											</TableCell>
 											<TableCell className="text-sm whitespace-nowrap">
-												{transport.maxWeightKg
-													? `${transport.maxWeightKg} kg`
-													: "-"}
+												{transport.minHeightMm ?? "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.minWeightKg ?? "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.maxLengthMm ?? "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.maxWidthMm ?? "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.maxHeightMm ?? "-"}
+											</TableCell>
+											<TableCell className="text-sm whitespace-nowrap">
+												{transport.maxWeightKg ?? "-"}
 											</TableCell>
 											<TableCell className="text-sm whitespace-nowrap">
 												{transport.numberOfPallets != null ? transport.numberOfPallets : "-"}

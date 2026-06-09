@@ -44,8 +44,9 @@ import {
 	type DeletePickingCriteriaMutationData,
 } from "@/lib/graphql/picking-criteria";
 import type { PickingCriteria } from "@/lib/graphql/types";
-import { Plus, Edit, Trash2, FileSpreadsheet, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, FileSpreadsheet, ArrowUpDown, Upload } from "lucide-react";
 import { ConfirmDeleteDialog, PAGE_SIZE } from "@/components/settings/master-data/shared";
+import { PickingCriteriaImportDialog } from "@/components/settings/master-data/picking-criteria-import-dialog";
 import {
 	Select,
 	SelectContent,
@@ -68,6 +69,8 @@ type PageTab = "criteria" | "import-export";
 
 function PickingCriteriaPage() {
 	const [activeTab, setActiveTab] = useState<PageTab>("criteria");
+	const [isImportOpen, setIsImportOpen] = useState(false);
+	const { user } = useCurrentUser();
 
 	return (
 		<div className="flex flex-col gap-6 p-6">
@@ -105,14 +108,29 @@ function PickingCriteriaPage() {
 							Import / Export Excel
 						</CardTitle>
 						<CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-							Bulk import or export picking criteria via Excel.
+							Bulk import picking criteria via Excel.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground">Coming soon.</p>
+						<Button
+							variant="outline"
+							onClick={() => setIsImportOpen(true)}
+							disabled={!user?.id}
+							className="rounded-lg"
+						>
+							<Upload className="mr-2 h-4 w-4" />
+							Import Excel
+						</Button>
 					</CardContent>
 				</Card>
 			)}
+
+			<PickingCriteriaImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				createdBy={user?.id ?? ""}
+				onImported={() => setActiveTab("criteria")}
+			/>
 		</div>
 	);
 }
