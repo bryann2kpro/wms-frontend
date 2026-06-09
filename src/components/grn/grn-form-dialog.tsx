@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import {
+	RackLocationCombobox,
+	formatRackLocationLabel,
+} from "@/components/grn/rack-location-combobox";
 import type { Rack } from "@/lib/graphql/types";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
@@ -81,6 +84,38 @@ import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
 } from "@/lib/grn-sku-line-controls";
+import {
+	SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+	type GrnRackAllocationForm,
+	type InboundPutawayPlanGql,
+	type RackSkuCapacityGql,
+	type SuggestInboundPutawayPlanQueryData,
+} from "@/lib/graphql/inbound-putaway";
+
+function formatRackCapacityHint(
+	cap: RackSkuCapacityGql | null | undefined,
+	unitLabel: string | null,
+	incomingQty: number,
+): string | null {
+	if (!cap) return null;
+	const unit = unitLabel ?? "cartons";
+	const used = cap.currentQuantity ?? 0;
+	if (cap.maxCapacity == null) {
+		if (used > 0) {
+			return `${used} ${unit} already in this rack. Add rack dimensions to see remaining capacity.`;
+		}
+		return "Add rack and SKU dimensions to calculate remaining capacity.";
+	}
+	const available =
+		cap.availableCapacity ?? Math.max(0, cap.maxCapacity - used);
+	const fits =
+		incomingQty <= 0 || used + incomingQty <= cap.maxCapacity;
+	let text = `${available} of ${cap.maxCapacity} ${unit} available (${used} in use on rack)`;
+	if (incomingQty > 0 && !fits) {
+		text += ` — receiving ${incomingQty} ${unit} would exceed capacity`;
+	}
+	return text;
+}
 
 function parseGrnExpiryDate(value: string): Date | undefined {
 	const trimmed = value?.trim();
@@ -228,15 +263,53 @@ export type GRNLineItemForm = {
 	expiryDate: string;
 	/** Lot number assigned by supplier/manufacturer. Optional. */
 	lotNo: string;
-	/** Rack location (one per line). Same SKU allowed with different expiry/rack. */
+	/** Primary rack (first allocation). Same SKU allowed with different expiry/rack. */
 	rackId: string;
+	/** Multi-rack putaway split when quantity exceeds single-rack capacity. */
+	rackAllocations?: GrnRackAllocationForm[];
+	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
+	rackAutoSuggested?: boolean;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
 
-function grnApiRackIds(item: Pick<GRNLineItemForm, "rackId">): string[] {
-	const id = item.rackId?.trim();
-	return id ? [id] : [];
+function buildGrnItemRackPayload(item: GRNLineItemForm): {
+	rackAllocations?: Array<{ rackId: string; quantity: number }>;
+} {
+	const netQty = Math.max(
+		0,
+		(Number(item.carton) || 0) - (Number(item.loss) || 0),
+	);
+	if (netQty <= 0) return {};
+
+	if (item.rackAllocations && item.rackAllocations.length > 1) {
+		return {
+			rackAllocations: item.rackAllocations.map((row) => ({
+				rackId: row.rackId,
+				quantity: row.quantity,
+			})),
+		};
+	}
+
+	const rackId = item.rackId?.trim();
+	if (!rackId) return {};
+	return { rackAllocations: [{ rackId, quantity: netQty }] };
+}
+
+function formatPutawayPlanHint(
+	plan: InboundPutawayPlanGql | null,
+	unitLabel: string | null,
+	incomingQty: number,
+): string | null {
+	if (!plan?.allocations.length || incomingQty <= 0) return null;
+	const unit = unitLabel ?? "cartons";
+	if (plan.remainingQty > 0) {
+		return `Allocated ${plan.totalAllocated} of ${incomingQty} ${unit} across ${plan.allocations.length} rack(s). ${plan.remainingQty} ${unit} still need a location.`;
+	}
+	if (plan.allocations.length === 1) {
+		return null;
+	}
+	return `${plan.allocations.length} rack locations suggested (${plan.totalAllocated} ${unit} total)`;
 }
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
@@ -475,6 +548,134 @@ function GRNLineRow({
 			inProgressPct: Math.min(100 - Math.min(100, (historical / span) * 100), (inProgress / span) * 100),
 		};
 	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku]);
+	const [putawayPlan, setPutawayPlan] = useState<InboundPutawayPlanGql | null>(
+		null,
+	);
+	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
+
+	const resolvedSkuId = useMemo(() => {
+		if (!item.skuCode?.trim()) return "";
+		return skuOptions.find((s) => s.skuCode === item.skuCode)?.skuId ?? "";
+	}, [item.skuCode, skuOptions]);
+
+	const inboundQty = Math.max(0, Number(item.carton) || 0);
+
+	const rackCapacityHint = useMemo(
+		() =>
+			item.rackId?.trim() && (putawayPlan?.allocations.length ?? 0) <= 1
+				? formatRackCapacityHint(
+						putawayPlan?.capacityForRack,
+						uomLabel,
+						inboundQty,
+					)
+				: null,
+		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, uomLabel, inboundQty],
+	);
+
+	const putawayPlanHint = useMemo(
+		() => formatPutawayPlanHint(putawayPlan, uomLabel, inboundQty),
+		[putawayPlan, uomLabel, inboundQty],
+	);
+
+	const rackSuggestionMessage = putawayPlan?.message ?? null;
+
+	const rackDisplayLabel = useMemo(() => {
+		if (!item.rackId?.trim()) return null;
+		const allocLabel = item.rackAllocations?.find(
+			(a) => a.rackId === item.rackId,
+		)?.rackLabel;
+		if (allocLabel) return allocLabel;
+		const planLabel = putawayPlan?.allocations.find(
+			(a) => a.rackId === item.rackId,
+		)?.rackLabel;
+		if (planLabel) return planLabel;
+		const rack = racks.find((r) => r.rackId === item.rackId);
+		return rack ? formatRackLocationLabel(rack as Rack) : null;
+	}, [item.rackId, item.rackAllocations, putawayPlan, racks]);
+
+	useEffect(() => {
+		if (!item.skuCode?.trim()) {
+			setPutawayPlan(null);
+			setIsSuggestingRack(false);
+			return;
+		}
+
+		let cancelled = false;
+		setIsSuggestingRack(true);
+		(async () => {
+			try {
+				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
+					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+					{
+						skuId: resolvedSkuId || null,
+						skuCode: item.skuCode,
+						quantity: inboundQty > 0 ? inboundQty : 1,
+						forRackId: item.rackId?.trim() || null,
+					},
+				);
+				if (cancelled) return;
+				const plan = data.suggestInboundPutawayPlan;
+				setPutawayPlan(plan);
+
+				const canAutoApply =
+					!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
+				if (!plan.allocations.length || !canAutoApply) return;
+
+				const nextAllocations: GrnRackAllocationForm[] = plan.allocations.map(
+					(row) => ({
+						rackId: row.rackId,
+						quantity: row.quantity,
+						rackLabel: row.rackLabel,
+					}),
+				);
+				const nextRackId = nextAllocations[0]?.rackId ?? "";
+				const sameAllocations =
+					item.rackAllocations?.length === nextAllocations.length &&
+					item.rackAllocations.every(
+						(row, idx) =>
+							row.rackId === nextAllocations[idx]?.rackId &&
+							row.quantity === nextAllocations[idx]?.quantity,
+					);
+				if (
+					item.rackId === nextRackId &&
+					item.rackAutoSuggested === true &&
+					sameAllocations
+				) {
+					return;
+				}
+
+				onItemsChange(
+					items.map((row, i) =>
+						i === index
+							? {
+									...row,
+									rackId: nextRackId,
+									rackAllocations: nextAllocations,
+									rackAutoSuggested: true,
+								}
+							: row,
+					),
+				);
+			} catch {
+				if (!cancelled) setPutawayPlan(null);
+			} finally {
+				if (!cancelled) setIsSuggestingRack(false);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+			setIsSuggestingRack(false);
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty/rack or auto-suggest state changes
+	}, [
+		item.skuCode,
+		resolvedSkuId,
+		inboundQty,
+		item.rackId,
+		item.rackAutoSuggested,
+		index,
+	]);
 
 	return (
 		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
@@ -496,6 +697,9 @@ function GRNLineRow({
 										skuCode: v.skuCode ?? "",
 										description: v.description ?? "",
 										uom: v.uom ?? "",
+										rackId: "",
+										rackAllocations: undefined,
+										rackAutoSuggested: false,
 									};
 									onItemsChange(newItems);
 								}}
@@ -727,13 +931,26 @@ function GRNLineRow({
 						<div className="flex flex-wrap items-center gap-2">
 							<div className="min-w-0 flex-1">
 							<RackLocationCombobox
-								racks={racks as Rack[]}
+								remoteSearch
 								value={item.rackId ?? ""}
-								onChange={(rackId) => {
+								fallbackLabel={rackDisplayLabel}
+								loading={isSuggestingRack && !rackDisplayLabel}
+								loadingPlaceholder="Suggesting rack…"
+								onChange={(rackId, rackLabel) => {
 									const newItems = [...items];
+									const netQty = Math.max(
+										0,
+										(Number(newItems[index].carton) || 0) -
+											(Number(newItems[index].loss) || 0),
+									);
 									newItems[index] = {
 										...newItems[index],
 										rackId,
+										rackAllocations:
+											rackId && netQty > 0
+												? [{ rackId, quantity: netQty, rackLabel }]
+												: [],
+										rackAutoSuggested: false,
 									};
 									onItemsChange(newItems);
 								}}
@@ -754,6 +971,47 @@ function GRNLineRow({
 								</Button>
 							) : null}
 						</div>
+						{putawayPlanHint ? (
+							<p
+								className="text-[11px] font-medium text-foreground/80 leading-snug"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{putawayPlanHint}
+							</p>
+						) : rackCapacityHint ? (
+							<p
+								className="text-[11px] font-medium text-foreground/80 leading-snug"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{rackCapacityHint}
+							</p>
+						) : null}
+						{item.rackAllocations && item.rackAllocations.length > 1 ? (
+							<ul className="mt-1 space-y-0.5 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5">
+								{item.rackAllocations.map((allocation) => (
+									<li
+										key={allocation.rackId}
+										className="text-[11px] font-mono text-foreground/85"
+									>
+										{allocation.rackLabel ?? allocation.rackId}:{" "}
+										{allocation.quantity} {uomLabel ?? "CTN"}
+									</li>
+								))}
+							</ul>
+						) : null}
+						{rackSuggestionMessage ? (
+							<p className="text-[11px] text-muted-foreground leading-snug">
+								{item.rackAutoSuggested ? (
+									<Badge
+										variant="outline"
+										className="mr-1.5 h-4 px-1 text-[10px] font-normal"
+									>
+										Suggested
+									</Badge>
+								) : null}
+								{rackSuggestionMessage}
+							</p>
+						) : null}
 					</div>
 				</div>
 			</div>
@@ -1071,15 +1329,8 @@ export function GrnFormDialog({
 					warehouseId: value.warehouseId ?? "",
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
-						skuCode: i.skuCode,
-						description: i.description,
-						carton: i.carton,
-						loss: i.loss,
-						uom: i.uom,
-						unitPrice: i.unitPrice,
-						expiryDate: i.expiryDate ?? "",
-						lotNo: i.lotNo ?? "",
-						rackId: i.rackId ?? "",
+						...i,
+						...buildGrnItemRackPayload(i),
 					})),
 				};
 
@@ -1118,9 +1369,7 @@ export function GrnFormDialog({
 								? (stockUnits.find((u) => u.unitCode === i.uom)
 									?.stockUnitId ?? i.uom)
 								: undefined;
-							const rackIds = (i.rackIds ?? []).filter((id) =>
-								(id ?? "").trim(),
-							);
+							const rackPayload = buildGrnItemRackPayload(i);
 							return {
 								skuId:
 									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
@@ -1132,7 +1381,7 @@ export function GrnFormDialog({
 								skuUom: uomId ?? undefined,
 								expiryDate: (i.expiryDate ?? "").trim() || undefined,
 								lotNo: (i.lotNo ?? "").trim() || undefined,
-								...(rackIds.length > 0 && { rackIds }),
+								...rackPayload,
 							};
 						}),
 					},
@@ -1155,8 +1404,34 @@ export function GrnFormDialog({
 					: undefined;
 				const rack = it.rack;
 				const legacyRackIds = (it as { rackIds?: string[] }).rackIds;
+				const legacyAllocations = (
+					it as {
+						rackAllocations?: Array<{
+							rackId: string;
+							quantity: number;
+						}>;
+					}
+				).rackAllocations;
 				const rackId =
-					legacyRackIds?.[0] ?? rack?.rackId ?? (it as { rackId?: string }).rackId ?? "";
+					legacyAllocations?.[0]?.rackId ??
+					legacyRackIds?.[0] ??
+					rack?.rackId ??
+					(it as { rackId?: string }).rackId ??
+					"";
+				const rackAllocations =
+					legacyAllocations?.map((row) => ({
+						rackId: row.rackId,
+						quantity: row.quantity,
+					})) ??
+					(legacyRackIds?.length
+						? legacyRackIds.map((id) => ({
+								rackId: id,
+								quantity: Math.max(
+									0,
+									(it.expectedQuantity ?? 0) - (it.lossQuantity ?? 0),
+								),
+							}))
+						: undefined);
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
 				return {
@@ -1169,6 +1444,7 @@ export function GrnFormDialog({
 					expiryDate,
 					lotNo,
 					rackId,
+					rackAllocations,
 				};
 			});
 			form.reset({

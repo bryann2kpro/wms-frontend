@@ -17,6 +17,11 @@ export const RACK_FRAGMENT = gql`
 		binCode
 		barCode
 		binType
+		length
+		width
+		height
+		weight
+		maxPallet
 		isActive
 		createdAt
 		updatedAt
@@ -86,6 +91,7 @@ export type RacksQueryVariables = {
 		binCode?: string;
 		binType?: string;
 		isActive?: boolean;
+		search?: string;
 	};
 	sort?: {
 		sortBy?: string;

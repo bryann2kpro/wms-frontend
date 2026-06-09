@@ -719,6 +719,7 @@ function GRNRouteComponent() {
 				expiryDate?: string;
 				lotNo?: string;
 				rackIds?: string[];
+				rackAllocations?: Array<{ rackId: string; quantity: number }>;
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
@@ -734,6 +735,9 @@ function GRNRouteComponent() {
 				const uomId = i.uom
 					? (stockUnits.find((u) => u.unitCode === i.uom)?.stockUnitId ?? i.uom)
 					: undefined;
+				const rackAllocations = (i.rackAllocations ?? []).filter(
+					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
+				);
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
 				return {
 					skuId:
@@ -745,7 +749,11 @@ function GRNRouteComponent() {
 					skuUom: uomId ?? undefined,
 					expiryDate: (i.expiryDate ?? "").trim() || undefined,
 					lotNo: (i.lotNo ?? "").trim() || undefined,
-					...(rackIds.length > 0 && { rackIds }),
+					...(rackAllocations.length > 0
+						? { rackAllocations }
+						: rackIds.length > 0
+							? { rackIds }
+							: {}),
 				};
 			});
 			const baseInput = {
@@ -1121,6 +1129,66 @@ function GRNRouteComponent() {
 							</div>
 						}
 					/>
+										}}
+										skuOptions={skuOptions}
+										stockUnits={stockUnits}
+										canCreate={create("GRN")}
+										trigger={
+											<Button
+												className="bg-[var(--dashboard-accent)] text-white hover:opacity-90 rounded-lg"
+												onClick={(e) => {
+													e.preventDefault();
+													setIsAsnPickerOpen(true);
+												}}
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Create GRN
+											</Button>
+										}
+										warehouses={warehouses}
+										racks={racks}
+										suppliers={suppliers}
+										supplierSelectionOptional={!!selectedAsnId}
+										initialValues={asnInitialValues}
+										onCreateSubmit={async (payload) => {
+											await createMutation.mutateAsync({
+												grnNumber: payload.grnNumber,
+												poReference: payload.poReference,
+												supplierId: payload.supplierId,
+												supplierDO: payload.supplierDO,
+												receivedDate: payload.receivedDate
+													? new Date(payload.receivedDate)
+													: new Date(),
+												notes: payload.notes || undefined,
+												warehouseId: payload.warehouseId || undefined,
+												submitIntent: payload.submitIntent,
+												advanceNoticeId: selectedAsnId ?? undefined,
+												items: payload.items.map((i) => ({
+													sku: i.skuCode,
+													description: i.description,
+													carton: i.carton,
+													loss: i.loss,
+													uom: i.uom,
+													unitPrice: i.unitPrice,
+													expiryDate: i.expiryDate ?? "",
+													lotNo: i.lotNo ?? "",
+													rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
+													rackAllocations: i.rackAllocations,
+												})),
+											});
+										}}
+										onSuccess={() => refetchGRNs()}
+										onSkusRefetch={() => void refetchSkus()}
+										onWarehouseCreated={async () => {
+											await refetchWarehouses();
+										}}
+										onRackCreated={() => void refetchRacks()}
+									/>
+								</>
+							)}
+						</div>
+					}
+				/>
 
 					{summary && summary.byStatus && (
 						<div className="grid gap-5 md:grid-cols-2">

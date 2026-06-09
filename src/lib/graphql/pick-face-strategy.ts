@@ -106,6 +106,7 @@ export type PickFaceStrategiesQueryVariables = {
 		skuId?: string;
 		storageBinId?: string;
 		binType?: string;
+		search?: string;
 	};
 	sort?: {
 		sortBy?: string;

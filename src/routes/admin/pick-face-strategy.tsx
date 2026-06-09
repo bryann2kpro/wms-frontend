@@ -53,15 +53,9 @@ import {
 	type UpdatePickFaceStrategyMutationData,
 	type DeletePickFaceStrategyMutationData,
 } from "@/lib/graphql/pick-face-strategy";
-import {
-	RACKS_QUERY,
-	type RacksQueryData,
-	type RacksQueryVariables,
-} from "@/lib/graphql/racks";
 import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus, Edit, Trash2, Search, PackageSearch, ArrowUpDown, Upload } from "lucide-react";
-import type { Rack } from "@/lib/graphql/types";
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { PickFaceImportDialog } from "@/components/settings/master-data/pick-face-import-dialog";
 import { SkuCombobox } from "@/components/grn/sku-combobox";
@@ -97,7 +91,7 @@ function PickFaceStrategyPage() {
 		pageNumber: page,
 		sort: { sortBy: sortField, sortOrder: sortDirection },
 		...(debouncedSearch.trim()
-			? { filter: { id: undefined } }
+			? { filter: { search: debouncedSearch.trim() } }
 			: {}),
 	};
 
@@ -112,15 +106,6 @@ function PickFaceStrategyPage() {
 				PICK_FACE_STRATEGIES_QUERY,
 				queryVars,
 			),
-	});
-
-	const { data: racksData } = useQuery({
-		queryKey: [...qk.racks.all, "pick-face-page"],
-		queryFn: () =>
-			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
-				pageSize: 500,
-				pageNumber: 1,
-			}),
 	});
 
 	const { data: skusData } = useQuery({
@@ -170,18 +155,8 @@ function PickFaceStrategyPage() {
 	const totalPages = pagination?.totalPages ?? 1;
 	const currentPage = pagination?.currentPage ?? 1;
 
-	const racks = racksData?.racks?.query ?? [];
 	const skus = skusData?.skus?.query ?? [];
 	const createdBy = user?.id ?? "";
-
-	const filteredList = debouncedSearch.trim()
-		? list.filter((row) =>
-			row.itemCode.toLowerCase().includes(debouncedSearch.toLowerCase()),
-		)
-		: list;
-
-	console.log('filteredList', filteredList);
-
 
 	return (
 		<ClientOnly>
@@ -320,7 +295,7 @@ function PickFaceStrategyPage() {
 												Loading...
 											</TableCell>
 										</TableRow>
-									) : filteredList.length === 0 ? (
+									) : list.length === 0 ? (
 										<TableRow>
 											<TableCell
 												colSpan={7}
@@ -330,7 +305,7 @@ function PickFaceStrategyPage() {
 											</TableCell>
 										</TableRow>
 									) : (
-										filteredList.map((row, idx) => (
+										list.map((row, idx) => (
 											<TableRow
 												key={row.id}
 												className="transition-colors hover:bg-muted/50"
@@ -381,7 +356,7 @@ function PickFaceStrategyPage() {
 								</TableBody>
 							</Table>
 						</div>
-						{pagination && totalPages > 1 && (
+						{pagination && (totalPages > 1 || debouncedSearch.trim()) && (
 							<div className="mx-6 mt-4 flex items-center justify-between">
 								<p
 									className="text-sm text-muted-foreground"
@@ -428,7 +403,6 @@ function PickFaceStrategyPage() {
 				<PickFaceStrategyFormDialog
 					open={isCreateOpen}
 					onOpenChange={setIsCreateOpen}
-					racks={racks}
 					skus={skus}
 					onSubmit={(values) => {
 						const { isActive, ...rest } = values;
@@ -444,7 +418,6 @@ function PickFaceStrategyPage() {
 						key={editing.id}
 						open={!!editing}
 						onOpenChange={(open) => !open && setEditing(null)}
-						racks={racks}
 						skus={skus}
 						initial={editing}
 						onSubmit={(values) => {
@@ -490,7 +463,6 @@ function PickFaceStrategyFormDialog({
 	open,
 	onOpenChange,
 	initial,
-	racks,
 	skus,
 	onSubmit,
 	loading,
@@ -500,7 +472,6 @@ function PickFaceStrategyFormDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	initial?: PickFaceStrategy;
-	racks: Rack[];
 	skus: Sku[];
 	onSubmit: (v: Omit<FormValues, "isActive"> & { isActive?: boolean }) => void;
 	loading: boolean;
@@ -536,9 +507,6 @@ function PickFaceStrategyFormDialog({
 
 	const canSubmit = storageBinId && skuId && itemCode.trim() && !loading;
 
-	const rackLabel = (r: Rack) =>
-		r.binCode ?? `${r.rackRow}-${r.rackColumn}-${r.rackLevel}`;
-
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent className="max-w-2xl rounded-2xl border-2 border-border bg-background shadow-xl">
@@ -572,8 +540,10 @@ function PickFaceStrategyFormDialog({
 						</Select> */}
 						<RackLocationCombobox
 							// racks={racks}
+							remoteSearch
 							value={storageBinId}
 							onChange={(rackId) => setStorageBinId(rackId)}
+							fallbackLabel={initial?.storageBin}
 							placeholder="Select a rack location..."
 							className="h-8"
 						/>
