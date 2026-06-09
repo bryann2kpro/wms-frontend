@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import {
@@ -41,6 +41,8 @@ import {
 	Clock,
 	CalendarDays,
 	AlertTriangle,
+	Pencil,
+	X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -80,10 +82,14 @@ import {
 } from "@/lib/grn-sku-line-controls";
 import {
 	SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+	LIST_RACKS_WITH_CAPACITY_QUERY,
 	type GrnRackAllocationForm,
 	type InboundPutawayPlanGql,
 	type RackSkuCapacityGql,
 	type SuggestInboundPutawayPlanQueryData,
+	type ListRacksWithCapacityQueryData,
+	type ListRacksWithCapacityQueryVariables,
+	type RackCapacityOptionGql,
 } from "@/lib/graphql/inbound-putaway";
 
 function formatRackCapacityHint(
@@ -438,6 +444,60 @@ function CreateRackDialog({
 	);
 }
 
+function AllocationEditPicker({
+	skuId,
+	skuCode,
+	currentRackId,
+	quantity,
+	excludeRackIds,
+	onSelect,
+	onCancel,
+}: {
+	skuId: string;
+	skuCode: string;
+	currentRackId: string;
+	quantity: number;
+	excludeRackIds: string[];
+	onSelect: (rackId: string, rackLabel?: string) => void;
+	onCancel: () => void;
+}) {
+	const { data, isLoading } = useQuery({
+		queryKey: ["racks-with-capacity", skuId, skuCode, quantity, [...excludeRackIds].sort().join(",")],
+		queryFn: () =>
+			gqlRequest<ListRacksWithCapacityQueryData, ListRacksWithCapacityQueryVariables>(
+				LIST_RACKS_WITH_CAPACITY_QUERY,
+				{ skuId: skuId || null, skuCode: skuCode || null, quantity, excludeRackIds },
+			),
+		staleTime: 30_000,
+	});
+
+	// RackLocationCombobox uses only rackId/rackRow/rackLevel/rackColumn at runtime
+	const racks = (data?.listRacksWithCapacity ?? []) as unknown as Rack[];
+
+	return (
+		<div className="flex items-center gap-1.5">
+			<div className="min-w-0 flex-1">
+				<RackLocationCombobox
+					racks={racks}
+					value={currentRackId}
+					className="h-7"
+					loading={isLoading}
+					loadingPlaceholder="Loading racks…"
+					onChange={onSelect}
+				/>
+			</div>
+			<button
+				type="button"
+				title="Cancel"
+				className="shrink-0 text-muted-foreground hover:text-foreground"
+				onClick={onCancel}
+			>
+				<X className="h-3 w-3" />
+			</button>
+		</div>
+	);
+}
+
 function GRNLineRow({
 	item,
 	index,
@@ -500,6 +560,7 @@ function GRNLineRow({
 		null,
 	);
 	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
+	const [editingAllocationIdx, setEditingAllocationIdx] = useState<number | null>(null);
 
 	const resolvedSkuId = useMemo(() => {
 		if (!item.skuCode?.trim()) return "";
@@ -507,6 +568,18 @@ function GRNLineRow({
 	}, [item.skuCode, skuOptions]);
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
+
+	// Stable key representing rack IDs already assigned to other items in the same form.
+	// Used to exclude those racks from this item's suggestion so each SKU gets distinct locations.
+	const otherItemRackIdsKey = useMemo(
+		() =>
+			items
+				.filter((_, i) => i !== index)
+				.flatMap((it) => it.rackAllocations?.map((a) => a.rackId) ?? [])
+				.sort()
+				.join(","),
+		[items, index],
+	);
 
 	const rackCapacityHint = useMemo(
 		() =>
@@ -552,6 +625,9 @@ function GRNLineRow({
 		setIsSuggestingRack(true);
 		(async () => {
 			try {
+				const excludeRackIds = otherItemRackIdsKey
+					? otherItemRackIdsKey.split(",").filter(Boolean)
+					: [];
 				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
 					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
 					{
@@ -559,6 +635,7 @@ function GRNLineRow({
 						skuCode: item.skuCode,
 						quantity: inboundQty > 0 ? inboundQty : 1,
 						forRackId: item.rackId?.trim() || null,
+						excludeRackIds: excludeRackIds.length > 0 ? excludeRackIds : null,
 					},
 				);
 				if (cancelled) return;
@@ -615,7 +692,7 @@ function GRNLineRow({
 			cancelled = true;
 			setIsSuggestingRack(false);
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty/rack or auto-suggest state changes
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- re-suggest when SKU/qty/rack, auto-suggest state, or sibling rack assignments change
 	}, [
 		item.skuCode,
 		resolvedSkuId,
@@ -623,6 +700,7 @@ function GRNLineRow({
 		item.rackId,
 		item.rackAutoSuggested,
 		index,
+		otherItemRackIdsKey,
 	]);
 
 	return (
@@ -879,13 +957,64 @@ function GRNLineRow({
 						) : null}
 						{item.rackAllocations && item.rackAllocations.length > 1 ? (
 							<ul className="mt-1 space-y-0.5 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5">
-								{item.rackAllocations.map((allocation) => (
+								{item.rackAllocations.map((allocation, allocIdx) => (
 									<li
-										key={allocation.rackId}
-										className="text-[11px] font-mono text-foreground/85"
+										key={allocIdx}
+										className="flex items-center gap-1.5 text-[11px]"
 									>
-										{allocation.rackLabel ?? allocation.rackId}:{" "}
-										{allocation.quantity} {uomLabel ?? "CTN"}
+										{editingAllocationIdx === allocIdx ? (
+											<>
+												<div className="min-w-0 flex-1">
+													<AllocationEditPicker
+														skuId={resolvedSkuId}
+														skuCode={item.skuCode}
+														currentRackId={allocation.rackId}
+														quantity={allocation.quantity}
+														excludeRackIds={
+															item.rackAllocations
+																?.filter((_, i) => i !== allocIdx)
+																.map((a) => a.rackId) ?? []
+														}
+														onSelect={(newRackId, newRackLabel) => {
+															const newAllocations = item.rackAllocations!.map(
+																(a, i) =>
+																	i === allocIdx
+																		? { ...a, rackId: newRackId, rackLabel: newRackLabel }
+																		: a,
+															);
+															const newItems = [...items];
+															newItems[index] = {
+																...newItems[index],
+																rackAllocations: newAllocations,
+																rackId: allocIdx === 0 ? newRackId : newItems[index].rackId,
+																rackAutoSuggested: false,
+															};
+															onItemsChange(newItems);
+															setEditingAllocationIdx(null);
+														}}
+														onCancel={() => setEditingAllocationIdx(null)}
+													/>
+												</div>
+												<span className="shrink-0 font-mono text-foreground/85">
+													{allocation.quantity} {uomLabel ?? "CTN"}
+												</span>
+											</>
+										) : (
+											<>
+												<span className="flex-1 font-mono text-foreground/85">
+													{allocation.rackLabel ?? allocation.rackId}:{" "}
+													{allocation.quantity} {uomLabel ?? "CTN"}
+												</span>
+												<button
+													type="button"
+													title="Change rack"
+													className="shrink-0 text-muted-foreground hover:text-foreground"
+													onClick={() => setEditingAllocationIdx(allocIdx)}
+												>
+													<Pencil className="h-3 w-3" />
+												</button>
+											</>
+										)}
 									</li>
 								))}
 							</ul>
