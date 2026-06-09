@@ -89,7 +89,6 @@ import {
 	type SuggestInboundPutawayPlanQueryData,
 	type ListRacksWithCapacityQueryData,
 	type ListRacksWithCapacityQueryVariables,
-	type RackCapacityOptionGql,
 } from "@/lib/graphql/inbound-putaway";
 
 function formatRackCapacityHint(
@@ -568,6 +567,12 @@ function GRNLineRow({
 	}, [item.skuCode, skuOptions]);
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const netQty = Math.max(0, inboundQty - lossQty);
+	const totalAllocQty = Math.round(
+		((item.rackAllocations ?? []).reduce((s, a) => s + (Number(a.quantity) || 0), 0)) * 100,
+	) / 100;
+	const hasAllocations = (item.rackAllocations ?? []).length > 0;
 
 	// Stable key representing rack IDs already assigned to other items in the same form.
 	// Used to exclude those racks from this item's suggestion so each SKU gets distinct locations.
@@ -901,6 +906,7 @@ function GRNLineRow({
 							<div className="min-w-0 flex-1">
 							<RackLocationCombobox
 								remoteSearch
+								disabled={hasAllocations}
 								value={item.rackId ?? ""}
 								fallbackLabel={rackDisplayLabel}
 								loading={isSuggestingRack && !rackDisplayLabel}
@@ -927,18 +933,6 @@ function GRNLineRow({
 								className="h-8"
 							/>
 							</div>
-							{onOpenCreateRack ? (
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
-									onClick={() => onOpenCreateRack(index)}
-								>
-									<Plus className="h-3 w-3" />
-									New
-								</Button>
-							) : null}
 						</div>
 						{putawayPlanHint ? (
 							<p
@@ -955,69 +949,149 @@ function GRNLineRow({
 								{rackCapacityHint}
 							</p>
 						) : null}
-						{item.rackAllocations && item.rackAllocations.length > 1 ? (
-							<ul className="mt-1 space-y-0.5 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5">
-								{item.rackAllocations.map((allocation, allocIdx) => (
-									<li
-										key={allocIdx}
-										className="flex items-center gap-1.5 text-[11px]"
-									>
-										{editingAllocationIdx === allocIdx ? (
-											<>
-												<div className="min-w-0 flex-1">
-													<AllocationEditPicker
-														skuId={resolvedSkuId}
-														skuCode={item.skuCode}
-														currentRackId={allocation.rackId}
-														quantity={allocation.quantity}
-														excludeRackIds={
-															item.rackAllocations
-																?.filter((_, i) => i !== allocIdx)
-																.map((a) => a.rackId) ?? []
-														}
-														onSelect={(newRackId, newRackLabel) => {
+						{hasAllocations ? (
+							<div className="mt-1 rounded-lg border border-border/60 bg-muted/20">
+								<ul className="divide-y divide-border/40">
+									{(item.rackAllocations ?? []).map((allocation, allocIdx) => (
+										<li
+											key={allocIdx}
+											className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
+										>
+											{editingAllocationIdx === allocIdx ? (
+												<>
+													<div className="min-w-0 flex-1">
+														<AllocationEditPicker
+															skuId={resolvedSkuId}
+															skuCode={item.skuCode}
+															currentRackId={allocation.rackId}
+															quantity={allocation.quantity}
+															excludeRackIds={
+																item.rackAllocations
+																	?.filter((_, i) => i !== allocIdx)
+																	.map((a) => a.rackId) ?? []
+															}
+															onSelect={(newRackId, newRackLabel) => {
+																const newAllocations = item.rackAllocations!.map(
+																	(a, i) =>
+																		i === allocIdx
+																			? { ...a, rackId: newRackId, rackLabel: newRackLabel }
+																			: a,
+																);
+																const newItems = [...items];
+																newItems[index] = {
+																	...newItems[index],
+																	rackAllocations: newAllocations,
+																	rackId: allocIdx === 0 ? newRackId : newItems[index].rackId,
+																	rackAutoSuggested: false,
+																};
+																onItemsChange(newItems);
+																setEditingAllocationIdx(null);
+															}}
+															onCancel={() => {
+																if (!allocation.rackId) {
+																	const newAllocations = item.rackAllocations!.filter((_, i) => i !== allocIdx);
+																	const newItems = [...items];
+																	newItems[index] = { ...newItems[index], rackAllocations: newAllocations };
+																	onItemsChange(newItems);
+																}
+																setEditingAllocationIdx(null);
+															}}
+														/>
+													</div>
+												</>
+											) : (
+												<>
+													<span className="w-20 shrink-0 font-mono text-foreground/85 truncate" title={allocation.rackLabel ?? allocation.rackId}>
+														{allocation.rackLabel ?? allocation.rackId}
+													</span>
+													<Input
+														type="number"
+														min={0}
+														value={allocation.quantity}
+														onChange={(e) => {
+															const newQty = Math.max(0, Number(e.target.value) || 0);
 															const newAllocations = item.rackAllocations!.map(
-																(a, i) =>
-																	i === allocIdx
-																		? { ...a, rackId: newRackId, rackLabel: newRackLabel }
-																		: a,
+																(a, i) => i === allocIdx ? { ...a, quantity: newQty } : a,
 															);
 															const newItems = [...items];
 															newItems[index] = {
 																...newItems[index],
 																rackAllocations: newAllocations,
-																rackId: allocIdx === 0 ? newRackId : newItems[index].rackId,
 																rackAutoSuggested: false,
 															};
 															onItemsChange(newItems);
-															setEditingAllocationIdx(null);
 														}}
-														onCancel={() => setEditingAllocationIdx(null)}
+														className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
 													/>
-												</div>
-												<span className="shrink-0 font-mono text-foreground/85">
-													{allocation.quantity} {uomLabel ?? "CTN"}
-												</span>
-											</>
-										) : (
-											<>
-												<span className="flex-1 font-mono text-foreground/85">
-													{allocation.rackLabel ?? allocation.rackId}:{" "}
-													{allocation.quantity} {uomLabel ?? "CTN"}
-												</span>
-												<button
-													type="button"
-													title="Change rack"
-													className="shrink-0 text-muted-foreground hover:text-foreground"
-													onClick={() => setEditingAllocationIdx(allocIdx)}
-												>
-													<Pencil className="h-3 w-3" />
-												</button>
-											</>
+													<span className="shrink-0 text-muted-foreground">{uomLabel ?? "CTN"}</span>
+													<div className="ml-auto flex shrink-0 items-center gap-1">
+														<button
+															type="button"
+															title="Change rack"
+															className="text-muted-foreground hover:text-foreground"
+															onClick={() => setEditingAllocationIdx(allocIdx)}
+														>
+															<Pencil className="h-3 w-3" />
+														</button>
+														<button
+															type="button"
+															title="Remove rack"
+															className="text-muted-foreground hover:text-destructive"
+															onClick={() => {
+																const newAllocations = item.rackAllocations!.filter((_, i) => i !== allocIdx);
+																const newItems = [...items];
+																newItems[index] = {
+																	...newItems[index],
+																	rackAllocations: newAllocations,
+																	rackId: newAllocations[0]?.rackId ?? "",
+																	rackAutoSuggested: false,
+																};
+																onItemsChange(newItems);
+															}}
+														>
+															<Trash2 className="h-3 w-3" />
+														</button>
+													</div>
+												</>
+											)}
+										</li>
+									))}
+								</ul>
+								<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
+									<button
+										type="button"
+										className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
+										onClick={() => {
+											const remaining = Math.max(0, netQty - totalAllocQty);
+											const newAllocations = [
+												...(item.rackAllocations ?? []),
+												{ rackId: "", quantity: remaining, rackLabel: "" },
+											];
+											const newItems = [...items];
+											newItems[index] = {
+												...newItems[index],
+												rackAllocations: newAllocations,
+												rackAutoSuggested: false,
+											};
+											onItemsChange(newItems);
+											setEditingAllocationIdx(newAllocations.length - 1);
+										}}
+									>
+										<Plus className="h-3 w-3" />
+										Add rack
+									</button>
+									<span
+										className={cn(
+											"font-mono text-[11px]",
+											totalAllocQty === netQty
+												? "text-green-600 dark:text-green-400"
+												: "text-destructive",
 										)}
-									</li>
-								))}
-							</ul>
+									>
+										{totalAllocQty} / {netQty} {uomLabel ?? "CTN"}
+									</span>
+								</div>
+							</div>
 						) : null}
 						{rackSuggestionMessage ? (
 							<p className="text-[11px] text-muted-foreground leading-snug">
