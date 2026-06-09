@@ -1,8 +1,6 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 
@@ -26,8 +24,9 @@ import { cn } from "@/lib/utils";
 import {
 	SKUS_AND_UOM_QUERY,
 	CREATE_SKU_MUTATION,
-	type Sku,
 	type CreateSkuInput,
+	type SkusAndUomQueryVariables,
+	type SkusAndUomQueryData,
 } from "@/lib/graphql/skus";
 import { useForm } from "@tanstack/react-form";
 import z from "zod";
@@ -46,6 +45,7 @@ import {
 	SelectItem,
 } from "../ui/select";
 import type { Skus } from "@/lib/graphql/types";
+import { ScrollArea } from "../ui/scroll-area";
 
 const createSkuSchema = z.object({
 	skuCode: z.string().min(1, "Code is required"),
@@ -95,13 +95,31 @@ export function SkuCombobox({
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data, isLoading: loading } = useQuery({
-		queryKey: qk.skus.all,
-		queryFn: () => gqlRequest(SKUS_AND_UOM_QUERY, {}),
+	const { data: skusData, isLoading: loading } = useInfiniteQuery<SkusAndUomQueryData>({
+		queryKey: [...qk.skus.all, "infinite", search],
+		queryFn: async ({ pageParam }) => {
+			const result = gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
+				pageSize: 20,
+				pageNumber: Number(pageParam),
+				filter: search.trim() ? { skuDescription: search.trim() } : undefined,
+			});
+
+			console.log("result:", result);
+
+			return await result;
+		},
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => {
+			const p = lastPage.skus.pagination;
+			return p.hasNextPage ? p.currentPage + 1 : undefined;
+		},
 	});
 
-	const skus = data?.skus.query ?? [];
-	const uoms = data?.stockUnits?.query ?? [];
+	const skus = skusData?.pages.flatMap((page) => page.skus.query) ?? [];
+	// const skus = skusData;
+	const uoms = skusData?.pages[0]?.stockUnits?.query ?? [];
+
+	console.log("skusData", skusData);
 
 	function getErrorMessage(err: unknown): string {
 		if (err && typeof err === "object" && "response" in err) {
@@ -154,31 +172,19 @@ export function SkuCombobox({
 		},
 	});
 
-	const filtered = useMemo(() => {
-		let list = skus;
-		if (excludedSkuCodes?.length) {
-			list = list.filter((s: Skus) => !excludedSkuCodes.includes(s.skuCode));
-		}
-		if (!search.trim()) return list;
-		const q = search.toLowerCase();
-		return list.filter(
-			(s: Skus) =>
-				s.skuCode.toLowerCase().includes(q) ||
-				s.skuDescription?.toLowerCase().includes(q),
-		);
-	}, [skus, search, excludedSkuCodes]);
+	const filtered = skus;
 
-	function handleSelect(sku: Sku) {
-		const s = sku as unknown as Skus;
-		const uomUnit = uoms?.find((u: StockUnit) => u.stockUnitId === s.skuUom);
-		onChange({
-			sku: s.skuCode ?? s.skuDescription ?? sku.skuId,
-			skuCode: s.skuCode ?? "",
-			description: s.skuDescription ?? "",
-			uom: uomUnit?.unitCode ?? s.skuUom ?? "",
+	function handleSelect(sku: Skus) {
+		const uomUnit = uoms?.find((u: StockUnit) => u.stockUnitId === sku.skuUom);
+		const result: SkuLineValue = {
+			sku: sku.skuCode ?? sku.skuDescription ?? sku.skuId,
+			skuCode: sku.skuCode ?? "",
+			description: sku.skuDescription ?? "",
+			uom: uomUnit?.unitCode ?? sku.skuUom ?? "",
 			skuId: sku.skuId,
-			isActive: s.isActive ?? true,
-		});
+			isActive: sku.isActive,
+		};
+		onChange(result);
 		setOpen(false);
 		setSearch("");
 	}
@@ -186,6 +192,8 @@ export function SkuCombobox({
 	const displayLabel = value
 		? `${value.sku}${value.description ? ` – ${value.description}` : ""}`
 		: null;
+
+	console.log(value);
 
 	return (
 		<div className={cn("flex gap-1", className)}>
@@ -229,51 +237,53 @@ export function SkuCombobox({
 										: "No SKUs in the system."}
 								</div>
 							) : (
-								<ul className="py-1 px-1">
-									{filtered.map((sku: Skus) => {
-										const alreadyAdded =
-											usedSkuCodes?.includes(sku.skuCode) &&
-											value?.skuCode !== sku.skuCode;
-										return (
-											<li key={sku.skuId}>
-												<button
-													type="button"
-													title={[sku.skuCode, sku.skuDescription]
-														.filter(Boolean)
-														.join(" – ")}
-													className={cn(
-														"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
-														value?.skuId === sku.skuId && "bg-accent",
-													)}
-													onClick={() => handleSelect(sku as unknown as Sku)}
-												>
-													{value?.skuId === sku.skuId ? (
-														<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-													) : (
-														<span className="mt-0.5 w-3.5 shrink-0" />
-													)}
-													<div className="min-w-0 flex-1 overflow-hidden">
-														<div className="flex items-center gap-1.5">
-															<span className="text-sm font-semibold text-foreground">
-																{sku.skuCode}
-															</span>
-															{alreadyAdded && (
-																<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
-																	Added
+								<ScrollArea>
+									<ul className="py-1 px-1">
+										{filtered.map((sku: Skus) => {
+											const alreadyAdded =
+												usedSkuCodes?.includes(sku.skuCode) &&
+												value?.skuCode !== sku.skuCode;
+											return (
+												<li key={sku.skuId}>
+													<button
+														type="button"
+														title={[sku.skuCode, sku.skuDescription]
+															.filter(Boolean)
+															.join(" – ")}
+														className={cn(
+															"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
+															value?.skuId === sku.skuId && "bg-accent",
+														)}
+														onClick={() => handleSelect(sku)}
+													>
+														{value?.skuId === sku.skuId ? (
+															<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+														) : (
+															<span className="mt-0.5 w-3.5 shrink-0" />
+														)}
+														<div className="min-w-0 flex-1 overflow-hidden">
+															<div className="flex items-center gap-1.5">
+																<span className="text-sm font-semibold text-foreground">
+																	{sku.skuCode}
 																</span>
+																{alreadyAdded && (
+																	<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+																		Added
+																	</span>
+																)}
+															</div>
+															{sku.skuDescription && (
+																<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+																	{sku.skuDescription}
+																</div>
 															)}
 														</div>
-														{sku.skuDescription && (
-															<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-																{sku.skuDescription}
-															</div>
-														)}
-													</div>
-												</button>
-											</li>
-										);
-									})}
-								</ul>
+													</button>
+												</li>
+											);
+										})}
+									</ul>
+								</ScrollArea>
 							)}
 						</div>
 						<div className="border-t bg-muted/20 px-2 py-1">

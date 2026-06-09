@@ -28,14 +28,22 @@ export const SKUS_QUERY = gql`
 `;
 
 export const SKUS_AND_UOM_QUERY = gql`
-	query SkusAndUom {
-		skus {
+	query SkusAndUom(
+		$filter: SkuFilterInput
+		$pageSize: Int
+		$pageNumber: Int
+	) {
+		skus(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				skuId
 				skuCode
 				skuDescription
 				skuUom
 				isActive
+			}
+			pagination {
+				currentPage
+				hasNextPage
 			}
 		}
 		stockUnits {
@@ -46,6 +54,24 @@ export const SKUS_AND_UOM_QUERY = gql`
 		}
 	}
 `;
+
+export type SkusAndUomQueryVariables = {
+	filter?: {
+		skuCode?: string;
+		skuCodes?: string[];
+		skuDescription?: string;
+	};
+	pageSize?: number;
+	pageNumber?: number;
+};
+
+export type SkusAndUomQueryData = {
+	skus: {
+		query: Skus[];
+		pagination: { currentPage: number; hasNextPage: boolean };
+	};
+	stockUnits: { query: { stockUnitId: string; unitCode: string }[] };
+};
 
 export const SKUS_FRAGMENT = gql`
 	fragment SkuFields on Sku {

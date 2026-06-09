@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
-import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
+import {
+	RackLocationCombobox,
+	formatRackLocationLabel,
+} from "@/components/grn/rack-location-combobox";
 import type { Rack } from "@/lib/graphql/types";
 import { FileUpload, type UploadedFile } from "@/components/ui/file-upload";
 import {
@@ -53,7 +56,13 @@ import {
 	UPDATE_GRN_MUTATION,
 	DELETE_GRN_MUTATION,
 	UI_STATUS_TO_GQL,
+	GQL_STATUS_TO_UI,
+	GRNS_QUERY,
+	type GrnsQueryData,
+	ADVANCE_NOTICE_BY_PO_NO_QUERY,
+	type AdvanceNoticeByPoNoQueryData,
 } from "@/lib/graphql/grns";
+import type { Grn, GrnItem } from "@/lib/graphql/types";
 import {
 	CREATE_RACK_MUTATION,
 	type CreateRackMutationData,
@@ -75,6 +84,38 @@ import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
 } from "@/lib/grn-sku-line-controls";
+import {
+	SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+	type GrnRackAllocationForm,
+	type InboundPutawayPlanGql,
+	type RackSkuCapacityGql,
+	type SuggestInboundPutawayPlanQueryData,
+} from "@/lib/graphql/inbound-putaway";
+
+function formatRackCapacityHint(
+	cap: RackSkuCapacityGql | null | undefined,
+	unitLabel: string | null,
+	incomingQty: number,
+): string | null {
+	if (!cap) return null;
+	const unit = unitLabel ?? "cartons";
+	const used = cap.currentQuantity ?? 0;
+	if (cap.maxCapacity == null) {
+		if (used > 0) {
+			return `${used} ${unit} already in this rack. Add rack dimensions to see remaining capacity.`;
+		}
+		return "Add rack and SKU dimensions to calculate remaining capacity.";
+	}
+	const available =
+		cap.availableCapacity ?? Math.max(0, cap.maxCapacity - used);
+	const fits =
+		incomingQty <= 0 || used + incomingQty <= cap.maxCapacity;
+	let text = `${available} of ${cap.maxCapacity} ${unit} available (${used} in use on rack)`;
+	if (incomingQty > 0 && !fits) {
+		text += ` — receiving ${incomingQty} ${unit} would exceed capacity`;
+	}
+	return text;
+}
 
 function parseGrnExpiryDate(value: string): Date | undefined {
 	const trimmed = value?.trim();
@@ -222,18 +263,68 @@ export type GRNLineItemForm = {
 	expiryDate: string;
 	/** Lot number assigned by supplier/manufacturer. Optional. */
 	lotNo: string;
-	/** Rack location (one per line). Same SKU allowed with different expiry/rack. */
+	/** Primary rack (first allocation). Same SKU allowed with different expiry/rack. */
 	rackId: string;
+	/** Multi-rack putaway split when quantity exceeds single-rack capacity. */
+	rackAllocations?: GrnRackAllocationForm[];
+	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
+	rackAutoSuggested?: boolean;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
 
-function grnApiRackIds(item: Pick<GRNLineItemForm, "rackId">): string[] {
-	const id = item.rackId?.trim();
-	return id ? [id] : [];
+function buildGrnItemRackPayload(item: GRNLineItemForm): {
+	rackAllocations?: Array<{ rackId: string; quantity: number }>;
+} {
+	const netQty = Math.max(
+		0,
+		(Number(item.carton) || 0) - (Number(item.loss) || 0),
+	);
+	if (netQty <= 0) return {};
+
+	if (item.rackAllocations && item.rackAllocations.length > 1) {
+		return {
+			rackAllocations: item.rackAllocations.map((row) => ({
+				rackId: row.rackId,
+				quantity: row.quantity,
+			})),
+		};
+	}
+
+	const rackId = item.rackId?.trim();
+	if (!rackId) return {};
+	return { rackAllocations: [{ rackId, quantity: netQty }] };
+}
+
+function formatPutawayPlanHint(
+	plan: InboundPutawayPlanGql | null,
+	unitLabel: string | null,
+	incomingQty: number,
+): string | null {
+	if (!plan?.allocations.length || incomingQty <= 0) return null;
+	const unit = unitLabel ?? "cartons";
+	if (plan.remainingQty > 0) {
+		return `Allocated ${plan.totalAllocated} of ${incomingQty} ${unit} across ${plan.allocations.length} rack(s). ${plan.remainingQty} ${unit} still need a location.`;
+	}
+	if (plan.allocations.length === 1) {
+		return null;
+	}
+	return `${plan.allocations.length} rack locations suggested (${plan.totalAllocated} ${unit} total)`;
 }
 
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
+/** Status badge colors for the PO fulfillment-history hint (matches grn.tsx getStatusColor). */
+function grnHistoryStatusColor(status: string | null | undefined): string {
+	const colors: Record<string, string> = {
+		Draft: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+		Submitted: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+		Approved: "bg-green-500/10 text-green-600 border-green-500/20",
+		"Sent-to-ES": "bg-purple-500/10 text-purple-600 border-purple-500/20",
+		Failed: "bg-red-500/10 text-red-600 border-red-500/20",
+	};
+	return (status && colors[status]) || "bg-gray-500/10 text-gray-600 border-gray-500/20";
+}
+
 function normalizeFieldErrors(
 	errors: unknown[],
 ): Array<{ message?: string } | undefined> {
@@ -374,12 +465,18 @@ function GRNLineRow({
 	stockUnits,
 	racks,
 	onOpenCreateRack,
+	poAsnLines,
+	poHistoricalReceivedBySku,
 }: {
 	item: GRNLineItemForm;
 	index: number;
 	items: GRNLineItemForm[];
 	onItemsChange: (newItems: GRNLineItemForm[]) => void;
 	skuOptions: Skus[];
+	/** ASN expected qty per SKU for the linked PO — undefined/empty when no PO lookup applies. */
+	poAsnLines?: Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>;
+	/** Qty already received by PRIOR saved GRNs for this PO, keyed by skuCode. */
+	poHistoricalReceivedBySku?: Map<string, number>;
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	racks: Array<{
 		rackId: string;
@@ -423,6 +520,163 @@ function GRNLineRow({
 		[item.skuCode, skuOptions, item.asnLotTracked],
 	);
 
+	// Live "remaining to receive" gauge for this line's SKU against the linked PO/ASN —
+	// nets out historical GRNs AND every in-progress row sharing this SKU (qty can be
+	// split across multiple lines, e.g. different racks/lots).
+	const poGauge = useMemo(() => {
+		if (!item.skuCode?.trim() || !poAsnLines?.length) return null;
+		const line = poAsnLines.find((l) => l.skuCode === item.skuCode);
+		if (!line) return null;
+		const historical = poHistoricalReceivedBySku?.get(item.skuCode) ?? 0;
+		const inProgress = items.reduce((sum, it) => {
+			if (it.skuCode !== item.skuCode) return sum;
+			const carton = Number(it.carton);
+			return Number.isFinite(carton) && carton > 0 ? sum + carton : sum;
+		}, 0);
+		const received = historical + inProgress;
+		const expected = line.expected || 0;
+		const span = Math.max(expected, received, 1);
+		return {
+			displayName: line.displayName,
+			units: line.units,
+			expected,
+			historical,
+			inProgress,
+			received,
+			remaining: expected - received,
+			historicalPct: Math.min(100, (historical / span) * 100),
+			inProgressPct: Math.min(100 - Math.min(100, (historical / span) * 100), (inProgress / span) * 100),
+		};
+	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku]);
+	const [putawayPlan, setPutawayPlan] = useState<InboundPutawayPlanGql | null>(
+		null,
+	);
+	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
+
+	const resolvedSkuId = useMemo(() => {
+		if (!item.skuCode?.trim()) return "";
+		return skuOptions.find((s) => s.skuCode === item.skuCode)?.skuId ?? "";
+	}, [item.skuCode, skuOptions]);
+
+	const inboundQty = Math.max(0, Number(item.carton) || 0);
+
+	const rackCapacityHint = useMemo(
+		() =>
+			item.rackId?.trim() && (putawayPlan?.allocations.length ?? 0) <= 1
+				? formatRackCapacityHint(
+						putawayPlan?.capacityForRack,
+						uomLabel,
+						inboundQty,
+					)
+				: null,
+		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, uomLabel, inboundQty],
+	);
+
+	const putawayPlanHint = useMemo(
+		() => formatPutawayPlanHint(putawayPlan, uomLabel, inboundQty),
+		[putawayPlan, uomLabel, inboundQty],
+	);
+
+	const rackSuggestionMessage = putawayPlan?.message ?? null;
+
+	const rackDisplayLabel = useMemo(() => {
+		if (!item.rackId?.trim()) return null;
+		const allocLabel = item.rackAllocations?.find(
+			(a) => a.rackId === item.rackId,
+		)?.rackLabel;
+		if (allocLabel) return allocLabel;
+		const planLabel = putawayPlan?.allocations.find(
+			(a) => a.rackId === item.rackId,
+		)?.rackLabel;
+		if (planLabel) return planLabel;
+		const rack = racks.find((r) => r.rackId === item.rackId);
+		return rack ? formatRackLocationLabel(rack as Rack) : null;
+	}, [item.rackId, item.rackAllocations, putawayPlan, racks]);
+
+	useEffect(() => {
+		if (!item.skuCode?.trim()) {
+			setPutawayPlan(null);
+			setIsSuggestingRack(false);
+			return;
+		}
+
+		let cancelled = false;
+		setIsSuggestingRack(true);
+		(async () => {
+			try {
+				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
+					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+					{
+						skuId: resolvedSkuId || null,
+						skuCode: item.skuCode,
+						quantity: inboundQty > 0 ? inboundQty : 1,
+						forRackId: item.rackId?.trim() || null,
+					},
+				);
+				if (cancelled) return;
+				const plan = data.suggestInboundPutawayPlan;
+				setPutawayPlan(plan);
+
+				const canAutoApply =
+					!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
+				if (!plan.allocations.length || !canAutoApply) return;
+
+				const nextAllocations: GrnRackAllocationForm[] = plan.allocations.map(
+					(row) => ({
+						rackId: row.rackId,
+						quantity: row.quantity,
+						rackLabel: row.rackLabel,
+					}),
+				);
+				const nextRackId = nextAllocations[0]?.rackId ?? "";
+				const sameAllocations =
+					item.rackAllocations?.length === nextAllocations.length &&
+					item.rackAllocations.every(
+						(row, idx) =>
+							row.rackId === nextAllocations[idx]?.rackId &&
+							row.quantity === nextAllocations[idx]?.quantity,
+					);
+				if (
+					item.rackId === nextRackId &&
+					item.rackAutoSuggested === true &&
+					sameAllocations
+				) {
+					return;
+				}
+
+				onItemsChange(
+					items.map((row, i) =>
+						i === index
+							? {
+									...row,
+									rackId: nextRackId,
+									rackAllocations: nextAllocations,
+									rackAutoSuggested: true,
+								}
+							: row,
+					),
+				);
+			} catch {
+				if (!cancelled) setPutawayPlan(null);
+			} finally {
+				if (!cancelled) setIsSuggestingRack(false);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+			setIsSuggestingRack(false);
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty/rack or auto-suggest state changes
+	}, [
+		item.skuCode,
+		resolvedSkuId,
+		inboundQty,
+		item.rackId,
+		item.rackAutoSuggested,
+		index,
+	]);
+
 	return (
 		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
 			<div className="flex items-start gap-2.5">
@@ -443,6 +697,9 @@ function GRNLineRow({
 										skuCode: v.skuCode ?? "",
 										description: v.description ?? "",
 										uom: v.uom ?? "",
+										rackId: "",
+										rackAllocations: undefined,
+										rackAutoSuggested: false,
 									};
 									onItemsChange(newItems);
 								}}
@@ -481,6 +738,63 @@ function GRNLineRow({
 							<XCircle className="h-3.5 w-3.5" />
 						</Button>
 					</div>
+
+					{poGauge ? (
+						<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-[var(--dashboard-surface)] px-2 py-1.5">
+							<span
+								className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+								style={{ backgroundColor: "var(--dashboard-accent)" }}
+							/>
+							<span
+								className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-display)" }}
+							>
+								PO
+							</span>
+							<div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+								<div
+									className="absolute inset-y-0 left-0 rounded-full bg-muted-foreground/40"
+									style={{ width: `${poGauge.historicalPct}%` }}
+								/>
+								<div
+									className="absolute inset-y-0 rounded-full"
+									style={{
+										backgroundColor: "var(--dashboard-accent)",
+										left: `${poGauge.historicalPct}%`,
+										width: `${poGauge.inProgressPct}%`,
+									}}
+								/>
+								{poGauge.remaining < 0 ? (
+									<div className="absolute inset-y-0 right-0 w-1 animate-pulse rounded-r-full bg-rose-500" />
+								) : null}
+							</div>
+							<span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+								<span className="font-medium text-foreground">{poGauge.received}</span>
+								<span className="text-muted-foreground/60"> / {poGauge.expected}</span>{" "}
+								{poGauge.units}
+							</span>
+							<span
+								className={`shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${
+									poGauge.remaining < 0
+										? "bg-rose-500/10 text-rose-600 dark:text-rose-300"
+										: poGauge.remaining === 0
+											? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+											: "text-[var(--dashboard-accent)]"
+								}`}
+								style={
+									poGauge.remaining > 0
+										? { backgroundColor: "var(--dashboard-accent-muted)" }
+										: undefined
+								}
+							>
+								{poGauge.remaining < 0
+									? `+${Math.abs(poGauge.remaining)} over`
+									: poGauge.remaining === 0
+										? "cleared"
+										: `${poGauge.remaining} ${poGauge.units} left`}
+							</span>
+						</div>
+					) : null}
 
 					{(requireLot || requireExpiry) && item.skuCode?.trim() ? (
 						<div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-50/50 px-2 py-1.5 dark:border-amber-600/40 dark:bg-amber-950/25">
@@ -617,13 +931,26 @@ function GRNLineRow({
 						<div className="flex flex-wrap items-center gap-2">
 							<div className="min-w-0 flex-1">
 							<RackLocationCombobox
-								racks={racks as Rack[]}
+								remoteSearch
 								value={item.rackId ?? ""}
-								onChange={(rackId) => {
+								fallbackLabel={rackDisplayLabel}
+								loading={isSuggestingRack && !rackDisplayLabel}
+								loadingPlaceholder="Suggesting rack…"
+								onChange={(rackId, rackLabel) => {
 									const newItems = [...items];
+									const netQty = Math.max(
+										0,
+										(Number(newItems[index].carton) || 0) -
+											(Number(newItems[index].loss) || 0),
+									);
 									newItems[index] = {
 										...newItems[index],
 										rackId,
+										rackAllocations:
+											rackId && netQty > 0
+												? [{ rackId, quantity: netQty, rackLabel }]
+												: [],
+										rackAutoSuggested: false,
 									};
 									onItemsChange(newItems);
 								}}
@@ -644,6 +971,47 @@ function GRNLineRow({
 								</Button>
 							) : null}
 						</div>
+						{putawayPlanHint ? (
+							<p
+								className="text-[11px] font-medium text-foreground/80 leading-snug"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{putawayPlanHint}
+							</p>
+						) : rackCapacityHint ? (
+							<p
+								className="text-[11px] font-medium text-foreground/80 leading-snug"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{rackCapacityHint}
+							</p>
+						) : null}
+						{item.rackAllocations && item.rackAllocations.length > 1 ? (
+							<ul className="mt-1 space-y-0.5 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5">
+								{item.rackAllocations.map((allocation) => (
+									<li
+										key={allocation.rackId}
+										className="text-[11px] font-mono text-foreground/85"
+									>
+										{allocation.rackLabel ?? allocation.rackId}:{" "}
+										{allocation.quantity} {uomLabel ?? "CTN"}
+									</li>
+								))}
+							</ul>
+						) : null}
+						{rackSuggestionMessage ? (
+							<p className="text-[11px] text-muted-foreground leading-snug">
+								{item.rackAutoSuggested ? (
+									<Badge
+										variant="outline"
+										className="mr-1.5 h-4 px-1 text-[10px] font-normal"
+									>
+										Suggested
+									</Badge>
+								) : null}
+								{rackSuggestionMessage}
+							</p>
+						) : null}
 					</div>
 				</div>
 			</div>
@@ -735,6 +1103,77 @@ export function GrnFormDialog({
 	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
+	/** Prior GRNs found for a manually-typed PO — shown as a "fulfillment history" hint. */
+	const [poHistory, setPoHistory] = useState<
+		Array<
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt" | "supplierDeliveryNo"> & {
+				items: Array<Pick<GrnItem, "skuId" | "skuCode" | "skuDescription" | "qty">>;
+			}
+		>
+	>([]);
+	const [poHistoryLoading, setPoHistoryLoading] = useState(false);
+	/**
+	 * Raw ingredients for the live "remaining to receive" calc — kept separate from the
+	 * in-progress form items so the panel can recompute as the user types qty (see render
+	 * below, via form.Subscribe on items). `poAsnLines` = ASN expected qty per SKU;
+	 * `poHistoricalReceivedBySku` = qty already received by PRIOR saved GRNs for this PO.
+	 */
+	const [poAsnLines, setPoAsnLines] = useState<
+		Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>
+	>([]);
+	const [poHistoricalReceivedBySku, setPoHistoricalReceivedBySku] = useState<Map<string, number>>(new Map());
+	const lastLookedUpPoRef = useRef<string>("");
+	const lookupPoHistory = async (poNo: string) => {
+		const trimmed = poNo.trim();
+		if (!trimmed || trimmed === lastLookedUpPoRef.current) return;
+		lastLookedUpPoRef.current = trimmed;
+		setPoHistoryLoading(true);
+		try {
+			const [historyResult, asnResult] = await Promise.all([
+				gqlRequest<GrnsQueryData>(GRNS_QUERY, {
+					filter: { poNo: trimmed },
+					pageSize: 10,
+				}),
+				gqlRequest<AdvanceNoticeByPoNoQueryData>(ADVANCE_NOTICE_BY_PO_NO_QUERY, {
+					poNo: trimmed,
+				}).catch(() => null),
+			]);
+			const history = historyResult?.grns?.query ?? [];
+			setPoHistory(history);
+
+			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
+			if (asnLines.length > 0) {
+				const receivedBySku = new Map<string, number>();
+				for (const grn of history) {
+					for (const item of grn.items ?? []) {
+						if (!item.skuCode) continue;
+						receivedBySku.set(
+							item.skuCode,
+							(receivedBySku.get(item.skuCode) ?? 0) + Number(item.qty || 0),
+						);
+					}
+				}
+				setPoHistoricalReceivedBySku(receivedBySku);
+				setPoAsnLines(
+					asnLines.map((line) => ({
+						skuCode: line.itemid,
+						displayName: line.displayname,
+						expected: line.quantity,
+						units: line.units,
+					})),
+				);
+			} else {
+				setPoAsnLines([]);
+				setPoHistoricalReceivedBySku(new Map());
+			}
+		} catch {
+			setPoHistory([]);
+			setPoAsnLines([]);
+			setPoHistoricalReceivedBySku(new Map());
+		} finally {
+			setPoHistoryLoading(false);
+		}
+	};
 	const [createRackOpen, setCreateRackOpen] = useState(false);
 	const [createRackForLineIndex, setCreateRackForLineIndex] = useState<
 		number | null
@@ -890,15 +1329,8 @@ export function GrnFormDialog({
 					warehouseId: value.warehouseId ?? "",
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
-						skuCode: i.skuCode,
-						description: i.description,
-						carton: i.carton,
-						loss: i.loss,
-						uom: i.uom,
-						unitPrice: i.unitPrice,
-						expiryDate: i.expiryDate ?? "",
-						lotNo: i.lotNo ?? "",
-						rackId: i.rackId ?? "",
+						...i,
+						...buildGrnItemRackPayload(i),
 					})),
 				};
 
@@ -937,9 +1369,7 @@ export function GrnFormDialog({
 								? (stockUnits.find((u) => u.unitCode === i.uom)
 									?.stockUnitId ?? i.uom)
 								: undefined;
-							const rackIds = (i.rackIds ?? []).filter((id) =>
-								(id ?? "").trim(),
-							);
+							const rackPayload = buildGrnItemRackPayload(i);
 							return {
 								skuId:
 									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
@@ -951,7 +1381,7 @@ export function GrnFormDialog({
 								skuUom: uomId ?? undefined,
 								expiryDate: (i.expiryDate ?? "").trim() || undefined,
 								lotNo: (i.lotNo ?? "").trim() || undefined,
-								...(rackIds.length > 0 && { rackIds }),
+								...rackPayload,
 							};
 						}),
 					},
@@ -974,8 +1404,34 @@ export function GrnFormDialog({
 					: undefined;
 				const rack = it.rack;
 				const legacyRackIds = (it as { rackIds?: string[] }).rackIds;
+				const legacyAllocations = (
+					it as {
+						rackAllocations?: Array<{
+							rackId: string;
+							quantity: number;
+						}>;
+					}
+				).rackAllocations;
 				const rackId =
-					legacyRackIds?.[0] ?? rack?.rackId ?? (it as { rackId?: string }).rackId ?? "";
+					legacyAllocations?.[0]?.rackId ??
+					legacyRackIds?.[0] ??
+					rack?.rackId ??
+					(it as { rackId?: string }).rackId ??
+					"";
+				const rackAllocations =
+					legacyAllocations?.map((row) => ({
+						rackId: row.rackId,
+						quantity: row.quantity,
+					})) ??
+					(legacyRackIds?.length
+						? legacyRackIds.map((id) => ({
+								rackId: id,
+								quantity: Math.max(
+									0,
+									(it.expectedQuantity ?? 0) - (it.lossQuantity ?? 0),
+								),
+							}))
+						: undefined);
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
 				return {
@@ -988,6 +1444,7 @@ export function GrnFormDialog({
 					expiryDate,
 					lotNo,
 					rackId,
+					rackAllocations,
 				};
 			});
 			form.reset({
@@ -1060,6 +1517,16 @@ export function GrnFormDialog({
 			initialValues?.receivedDate?.trim() ||
 			(initialValues?.items?.length ?? 0) > 0
 		);
+
+	// ASN-prefilled creates skip the PO-field onBlur (field is disabled, prefilled),
+	// so the "existing deliveries / remaining to receive" panels never got their data —
+	// run the same lookup once up front from the prefilled poReference.
+	useEffect(() => {
+		if (open && isAsnPrefilledCreate && initialValues?.poReference?.trim()) {
+			lookupPoHistory(initialValues.poReference);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [open, isAsnPrefilledCreate, initialValues?.poReference]);
 	const sortedSuppliers = useMemo(
 		() =>
 			[...suppliers].sort((a, b) =>
@@ -1145,7 +1612,12 @@ export function GrnFormDialog({
 														id={field.name}
 														value={field.state.value}
 														placeholder="PO-2024-001"
-														onBlur={field.handleBlur}
+														onBlur={() => {
+															field.handleBlur();
+															if (isCreate && !isAsnPrefilledCreate) {
+																lookupPoHistory(field.state.value);
+															}
+														}}
 														onChange={(e) => field.handleChange(e.target.value)}
 														disabled={isAsnPrefilledCreate}
 														required
@@ -1164,6 +1636,47 @@ export function GrnFormDialog({
 															)}
 														/>
 													)}
+													{isCreate &&
+													!poHistoryLoading &&
+													poHistory.length > 0 ? (
+														<div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs">
+															<p className="mb-1.5 font-medium text-amber-700">
+																Existing deliveries for this PO
+															</p>
+															<ul className="space-y-1">
+																{poHistory.map((g) => (
+																	<li
+																		key={g.id}
+																		className="flex flex-wrap items-center gap-1.5 text-muted-foreground"
+																	>
+																		<span className="font-mono font-medium text-foreground">
+																			{g.grnNo}
+																		</span>
+																		{g.receivedAt && !Number.isNaN(new Date(g.receivedAt).getTime()) ? (
+																			<span>
+																				·{" "}
+																				{format(
+																					new Date(g.receivedAt),
+																					"yyyy-MM-dd",
+																				)}
+																			</span>
+																		) : null}
+																		{g.supplierDeliveryNo ? (
+																			<span className="font-mono">
+																				· {g.supplierDeliveryNo}
+																			</span>
+																		) : null}
+																		<Badge
+																			variant="outline"
+																			className={`text-[10px] ${grnHistoryStatusColor(GQL_STATUS_TO_UI[g.status ?? ""] ?? g.status)}`}
+																		>
+																			{GQL_STATUS_TO_UI[g.status ?? ""] ?? g.status}
+																		</Badge>
+																	</li>
+																))}
+															</ul>
+														</div>
+													) : null}
 												</Field>
 											);
 										}}
@@ -1395,6 +1908,8 @@ export function GrnFormDialog({
 															skuOptions={skuOptions}
 															stockUnits={stockUnits}
 															racks={racks}
+															poAsnLines={isCreate ? poAsnLines : undefined}
+															poHistoricalReceivedBySku={isCreate ? poHistoricalReceivedBySku : undefined}
 															onOpenCreateRack={(lineIndex) => {
 																setCreateRackForLineIndex(lineIndex);
 																setCreateRackOpen(true);

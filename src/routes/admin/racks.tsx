@@ -78,6 +78,17 @@ const formatLevel = (lvl: string | null | undefined): string => {
 	return match ? match[0].padStart(2, "0") : lvl.trim();
 };
 
+const formatNumericCell = (value: string | null | undefined) => {
+	const trimmed = value?.trim();
+	if (!trimmed) return <span className="opacity-30">—</span>;
+	return <span className="tabular-nums">{trimmed}</span>;
+};
+
+const toNumericInput = (value: string): string | null => {
+	const trimmed = value.trim();
+	return trimmed || null;
+};
+
 export const Route = createFileRoute("/admin/racks")({
 	beforeLoad: async ({ context }) => {
 		await requirePermission(context.queryClient, ["Inventory"]);
@@ -282,6 +293,11 @@ function RacksPage() {
 										"Storage Bay",
 										"Level",
 										"Storage Type",
+										"Length (mm)",
+										"Width (mm)",
+										"Height (mm)",
+										"Weight (kg)",
+										"Max Pallets",
 										"Location",
 										"Status",
 										"Last Count Date",
@@ -303,7 +319,7 @@ function RacksPage() {
 								{loading ? (
 									<TableRow>
 										<TableCell
-											colSpan={12}
+											colSpan={17}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading...
@@ -312,7 +328,7 @@ function RacksPage() {
 								) : list.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={12}
+											colSpan={17}
 											className="h-24 text-center text-muted-foreground"
 										>
 											No racks found.
@@ -357,6 +373,21 @@ function RacksPage() {
 												>
 													{row.binType}
 												</Badge>
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{formatNumericCell(row.length)}
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{formatNumericCell(row.width)}
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{formatNumericCell(row.height)}
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{formatNumericCell(row.weight)}
+											</TableCell>
+											<TableCell className="px-4 text-sm">
+												{formatNumericCell(row.maxPallet)}
 											</TableCell>
 											<TableCell className="px-4 text-sm">
 												{locationLabel(row) ?? (
@@ -504,6 +535,11 @@ type FormValues = {
 	binCode: string;
 	barCode: string;
 	binType: string;
+	length: string;
+	width: string;
+	height: string;
+	weight: string;
+	maxPallet: string;
 	areaId: string | null;
 	isActive: boolean;
 };
@@ -522,7 +558,17 @@ function RackFormDialog({
 	onOpenChange: (open: boolean) => void;
 	initial?: Rack;
 	areas: Area[];
-	onSubmit: (v: Omit<FormValues, "binCode" | "barCode"> & { binCode?: string | null; barCode?: string | null }) => void;
+	onSubmit: (
+		v: Omit<FormValues, "binCode" | "barCode" | "length" | "width" | "height" | "weight" | "maxPallet"> & {
+			binCode?: string | null;
+			barCode?: string | null;
+			length?: string | null;
+			width?: string | null;
+			height?: string | null;
+			weight?: string | null;
+			maxPallet?: string | null;
+		},
+	) => void;
 	loading: boolean;
 	title: string;
 	description: string;
@@ -533,6 +579,11 @@ function RackFormDialog({
 	const [binCode, setBinCode] = useState(initial?.binCode ?? "");
 	const [barCode, setBarCode] = useState(initial?.barCode ?? "");
 	const [binType, setBinType] = useState(initial?.binType ?? "FIXED");
+	const [length, setLength] = useState(initial?.length ?? "");
+	const [width, setWidth] = useState(initial?.width ?? "");
+	const [height, setHeight] = useState(initial?.height ?? "");
+	const [weight, setWeight] = useState(initial?.weight ?? "");
+	const [maxPallet, setMaxPallet] = useState(initial?.maxPallet ?? "");
 	const [areaId, setAreaId] = useState<string | null>(initial?.areaId ?? null);
 	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 	const [isBinCodeManuallyEdited, setIsBinCodeManuallyEdited] = useState(!!initial?.binCode);
@@ -545,6 +596,11 @@ function RackFormDialog({
 			setBinCode(initial?.binCode ?? "");
 			setBarCode(initial?.barCode ?? "");
 			setBinType(initial?.binType ?? "FIXED");
+			setLength(initial?.length ?? "");
+			setWidth(initial?.width ?? "");
+			setHeight(initial?.height ?? "");
+			setWeight(initial?.weight ?? "");
+			setMaxPallet(initial?.maxPallet ?? "");
 			setAreaId(initial?.areaId ?? null);
 			setIsActive(initial?.isActive ?? true);
 			setIsBinCodeManuallyEdited(!!initial?.binCode);
@@ -559,6 +615,11 @@ function RackFormDialog({
 			setBinCode(initial?.binCode ?? "");
 			setBarCode(initial?.barCode ?? "");
 			setBinType(initial?.binType ?? "FIXED");
+			setLength(initial?.length ?? "");
+			setWidth(initial?.width ?? "");
+			setHeight(initial?.height ?? "");
+			setWeight(initial?.weight ?? "");
+			setMaxPallet(initial?.maxPallet ?? "");
 			setAreaId(initial?.areaId ?? null);
 			setIsActive(initial?.isActive ?? true);
 			setIsBinCodeManuallyEdited(!!initial?.binCode);
@@ -583,7 +644,7 @@ function RackFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent className="max-w-lg rounded-2xl border-2 border-border bg-background shadow-xl">
+			<DialogContent className="max-w-2xl rounded-2xl border-2 border-border bg-background shadow-xl">
 				<DialogHeader className="border-b bg-muted/50 px-6 py-4">
 					<DialogTitle
 						className="text-xl"
@@ -663,6 +724,83 @@ function RackFormDialog({
 							/>
 						</div>
 					</div>
+					<div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+						<div className="grid gap-2">
+							<Label htmlFor="rack-length" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Length (mm)
+							</Label>
+							<Input
+								id="rack-length"
+								type="number"
+								min={0}
+								step="any"
+								value={length}
+								onChange={(e) => setLength(e.target.value)}
+								placeholder="e.g. 1200"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-width" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Width (mm)
+							</Label>
+							<Input
+								id="rack-width"
+								type="number"
+								min={0}
+								step="any"
+								value={width}
+								onChange={(e) => setWidth(e.target.value)}
+								placeholder="e.g. 1000"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-height" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Height (mm)
+							</Label>
+							<Input
+								id="rack-height"
+								type="number"
+								min={0}
+								step="any"
+								value={height}
+								onChange={(e) => setHeight(e.target.value)}
+								placeholder="e.g. 2000"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-weight" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Weight (kg)
+							</Label>
+							<Input
+								id="rack-weight"
+								type="number"
+								min={0}
+								step="any"
+								value={weight}
+								onChange={(e) => setWeight(e.target.value)}
+								placeholder="e.g. 500"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label htmlFor="rack-max-pallet" style={{ fontFamily: '"Figtree", sans-serif' }}>
+								Max Pallets
+							</Label>
+							<Input
+								id="rack-max-pallet"
+								type="number"
+								min={0}
+								step="any"
+								value={maxPallet}
+								onChange={(e) => setMaxPallet(e.target.value)}
+								placeholder="e.g. 2"
+								className="rounded-lg border-muted-foreground/20"
+							/>
+						</div>
+					</div>
 					<div className="grid grid-cols-2 gap-3">
 						<div className="grid gap-2">
 							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
@@ -736,6 +874,11 @@ function RackFormDialog({
 								binCode: binCode.trim() || null,
 								barCode: barCode.trim() || null,
 								binType,
+								length: toNumericInput(length),
+								width: toNumericInput(width),
+								height: toNumericInput(height),
+								weight: toNumericInput(weight),
+								maxPallet: toNumericInput(maxPallet),
 								areaId,
 								isActive,
 							})

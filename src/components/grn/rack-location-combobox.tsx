@@ -1,7 +1,6 @@
-"use client";
-
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,19 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+	RACKS_QUERY,
+	type RacksQueryData,
+	type RacksQueryVariables,
+} from "@/lib/graphql/racks";
 import type { Rack } from "@/lib/graphql/types";
 import { cn } from "@/lib/utils";
+
+const SEARCH_DEBOUNCE_MS = 300;
+const REMOTE_SEARCH_PAGE_SIZE = 200;
 
 /** Display: `rackRow-rackLevel-rackColumn` (matches stock quant `rackLabel` / DB convention). */
 export function formatRackLocationLabel(
@@ -37,19 +47,27 @@ export function sortRacksByLocation(racks: Rack[]): Rack[] {
 }
 
 export type RackLocationComboboxProps = {
-	racks: Rack[];
+	/** Client-side list; ignored when `remoteSearch` is true. */
+	racks?: Rack[];
 	value: string;
-	onChange: (rackId: string) => void;
+	onChange: (rackId: string, rackLabel?: string) => void;
 	disabled?: boolean;
 	placeholder?: string;
 	id?: string;
 	className?: string;
 	/** Show a “Clear” action when a rack is selected. */
 	allowClear?: boolean;
+	/** Query racks from the API as the user types (avoids loading the full rack list). */
+	remoteSearch?: boolean;
+	/** Label shown when `value` is set but the rack is not in the loaded list. */
+	fallbackLabel?: string | null;
+	/** Show a loading state in the trigger (e.g. while suggesting a rack). */
+	loading?: boolean;
+	loadingPlaceholder?: string;
 };
 
 export function RackLocationCombobox({
-	racks,
+	racks: racksProp = [],
 	value,
 	onChange,
 	disabled = false,
@@ -57,11 +75,39 @@ export function RackLocationCombobox({
 	id,
 	className,
 	allowClear = false,
+	remoteSearch = false,
+	fallbackLabel = null,
+	loading = false,
+	loadingPlaceholder = "Loading…",
 }: RackLocationComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+
+	const remoteQueryVars = useMemo((): RacksQueryVariables => {
+		const term = debouncedSearch.trim();
+		return {
+			pageSize: REMOTE_SEARCH_PAGE_SIZE,
+			pageNumber: 1,
+			...(term ? { filter: { search: term } } : {}),
+		};
+	}, [debouncedSearch]);
+
+	const { data: remoteData, isFetching: remoteLoading } = useQuery({
+		queryKey: [...qk.racks.all, "location-combobox", remoteQueryVars] as const,
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(
+				RACKS_QUERY,
+				remoteQueryVars,
+			),
+		enabled: remoteSearch && open,
+	});
+
+	const remoteRacks = remoteData?.racks?.query ?? [];
+	const racks = remoteSearch ? remoteRacks : racksProp;
 
 	const filtered = useMemo(() => {
+		if (remoteSearch) return sortRacksByLocation(racks);
 		const q = search.trim().toLowerCase();
 		const base = q
 			? racks.filter((r) => {
@@ -76,15 +122,31 @@ export function RackLocationCombobox({
 				})
 			: racks;
 		return sortRacksByLocation(base);
-	}, [racks, search]);
+	}, [racks, search, remoteSearch]);
 
 	const selected = racks.find((r) => r.rackId === value);
-	const displayLabel = selected ? formatRackLocationLabel(selected) : null;
+	const displayLabel =
+		selected != null
+			? formatRackLocationLabel(selected)
+			: value && fallbackLabel
+				? fallbackLabel
+				: null;
 
-	const handleSelect = (rackId: string) => {
-		onChange(rackId);
+	const handleSelect = (rackId: string, rack?: Rack) => {
+		onChange(rackId, rack ? formatRackLocationLabel(rack) : undefined);
 		setOpen(false);
 	};
+
+	const showLoadingTrigger = loading && !displayLabel;
+	const triggerDisabled = disabled || showLoadingTrigger;
+
+	const emptyMessage = remoteLoading
+		? "Loading racks…"
+		: search.trim()
+			? "No racks match your search."
+			: remoteSearch
+				? "Type to search racks…"
+				: "No racks available.";
 
 	return (
 		<Popover
@@ -100,17 +162,31 @@ export function RackLocationCombobox({
 					variant="outline"
 					role="combobox"
 					aria-expanded={open}
-					disabled={disabled}
+					aria-busy={showLoadingTrigger}
+					disabled={triggerDisabled}
 					className={cn(
-						"h-9 w-full justify-between gap-1 font-normal font-mono text-xs",
+						"h-9 w-full justify-between gap-1 font-normal text-xs",
+						showLoadingTrigger ? "font-sans" : "font-mono",
 						className,
 					)}
 					id={id}
 				>
-					<span className="truncate text-left">
-						{displayLabel ?? placeholder}
-					</span>
-					<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+					{showLoadingTrigger ? (
+						<span className="flex min-w-0 items-center gap-2 truncate text-left text-muted-foreground">
+							<Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+							<span className="truncate">{loadingPlaceholder}</span>
+						</span>
+					) : (
+						<span className="truncate text-left">
+							{displayLabel ?? placeholder}
+						</span>
+					)}
+					<ChevronsUpDown
+						className={cn(
+							"h-3.5 w-3.5 shrink-0 opacity-50",
+							showLoadingTrigger && "opacity-30",
+						)}
+					/>
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent
@@ -141,9 +217,7 @@ export function RackLocationCombobox({
 						) : null}
 						{filtered.length === 0 ? (
 							<div className="py-6 text-center text-xs text-muted-foreground">
-								{search.trim()
-									? "No racks match your search."
-									: "No racks available."}
+								{emptyMessage}
 							</div>
 						) : (
 							<ul className="py-1 px-1">
@@ -159,7 +233,7 @@ export function RackLocationCombobox({
 													"flex w-full cursor-pointer items-center gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
 													isSelected && "bg-accent",
 												)}
-												onClick={() => handleSelect(r.rackId)}
+												onClick={() => handleSelect(r.rackId, r)}
 											>
 												{isSelected ? (
 													<Check className="h-3.5 w-3.5 shrink-0 text-primary" />

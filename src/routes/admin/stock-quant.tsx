@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Boxes, ChevronLeft, ChevronRight } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { formatRackLocationLabel } from "@/components/grn/rack-location-combobox";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
@@ -32,12 +31,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
-import { SKUS_QUERY, type SkusQueryData } from "@/lib/graphql/skus";
 import {
 	STOCK_QUANTS_QUERY,
 	type StockQuantsQueryData,
 	type StockQuant,
+	type StockQuantFilterInput,
 } from "@/lib/graphql/stock-quant";
 
 export const Route = createFileRoute("/admin/stock-quant")({
@@ -57,62 +55,91 @@ export const Route = createFileRoute("/admin/stock-quant")({
 
 const PAGE_SIZE = 20;
 const FILTER_ALL = "__all__";
-const RACKS_PAGE_SIZE = 500;
+/** Load enough rows to build SKU/rack filter options from actual stock quant data. */
+const FILTER_OPTIONS_PAGE_SIZE = 5000;
+
+function buildStockQuantFilter(
+	selectedSkuId: string,
+	selectedRackId: string,
+): StockQuantFilterInput | undefined {
+	const filter: StockQuantFilterInput = {};
+	if (selectedSkuId !== FILTER_ALL) filter.skuId = selectedSkuId;
+	if (selectedRackId !== FILTER_ALL) filter.rackId = selectedRackId;
+	return Object.keys(filter).length > 0 ? filter : undefined;
+}
 
 function StockQuantComponent() {
 	const [page, setPage] = useState(1);
 	const [selectedSkuId, setSelectedSkuId] = useState(FILTER_ALL);
 	const [selectedRackId, setSelectedRackId] = useState(FILTER_ALL);
 
-	const racksVariables = { pageSize: RACKS_PAGE_SIZE, pageNumber: 1 };
-
-	const { data: skusData, isLoading: skusLoading } = useQuery({
-		queryKey: qk.skus.all,
-		queryFn: () => gqlRequest<SkusQueryData>(SKUS_QUERY),
-	});
-
-	const { data: racksData, isLoading: racksLoading } = useQuery({
-		queryKey: [...qk.racks.all, "list", racksVariables] as const,
-		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVariables),
-	});
-
-	const skus = useMemo(
-		() =>
-			[...(skusData?.skus?.query ?? [])]
-				.filter((sku) => sku.isActive)
-				.sort((a, b) =>
-					a.skuCode.localeCompare(b.skuCode, undefined, { numeric: true }),
-				),
-		[skusData],
+	const filterOptionsVars = useMemo(
+		() => ({
+			pageSize: FILTER_OPTIONS_PAGE_SIZE,
+			pageNumber: 1,
+		}),
+		[],
 	);
 
-	const racks = useMemo(
-		() =>
-			[...(racksData?.racks?.query ?? [])].sort((a, b) =>
-				formatRackLocationLabel(a).localeCompare(
-					formatRackLocationLabel(b),
-					undefined,
-					{ numeric: true },
+	const { data: filterOptionsData, isLoading: filterOptionsLoading } = useQuery(
+		{
+			queryKey: [...qk.stockQuants.all, "filter-options"] as const,
+			queryFn: () =>
+				gqlRequest<StockQuantsQueryData>(
+					STOCK_QUANTS_QUERY,
+					filterOptionsVars,
 				),
-			),
-		[racksData],
+			staleTime: 0,
+		},
 	);
+
+	const skuFilterOptions = useMemo(() => {
+		const byId = new Map<string, { skuId: string; label: string }>();
+		for (const row of filterOptionsData?.stockQuants?.query ?? []) {
+			if (byId.has(row.skuId)) continue;
+			const code = row.skuCode ?? row.skuId;
+			const desc = row.description?.trim();
+			byId.set(row.skuId, {
+				skuId: row.skuId,
+				label: desc ? `${code} — ${desc}` : code,
+			});
+		}
+		return [...byId.values()].sort((a, b) =>
+			a.label.localeCompare(b.label, undefined, { numeric: true }),
+		);
+	}, [filterOptionsData]);
+
+	const rackFilterOptions = useMemo(() => {
+		const byId = new Map<string, { rackId: string; label: string }>();
+		for (const row of filterOptionsData?.stockQuants?.query ?? []) {
+			if (byId.has(row.rackId)) continue;
+			byId.set(row.rackId, {
+				rackId: row.rackId,
+				label: row.rackLabel ?? row.rackId,
+			});
+		}
+		return [...byId.values()].sort((a, b) =>
+			a.label.localeCompare(b.label, undefined, { numeric: true }),
+		);
+	}, [filterOptionsData]);
 
 	const hasActiveFilters =
 		selectedSkuId !== FILTER_ALL || selectedRackId !== FILTER_ALL;
 
-	const queryVars = {
-		filter: {
-			...(selectedSkuId !== FILTER_ALL && { skuId: selectedSkuId }),
-			...(selectedRackId !== FILTER_ALL && { rackId: selectedRackId }),
-		},
-		pageSize: PAGE_SIZE,
-		pageNumber: page,
-	};
-	const { data, isLoading: loading } = useQuery({
+	const queryVars = useMemo(() => {
+		const filter = buildStockQuantFilter(selectedSkuId, selectedRackId);
+		return {
+			...(filter ? { filter } : {}),
+			pageSize: PAGE_SIZE,
+			pageNumber: page,
+		};
+	}, [selectedSkuId, selectedRackId, page]);
+
+	const { data, isLoading: loading, isFetching } = useQuery({
 		queryKey: qk.stockQuants.list(queryVars),
 		queryFn: () =>
 			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, queryVars),
+		staleTime: 0,
 	});
 
 	const items = data?.stockQuants?.query ?? [];
@@ -122,7 +149,7 @@ function StockQuantComponent() {
 	const totalQuantity = Number(data?.stockQuants?.totalQuantity ?? "0");
 
 	return (
-		<main className="container mx-auto space-y-6 p-6" aria-busy={loading}>
+		<main className="container mx-auto space-y-6 p-6" aria-busy={loading || isFetching}>
 			<AdminPageHeader
 				icon={Boxes}
 				title="Stock Quant"
@@ -150,7 +177,6 @@ function StockQuantComponent() {
 										setSelectedSkuId(value);
 										setPage(1);
 									}}
-									disabled={skusLoading}
 								>
 									<SelectTrigger
 										className="w-full min-w-0"
@@ -158,25 +184,21 @@ function StockQuantComponent() {
 									>
 										<SelectValue
 											placeholder={
-												skusLoading ? "Loading SKUs..." : "All SKUs"
+												filterOptionsLoading
+													? "Loading SKUs..."
+													: "All SKUs"
 											}
 										/>
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent position="popper" className="max-h-72">
 										<SelectItem value={FILTER_ALL}>All SKUs</SelectItem>
-										{skus.map((sku) => (
+										{skuFilterOptions.map((sku) => (
 											<SelectItem
 												key={sku.skuId}
 												value={sku.skuId}
-												textValue={`${sku.skuCode} ${sku.skuDescription ?? ""}`.trim()}
+												textValue={sku.label}
 											>
-												<span className="font-mono">{sku.skuCode}</span>
-												{sku.skuDescription ? (
-													<span className="text-muted-foreground">
-														{" "}
-														— {sku.skuDescription}
-													</span>
-												) : null}
+												{sku.label}
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -189,7 +211,6 @@ function StockQuantComponent() {
 										setSelectedRackId(value);
 										setPage(1);
 									}}
-									disabled={racksLoading}
 								>
 									<SelectTrigger
 										className="w-full min-w-0"
@@ -197,17 +218,21 @@ function StockQuantComponent() {
 									>
 										<SelectValue
 											placeholder={
-												racksLoading ? "Loading racks..." : "All racks"
+												filterOptionsLoading
+													? "Loading racks..."
+													: "All racks"
 											}
 										/>
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent position="popper" className="max-h-72">
 										<SelectItem value={FILTER_ALL}>All racks</SelectItem>
-										{racks.map((rack) => (
-											<SelectItem key={rack.rackId} value={rack.rackId}>
-												<span className="font-mono">
-													{formatRackLocationLabel(rack)}
-												</span>
+										{rackFilterOptions.map((rack) => (
+											<SelectItem
+												key={rack.rackId}
+												value={rack.rackId}
+												textValue={rack.label}
+											>
+												<span className="font-mono">{rack.label}</span>
 											</SelectItem>
 										))}
 									</SelectContent>
