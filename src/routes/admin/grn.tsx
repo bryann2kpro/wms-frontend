@@ -102,6 +102,10 @@ import {
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+	computePoRemainingQty,
+	sumHistoricalReceivedBySku,
+} from "@/lib/grn/po-fulfillment";
 
 /**
  * True when a GRN's send-to-ES was blocked server-side because its PO/ASN still has
@@ -301,7 +305,7 @@ type AsnPickerDialogProps = {
 	open: boolean;
 	loading: boolean;
 	asns: AdvanceNotice[];
-	onSelect: (asn: AdvanceNotice) => void;
+	onSelect: (asn: AdvanceNotice) => void | Promise<void>;
 	onSkip: () => void;
 	onOpenChange: (open: boolean) => void;
 };
@@ -315,6 +319,7 @@ function AsnPickerDialog({
 	onOpenChange,
 }: AsnPickerDialogProps) {
 	const [selectedId, setSelectedId] = useState<string>("");
+	const [selecting, setSelecting] = useState(false);
 	const selectedAsn = asns.find((a) => a.id === selectedId) ?? null;
 	const selectedAsnLabel = selectedAsn
 		? `${selectedAsn.tranid} — ${selectedAsn.entity} (${selectedAsn.duedate})`
@@ -514,12 +519,18 @@ function AsnPickerDialog({
 					</Button>
 					<Button
 						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-						disabled={!selectedAsn}
-						onClick={() => {
-							if (selectedAsn) onSelect(selectedAsn);
+						disabled={!selectedAsn || selecting}
+						onClick={async () => {
+							if (!selectedAsn || selecting) return;
+							setSelecting(true);
+							try {
+								await onSelect(selectedAsn);
+							} finally {
+								setSelecting(false);
+							}
 						}}
 					>
-						Continue
+						{selecting ? "Loading…" : "Continue"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -1025,12 +1036,23 @@ function GRNRouteComponent() {
 												setIsAsnPickerOpen(false);
 												setIsCreateOpen(true);
 											}}
-											onSelect={(asn) => {
+											onSelect={async (asn) => {
 												setSelectedAsnId(asn.id);
-												setAsnInitialValues({
-													poReference: asn.tranid,
-													receivedDate: asn.duedate,
-													items: asn.lines.map((l) => {
+												let receivedBySku = new Map<string, number>();
+												try {
+													const historyResult =
+														await gqlRequest<GrnsQueryData>(GRNS_QUERY, {
+															filter: { poNo: asn.tranid },
+															pageSize: 100,
+														});
+													receivedBySku = sumHistoricalReceivedBySku(
+														historyResult?.grns?.query ?? [],
+													);
+												} catch {
+													// Fall back to full ASN qty if history lookup fails.
+												}
+												const prefilledItems = asn.lines
+													.map((l) => {
 														const isLotTracked =
 															(l.islotitem ?? "").trim().toUpperCase() === "T";
 														const unitMatch = stockUnits.find(
@@ -1038,10 +1060,14 @@ function GRNRouteComponent() {
 																u.unitCode.toLowerCase() ===
 																l.units.toLowerCase(),
 														);
+														const remaining = computePoRemainingQty(
+															l.quantity,
+															receivedBySku.get(l.itemid) ?? 0,
+														);
 														return {
 															skuCode: l.itemid,
 															description: l.displayname ?? "",
-															carton: l.quantity,
+															carton: remaining,
 															loss: 0,
 															uom: unitMatch?.stockUnitId ?? l.units,
 															unitPrice: 0,
@@ -1050,7 +1076,12 @@ function GRNRouteComponent() {
 															rackId: "",
 															asnLotTracked: isLotTracked,
 														};
-													}),
+													})
+													.filter((item) => item.carton > 0);
+												setAsnInitialValues({
+													poReference: asn.tranid,
+													receivedDate: asn.duedate,
+													items: prefilledItems,
 												});
 												setIsAsnPickerOpen(false);
 												setIsCreateOpen(true);

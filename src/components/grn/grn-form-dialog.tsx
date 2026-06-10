@@ -73,6 +73,10 @@ import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
+import {
+	applyRemainingQtyToLineItems,
+	sumHistoricalReceivedBySku,
+} from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -1326,16 +1330,18 @@ export function GrnFormDialog({
 	>([]);
 	const [poHistoricalReceivedBySku, setPoHistoricalReceivedBySku] = useState<Map<string, number>>(new Map());
 	const lastLookedUpPoRef = useRef<string>("");
+	const poRemainingAppliedRef = useRef(false);
 	const lookupPoHistory = async (poNo: string) => {
 		const trimmed = poNo.trim();
 		if (!trimmed || trimmed === lastLookedUpPoRef.current) return;
 		lastLookedUpPoRef.current = trimmed;
+		poRemainingAppliedRef.current = false;
 		setPoHistoryLoading(true);
 		try {
 			const [historyResult, asnResult] = await Promise.all([
 				gqlRequest<GrnsQueryData>(GRNS_QUERY, {
 					filter: { poNo: trimmed },
-					pageSize: 10,
+					pageSize: 100,
 				}),
 				gqlRequest<AdvanceNoticeByPoNoQueryData>(ADVANCE_NOTICE_BY_PO_NO_QUERY, {
 					poNo: trimmed,
@@ -1346,16 +1352,7 @@ export function GrnFormDialog({
 
 			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
 			if (asnLines.length > 0) {
-				const receivedBySku = new Map<string, number>();
-				for (const grn of history) {
-					for (const item of grn.items ?? []) {
-						if (!item.skuCode) continue;
-						receivedBySku.set(
-							item.skuCode,
-							(receivedBySku.get(item.skuCode) ?? 0) + Number(item.qty || 0),
-						);
-					}
-				}
+				const receivedBySku = sumHistoricalReceivedBySku(history);
 				setPoHistoricalReceivedBySku(receivedBySku);
 				setPoAsnLines(
 					asnLines.map((line) => ({
@@ -1674,6 +1671,38 @@ export function GrnFormDialog({
 			setProofFiles([]);
 		}
 	}, [open, mode, grn?.id, initialValues]);
+
+	// After PO/ASN history loads, prefill line carton qty with remaining (expected − prior receipts).
+	useEffect(() => {
+		if (!open || mode !== "create" || poHistoryLoading || poAsnLines.length === 0) {
+			return;
+		}
+		if (poRemainingAppliedRef.current) return;
+
+		const items = (form.state.values.items ?? []) as GRNLineItemForm[];
+		if (items.length === 0) return;
+
+		const nextItems = applyRemainingQtyToLineItems(
+			items,
+			poAsnLines,
+			poHistoricalReceivedBySku,
+		).filter((item) => item.carton > 0);
+		const changed =
+			nextItems.length !== items.length ||
+			nextItems.some((item, index) => item.carton !== items[index]?.carton);
+		if (changed) {
+			form.setFieldValue("items", nextItems);
+		}
+		poRemainingAppliedRef.current = true;
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- run when PO fulfillment data loads, not on every form edit
+	}, [open, mode, poHistoryLoading, poAsnLines, poHistoricalReceivedBySku]);
+
+	useEffect(() => {
+		if (!open) {
+			poRemainingAppliedRef.current = false;
+			lastLookedUpPoRef.current = "";
+		}
+	}, [open]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
