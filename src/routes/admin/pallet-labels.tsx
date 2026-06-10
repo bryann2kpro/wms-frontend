@@ -42,7 +42,7 @@ export const Route = createFileRoute("/admin/pallet-labels")({
     await requirePermission(context.queryClient, ["Inventory"]);
   },
   component: StorageBinItemsPage,
-  head: () => ({ meta: [{ title: "Storage Bin Items - SME Edaran WMS" }] }),
+  head: () => ({ meta: [{ title: "Pallet Labels - SME Edaran WMS" }] }),
 });
 
 function StorageBinItemsPage() {
@@ -141,8 +141,8 @@ function StorageBinItemsPage() {
     <div className="space-y-6 p-6">
       <AdminPageHeader
         icon={Database}
-        title="Storage Bin Items"
-        description="Manage item placement by storage bin"
+        title="Pallet Labels"
+        description="Manage item placement by pallet labels"
         titleId="storage-bin-items-title"
         descriptionId="storage-bin-items-description"
       />
@@ -152,10 +152,10 @@ function StorageBinItemsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-xl" style={{ fontFamily: "var(--dashboard-display)" }}>
-                Storage Bin Item Mapping
+                Pallet Label Management
               </CardTitle>
               <CardDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-                CRUD with pagination, search, edit, and bulk delete
+                Tracks movement of pallet labels
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
