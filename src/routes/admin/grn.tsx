@@ -1680,6 +1680,7 @@ function GRNRouteComponent() {
 																	<TableHead>Loss</TableHead>
 																	<TableHead>Total</TableHead>
 																	<TableHead>Expiry Date</TableHead>
+																	<TableHead>Lot No</TableHead>
 																	<TableHead>Location</TableHead>
 																</TableRow>
 															</TableHeader>
@@ -1698,8 +1699,23 @@ function GRNRouteComponent() {
 																				? (formatGrnDate(item.expiryDate) ?? "—")
 																				: "—"}
 																		</TableCell>
+																		<TableCell>{item.lotNo || "—"}</TableCell>
 																		<TableCell>
-																			{item.location || "Not assigned"}
+																			{item.rackAllocations && item.rackAllocations.length > 0 ? (
+																				<ul className="space-y-0.5">
+																					{item.rackAllocations.map((alloc, i) => {
+																						const label = alloc.rackLabel || (() => { const r = racks.find((r) => r.rackId === alloc.rackId); return r ? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}` : alloc.rackId; })();
+																						return (
+																							<li key={i} className="flex items-center gap-1.5 text-xs">
+																								<span className="font-mono">{label}</span>
+																								<span className="text-muted-foreground">{alloc.quantity} CTN</span>
+																							</li>
+																						);
+																					})}
+																				</ul>
+																			) : (
+																				item.location || "Not assigned"
+																			)}
 																		</TableCell>
 																	</TableRow>
 																))}
@@ -1753,81 +1769,6 @@ function GRNRouteComponent() {
 												</div>
 											</div>
 										</div>
-
-											<Separator />
-
-											{/* Items table */}
-											<div>
-												<div className="flex items-center gap-2 mb-3">
-													<p
-														className="text-sm font-semibold"
-														style={{ fontFamily: "var(--dashboard-display)" }}
-													>
-														Line Items
-													</p>
-													<Badge
-														variant="secondary"
-														className="text-[10px] px-1.5 py-0"
-														style={{ background: "var(--dashboard-accent-muted)", color: "var(--dashboard-accent)" }}
-													>
-														{selectedGRN.items.length} items
-													</Badge>
-												</div>
-												<div className="rounded-xl border bg-card overflow-hidden">
-													<Table>
-														<TableHeader>
-															<TableRow className="bg-muted/50">
-																<TableHead>SKU</TableHead>
-																<TableHead>Description</TableHead>
-																<TableHead>Carton</TableHead>
-																<TableHead>Loss</TableHead>
-																<TableHead>Total</TableHead>
-																<TableHead>Expiry Date</TableHead>
-																<TableHead>Lot No</TableHead>
-																<TableHead>Location</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{selectedGRN.items.map((item) => (
-																<TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
-																	<TableCell className="font-mono text-xs font-medium">
-																		{item.skuCode}
-																	</TableCell>
-																	<TableCell>{item.skuDescription}</TableCell>
-																	<TableCell>{item.expectedQuantity}</TableCell>
-																	<TableCell>{item.lossQuantity}</TableCell>
-																	<TableCell>{item.receivedQuantity}</TableCell>
-																	<TableCell>
-																		{item.expiryDate
-																			? (formatGrnDate(item.expiryDate) ?? "—")
-																			: "—"}
-																	</TableCell>
-																	<TableCell>{item.lotNo || "—"}</TableCell>
-																	<TableCell>
-																		{item.rackAllocations && item.rackAllocations.length > 0 ? (
-																			<ul className="space-y-0.5">
-																				{item.rackAllocations.map((alloc, i) => {
-																					const label = alloc.rackLabel || (() => { const r = racks.find((r) => r.rackId === alloc.rackId); return r ? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}` : alloc.rackId; })();
-																					return (
-																						<li key={i} className="flex items-center gap-1.5 text-xs">
-																							<span className="font-mono">{label}</span>
-																							<span className="text-muted-foreground">{alloc.quantity} CTN</span>
-																						</li>
-																					);
-																				})}
-																			</ul>
-																		) : (
-																			item.location || "Not assigned"
-																		)}
-																	</TableCell>
-																</TableRow>
-															))}
-														</TableBody>
-													</Table>
-												</div>
-											</>
-										) : null}
-
 										{(selectedGRN.status === "Sent-to-ES" ||
 											selectedGRN.status === "Failed") && (
 											<>
