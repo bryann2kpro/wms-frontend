@@ -1622,6 +1622,7 @@ function GRNRouteComponent() {
 																<TableHead>Loss</TableHead>
 																<TableHead>Total</TableHead>
 																<TableHead>Expiry Date</TableHead>
+																<TableHead>Lot No</TableHead>
 																<TableHead>Location</TableHead>
 															</TableRow>
 														</TableHeader>
@@ -1640,8 +1641,23 @@ function GRNRouteComponent() {
 																			? (formatGrnDate(item.expiryDate) ?? "—")
 																			: "—"}
 																	</TableCell>
+																	<TableCell>{item.lotNo || "—"}</TableCell>
 																	<TableCell>
-																		{item.location || "Not assigned"}
+																		{item.rackAllocations && item.rackAllocations.length > 0 ? (
+																			<ul className="space-y-0.5">
+																				{item.rackAllocations.map((alloc, i) => {
+																					const label = alloc.rackLabel || (() => { const r = racks.find((r) => r.rackId === alloc.rackId); return r ? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}` : alloc.rackId; })();
+																					return (
+																						<li key={i} className="flex items-center gap-1.5 text-xs">
+																							<span className="font-mono">{label}</span>
+																							<span className="text-muted-foreground">{alloc.quantity} CTN</span>
+																						</li>
+																					);
+																				})}
+																			</ul>
+																		) : (
+																			item.location || "Not assigned"
+																		)}
 																	</TableCell>
 																</TableRow>
 															))}

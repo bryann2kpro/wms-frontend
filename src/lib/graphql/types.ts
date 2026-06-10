@@ -573,6 +573,8 @@ export interface GrnItem {
 	updatedBy: string | null;
 	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
 	rack: GrnRack | null;
+	/** Per-rack carton allocations for this GRN item. */
+	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
 	/** Optional expiry date for this GRN item (ISO string from backend). */
 	expiryDate?: string | null;
 	/** Lot number assigned by supplier/manufacturer to identify this production batch. */
@@ -688,6 +690,8 @@ export interface GrnItemForList {
 		rackRow: string;
 		rackColumn: string;
 	} | null;
+	/** Per-rack carton allocations (populated when multiple racks are used). */
+	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */

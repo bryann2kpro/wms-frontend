@@ -74,6 +74,11 @@ export const GRNS_QUERY = gql`
 						rackRow
 						rackColumn
 					}
+					rackAllocations {
+						rackId
+						quantity
+						rackLabel
+					}
 				}
 			}
 		}
@@ -390,6 +395,9 @@ export function mapGrnsQueryToResult(
 			const location = rack
 				? `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`
 				: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
+			const rackAllocations = (i.rackAllocations ?? [])
+				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
+				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -402,6 +410,7 @@ export function mapGrnsQueryToResult(
 				expiryDate: i.expiryDate ?? null,
 				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
+				rackAllocations: rackAllocations.length > 0 ? rackAllocations : null,
 			};
 		});
 		const totalItems = lineItems.reduce(
