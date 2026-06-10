@@ -505,6 +505,8 @@ function GRNRouteComponent() {
 			poReference?: string;
 			receivedDate?: string;
 			items?: GRNLineItemForm[];
+			/** PENDING ASNs are not linked yet — do not subtract prior GRN qty in the form. */
+			skipPoFulfillmentAdjust?: boolean;
 		}
 		| undefined
 	>(undefined);
@@ -969,50 +971,75 @@ function GRNRouteComponent() {
 											}}
 											onSelect={async (asn) => {
 												setSelectedAsnId(asn.id);
+												const deductPriorReceipts =
+													asn.fulfillmentStatus === "PARTIAL";
 												let receivedBySku = new Map<string, number>();
-												try {
-													const historyResult =
-														await gqlRequest<GrnsQueryData>(GRNS_QUERY, {
-															filter: { poNo: asn.tranid },
-															pageSize: 100,
-														});
-													receivedBySku = sumHistoricalReceivedBySku(
-														historyResult?.grns?.query ?? [],
-													);
-												} catch {
-													// Fall back to full ASN qty if history lookup fails.
+												if (deductPriorReceipts) {
+													try {
+														const historyResult =
+															await gqlRequest<GrnsQueryData>(GRNS_QUERY, {
+																filter: { poNo: asn.tranid },
+																pageSize: 100,
+															});
+														receivedBySku = sumHistoricalReceivedBySku(
+															historyResult?.grns?.query ?? [],
+														);
+													} catch {
+														// Fall back to full ASN qty if history lookup fails.
+													}
 												}
-												const prefilledItems = asn.lines
-													.map((l) => {
-														const isLotTracked =
-															(l.islotitem ?? "").trim().toUpperCase() === "T";
-														const unitMatch = stockUnits.find(
-															(u) =>
-																u.unitCode.toLowerCase() ===
-																l.units.toLowerCase(),
-														);
-														const remaining = computePoRemainingQty(
-															l.quantity,
-															receivedBySku.get(l.itemid) ?? 0,
-														);
-														return {
-															skuCode: l.itemid,
-															description: l.displayname ?? "",
-															carton: remaining,
-															loss: 0,
-															uom: unitMatch?.stockUnitId ?? l.units,
-															unitPrice: 0,
-															expiryDate: l.expiryDate ?? "",
-															lotNo: l.lotNo ?? "",
-															rackId: "",
-															asnLotTracked: isLotTracked,
-														};
-													})
+												const mapAsnLineToFormItem = (
+													l: (typeof asn.lines)[number],
+													carton: number,
+												) => {
+													const isLotTracked =
+														(l.islotitem ?? "").trim().toUpperCase() === "T";
+													const unitMatch = stockUnits.find(
+														(u) =>
+															u.unitCode.toLowerCase() ===
+															l.units.toLowerCase(),
+													);
+													return {
+														skuCode: l.itemid,
+														description: l.displayname ?? "",
+														carton,
+														loss: 0,
+														uom: unitMatch?.stockUnitId ?? l.units,
+														unitPrice: 0,
+														expiryDate: l.expiryDate ?? "",
+														lotNo: l.lotNo ?? "",
+														rackId: "",
+														asnLotTracked: isLotTracked,
+													};
+												};
+												let prefilledItems = asn.lines
+													.map((l) =>
+														mapAsnLineToFormItem(
+															l,
+															deductPriorReceipts
+																? computePoRemainingQty(
+																		l.quantity,
+																		receivedBySku.get(l.itemid) ?? 0,
+																	)
+																: l.quantity,
+														),
+													)
 													.filter((item) => item.carton > 0);
+												// PARTIAL ASNs should always have outstanding qty; if the
+												// client-side deduction zeroes every line, fall back to full ASN qty.
+												if (
+													prefilledItems.length === 0 &&
+													asn.lines.length > 0
+												) {
+													prefilledItems = asn.lines.map((l) =>
+														mapAsnLineToFormItem(l, l.quantity),
+													);
+												}
 												setAsnInitialValues({
 													poReference: asn.tranid,
 													receivedDate: asn.duedate,
 													items: prefilledItems,
+													skipPoFulfillmentAdjust: !deductPriorReceipts,
 												});
 												setIsAsnPickerOpen(false);
 												setIsCreateOpen(true);

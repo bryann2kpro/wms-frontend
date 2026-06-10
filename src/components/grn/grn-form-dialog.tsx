@@ -1409,6 +1409,8 @@ export type GrnFormDialogProps = {
 		poReference?: string;
 		receivedDate?: string;
 		items?: GRNLineItemForm[];
+		/** When true, skip auto-adjusting line cartons from PO/ASN history (PENDING ASN). */
+		skipPoFulfillmentAdjust?: boolean;
 	};
 };
 
@@ -1800,7 +1802,13 @@ export function GrnFormDialog({
 
 	// After PO/ASN history loads, prefill line carton qty with remaining (expected − prior receipts).
 	useEffect(() => {
-		if (!open || mode !== "create" || poHistoryLoading || poAsnLines.length === 0) {
+		if (
+			!open ||
+			mode !== "create" ||
+			initialValues?.skipPoFulfillmentAdjust ||
+			poHistoryLoading ||
+			poAsnLines.length === 0
+		) {
 			return;
 		}
 		if (poRemainingAppliedRef.current) return;
@@ -1812,16 +1820,16 @@ export function GrnFormDialog({
 			items,
 			poAsnLines,
 			poHistoricalReceivedBySku,
-		).filter((item) => item.carton > 0);
-		const changed =
-			nextItems.length !== items.length ||
-			nextItems.some((item, index) => item.carton !== items[index]?.carton);
+		);
+		const changed = nextItems.some(
+			(item, index) => item.carton !== items[index]?.carton,
+		);
 		if (changed) {
 			form.setFieldValue("items", nextItems);
 		}
 		poRemainingAppliedRef.current = true;
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- run when PO fulfillment data loads, not on every form edit
-	}, [open, mode, poHistoryLoading, poAsnLines, poHistoricalReceivedBySku]);
+	}, [open, mode, poHistoryLoading, poAsnLines, poHistoricalReceivedBySku, initialValues?.skipPoFulfillmentAdjust]);
 
 	useEffect(() => {
 		if (!open) {
