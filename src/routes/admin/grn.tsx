@@ -1754,45 +1754,76 @@ function GRNRouteComponent() {
 											</div>
 										</div>
 
-										{selectedGRN.status === "Failed" &&
-										isPoFulfillmentBlock(selectedGRN.nsError) ? (
-											<>
-												<Separator />
-												<div className="relative overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5 p-3.5">
-													<div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
-													<div className="flex items-start gap-2.5 pl-1.5">
-														<span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
-															<Ban className="h-3.5 w-3.5" />
-														</span>
-														<div className="space-y-1">
-															<p className="text-sm font-semibold text-amber-800">
-																Blocked — this PO already has a delivery in progress
-															</p>
-															<p className="text-xs leading-relaxed text-amber-700/90">
-																{selectedGRN.poNo ? (
-																	<>
-																		PO{" "}
-																		<span className="font-mono font-medium">
-																			{selectedGRN.poNo}
-																		</span>{" "}
-																	</>
-																) : (
-																	"This PO "
-																)}
-																isn't fully received yet — another GRN was created
-																for it before, and NetSuite expects the whole PO
-																to land before accepting an item receipt. Sending
-																was skipped to avoid a guaranteed rejection.
-															</p>
-															<p className="rounded-md bg-amber-500/10 px-2 py-1 font-mono text-[11px] text-amber-800">
-																{selectedGRN.nsError}
-															</p>
-															<p className="text-xs text-amber-700/90">
-																Wait for the remaining delivery(ies) on this PO,
-																then resend once it's fully received.
-															</p>
-														</div>
-													</div>
+											<Separator />
+
+											{/* Items table */}
+											<div>
+												<div className="flex items-center gap-2 mb-3">
+													<p
+														className="text-sm font-semibold"
+														style={{ fontFamily: "var(--dashboard-display)" }}
+													>
+														Line Items
+													</p>
+													<Badge
+														variant="secondary"
+														className="text-[10px] px-1.5 py-0"
+														style={{ background: "var(--dashboard-accent-muted)", color: "var(--dashboard-accent)" }}
+													>
+														{selectedGRN.items.length} items
+													</Badge>
+												</div>
+												<div className="rounded-xl border bg-card overflow-hidden">
+													<Table>
+														<TableHeader>
+															<TableRow className="bg-muted/50">
+																<TableHead>SKU</TableHead>
+																<TableHead>Description</TableHead>
+																<TableHead>Carton</TableHead>
+																<TableHead>Loss</TableHead>
+																<TableHead>Total</TableHead>
+																<TableHead>Expiry Date</TableHead>
+																<TableHead>Lot No</TableHead>
+																<TableHead>Location</TableHead>
+															</TableRow>
+														</TableHeader>
+														<TableBody>
+															{selectedGRN.items.map((item) => (
+																<TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+																	<TableCell className="font-mono text-xs font-medium">
+																		{item.skuCode}
+																	</TableCell>
+																	<TableCell>{item.skuDescription}</TableCell>
+																	<TableCell>{item.expectedQuantity}</TableCell>
+																	<TableCell>{item.lossQuantity}</TableCell>
+																	<TableCell>{item.receivedQuantity}</TableCell>
+																	<TableCell>
+																		{item.expiryDate
+																			? (formatGrnDate(item.expiryDate) ?? "—")
+																			: "—"}
+																	</TableCell>
+																	<TableCell>{item.lotNo || "—"}</TableCell>
+																	<TableCell>
+																		{item.rackAllocations && item.rackAllocations.length > 0 ? (
+																			<ul className="space-y-0.5">
+																				{item.rackAllocations.map((alloc, i) => {
+																					const label = alloc.rackLabel || (() => { const r = racks.find((r) => r.rackId === alloc.rackId); return r ? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}` : alloc.rackId; })();
+																					return (
+																						<li key={i} className="flex items-center gap-1.5 text-xs">
+																							<span className="font-mono">{label}</span>
+																							<span className="text-muted-foreground">{alloc.quantity} CTN</span>
+																						</li>
+																					);
+																				})}
+																			</ul>
+																		) : (
+																			item.location || "Not assigned"
+																		)}
+																	</TableCell>
+																</TableRow>
+															))}
+														</TableBody>
+													</Table>
 												</div>
 											</>
 										) : null}

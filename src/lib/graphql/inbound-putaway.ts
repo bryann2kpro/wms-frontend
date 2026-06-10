@@ -38,12 +38,14 @@ export const SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY = gql`
 		$skuCode: String
 		$quantity: Float!
 		$forRackId: ID
+		$excludeRackIds: [ID!]
 	) {
 		suggestInboundPutawayPlan(
 			skuId: $skuId
 			skuCode: $skuCode
 			quantity: $quantity
 			forRackId: $forRackId
+			excludeRackIds: $excludeRackIds
 		) {
 			totalAllocated
 			remainingQty
@@ -120,11 +122,53 @@ export type SuggestInboundRackQueryVariables = {
 	forRackId?: string | null;
 };
 
-export type SuggestInboundPutawayPlanQueryVariables =
-	SuggestInboundRackQueryVariables;
+export type SuggestInboundPutawayPlanQueryVariables = SuggestInboundRackQueryVariables & {
+	excludeRackIds?: string[] | null;
+};
 
 export type GrnRackAllocationForm = {
 	rackId: string;
 	quantity: number;
 	rackLabel?: string;
+};
+
+export const LIST_RACKS_WITH_CAPACITY_QUERY = gql`
+	query ListRacksWithCapacity(
+		$skuId: ID
+		$skuCode: String
+		$quantity: Float!
+		$excludeRackIds: [ID!]
+	) {
+		listRacksWithCapacity(
+			skuId: $skuId
+			skuCode: $skuCode
+			quantity: $quantity
+			excludeRackIds: $excludeRackIds
+		) {
+			rackId
+			rackRow
+			rackLevel
+			rackColumn
+			availableCapacity
+		}
+	}
+`;
+
+export type RackCapacityOptionGql = {
+	rackId: string;
+	rackRow: string;
+	rackLevel: string;
+	rackColumn: string;
+	availableCapacity: number | null;
+};
+
+export type ListRacksWithCapacityQueryData = {
+	listRacksWithCapacity: RackCapacityOptionGql[];
+};
+
+export type ListRacksWithCapacityQueryVariables = {
+	skuId?: string | null;
+	skuCode?: string | null;
+	quantity: number;
+	excludeRackIds?: string[] | null;
 };
