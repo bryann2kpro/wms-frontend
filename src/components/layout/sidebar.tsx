@@ -90,6 +90,17 @@ export function Sidebar() {
 		);
 		if (isSuperAdmin) return true;
 
+		if (link.allowedRoles?.length) {
+			const roleMatch = link.allowedRoles.some((role) =>
+				user.roles?.some((r) => r.toLowerCase() === role.toLowerCase()),
+			);
+			if (!roleMatch) return false;
+		}
+
+		if (!link.allowedPermission.length) {
+			return Boolean(link.allowedRoles?.length);
+		}
+
 		return link.allowedPermission.some(
 			(permission) =>
 				permission === "*" ||
