@@ -73,7 +73,7 @@ export const Route = createFileRoute("/admin/putaway")({
 	head: () => ({
 		meta: [
 			{
-				title: "Putaway - SME Edaran WMS",
+				title: "Bin to Bin - SME Edaran WMS",
 				description:
 					"Queue internal bin transfers from source rack to destination rack.",
 			},
@@ -503,7 +503,7 @@ function PutawayComponent() {
 			try {
 				const data = await rejectPutawayLineMutation({ id: lineId });
 				if (data?.rejectPutawayLine?.status === "REJECT") {
-					toast.success("Putaway line rejected; no stock was moved.");
+					toast.success("Bin to Bin line rejected; no stock was moved.");
 				} else {
 					toast.error("Could not reject this line.");
 				}
@@ -532,7 +532,7 @@ function PutawayComponent() {
 		>
 			<AdminPageHeader
 				icon={Move}
-				title="Putaway"
+				title="Bin to Bin"
 				description="Internal bin transfers: move stock from a source rack to a destination rack."
 				titleId="putaway-page-title"
 				descriptionId="putaway-page-description"
@@ -742,7 +742,7 @@ function PutawayComponent() {
 			<Card className="dashboard-card">
 				<CardHeader>
 					<CardTitle style={{ fontFamily: "var(--dashboard-display)" }}>
-						Putaway list
+						Bin to Bin list
 					</CardTitle>
 					<CardDescription>
 						Draft lines on the server. Approve runs the transfer (APPROVED or
