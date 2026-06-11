@@ -27,9 +27,9 @@ import {
 } from "@/data/customer-priority";
 import { qk } from "@/lib/api/query-keys";
 import type { CustomerPriority } from "@/lib/graphql/customer-priority";
-import { getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 
-export function CustomerPriorityRanking() {
+export function CustomerPriorityRanking({ className }: { className?: string }) {
 	const queryClient = useQueryClient();
 	const [ordered, setOrdered] = useState<CustomerPriority[]>([]);
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -89,8 +89,8 @@ export function CustomerPriorityRanking() {
 	};
 
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-start justify-between gap-4">
+		<Card className={cn(className)}>
+			<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
 				<div>
 					<CardTitle>Customer priority</CardTitle>
 					<CardDescription>
@@ -102,7 +102,7 @@ export function CustomerPriorityRanking() {
 					Add customer
 				</Button>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="max-h-[min(40vh,16rem)] overflow-y-auto xl:max-h-[min(52vh,22rem)]">
 				{isLoading ? (
 					<div className="space-y-2">
 						<Skeleton className="h-10 w-full" />

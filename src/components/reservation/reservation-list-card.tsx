@@ -38,7 +38,7 @@ import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import type { StockReservation } from "@/lib/graphql/reservations";
 import { SKUS_AND_UOM_QUERY, type SkusAndUomQueryData } from "@/lib/graphql/skus";
-import { formatDate, getErrorMessage } from "@/lib/utils";
+import { cn, formatDate, getErrorMessage } from "@/lib/utils";
 import { ReservationFormDialog } from "./reservation-form-dialog";
 
 const PAGE_SIZE = 10;
@@ -53,7 +53,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 type StatusFilter = "ALL" | "ACTIVE" | "EXPIRED" | "CANCELLED";
 
-export function ReservationListCard() {
+export function ReservationListCard({ className }: { className?: string }) {
 	const queryClient = useQueryClient();
 	const [page, setPage] = useState(1);
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
@@ -100,8 +100,8 @@ export function ReservationListCard() {
 	const pagination = data?.pagination;
 
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-start justify-between gap-4">
+		<Card className={cn("flex min-h-0 flex-col", className)}>
+			<CardHeader className="shrink-0 flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
 				<div>
 					<CardTitle>Reservations</CardTitle>
 					<CardDescription>
@@ -132,7 +132,7 @@ export function ReservationListCard() {
 					</Button>
 				</div>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="min-h-0 flex-1 overflow-x-auto">
 				{isLoading ? (
 					<div className="space-y-2">
 						<Skeleton className="h-10 w-full" />

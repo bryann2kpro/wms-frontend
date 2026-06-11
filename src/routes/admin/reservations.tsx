@@ -26,7 +26,7 @@ export const Route = createFileRoute("/admin/reservations")({
 function ReservationsPage() {
 	return (
 		<main
-			className="flex flex-1 flex-col gap-6 p-4 md:p-6"
+			className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:gap-5 md:p-5 lg:max-h-[calc(100vh-4rem)]"
 			aria-labelledby="reservations-page-title"
 			aria-describedby="reservations-page-description"
 		>
@@ -37,9 +37,9 @@ function ReservationsPage() {
 				titleId="reservations-page-title"
 				descriptionId="reservations-page-description"
 			/>
-			<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-				<ReservationListCard />
-				<CustomerPriorityRanking />
+			<div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] xl:items-start xl:gap-5">
+				<ReservationListCard className="min-h-0 xl:min-h-[28rem]" />
+				<CustomerPriorityRanking className="xl:sticky xl:top-4" />
 			</div>
 		</main>
 	);
