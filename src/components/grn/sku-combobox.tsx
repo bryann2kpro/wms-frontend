@@ -45,7 +45,6 @@ import {
 	SelectItem,
 } from "../ui/select";
 import type { Skus } from "@/lib/graphql/types";
-import { ScrollArea } from "../ui/scroll-area";
 
 const createSkuSchema = z.object({
 	skuCode: z.string().min(1, "Code is required"),
@@ -95,19 +94,20 @@ export function SkuCombobox({
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data: skusData, isLoading: loading } = useInfiniteQuery<SkusAndUomQueryData>({
+	const {
+		data: skusData,
+		isLoading: loading,
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useInfiniteQuery<SkusAndUomQueryData>({
 		queryKey: [...qk.skus.all, "infinite", search],
-		queryFn: async ({ pageParam }) => {
-			const result = gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
+		queryFn: ({ pageParam }) =>
+			gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
 				pageSize: 20,
 				pageNumber: Number(pageParam),
-				filter: search.trim() ? { skuDescription: search.trim() } : undefined,
-			});
-
-			console.log("result:", result);
-
-			return await result;
-		},
+				filter: search.trim() ? { search: search.trim() } : undefined,
+			}),
 		initialPageParam: 1,
 		getNextPageParam: (lastPage) => {
 			const p = lastPage.skus.pagination;
@@ -116,10 +116,7 @@ export function SkuCombobox({
 	});
 
 	const skus = skusData?.pages.flatMap((page) => page.skus.query) ?? [];
-	// const skus = skusData;
 	const uoms = skusData?.pages[0]?.stockUnits?.query ?? [];
-
-	console.log("skusData", skusData);
 
 	function getErrorMessage(err: unknown): string {
 		if (err && typeof err === "object" && "response" in err) {
@@ -193,8 +190,6 @@ export function SkuCombobox({
 		? `${value.sku}${value.description ? ` – ${value.description}` : ""}`
 		: null;
 
-	console.log(value);
-
 	return (
 		<div className={cn("flex gap-1", className)}>
 			<Popover open={open} onOpenChange={setOpen}>
@@ -225,7 +220,19 @@ export function SkuCombobox({
 								autoFocus
 							/>
 						</div>
-						<div className="h-[240px] overflow-y-auto overscroll-contain">
+						<div
+							className="h-[240px] overflow-y-auto overscroll-contain"
+							onScroll={(e) => {
+								const el = e.currentTarget;
+								if (
+									hasNextPage &&
+									!isFetchingNextPage &&
+									el.scrollHeight - el.scrollTop - el.clientHeight < 48
+								) {
+									fetchNextPage();
+								}
+							}}
+						>
 							{loading ? (
 								<div className="py-6 text-center text-xs text-muted-foreground">
 									Loading SKUs...
@@ -237,53 +244,56 @@ export function SkuCombobox({
 										: "No SKUs in the system."}
 								</div>
 							) : (
-								<ScrollArea>
-									<ul className="py-1 px-1">
-										{filtered.map((sku: Skus) => {
-											const alreadyAdded =
-												usedSkuCodes?.includes(sku.skuCode) &&
-												value?.skuCode !== sku.skuCode;
-											return (
-												<li key={sku.skuId}>
-													<button
-														type="button"
-														title={[sku.skuCode, sku.skuDescription]
-															.filter(Boolean)
-															.join(" – ")}
-														className={cn(
-															"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
-															value?.skuId === sku.skuId && "bg-accent",
-														)}
-														onClick={() => handleSelect(sku)}
-													>
-														{value?.skuId === sku.skuId ? (
-															<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-														) : (
-															<span className="mt-0.5 w-3.5 shrink-0" />
-														)}
-														<div className="min-w-0 flex-1 overflow-hidden">
-															<div className="flex items-center gap-1.5">
-																<span className="text-sm font-semibold text-foreground">
-																	{sku.skuCode}
+								<ul className="py-1 px-1">
+									{filtered.map((sku: Skus) => {
+										const alreadyAdded =
+											usedSkuCodes?.includes(sku.skuCode) &&
+											value?.skuCode !== sku.skuCode;
+										return (
+											<li key={sku.skuId}>
+												<button
+													type="button"
+													title={[sku.skuCode, sku.skuDescription]
+														.filter(Boolean)
+														.join(" – ")}
+													className={cn(
+														"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
+														value?.skuId === sku.skuId && "bg-accent",
+													)}
+													onClick={() => handleSelect(sku)}
+												>
+													{value?.skuId === sku.skuId ? (
+														<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+													) : (
+														<span className="mt-0.5 w-3.5 shrink-0" />
+													)}
+													<div className="min-w-0 flex-1 overflow-hidden">
+														<div className="flex items-center gap-1.5">
+															<span className="text-sm font-semibold text-foreground">
+																{sku.skuCode}
+															</span>
+															{alreadyAdded && (
+																<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+																	Added
 																</span>
-																{alreadyAdded && (
-																	<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
-																		Added
-																	</span>
-																)}
-															</div>
-															{sku.skuDescription && (
-																<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-																	{sku.skuDescription}
-																</div>
 															)}
 														</div>
-													</button>
-												</li>
-											);
-										})}
-									</ul>
-								</ScrollArea>
+														{sku.skuDescription && (
+															<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+																{sku.skuDescription}
+															</div>
+														)}
+													</div>
+												</button>
+											</li>
+										);
+									})}
+									{isFetchingNextPage && (
+										<li className="py-2 text-center text-[11px] text-muted-foreground">
+											Loading more…
+										</li>
+									)}
+								</ul>
 							)}
 						</div>
 						<div className="border-t bg-muted/20 px-2 py-1">
