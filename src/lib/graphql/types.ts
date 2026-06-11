@@ -260,6 +260,14 @@ export interface RackPaginatedResponse {
 	pagination: Pagination;
 }
 
+export interface RackUtilization {
+	rackId: string;
+	volCapacity: number | null;
+	volCurrent: number;
+	weightCapacity: number | null;
+	weightCurrent: number;
+}
+
 export interface CreateRackInput {
 	zoneId?: string | null;
 	areaId?: string | null;
