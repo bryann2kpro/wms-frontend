@@ -33,6 +33,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { AsnCombobox } from "@/components/grn/asn-combobox";
 import {
 	Select,
 	SelectContent,
@@ -81,12 +82,10 @@ import {
 	CREATE_GRN_MUTATION,
 	CREATE_INBOUND_MUTATION,
 	UPDATE_GRN_MUTATION,
-	LIST_PENDING_ADVANCE_NOTICES_QUERY,
 	mapGrnsQueryToResult,
 	UI_STATUS_TO_GQL,
 	type GrnsQueryData,
 	type GrnsQueryVariables,
-	type ListPendingAdvanceNoticesQueryData,
 	type AdvanceNotice,
 } from "@/lib/graphql/grns";
 import type { Skus, GrnDetailForList } from "@/lib/graphql/types";
@@ -102,6 +101,10 @@ import {
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+	computePoRemainingQty,
+	sumHistoricalReceivedBySku,
+} from "@/lib/grn/po-fulfillment";
 
 /**
  * True when a GRN's send-to-ES was blocked server-side because its PO/ASN still has
@@ -299,33 +302,26 @@ function HelpStepImage({
 
 type AsnPickerDialogProps = {
 	open: boolean;
-	loading: boolean;
-	asns: AdvanceNotice[];
-	onSelect: (asn: AdvanceNotice) => void;
+	onSelect: (asn: AdvanceNotice) => void | Promise<void>;
 	onSkip: () => void;
 	onOpenChange: (open: boolean) => void;
 };
 
 function AsnPickerDialog({
 	open,
-	loading,
-	asns,
 	onSelect,
 	onSkip,
 	onOpenChange,
 }: AsnPickerDialogProps) {
-	const [selectedId, setSelectedId] = useState<string>("");
-	const selectedAsn = asns.find((a) => a.id === selectedId) ?? null;
-	const selectedAsnLabel = selectedAsn
-		? `${selectedAsn.tranid} — ${selectedAsn.entity} (${selectedAsn.duedate})`
-		: "";
+	const [selectedAsn, setSelectedAsn] = useState<AdvanceNotice | null>(null);
+	const [selecting, setSelecting] = useState(false);
 	const linePreview = useMemo(
 		() => selectedAsn?.lines.slice(0, 6) ?? [],
 		[selectedAsn],
 	);
 
 	useEffect(() => {
-		if (!open) setSelectedId("");
+		if (!open) setSelectedAsn(null);
 	}, [open]);
 
 	return (
@@ -378,68 +374,21 @@ function AsnPickerDialog({
 						receiving, then click <strong>Continue</strong>. If no ASN exists
 						for this delivery, click <strong>Skip</strong> to fill in manually.
 					</p>
-					{loading ? (
-						<p
-							className="text-sm text-muted-foreground rounded-lg border border-dashed p-4"
+					<>
+						<Label
+							htmlFor="asn-select"
 							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
-							Loading pending ASNs…
-						</p>
-					) : asns.length === 0 ? (
-						<p
-							className="text-sm text-muted-foreground rounded-lg border border-dashed p-4"
-							style={{ fontFamily: "var(--dashboard-body)" }}
-						>
-							No outstanding advance notices found. Click{" "}
-							<strong>Skip</strong> to create a manual GRN.
-						</p>
-					) : (
-						<>
-							<Label
-								htmlFor="asn-select"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Advance Notice (PO / Entity / Due Date)
-							</Label>
-							<Select value={selectedId} onValueChange={setSelectedId}>
-								<SelectTrigger
-									id="asn-select"
-									className="w-full min-w-0 rounded-lg border-muted-foreground/20 pr-8 text-left [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:text-left"
-								>
-									<SelectValue placeholder="Select an ASN…">
-										{selectedAsnLabel}
-									</SelectValue>
-								</SelectTrigger>
-								<SelectContent
-									position="popper"
-									align="start"
-									className="w-[min(var(--radix-select-trigger-width),92vw)] max-w-[92vw]"
-								>
-									{asns.map((asn) => (
-										<SelectItem
-											key={asn.id}
-											value={asn.id}
-											className="max-w-full"
-											title={`${asn.tranid} — ${asn.entity} (${asn.duedate})${asn.fulfillmentStatus === "PARTIAL" ? " — Partially fulfilled" : ""}`}
-										>
-											<span className="flex min-w-0 items-center gap-1.5 truncate">
-												<span className="truncate">
-													{asn.tranid} — {asn.entity} ({asn.duedate})
-												</span>
-												{asn.fulfillmentStatus === "PARTIAL" ? (
-													<Badge
-														variant="outline"
-														className="shrink-0 text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20"
-													>
-														Partially fulfilled
-													</Badge>
-												) : null}
-											</span>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{selectedAsn && (
+							Advance Notice (PO / Entity / Due Date)
+						</Label>
+						<AsnCombobox
+							id="asn-select"
+							enabled={open}
+							value={selectedAsn}
+							onChange={setSelectedAsn}
+							placeholder="Search or select an ASN…"
+						/>
+						{selectedAsn ? (
 								<div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-4">
 									<div className="grid gap-2 sm:grid-cols-3">
 										<div className="rounded-lg border bg-background/70 p-2.5">
@@ -503,9 +452,8 @@ function AsnPickerDialog({
 										</div>
 									</div>
 								</div>
-							)}
-						</>
-					)}
+						) : null}
+					</>
 				</div>
 
 				<DialogFooter className="mt-2 gap-2 border-t border-border pt-4">
@@ -514,12 +462,18 @@ function AsnPickerDialog({
 					</Button>
 					<Button
 						className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-						disabled={!selectedAsn}
-						onClick={() => {
-							if (selectedAsn) onSelect(selectedAsn);
+						disabled={!selectedAsn || selecting}
+						onClick={async () => {
+							if (!selectedAsn || selecting) return;
+							setSelecting(true);
+							try {
+								await onSelect(selectedAsn);
+							} finally {
+								setSelecting(false);
+							}
 						}}
 					>
-						Continue
+						{selecting ? "Loading…" : "Continue"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -551,6 +505,8 @@ function GRNRouteComponent() {
 			poReference?: string;
 			receivedDate?: string;
 			items?: GRNLineItemForm[];
+			/** PENDING ASNs are not linked yet — do not subtract prior GRN qty in the form. */
+			skipPoFulfillmentAdjust?: boolean;
 		}
 		| undefined
 	>(undefined);
@@ -558,16 +514,6 @@ function GRNRouteComponent() {
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isHelpOpen, setIsHelpOpen] = useState(false);
 	const [helpStep, setHelpStep] = useState(0);
-	const { data: pendingAsnData, isLoading: pendingAsnLoading } = useQuery({
-		queryKey: ["pending-advance-notices"] as const,
-		queryFn: () =>
-			gqlRequest<ListPendingAdvanceNoticesQueryData>(
-				LIST_PENDING_ADVANCE_NOTICES_QUERY,
-			),
-		enabled: isAsnPickerOpen,
-	});
-	const pendingAsns = pendingAsnData?.listPendingAdvanceNotices ?? [];
-
 	const { data: stockUnitsData } = useQuery({
 		queryKey: qk.stockUnits.all,
 		queryFn: () => gqlRequest<StockUnitsQueryData>(STOCK_UNITS_QUERY),
@@ -1017,40 +963,83 @@ function GRNRouteComponent() {
 										{/* Step 1: ASN Picker */}
 										<AsnPickerDialog
 											open={isAsnPickerOpen}
-											loading={pendingAsnLoading}
-											asns={pendingAsns}
 											onSkip={() => {
 												setSelectedAsnId(null);
 												setAsnInitialValues(undefined);
 												setIsAsnPickerOpen(false);
 												setIsCreateOpen(true);
 											}}
-											onSelect={(asn) => {
+											onSelect={async (asn) => {
 												setSelectedAsnId(asn.id);
+												const deductPriorReceipts =
+													asn.fulfillmentStatus === "PARTIAL";
+												let receivedBySku = new Map<string, number>();
+												if (deductPriorReceipts) {
+													try {
+														const historyResult =
+															await gqlRequest<GrnsQueryData>(GRNS_QUERY, {
+																filter: { poNo: asn.tranid },
+																pageSize: 100,
+															});
+														receivedBySku = sumHistoricalReceivedBySku(
+															historyResult?.grns?.query ?? [],
+														);
+													} catch {
+														// Fall back to full ASN qty if history lookup fails.
+													}
+												}
+												const mapAsnLineToFormItem = (
+													l: (typeof asn.lines)[number],
+													carton: number,
+												) => {
+													const isLotTracked =
+														(l.islotitem ?? "").trim().toUpperCase() === "T";
+													const unitMatch = stockUnits.find(
+														(u) =>
+															u.unitCode.toLowerCase() ===
+															l.units.toLowerCase(),
+													);
+													return {
+														skuCode: l.itemid,
+														description: l.displayname ?? "",
+														carton,
+														loss: 0,
+														uom: unitMatch?.stockUnitId ?? l.units,
+														unitPrice: 0,
+														expiryDate: l.expiryDate ?? "",
+														lotNo: l.lotNo ?? "",
+														rackId: "",
+														asnLotTracked: isLotTracked,
+													};
+												};
+												let prefilledItems = asn.lines
+													.map((l) =>
+														mapAsnLineToFormItem(
+															l,
+															deductPriorReceipts
+																? computePoRemainingQty(
+																		l.quantity,
+																		receivedBySku.get(l.itemid) ?? 0,
+																	)
+																: l.quantity,
+														),
+													)
+													.filter((item) => item.carton > 0);
+												// PARTIAL ASNs should always have outstanding qty; if the
+												// client-side deduction zeroes every line, fall back to full ASN qty.
+												if (
+													prefilledItems.length === 0 &&
+													asn.lines.length > 0
+												) {
+													prefilledItems = asn.lines.map((l) =>
+														mapAsnLineToFormItem(l, l.quantity),
+													);
+												}
 												setAsnInitialValues({
 													poReference: asn.tranid,
 													receivedDate: asn.duedate,
-													items: asn.lines.map((l) => {
-														const isLotTracked =
-															(l.islotitem ?? "").trim().toUpperCase() === "T";
-														const unitMatch = stockUnits.find(
-															(u) =>
-																u.unitCode.toLowerCase() ===
-																l.units.toLowerCase(),
-														);
-														return {
-															skuCode: l.itemid,
-															description: l.displayname ?? "",
-															carton: l.quantity,
-															loss: 0,
-															uom: unitMatch?.stockUnitId ?? l.units,
-															unitPrice: 0,
-															expiryDate: l.expiryDate ?? "",
-															lotNo: l.lotNo ?? "",
-															rackId: "",
-															asnLotTracked: isLotTracked,
-														};
-													}),
+													items: prefilledItems,
+													skipPoFulfillmentAdjust: !deductPriorReceipts,
 												});
 												setIsAsnPickerOpen(false);
 												setIsCreateOpen(true);
