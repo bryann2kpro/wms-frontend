@@ -55,16 +55,30 @@ export const SKUS_AND_UOM_QUERY = gql`
 	}
 `;
 
+export type SkuSearchFilter = {
+	skuCode?: string;
+	skuCodes?: string[];
+	skuDescription?: string;
+};
+
 export type SkusAndUomQueryVariables = {
-	filter?: {
-		skuCode?: string;
-		skuCodes?: string[];
-		skuDescription?: string;
-		search?: string;
-	};
+	filter?: SkuSearchFilter;
 	pageSize?: number;
 	pageNumber?: number;
 };
+
+/** Code-like terms (e.g. RAW-E0012) search skuCode; others search skuDescription. */
+const SKU_CODE_SEARCH_PATTERN = /^[A-Z0-9_-]+$/i;
+
+export function buildSkuSearchFilter(
+	searchTerm: string,
+): SkuSearchFilter | undefined {
+	const term = searchTerm.trim();
+	if (!term) return undefined;
+	return SKU_CODE_SEARCH_PATTERN.test(term)
+		? { skuCode: term }
+		: { skuDescription: term };
+}
 
 export type SkusAndUomQueryData = {
 	skus: {

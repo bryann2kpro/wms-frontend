@@ -6,6 +6,7 @@ import {
 	Boxes,
 	ClipboardCheck,
 	ClipboardList,
+	Bookmark,
 	FileCheck,
 	FileText,
 	GitCompareArrows,
@@ -58,6 +59,8 @@ const ChildNavLinkSchema = z.object({
 	variant: z.enum(["default", "ghost"]),
 	href: z.string(),
 	allowedPermission: z.array(z.string()),
+	/** When set, only users with one of these roles see the link (Admin route guard). */
+	allowedRoles: z.array(z.string()).optional(),
 	/** Group key – items with the same group are shown under one labeled section. */
 	group: z.string().optional(),
 });
@@ -103,6 +106,16 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/outbound",
 		icon: ArrowRightLeft,
 		allowedPermission: ["Delivery Order"],
+		variant: "default",
+		group: "outbound",
+	},
+	{
+		key: "sidebar-reservations",
+		title: "Order Reservations",
+		href: "/admin/reservations",
+		icon: Bookmark,
+		allowedPermission: [],
+		allowedRoles: ["Admin", "Super Admin"],
 		variant: "default",
 		group: "outbound",
 	},
