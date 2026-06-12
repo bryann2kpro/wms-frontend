@@ -39,7 +39,6 @@ import {
 	Send,
 	Trash2,
 	Clock,
-	CalendarDays,
 	AlertTriangle,
 	Pencil,
 	X,
@@ -1053,10 +1052,9 @@ function GRNLineRow({
 							</div>
 							<div className="space-y-1">
 								<label
-									className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
-									<CalendarDays className="h-2.5 w-2.5" />
 									Expiry
 									{requireExpiry ? (
 										<span className="text-destructive">*</span>
