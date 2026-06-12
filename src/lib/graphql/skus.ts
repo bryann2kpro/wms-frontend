@@ -60,6 +60,7 @@ export type SkusAndUomQueryVariables = {
 		skuCode?: string;
 		skuCodes?: string[];
 		skuDescription?: string;
+		search?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

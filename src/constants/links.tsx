@@ -216,7 +216,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	},
 	{
 		key: "sidebar-putaway",
-		title: "Putaway",
+		title: "Bin to Bin",
 		href: "/admin/putaway",
 		icon: ArrowLeftRight,
 		allowedPermission: ["Inventory"],

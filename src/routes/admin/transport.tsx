@@ -8,6 +8,7 @@ import {
 	Search,
 	Trash2,
 	Truck,
+	Upload,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import {
 	toCreateTransportInput,
 	toUpdateTransportInput,
 } from "@/components/transport/transport-form-dialog";
+import { TransportImportDialog } from "@/components/transport/transport-import-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -112,6 +114,7 @@ function TransportPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearch = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<Transport | null>(null);
 	const [deleting, setDeleting] = useState<Transport | null>(null);
 
@@ -214,6 +217,16 @@ function TransportPage() {
 									className="pl-9 w-full"
 								/>
 							</div>
+							<Button
+								type="button"
+								variant="outline"
+								className="gap-2 shrink-0 disabled:opacity-50"
+								disabled={!userId}
+								onClick={() => setIsImportOpen(true)}
+							>
+								<Upload className="h-4 w-4" aria-hidden />
+								Import
+							</Button>
 							<Button
 								type="button"
 								className="gap-2 text-white shrink-0 disabled:opacity-50"
@@ -364,6 +377,13 @@ function TransportPage() {
 					)}
 				</CardContent>
 			</Card>
+
+			<TransportImportDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				createdBy={userId}
+				onImported={refetch}
+			/>
 
 			<TransportFormDialog
 				open={isCreateOpen}

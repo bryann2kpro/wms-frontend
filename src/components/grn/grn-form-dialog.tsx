@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import {
@@ -39,8 +39,11 @@ import {
 	Send,
 	Trash2,
 	Clock,
-	CalendarDays,
 	AlertTriangle,
+	Pencil,
+	X,
+	Sparkles,
+	Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -71,6 +74,10 @@ import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
+import {
+	applyRemainingQtyToLineItems,
+	sumHistoricalReceivedBySku,
+} from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -86,10 +93,13 @@ import {
 } from "@/lib/grn-sku-line-controls";
 import {
 	SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
+	LIST_RACKS_WITH_CAPACITY_QUERY,
 	type GrnRackAllocationForm,
 	type InboundPutawayPlanGql,
 	type RackSkuCapacityGql,
 	type SuggestInboundPutawayPlanQueryData,
+	type ListRacksWithCapacityQueryData,
+	type ListRacksWithCapacityQueryVariables,
 } from "@/lib/graphql/inbound-putaway";
 
 function formatRackCapacityHint(
@@ -312,6 +322,16 @@ function formatPutawayPlanHint(
 	return `${plan.allocations.length} rack locations suggested (${plan.totalAllocated} ${unit} total)`;
 }
 
+function putawayAllocationsFromPlan(
+	plan: InboundPutawayPlanGql,
+): GrnRackAllocationForm[] {
+	return plan.allocations.map((row) => ({
+		rackId: row.rackId,
+		quantity: row.quantity,
+		rackLabel: row.rackLabel,
+	}));
+}
+
 /** Normalize TanStack Form errors (string | { message? }) to FieldError's expected shape */
 /** Status badge colors for the PO fulfillment-history hint (matches grn.tsx getStatusColor). */
 function grnHistoryStatusColor(status: string | null | undefined): string {
@@ -332,6 +352,50 @@ function normalizeFieldErrors(
 		typeof e === "string"
 			? { message: e }
 			: (e as { message?: string } | undefined),
+	);
+}
+
+function GrnFormSection({
+	icon: Icon,
+	title,
+	subtitle,
+	action,
+	children,
+	className,
+}: {
+	icon: React.ComponentType<{ className?: string }>;
+	title: string;
+	subtitle?: string;
+	action?: React.ReactNode;
+	children: React.ReactNode;
+	className?: string;
+}) {
+	return (
+		<section className={cn("space-y-3", className)}>
+			<div className="flex items-center justify-between gap-3">
+				<div className="flex min-w-0 items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
+					<Icon className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+					<div className="min-w-0">
+						<h3
+							className="text-xs font-semibold uppercase tracking-widest text-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							{title}
+						</h3>
+						{subtitle ? (
+							<p
+								className="mt-0.5 text-[11px] text-muted-foreground"
+								style={{ fontFamily: "var(--dashboard-body)" }}
+							>
+								{subtitle}
+							</p>
+						) : null}
+					</div>
+				</div>
+				{action}
+			</div>
+			{children}
+		</section>
 	);
 }
 
@@ -456,6 +520,60 @@ function CreateRackDialog({
 	);
 }
 
+function AllocationEditPicker({
+	skuId,
+	skuCode,
+	currentRackId,
+	quantity,
+	excludeRackIds,
+	onSelect,
+	onCancel,
+}: {
+	skuId: string;
+	skuCode: string;
+	currentRackId: string;
+	quantity: number;
+	excludeRackIds: string[];
+	onSelect: (rackId: string, rackLabel?: string) => void;
+	onCancel: () => void;
+}) {
+	const { data, isLoading } = useQuery({
+		queryKey: ["racks-with-capacity", skuId, skuCode, quantity, [...excludeRackIds].sort().join(",")],
+		queryFn: () =>
+			gqlRequest<ListRacksWithCapacityQueryData, ListRacksWithCapacityQueryVariables>(
+				LIST_RACKS_WITH_CAPACITY_QUERY,
+				{ skuId: skuId || null, skuCode: skuCode || null, quantity, excludeRackIds },
+			),
+		staleTime: 30_000,
+	});
+
+	// RackLocationCombobox uses only rackId/rackRow/rackLevel/rackColumn at runtime
+	const racks = (data?.listRacksWithCapacity ?? []) as unknown as Rack[];
+
+	return (
+		<div className="flex items-center gap-1.5">
+			<div className="min-w-0 flex-1">
+				<RackLocationCombobox
+					racks={racks}
+					value={currentRackId}
+					className="h-7"
+					loading={isLoading}
+					loadingPlaceholder="Loading racks…"
+					onChange={onSelect}
+				/>
+			</div>
+			<button
+				type="button"
+				title="Cancel"
+				className="shrink-0 text-muted-foreground hover:text-foreground"
+				onClick={onCancel}
+			>
+				<X className="h-3 w-3" />
+			</button>
+		</div>
+	);
+}
+
 function GRNLineRow({
 	item,
 	index,
@@ -552,6 +670,7 @@ function GRNLineRow({
 		null,
 	);
 	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
+	const [editingAllocationIdx, setEditingAllocationIdx] = useState<number | null>(null);
 
 	const resolvedSkuId = useMemo(() => {
 		if (!item.skuCode?.trim()) return "";
@@ -559,6 +678,24 @@ function GRNLineRow({
 	}, [item.skuCode, skuOptions]);
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const netQty = Math.max(0, inboundQty - lossQty);
+	const totalAllocQty = Math.round(
+		((item.rackAllocations ?? []).reduce((s, a) => s + (Number(a.quantity) || 0), 0)) * 100,
+	) / 100;
+	const hasAllocations = (item.rackAllocations ?? []).length > 0;
+
+	// Stable key representing rack IDs already assigned to other items in the same form.
+	// Used to exclude those racks from this item's suggestion so each SKU gets distinct locations.
+	const otherItemRackIdsKey = useMemo(
+		() =>
+			items
+				.filter((_, i) => i !== index)
+				.flatMap((it) => it.rackAllocations?.map((a) => a.rackId) ?? [])
+				.sort()
+				.join(","),
+		[items, index],
+	);
 
 	const rackCapacityHint = useMemo(
 		() =>
@@ -604,6 +741,9 @@ function GRNLineRow({
 		setIsSuggestingRack(true);
 		(async () => {
 			try {
+				const excludeRackIds = otherItemRackIdsKey
+					? otherItemRackIdsKey.split(",").filter(Boolean)
+					: [];
 				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
 					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
 					{
@@ -611,6 +751,7 @@ function GRNLineRow({
 						skuCode: item.skuCode,
 						quantity: inboundQty > 0 ? inboundQty : 1,
 						forRackId: item.rackId?.trim() || null,
+						excludeRackIds: excludeRackIds.length > 0 ? excludeRackIds : null,
 					},
 				);
 				if (cancelled) return;
@@ -621,13 +762,7 @@ function GRNLineRow({
 					!(item.rackId ?? "").trim() || item.rackAutoSuggested === true;
 				if (!plan.allocations.length || !canAutoApply) return;
 
-				const nextAllocations: GrnRackAllocationForm[] = plan.allocations.map(
-					(row) => ({
-						rackId: row.rackId,
-						quantity: row.quantity,
-						rackLabel: row.rackLabel,
-					}),
-				);
+				const nextAllocations = putawayAllocationsFromPlan(plan);
 				const nextRackId = nextAllocations[0]?.rackId ?? "";
 				const sameAllocations =
 					item.rackAllocations?.length === nextAllocations.length &&
@@ -667,7 +802,7 @@ function GRNLineRow({
 			cancelled = true;
 			setIsSuggestingRack(false);
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only re-suggest when SKU/qty/rack or auto-suggest state changes
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- re-suggest when SKU/qty/rack, auto-suggest state, or sibling rack assignments change
 	}, [
 		item.skuCode,
 		resolvedSkuId,
@@ -675,19 +810,46 @@ function GRNLineRow({
 		item.rackId,
 		item.rackAutoSuggested,
 		index,
+		otherItemRackIdsKey,
 	]);
 
+	const handleRecommendAssignRack = () => {
+		if (!putawayPlan?.allocations.length) return;
+		const nextAllocations = putawayAllocationsFromPlan(putawayPlan);
+		const nextRackId = nextAllocations[0]?.rackId ?? "";
+		onItemsChange(
+			items.map((row, i) =>
+				i === index
+					? {
+							...row,
+							rackId: nextRackId,
+							rackAllocations: nextAllocations,
+							rackAutoSuggested: true,
+						}
+					: row,
+			),
+		);
+		setEditingAllocationIdx(null);
+	};
+
+	const canRecommendRack =
+		!!item.skuCode?.trim() && netQty > 0 && !!putawayPlan?.allocations.length;
+
 	return (
-		<div className="relative rounded-xl border border-border/60 bg-card p-3 transition-all hover:border-border/90 hover:shadow-sm">
-			<div className="flex items-start gap-2.5">
-				{/* Index badge */}
-				<span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-mono font-bold text-muted-foreground">
-					{index + 1}
-				</span>
-				<div className="flex-1 space-y-2.5 min-w-0">
-					{/* Row 1: SKU + UOM + remove */}
+		<div className="group relative overflow-hidden rounded-xl border border-border/60 bg-card transition-all hover:border-border/90 hover:shadow-sm">
+			<div className="flex items-stretch">
+				<div
+					className="flex w-9 shrink-0 items-start justify-center border-r border-border/50 bg-muted/30 pt-3"
+					aria-hidden
+				>
+					<span className="flex h-5 w-5 items-center justify-center rounded bg-background text-[10px] font-mono font-bold text-muted-foreground shadow-sm">
+						{index + 1}
+					</span>
+				</div>
+				<div className="min-w-0 flex-1 space-y-3 p-3">
+					{/* Identity: SKU + badges + remove */}
 					<div className="flex items-center gap-2">
-						<div className="flex-1 min-w-0">
+						<div className="min-w-0 flex-1">
 							<SkuCombobox
 								value={skuValue}
 								onChange={(v: SkuLineValue) => {
@@ -819,62 +981,80 @@ function GRNLineRow({
 						</div>
 					) : null}
 
-					{/* Row 2: Carton + Loss + Expiry + Lot No. */}
-					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Carton
-							</label>
-							<Input
-								type="number"
-								min={0}
-								value={item.carton}
-								onChange={(e) => {
-									const newItems = [...items];
-									const v = Number(e.target.value);
-									newItems[index] = {
-										...newItems[index],
-										carton: Number.isFinite(v) && v >= 0 ? v : 0,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="0"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
-						<div className="space-y-1">
-							<label
-								className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-								style={{ fontFamily: "var(--dashboard-body)" }}
-							>
-								Loss
-							</label>
-							<Input
-								type="number"
-								min={0}
-								value={item.loss}
-								onChange={(e) => {
-									const newItems = [...items];
-									const v = Number(e.target.value);
-									newItems[index] = {
-										...newItems[index],
-										loss: Number.isFinite(v) && v >= 0 ? v : 0,
-									};
-									onItemsChange(newItems);
-								}}
-								placeholder="0"
-								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-							/>
-						</div>
-						<div className="space-y-1">
+					<div className="grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+						{/* Quantities + batch traceability */}
+						<div className="grid gap-2.5 sm:grid-cols-2">
+							<div className="space-y-2 rounded-lg border border-border/50 bg-[var(--dashboard-surface)]/60 p-2.5 sm:col-span-2">
+								<p
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+									style={{ fontFamily: "var(--dashboard-display)" }}
+								>
+									Quantities
+								</p>
+								<div className="grid grid-cols-2 gap-2">
+									<div className="space-y-1">
+										<label
+											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											Carton
+										</label>
+										<Input
+											type="number"
+											min={0}
+											value={item.carton}
+											onChange={(e) => {
+												const newItems = [...items];
+												const v = Number(e.target.value);
+												newItems[index] = {
+													...newItems[index],
+													carton: Number.isFinite(v) && v >= 0 ? v : 0,
+												};
+												onItemsChange(newItems);
+											}}
+											placeholder="0"
+											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+										/>
+									</div>
+									<div className="space-y-1">
+										<label
+											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+											style={{ fontFamily: "var(--dashboard-body)" }}
+										>
+											Loss
+										</label>
+										<Input
+											type="number"
+											min={0}
+											value={item.loss}
+											onChange={(e) => {
+												const newItems = [...items];
+												const v = Number(e.target.value);
+												newItems[index] = {
+													...newItems[index],
+													loss: Number.isFinite(v) && v >= 0 ? v : 0,
+												};
+												onItemsChange(newItems);
+											}}
+											placeholder="0"
+											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+										/>
+									</div>
+								</div>
+								{netQty > 0 ? (
+									<p className="font-mono text-[10px] text-muted-foreground">
+										Net receive:{" "}
+										<span className="font-semibold text-foreground">
+											{netQty} {uomLabel ?? "CTN"}
+										</span>
+									</p>
+								) : null}
+							</div>
+							<div className="space-y-1">
 								<label
-									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1"
+									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
-									<CalendarDays className="h-2.5 w-2.5" />
 									Expiry
 									{requireExpiry ? (
 										<span className="text-destructive">*</span>
@@ -893,7 +1073,7 @@ function GRNLineRow({
 									}}
 								/>
 							</div>
-						<div className="space-y-1">
+							<div className="space-y-1">
 								<label
 									className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 									style={{ fontFamily: "var(--dashboard-body)" }}
@@ -918,20 +1098,21 @@ function GRNLineRow({
 									className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
 								/>
 							</div>
-					</div>
+						</div>
 
-					{/* Row 3: Rack */}
-					<div className="space-y-1">
+						{/* Putaway */}
+						<div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/15 p-2.5">
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
-							Rack <span className="text-destructive">*</span>
+							Putaway / Rack <span className="text-destructive">*</span>
 						</label>
 						<div className="flex flex-wrap items-center gap-2">
 							<div className="min-w-0 flex-1">
 							<RackLocationCombobox
 								remoteSearch
+								disabled={hasAllocations}
 								value={item.rackId ?? ""}
 								fallbackLabel={rackDisplayLabel}
 								loading={isSuggestingRack && !rackDisplayLabel}
@@ -958,18 +1139,36 @@ function GRNLineRow({
 								className="h-8"
 							/>
 							</div>
-							{onOpenCreateRack ? (
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
-									onClick={() => onOpenCreateRack(index)}
-								>
-									<Plus className="h-3 w-3" />
-									New
-								</Button>
-							) : null}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
+								disabled={
+									isSuggestingRack ||
+									!canRecommendRack ||
+									!item.skuCode?.trim() ||
+									netQty <= 0
+								}
+								title={
+									canRecommendRack
+										? "Apply the suggested putaway rack allocation for this line"
+										: "Enter SKU and quantity to get a rack recommendation"
+								}
+								onClick={handleRecommendAssignRack}
+							>
+								{isSuggestingRack ? (
+									<>
+										<Loader2 className="h-3 w-3 animate-spin" />
+										Suggesting…
+									</>
+								) : (
+									<>
+										<Sparkles className="h-3 w-3 shrink-0 text-amber-600" />
+										Recommend assign rack
+									</>
+								)}
+							</Button>
 						</div>
 						{putawayPlanHint ? (
 							<p
@@ -986,18 +1185,149 @@ function GRNLineRow({
 								{rackCapacityHint}
 							</p>
 						) : null}
-						{item.rackAllocations && item.rackAllocations.length > 1 ? (
-							<ul className="mt-1 space-y-0.5 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5">
-								{item.rackAllocations.map((allocation) => (
-									<li
-										key={allocation.rackId}
-										className="text-[11px] font-mono text-foreground/85"
+						{hasAllocations ? (
+							<div className="mt-1 rounded-lg border border-border/60 bg-muted/20">
+								<ul className="divide-y divide-border/40">
+									{(item.rackAllocations ?? []).map((allocation, allocIdx) => (
+										<li
+											key={allocIdx}
+											className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
+										>
+											{editingAllocationIdx === allocIdx ? (
+												<>
+													<div className="min-w-0 flex-1">
+														<AllocationEditPicker
+															skuId={resolvedSkuId}
+															skuCode={item.skuCode}
+															currentRackId={allocation.rackId}
+															quantity={allocation.quantity}
+															excludeRackIds={
+																item.rackAllocations
+																	?.filter((_, i) => i !== allocIdx)
+																	.map((a) => a.rackId) ?? []
+															}
+															onSelect={(newRackId, newRackLabel) => {
+																const newAllocations = item.rackAllocations!.map(
+																	(a, i) =>
+																		i === allocIdx
+																			? { ...a, rackId: newRackId, rackLabel: newRackLabel }
+																			: a,
+																);
+																const newItems = [...items];
+																newItems[index] = {
+																	...newItems[index],
+																	rackAllocations: newAllocations,
+																	rackId: allocIdx === 0 ? newRackId : newItems[index].rackId,
+																	rackAutoSuggested: false,
+																};
+																onItemsChange(newItems);
+																setEditingAllocationIdx(null);
+															}}
+															onCancel={() => {
+																if (!allocation.rackId) {
+																	const newAllocations = item.rackAllocations!.filter((_, i) => i !== allocIdx);
+																	const newItems = [...items];
+																	newItems[index] = { ...newItems[index], rackAllocations: newAllocations };
+																	onItemsChange(newItems);
+																}
+																setEditingAllocationIdx(null);
+															}}
+														/>
+													</div>
+												</>
+											) : (
+												<>
+													<span className="w-20 shrink-0 font-mono text-foreground/85 truncate" title={allocation.rackLabel ?? allocation.rackId}>
+														{allocation.rackLabel ?? allocation.rackId}
+													</span>
+													<Input
+														type="number"
+														min={0}
+														value={allocation.quantity}
+														onChange={(e) => {
+															const newQty = Math.max(0, Number(e.target.value) || 0);
+															const newAllocations = item.rackAllocations!.map(
+																(a, i) => i === allocIdx ? { ...a, quantity: newQty } : a,
+															);
+															const newItems = [...items];
+															newItems[index] = {
+																...newItems[index],
+																rackAllocations: newAllocations,
+																rackAutoSuggested: false,
+															};
+															onItemsChange(newItems);
+														}}
+														className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
+													/>
+													<span className="shrink-0 text-muted-foreground">{uomLabel ?? "CTN"}</span>
+													<div className="ml-auto flex shrink-0 items-center gap-1">
+														<button
+															type="button"
+															title="Change rack"
+															className="text-muted-foreground hover:text-foreground"
+															onClick={() => setEditingAllocationIdx(allocIdx)}
+														>
+															<Pencil className="h-3 w-3" />
+														</button>
+														<button
+															type="button"
+															title="Remove rack"
+															className="text-muted-foreground hover:text-destructive"
+															onClick={() => {
+																const newAllocations = item.rackAllocations!.filter((_, i) => i !== allocIdx);
+																const newItems = [...items];
+																newItems[index] = {
+																	...newItems[index],
+																	rackAllocations: newAllocations,
+																	rackId: newAllocations[0]?.rackId ?? "",
+																	rackAutoSuggested: false,
+																};
+																onItemsChange(newItems);
+															}}
+														>
+															<Trash2 className="h-3 w-3" />
+														</button>
+													</div>
+												</>
+											)}
+										</li>
+									))}
+								</ul>
+								<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
+									<button
+										type="button"
+										className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
+										onClick={() => {
+											const remaining = Math.max(0, netQty - totalAllocQty);
+											const newAllocations = [
+												...(item.rackAllocations ?? []),
+												{ rackId: "", quantity: remaining, rackLabel: "" },
+											];
+											const newItems = [...items];
+											newItems[index] = {
+												...newItems[index],
+												rackAllocations: newAllocations,
+												rackAutoSuggested: false,
+											};
+											onItemsChange(newItems);
+											setEditingAllocationIdx(newAllocations.length - 1);
+										}}
 									>
-										{allocation.rackLabel ?? allocation.rackId}:{" "}
-										{allocation.quantity} {uomLabel ?? "CTN"}
-									</li>
-								))}
-							</ul>
+										<Plus className="h-3 w-3" />
+										Add rack
+									</button>
+									<span
+										className={cn(
+											"font-mono text-[11px]",
+											totalAllocQty === netQty
+												? "text-green-600 dark:text-green-400"
+												: "text-destructive",
+										)}
+									>
+										{totalAllocQty} / {netQty} {uomLabel ?? "CTN"}
+									</span>
+								</div>
+							</div>
 						) : null}
 						{rackSuggestionMessage ? (
 							<p className="text-[11px] text-muted-foreground leading-snug">
@@ -1012,6 +1342,7 @@ function GRNLineRow({
 								{rackSuggestionMessage}
 							</p>
 						) : null}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1076,6 +1407,8 @@ export type GrnFormDialogProps = {
 		poReference?: string;
 		receivedDate?: string;
 		items?: GRNLineItemForm[];
+		/** When true, skip auto-adjusting line cartons from PO/ASN history (PENDING ASN). */
+		skipPoFulfillmentAdjust?: boolean;
 	};
 };
 
@@ -1123,16 +1456,18 @@ export function GrnFormDialog({
 	>([]);
 	const [poHistoricalReceivedBySku, setPoHistoricalReceivedBySku] = useState<Map<string, number>>(new Map());
 	const lastLookedUpPoRef = useRef<string>("");
+	const poRemainingAppliedRef = useRef(false);
 	const lookupPoHistory = async (poNo: string) => {
 		const trimmed = poNo.trim();
 		if (!trimmed || trimmed === lastLookedUpPoRef.current) return;
 		lastLookedUpPoRef.current = trimmed;
+		poRemainingAppliedRef.current = false;
 		setPoHistoryLoading(true);
 		try {
 			const [historyResult, asnResult] = await Promise.all([
 				gqlRequest<GrnsQueryData>(GRNS_QUERY, {
 					filter: { poNo: trimmed },
-					pageSize: 10,
+					pageSize: 100,
 				}),
 				gqlRequest<AdvanceNoticeByPoNoQueryData>(ADVANCE_NOTICE_BY_PO_NO_QUERY, {
 					poNo: trimmed,
@@ -1143,16 +1478,7 @@ export function GrnFormDialog({
 
 			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
 			if (asnLines.length > 0) {
-				const receivedBySku = new Map<string, number>();
-				for (const grn of history) {
-					for (const item of grn.items ?? []) {
-						if (!item.skuCode) continue;
-						receivedBySku.set(
-							item.skuCode,
-							(receivedBySku.get(item.skuCode) ?? 0) + Number(item.qty || 0),
-						);
-					}
-				}
+				const receivedBySku = sumHistoricalReceivedBySku(history);
 				setPoHistoricalReceivedBySku(receivedBySku);
 				setPoAsnLines(
 					asnLines.map((line) => ({
@@ -1472,6 +1798,44 @@ export function GrnFormDialog({
 		}
 	}, [open, mode, grn?.id, initialValues]);
 
+	// After PO/ASN history loads, prefill line carton qty with remaining (expected − prior receipts).
+	useEffect(() => {
+		if (
+			!open ||
+			mode !== "create" ||
+			initialValues?.skipPoFulfillmentAdjust ||
+			poHistoryLoading ||
+			poAsnLines.length === 0
+		) {
+			return;
+		}
+		if (poRemainingAppliedRef.current) return;
+
+		const items = (form.state.values.items ?? []) as GRNLineItemForm[];
+		if (items.length === 0) return;
+
+		const nextItems = applyRemainingQtyToLineItems(
+			items,
+			poAsnLines,
+			poHistoricalReceivedBySku,
+		);
+		const changed = nextItems.some(
+			(item, index) => item.carton !== items[index]?.carton,
+		);
+		if (changed) {
+			form.setFieldValue("items", nextItems);
+		}
+		poRemainingAppliedRef.current = true;
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- run when PO fulfillment data loads, not on every form edit
+	}, [open, mode, poHistoryLoading, poAsnLines, poHistoricalReceivedBySku, initialValues?.skipPoFulfillmentAdjust]);
+
+	useEffect(() => {
+		if (!open) {
+			poRemainingAppliedRef.current = false;
+			lastLookedUpPoRef.current = "";
+		}
+	}, [open]);
+
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			(document.activeElement as HTMLElement | null)?.blur();
@@ -1543,13 +1907,12 @@ export function GrnFormDialog({
 
 	const dialogContent = (
 		<DialogContent
-			className="max-h-[90vh] overflow-y-auto rounded-2xl border border-border/80 bg-background shadow-2xl"
-			style={{ maxWidth: "min(95vw, 1400px)" }}
+			className="flex max-h-[90vh] w-[min(96vw,1200px)] max-w-[1200px] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background p-0 shadow-2xl sm:max-w-[1200px]"
 		>
-			<DialogHeader className="pb-0">
-				<div className="flex items-center gap-3 pb-4 border-b border-border">
-					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-600 shadow-sm">
-						<Package className="h-[18px] w-[18px] text-white" />
+			<DialogHeader className="shrink-0 border-b border-border/60 bg-[var(--dashboard-surface)]/50 px-6 py-4">
+				<div className="flex items-center gap-3">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-600 shadow-sm ring-1 ring-amber-700/20">
+						<Package className="h-5 w-5 text-white" />
 					</div>
 					<div className="min-w-0 flex-1">
 						<DialogTitle
@@ -1559,7 +1922,7 @@ export function GrnFormDialog({
 							{title}
 						</DialogTitle>
 						<DialogDescription
-							className="text-sm text-muted-foreground mt-0.5"
+							className="mt-0.5 text-sm text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
 						>
 							{description}
@@ -1581,23 +1944,16 @@ export function GrnFormDialog({
 						e.preventDefault();
 						form.handleSubmit();
 					}}
-					className="space-y-7 pt-5"
+					className="flex min-h-0 flex-1 flex-col"
 				>
-					<div className="space-y-7">
-						<div className="space-y-4">
-							{/* Section: Receipt Details */}
-							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
-								<FileText className="h-3.5 w-3.5 text-amber-600" />
-								<h3
-									className="text-xs font-semibold uppercase tracking-widest text-foreground"
-									style={{ fontFamily: "var(--dashboard-display)" }}
-								>
-									Receipt Details
-								</h3>
-							</div>
-							<FieldGroup>
-								<div className="grid gap-4 sm:grid-cols-2">
-									<form.Field name="poReference">
+					<div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+						<div className="grid items-start gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+							{/* Left column: receipt metadata + attachments */}
+							<div className="space-y-5 lg:sticky lg:top-0">
+								<GrnFormSection icon={FileText} title="Receipt Details">
+									<div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+										<FieldGroup className="gap-4">
+											<form.Field name="poReference">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
 											return (
@@ -1681,8 +2037,6 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
-								</div>
-								<div className="grid gap-4 sm:grid-cols-2">
 									<form.Field name="supplierId">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -1777,12 +2131,11 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
-								</div>
-								<form.Field name="receivedDate">
+									<form.Field name="receivedDate">
 									{(field) => {
 										const isInvalid = field.state.meta.errors.length > 0;
 										return (
-											<Field data-invalid={isInvalid} className="sm:max-w-xs">
+											<Field data-invalid={isInvalid}>
 												<FieldLabel
 													htmlFor={field.name}
 													className="flex items-center gap-1.5"
@@ -1813,55 +2166,101 @@ export function GrnFormDialog({
 										);
 									}}
 								</form.Field>
-							</FieldGroup>
-						</div>
+										</FieldGroup>
+									</div>
+								</GrnFormSection>
 
-						<div className="space-y-3">
-							{/* Section: Line Items */}
-							<div className="flex items-center justify-between gap-4">
-								<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
-									<Package className="h-3.5 w-3.5 text-amber-600" />
-									<h3
-										className="text-xs font-semibold uppercase tracking-widest text-foreground"
-										style={{ fontFamily: "var(--dashboard-display)" }}
-									>
-										Line Items
-									</h3>
-								</div>
-								<form.Field name="items">
-									{(field) => {
-										const items = (field.state.value ??
-											[]) as GRNLineItemForm[];
-										return (
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												className="h-8 gap-1.5 rounded-lg border-amber-500/60 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
-												onClick={() => {
-													field.handleChange([
-														...items,
-														{
-															skuCode: "",
-															description: "",
-															uom: "",
-															unitPrice: 0,
-															carton: 1,
-															loss: 0,
-															expiryDate: "",
-															lotNo: "",
-															rackId: "",
-														},
-													]);
-												}}
-											>
-												<Plus className="h-3.5 w-3.5" />
-												Add Item
-											</Button>
-										);
-									}}
-								</form.Field>
+								<GrnFormSection
+									icon={Upload}
+									title="Proof Upload"
+									subtitle="Up to 5 images or PDFs"
+								>
+									<div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+										<FileUpload
+											files={proofFiles}
+											onFilesChange={setProofFiles}
+											maxFiles={5}
+											accept="image/*,application/pdf"
+										/>
+									</div>
+								</GrnFormSection>
+
+								<GrnFormSection icon={FileText} title="Additional Notes">
+									<div className="rounded-xl border border-border/60 bg-card p-3 shadow-sm">
+										<form.Field name="notes">
+											{(field) => (
+												<Field>
+													<FieldLabel htmlFor={field.name} className="sr-only">
+														Notes
+													</FieldLabel>
+													<Textarea
+														id={field.name}
+														value={field.state.value}
+														placeholder="Enter any additional notes or comments..."
+														onBlur={field.handleBlur}
+														onChange={(e) => field.handleChange(e.target.value)}
+														className="min-h-[88px] resize-none rounded-lg border-muted-foreground/20 text-sm"
+														style={{ fontFamily: "var(--dashboard-body)" }}
+													/>
+												</Field>
+											)}
+										</form.Field>
+									</div>
+								</GrnFormSection>
 							</div>
+
+							{/* Right column: line items */}
+							<div className="min-w-0 space-y-3">
+								<GrnFormSection
+									icon={Package}
+									title="Line Items"
+									subtitle="Received SKUs, quantities, and putaway"
+									action={
+										<form.Field name="items">
+											{(field) => {
+												const items = (field.state.value ??
+													[]) as GRNLineItemForm[];
+												return (
+													<div className="flex items-center gap-2">
+														{items.length > 0 ? (
+															<Badge
+																variant="secondary"
+																className="h-6 font-mono text-[10px] tabular-nums"
+															>
+																{items.length} {items.length === 1 ? "line" : "lines"}
+															</Badge>
+														) : null}
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															className="h-8 gap-1.5 rounded-lg border-amber-500/60 text-amber-700 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+															onClick={() => {
+																field.handleChange([
+																	...items,
+																	{
+																		skuCode: "",
+																		description: "",
+																		uom: "",
+																		unitPrice: 0,
+																		carton: 1,
+																		loss: 0,
+																		expiryDate: "",
+																		lotNo: "",
+																		rackId: "",
+																	},
+																]);
+															}}
+														>
+															<Plus className="h-3.5 w-3.5" />
+															Add Item
+														</Button>
+													</div>
+												);
+											}}
+										</form.Field>
+									}
+								>
 							<form.Field name="items">
 								{(field) => {
 									const items = (field.state.value ?? []) as GRNLineItemForm[];
@@ -1879,20 +2278,22 @@ export function GrnFormDialog({
 									return (
 										<>
 											{items.length === 0 ? (
-												<div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/40 text-muted-foreground">
-													<Package className="h-7 w-7 text-amber-400/70" />
-													<div className="text-center">
+												<div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-amber-300/60 bg-gradient-to-b from-amber-50/50 to-transparent px-6 py-10 text-muted-foreground dark:border-amber-700/40 dark:from-amber-950/20">
+													<div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100/80 dark:bg-amber-950/50">
+														<Package className="h-6 w-6 text-amber-500/80" />
+													</div>
+													<div className="max-w-xs text-center">
 														<p
-															className="text-sm font-medium text-amber-800/70"
-															style={{ fontFamily: "var(--dashboard-body)" }}
+															className="text-sm font-medium text-foreground/80"
+															style={{ fontFamily: "var(--dashboard-display)" }}
 														>
-															No line items
+															No line items yet
 														</p>
 														<p
-															className="text-xs mt-0.5 text-amber-700/50"
+															className="mt-1 text-xs text-muted-foreground"
 															style={{ fontFamily: "var(--dashboard-body)" }}
 														>
-															Use &#34;Add Item&#34; above to add received goods
+															Add SKUs received on this delivery, then assign putaway racks for each line.
 														</p>
 													</div>
 												</div>
@@ -1952,59 +2353,8 @@ export function GrnFormDialog({
 									);
 								}}
 							</form.Field>
-						</div>
-
-						<div className="space-y-3">
-							{/* Section: Proof Upload */}
-							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
-								<Upload className="h-3.5 w-3.5 text-amber-600" />
-								<h3
-									className="text-xs font-semibold uppercase tracking-widest text-foreground"
-									style={{ fontFamily: "var(--dashboard-display)" }}
-								>
-									Proof Upload
-									<span className="ml-1.5 normal-case text-muted-foreground font-normal text-[11px]">
-										(max 5 files)
-									</span>
-								</h3>
+								</GrnFormSection>
 							</div>
-							<FileUpload
-								files={proofFiles}
-								onFilesChange={setProofFiles}
-								maxFiles={5}
-								accept="image/*,application/pdf"
-							/>
-						</div>
-
-						<div className="space-y-3">
-							{/* Section: Notes */}
-							<div className="flex items-center gap-2.5 border-l-[3px] border-amber-500 pl-3">
-								<FileText className="h-3.5 w-3.5 text-amber-600" />
-								<h3
-									className="text-xs font-semibold uppercase tracking-widest text-foreground"
-									style={{ fontFamily: "var(--dashboard-display)" }}
-								>
-									Additional Notes
-								</h3>
-							</div>
-							<form.Field name="notes">
-								{(field) => (
-									<Field>
-										<FieldLabel htmlFor={field.name} className="sr-only">
-											Notes
-										</FieldLabel>
-										<Textarea
-											id={field.name}
-											value={field.state.value}
-											placeholder="Enter any additional notes or comments..."
-											onBlur={field.handleBlur}
-											onChange={(e) => field.handleChange(e.target.value)}
-											className="min-h-[80px] resize-none rounded-lg border-muted-foreground/20 text-sm"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										/>
-									</Field>
-								)}
-							</form.Field>
 						</div>
 					</div>
 
@@ -2012,7 +2362,7 @@ export function GrnFormDialog({
 						selector={(state) => [state.isSubmitting, state.canSubmit]}
 					>
 						{([isSubmitting, canSubmit]) => (
-							<div className="mt-2 border-t border-border pt-4 flex flex-wrap items-center justify-end gap-2">
+							<div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 bg-[var(--dashboard-surface)]/30 px-6 py-4">
 								<Button
 									type="button"
 									variant="ghost"
