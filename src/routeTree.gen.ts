@@ -28,6 +28,7 @@ import { Route as AdminSkuAssignmentsRouteImport } from './routes/admin/sku-assi
 import { Route as AdminSetupAreaRouteImport } from './routes/admin/setup-area'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminReservationsRouteImport } from './routes/admin/reservations'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminRacksRouteImport } from './routes/admin/racks'
@@ -160,6 +161,11 @@ const AdminSettlementRoute = AdminSettlementRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReservationsRoute = AdminReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminReportsRoute = AdminReportsRouteImport.update({
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -445,6 +452,7 @@ export interface FileRoutesByTo {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -505,6 +513,7 @@ export interface FileRoutesById {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -566,6 +575,7 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -625,6 +635,7 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -684,6 +695,7 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -866,6 +878,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reservations': {
+      id: '/admin/reservations'
+      path: '/reservations'
+      fullPath: '/admin/reservations'
+      preLoaderRoute: typeof AdminReservationsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/reports': {
@@ -1177,6 +1196,7 @@ interface AdminRouteRouteChildren {
   AdminRacksRoute: typeof AdminRacksRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
+  AdminReservationsRoute: typeof AdminReservationsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminSetupAreaRoute: typeof AdminSetupAreaRoute
@@ -1217,6 +1237,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRacksRoute: AdminRacksRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
+  AdminReservationsRoute: AdminReservationsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminSetupAreaRoute: AdminSetupAreaRoute,
