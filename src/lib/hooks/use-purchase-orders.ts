@@ -56,6 +56,8 @@ export interface PurchaseOrdersResult {
 export interface PurchaseOrdersInfinitePage {
 	result: PurchaseOrdersResult;
 	hasNextPage: boolean;
+	/** past-weeks only: whether the API returned any orders for this 7-day window */
+	hadRawOrders?: boolean;
 }
 
 function getAuthHeaders(): Headers {
@@ -136,6 +138,29 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 
 /** Max weeks of history to offer for the Past Deliveries infinite scroll (≈ 1 year). */
 const MAX_PAST_WEEKS = 52;
+/** Stop sliding backwards after this many consecutive empty 7-day windows. */
+const MAX_EMPTY_PAST_WEEKS = 8;
+
+function countTrailingEmptyPastWeeks(
+	pages: PurchaseOrdersInfinitePage[],
+): number {
+	let count = 0;
+	for (let i = pages.length - 1; i >= 0; i--) {
+		if (pages[i].hadRawOrders) break;
+		count++;
+	}
+	return count;
+}
+
+function getPastWeeksNextPageParam(
+	allPages: PurchaseOrdersInfinitePage[],
+): number | undefined {
+	if (allPages.length >= MAX_PAST_WEEKS) return undefined;
+	if (countTrailingEmptyPastWeeks(allPages) >= MAX_EMPTY_PAST_WEEKS) {
+		return undefined;
+	}
+	return allPages.length + 1;
+}
 
 /**
  * Compute a UTC date-range window for a given week offset going backwards from today.
@@ -253,7 +278,7 @@ export function useInfinitePurchaseOrders(
 			// past-weeks: one 7-day window per page, sliding backwards.
 			// page 1 → yesterday…7 days ago
 			// page 2 → 8…14 days ago
-			// Stops when the window contains zero raw orders OR MAX_PAST_WEEKS is hit.
+			// Stops after MAX_EMPTY_PAST_WEEKS consecutive empty windows or MAX_PAST_WEEKS.
 			const { fromDate, toDate } = getPastWeekWindow(pageNumber);
 
 			const data = await request<PurchaseOrdersByWeekQueryData>(
@@ -273,19 +298,22 @@ export function useInfinitePurchaseOrders(
 				{ searchTerm, statusFilter, regionFilter, activeTab, page: pageNumber },
 			);
 
-			// Stop when the raw API returned no orders for this window (gone far enough back)
-			// or when we've hit the safety limit.
-			const hasAnyRawOrders = data.purchaseOrdersByWeek.some(
+			const hadRawOrders = data.purchaseOrdersByWeek.some(
 				(e) => e.orders.length > 0,
 			);
 
 			return {
 				result: fullResult,
-				hasNextPage: hasAnyRawOrders && pageNumber < MAX_PAST_WEEKS,
+				hadRawOrders,
+				hasNextPage: false,
 			};
 		},
-		getNextPageParam: (lastPage, allPages) =>
-			lastPage.hasNextPage ? allPages.length + 1 : undefined,
+		getNextPageParam: (lastPage, allPages) => {
+			if (activeTab === "current-week") {
+				return lastPage.hasNextPage ? allPages.length + 1 : undefined;
+			}
+			return getPastWeeksNextPageParam(allPages);
+		},
 		enabled,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
