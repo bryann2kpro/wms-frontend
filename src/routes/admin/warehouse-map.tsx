@@ -27,8 +27,12 @@ import {
 } from "@/components/ui/tooltip";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
-import { BINS_QUERY, type BinsQueryData } from "@/lib/graphql/bins";
-import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
+import {
+	RACKS_QUERY,
+	RACK_UTILIZATION_QUERY,
+	type RacksQueryData,
+	type RackUtilizationQueryData,
+} from "@/lib/graphql/racks";
 import {
 	WAREHOUSES_QUERY,
 	type WarehousesQueryData,
@@ -56,8 +60,6 @@ type RackCell = {
 };
 
 type RackCapacity = {
-	binTotal: number;
-	binOccupied: number;
 	volCapacity: number;
 	volCurrent: number;
 	weightCapacity: number;
@@ -158,43 +160,24 @@ function WarehouseMapComponent() {
 		);
 	}, [allRacks, effectiveWarehouseId, warehouseZoneIds]);
 
-	const allRackIds = useMemo(() => racks.map((r) => r.rackId), [racks]);
-
-	const { data: binsData } = useQuery({
-		queryKey: [...qk.bins.all, "warehouse-map", effectiveWarehouseId] as const,
-		queryFn: () =>
-			gqlRequest<BinsQueryData>(BINS_QUERY, {
-				filter: { rackIds: allRackIds },
-				pageSize: 50000,
-				pageNumber: 1,
-			}),
-		enabled: allRackIds.length > 0,
+	const { data: utilizationData } = useQuery({
+		queryKey: [...qk.racks.all, "warehouse-map-utilization"] as const,
+		queryFn: () => gqlRequest<RackUtilizationQueryData>(RACK_UTILIZATION_QUERY),
 	});
 
 	const capacityByRackId = useMemo(() => {
 		const map = new Map<string, RackCapacity>();
-		const allBins = binsData?.bins?.query ?? [];
-		for (const bin of allBins) {
-			const entry: RackCapacity = map.get(bin.rackId) ?? {
-				binTotal: 0,
-				binOccupied: 0,
-				volCapacity: 0,
-				volCurrent: 0,
-				weightCapacity: 0,
-				weightCurrent: 0,
-			};
-			entry.binTotal += 1;
-			const cv = bin.currentVolume ?? 0;
-			const cw = bin.currentWeight ?? 0;
-			if (cv > 0 || cw > 0) entry.binOccupied += 1;
-			entry.volCapacity += bin.capacityVolume ?? 0;
-			entry.volCurrent += cv;
-			entry.weightCapacity += bin.capacityWeight ?? 0;
-			entry.weightCurrent += cw;
-			map.set(bin.rackId, entry);
+		const rows = utilizationData?.rackUtilization ?? [];
+		for (const row of rows) {
+			map.set(row.rackId, {
+				volCapacity: row.volCapacity ?? 0,
+				volCurrent: row.volCurrent ?? 0,
+				weightCapacity: row.weightCapacity ?? 0,
+				weightCurrent: row.weightCurrent ?? 0,
+			});
 		}
 		return map;
-	}, [binsData]);
+	}, [utilizationData]);
 
 	const zonePurposeByZoneId = useMemo(() => {
 		const map = new Map<string, ZonePurpose>();
@@ -453,9 +436,6 @@ function WarehouseMapComponent() {
 																			{hasWt ? `${wtPct}%` : "—"}
 																		</span>
 																	</div>
-																	<p className="text-[9px] text-muted-foreground">
-																		Bins: {cap ? `${cap.binOccupied}/${cap.binTotal}` : "—"}
-																	</p>
 																</div>
 															</button>
 														</TooltipTrigger>
@@ -465,17 +445,14 @@ function WarehouseMapComponent() {
 																{cap ? (
 																	<>
 																		<p className="text-[11px] tabular-nums">
-																			Bins {cap.binOccupied}/{cap.binTotal}
+																			Vol {fmtNum(cap.volCurrent)}/{fmtNum(cap.volCapacity)} m³ ({volPct}%)
 																		</p>
 																		<p className="text-[11px] tabular-nums">
-																			Vol {fmtNum(cap.volCurrent)}/{fmtNum(cap.volCapacity)} ({volPct}%)
-																		</p>
-																		<p className="text-[11px] tabular-nums">
-																			Wt {fmtNum(cap.weightCurrent)}/{fmtNum(cap.weightCapacity)} ({wtPct}%)
+																			Wt {fmtNum(cap.weightCurrent)}/{fmtNum(cap.weightCapacity)} kg ({wtPct}%)
 																		</p>
 																	</>
 																) : (
-																	<p className="text-[11px] opacity-80">No bins configured</p>
+																	<p className="text-[11px] opacity-80">No utilization data</p>
 																)}
 															</div>
 														</TooltipContent>
@@ -531,16 +508,12 @@ function WarehouseMapComponent() {
 							<DetailCell label="Level" value={selectedCell.level} />
 							<DetailCell label="Column" value={selectedCell.column} />
 							<DetailCell
-								label="Bins"
-								value={cap ? `${cap.binOccupied} / ${cap.binTotal}` : "—"}
-							/>
-							<DetailCell
 								label="Volume Used"
-								value={hasVol ? `${fmtNum(cap!.volCurrent)} / ${fmtNum(cap!.volCapacity)}` : "—"}
+								value={hasVol ? `${fmtNum(cap!.volCurrent)} / ${fmtNum(cap!.volCapacity)} m³` : "—"}
 							/>
 							<DetailCell
 								label="Weight Used"
-								value={hasWt ? `${fmtNum(cap!.weightCurrent)} / ${fmtNum(cap!.weightCapacity)}` : "—"}
+								value={hasWt ? `${fmtNum(cap!.weightCurrent)} / ${fmtNum(cap!.weightCapacity)} kg` : "—"}
 							/>
 							<DetailCell
 								label="Utilization"
