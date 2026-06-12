@@ -811,6 +811,10 @@ export interface DeliveryOrderItemWithDetails {
 	qtyRequired: string;
 	qtyPicked: string | null;
 	qtyPacked: string | null;
+	/** Lot / batch number on the DO line (prefills return capture). */
+	lotNo: string | null;
+	/** Expiry date of the DO line lot (ISO 8601), prefills return capture. */
+	expiryDate: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
