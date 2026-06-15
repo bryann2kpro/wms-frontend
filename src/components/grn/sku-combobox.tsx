@@ -98,7 +98,13 @@ export function SkuCombobox({
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data: skusData, isLoading: loading } = useInfiniteQuery<SkusAndUomQueryData>({
+	const {
+		data: skusData,
+		isLoading: loading,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	} = useInfiniteQuery<SkusAndUomQueryData>({
 		queryKey: [...qk.skus.all, "infinite", searchTerm],
 		queryFn: async ({ pageParam }) =>
 			gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
