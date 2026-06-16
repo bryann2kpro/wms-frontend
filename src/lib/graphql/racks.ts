@@ -10,6 +10,7 @@ import type {
 export const RACK_FRAGMENT = gql`
 	fragment RackFields on Rack {
 		rackId
+		warehouseId
 		zoneId
 		areaId
 		rackRow
@@ -97,6 +98,7 @@ export type RacksQueryVariables = {
 	filter?: {
 		rackId?: string;
 		rackIds?: string[];
+		warehouseId?: string;
 		rackRow?: string;
 		rackRows?: string[];
 		rackColumn?: string;

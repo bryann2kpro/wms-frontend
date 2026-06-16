@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, Info, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowRight, Check, ChevronsUpDown, Info, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
-import {
-	WarehouseCombobox,
-	type WarehouseOption,
-} from "@/components/grn/warehouse-combobox";
+import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -22,28 +19,28 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
-import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
 	CREATE_STOCK_TRANSFER_MUTATION,
 	type CreateStockTransferLineInput,
 } from "@/lib/graphql/stock-transfer";
 import {
 	STOCK_QUANTS_QUERY,
+	type StockQuant,
 	type StockQuantsQueryData,
+	type StockQuantsQueryVariables,
 } from "@/lib/graphql/stock-quant";
-import { WAREHOUSES_QUERY, type WarehousesQueryData } from "@/lib/graphql/warehouses";
-import { ZONES_QUERY, type ZonesQueryData } from "@/lib/graphql/zones";
-import type { Rack } from "@/lib/graphql/types";
-import { toUserFriendlyMessage } from "@/lib/utils";
+import { cn, toUserFriendlyMessage } from "@/lib/utils";
+
+const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
 
 // ============================================
 // TYPES
@@ -51,6 +48,7 @@ import { toUserFriendlyMessage } from "@/lib/utils";
 
 type TransferLineItem = {
 	key: number;
+	sourceWarehouseId: string;
 	sourceRackId: string;
 	sourceRackLabel: string;
 	sourceStockQuantId: string;
@@ -100,6 +98,241 @@ function available(quantity: string, reservedQty: string): number {
 	return Number.isFinite(avail) ? avail : 0;
 }
 
+function formatStockQuantLabel(quant: StockQuant): string {
+	const avail = available(quant.quantity, quant.reservedQty);
+	const lot = quant.lotNo?.trim() ? ` · Lot ${quant.lotNo}` : "";
+	return `${quant.skuCode ?? quant.skuId}${lot} · avail ${avail}`;
+}
+
+// ============================================
+// STOCK QUANT COMBOBOX
+// ============================================
+
+type StockQuantComboboxProps = {
+	value: string;
+	onChange: (quantId: string) => void;
+	rackId: string;
+	disabled?: boolean;
+	placeholder?: string;
+};
+
+function StockQuantCombobox({
+	value,
+	onChange,
+	rackId,
+	disabled = false,
+	placeholder = "Select stock…",
+}: StockQuantComboboxProps) {
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+	const searchTerm = debouncedSearch.trim();
+
+	const {
+		data,
+		isLoading,
+		isFetching,
+		isFetchingNextPage,
+		hasNextPage,
+		fetchNextPage,
+	} = useInfiniteQuery({
+		queryKey: [
+			...qk.stockQuants.all,
+			"transfer-combobox",
+			rackId,
+			searchTerm,
+		] as const,
+		queryFn: async ({ pageParam }) =>
+			gqlRequest<StockQuantsQueryData, StockQuantsQueryVariables>(
+				STOCK_QUANTS_QUERY,
+				{
+					filter: {
+						rackId,
+						...(searchTerm ? { skuCode: searchTerm } : {}),
+					},
+					pageSize: PAGE_SIZE,
+					pageNumber: pageParam,
+				},
+			),
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => {
+			const p = lastPage.stockQuants.pagination;
+			return p.hasNextPage ? p.currentPage + 1 : undefined;
+		},
+		enabled: Boolean(rackId) && open && !disabled,
+	});
+
+	const quants = useMemo(
+		() => data?.pages.flatMap((page) => page.stockQuants.query) ?? [],
+		[data],
+	);
+
+	const { data: selectedQuantData } = useQuery({
+		queryKey: [...qk.stockQuants.all, "by-id", value] as const,
+		queryFn: () =>
+			gqlRequest<StockQuantsQueryData, StockQuantsQueryVariables>(
+				STOCK_QUANTS_QUERY,
+				{ filter: { id: value }, pageSize: 1, pageNumber: 1 },
+			),
+		enabled: Boolean(value) && !quants.some((q) => q.id === value),
+	});
+
+	const selectedFromList = quants.find((q) => q.id === value);
+	const selectedQuant =
+		selectedFromList ?? selectedQuantData?.stockQuants?.query?.[0] ?? null;
+
+	const displayLabel = selectedQuant ? formatStockQuantLabel(selectedQuant) : null;
+	const listLoading = isLoading || (isFetching && !isFetchingNextPage);
+
+	const filtered = useMemo(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return quants;
+		return quants.filter((quant) => {
+			const label = formatStockQuantLabel(quant).toLowerCase();
+			return (
+				label.includes(q) ||
+				(quant.skuCode?.toLowerCase().includes(q) ?? false) ||
+				(quant.lotNo?.toLowerCase().includes(q) ?? false)
+			);
+		});
+	}, [quants, search]);
+
+	const handleSelect = (quant: StockQuant) => {
+		if (available(quant.quantity, quant.reservedQty) <= 0) return;
+		onChange(quant.id);
+		setOpen(false);
+		setSearch("");
+	};
+
+	const handleFetchNext = useCallback(() => {
+		if (hasNextPage && !isFetchingNextPage) {
+			void fetchNextPage();
+		}
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el || !open) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) {
+					handleFetchNext();
+				}
+			},
+			{ threshold: 0.1 },
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [handleFetchNext, open, filtered.length]);
+
+	const emptyMessage = !rackId
+		? "Select a source rack first"
+		: listLoading
+			? "Loading stock…"
+			: searchTerm
+				? "No stock matches your search."
+				: "No stock in this rack";
+
+	return (
+		<Popover
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (!next) setSearch("");
+			}}
+		>
+			<PopoverTrigger asChild>
+				<Button
+					type="button"
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					disabled={disabled || !rackId}
+					className="h-9 w-full justify-between gap-1 font-normal text-sm"
+				>
+					<span className="truncate text-left">
+						{displayLabel ?? placeholder}
+					</span>
+					<ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent
+				className="z-[200] min-w-[280px] w-(--radix-popover-trigger-width) max-w-[min(92vw,560px)] p-0 shadow-md"
+				align="start"
+				onOpenAutoFocus={(e) => e.preventDefault()}
+			>
+				<div className="flex flex-col rounded-md">
+					<div className="border-b bg-muted/30 px-2 py-1.5">
+						<Input
+							placeholder="Search SKU or lot…"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							className="h-8 border-0 bg-background text-sm focus-visible:ring-2"
+							autoFocus
+						/>
+					</div>
+					<div className="max-h-[280px] overflow-y-auto overscroll-contain">
+						{listLoading && filtered.length === 0 ? (
+							<div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+								<Loader2 className="h-3.5 w-3.5 animate-spin" />
+								Loading stock…
+							</div>
+						) : filtered.length === 0 ? (
+							<div className="py-6 text-center text-xs text-muted-foreground">
+								{emptyMessage}
+							</div>
+						) : (
+							<ul className="px-1 py-1">
+								{filtered.map((quant) => {
+									const avail = available(quant.quantity, quant.reservedQty);
+									const label = formatStockQuantLabel(quant);
+									const isSelected = value === quant.id;
+									const isDisabled = avail <= 0;
+									return (
+										<li key={quant.id}>
+											<button
+												type="button"
+												title={label}
+												disabled={isDisabled}
+												className={cn(
+													"flex w-full items-start gap-1.5 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
+													isSelected && "bg-accent",
+													isDisabled &&
+														"cursor-not-allowed opacity-50 hover:bg-transparent",
+												)}
+												onMouseDown={(e) => e.preventDefault()}
+												onClick={() => handleSelect(quant)}
+											>
+												{isSelected ? (
+													<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+												) : (
+													<span className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+												)}
+												<span className="truncate">{label}</span>
+											</button>
+										</li>
+									);
+								})}
+								<li aria-hidden className="h-px">
+									<div ref={sentinelRef} className="h-px" />
+								</li>
+								{isFetchingNextPage ? (
+									<li className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+										<Loader2 className="h-3.5 w-3.5 animate-spin" />
+										Loading more…
+									</li>
+								) : null}
+							</ul>
+						)}
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 // ============================================
 // COMPONENT
 // ============================================
@@ -109,6 +342,7 @@ let lineKeyCounter = 0;
 function createEmptyLine(): TransferLineItem {
 	return {
 		key: ++lineKeyCounter,
+		sourceWarehouseId: "",
 		sourceRackId: "",
 		sourceRackLabel: "",
 		sourceStockQuantId: "",
@@ -126,48 +360,6 @@ export function StockTransferFormDialog({
 }: StockTransferFormDialogProps) {
 	const [remarks, setRemarks] = useState("");
 	const [items, setItems] = useState<TransferLineItem[]>([createEmptyLine()]);
-
-	// Warehouses for the destination selector.
-	const whVars = { pageSize: 500, pageNumber: 1 };
-	const { data: whData, refetch: refetchWarehouses } = useQuery({
-		queryKey: [...qk.warehouses.all, whVars],
-		queryFn: () => gqlRequest<WarehousesQueryData>(WAREHOUSES_QUERY, whVars),
-		enabled: open,
-	});
-	const warehouses = whData?.warehouses?.query ?? [];
-
-	// Zones map zoneId -> warehouseId so racks can be grouped by warehouse.
-	const zonesVars = { pageSize: 1000, pageNumber: 1 };
-	const { data: zonesData } = useQuery({
-		queryKey: [...qk.zones.all, "warehouse-map", zonesVars],
-		queryFn: () => gqlRequest<ZonesQueryData>(ZONES_QUERY, zonesVars),
-		enabled: open,
-	});
-	const zoneToWarehouse = useMemo(() => {
-		const map = new Map<string, string>();
-		for (const z of zonesData?.zones?.query ?? []) {
-			map.set(z.zoneId, z.warehouseId);
-		}
-		return map;
-	}, [zonesData]);
-
-	// All racks (with zoneId) so the destination rack list can be filtered by warehouse.
-	const racksVars = { pageSize: 1000, pageNumber: 1 };
-	const { data: racksData } = useQuery({
-		queryKey: [...qk.racks.all, "transfer-all", racksVars],
-		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVars),
-		enabled: open,
-	});
-	const allRacks = racksData?.racks?.query ?? [];
-
-	/** Resolve the warehouse a rack belongs to via its zone (null when unzoned). */
-	const rackToWarehouse = useMemo(() => {
-		const map = new Map<string, string | null>();
-		for (const r of allRacks) {
-			map.set(r.rackId, r.zoneId ? zoneToWarehouse.get(r.zoneId) ?? null : null);
-		}
-		return map;
-	}, [allRacks, zoneToWarehouse]);
 
 	const { mutateAsync: createMutation, isPending: loading } = useMutation({
 		mutationFn: (input: object) =>
@@ -208,6 +400,8 @@ export function StockTransferFormDialog({
 		if (items.length === 0) return "At least one line item is required.";
 		for (let i = 0; i < items.length; i++) {
 			const item = items[i];
+			if (!item.sourceWarehouseId.trim())
+				return `Row ${i + 1}: Please select a source warehouse.`;
 			if (!item.sourceRackId.trim())
 				return `Row ${i + 1}: Please select a source rack.`;
 			if (!item.sourceStockQuantId.trim())
@@ -300,12 +494,7 @@ export function StockTransferFormDialog({
 									item={item}
 									rowIndex={rowIndex}
 									canRemove={items.length > 1}
-									warehouses={warehouses}
-									allRacks={allRacks}
-									rackToWarehouse={rackToWarehouse}
-									onWarehouseCreated={async () => {
-										await refetchWarehouses();
-									}}
+									dialogOpen={open}
 									onUpdate={(updates) => updateItem(item.key, updates)}
 									onRemove={() => removeItem(item.key)}
 								/>
@@ -354,10 +543,7 @@ type TransferLineEditorProps = {
 	item: TransferLineItem;
 	rowIndex: number;
 	canRemove: boolean;
-	warehouses: WarehouseOption[];
-	allRacks: Rack[];
-	rackToWarehouse: Map<string, string | null>;
-	onWarehouseCreated: () => void | Promise<void>;
+	dialogOpen: boolean;
 	onUpdate: (updates: Partial<TransferLineItem>) => void;
 	onRemove: () => void;
 };
@@ -366,53 +552,44 @@ function TransferLineEditor({
 	item,
 	rowIndex,
 	canRemove,
-	warehouses,
-	allRacks,
-	rackToWarehouse,
-	onWarehouseCreated,
+	dialogOpen,
 	onUpdate,
 	onRemove,
 }: TransferLineEditorProps) {
-	// Stock quants available in the selected source rack.
-	const quantsVars = useMemo(
-		() => ({
-			filter: { rackId: item.sourceRackId },
-			pageSize: 200,
-			pageNumber: 1,
-		}),
-		[item.sourceRackId],
-	);
-	const { data: quantsData, isFetching: quantsLoading } = useQuery({
-		queryKey: qk.stockQuants.list(quantsVars),
+	const { data: selectedQuantData } = useQuery({
+		queryKey: [...qk.stockQuants.all, "line-selected", item.sourceStockQuantId] as const,
 		queryFn: () =>
-			gqlRequest<StockQuantsQueryData>(STOCK_QUANTS_QUERY, quantsVars),
-		enabled: !!item.sourceRackId,
+			gqlRequest<StockQuantsQueryData, StockQuantsQueryVariables>(
+				STOCK_QUANTS_QUERY,
+				{
+					filter: { id: item.sourceStockQuantId },
+					pageSize: 1,
+					pageNumber: 1,
+				},
+			),
+		enabled: !!item.sourceStockQuantId,
 	});
-	const quants = quantsData?.stockQuants?.query ?? [];
-	const selectedQuant = quants.find((q) => q.id === item.sourceStockQuantId);
+
+	const selectedQuant = selectedQuantData?.stockQuants?.query?.[0] ?? null;
 	const availableQty = selectedQuant
 		? available(selectedQuant.quantity, selectedQuant.reservedQty)
 		: 0;
 
-	// Destination racks filtered to the selected destination warehouse.
-	const destRacks = useMemo(() => {
-		if (!item.destWarehouseId) return [] as Rack[];
-		return allRacks.filter(
-			(r) => rackToWarehouse.get(r.rackId) === item.destWarehouseId,
-		);
-	}, [allRacks, rackToWarehouse, item.destWarehouseId]);
-
-	// Banner: same warehouse vs different warehouse.
-	const sourceWarehouseId = item.sourceRackId
-		? rackToWarehouse.get(item.sourceRackId) ?? null
-		: null;
-	const showBanner =
-		!!item.sourceRackId && !!item.destWarehouseId && sourceWarehouseId !== null;
+	const showBanner = !!item.sourceWarehouseId && !!item.destWarehouseId;
 	const isSameWarehouse =
-		showBanner && sourceWarehouseId === item.destWarehouseId;
+		showBanner && item.sourceWarehouseId === item.destWarehouseId;
+
+	function handleSourceWarehouseChange(warehouseId: string) {
+		onUpdate({
+			sourceWarehouseId: warehouseId,
+			sourceRackId: "",
+			sourceRackLabel: "",
+			sourceStockQuantId: "",
+			quantity: "",
+		});
+	}
 
 	function handleSourceRackChange(rackId: string, rackLabel?: string) {
-		// Changing source rack resets the picked quant.
 		onUpdate({
 			sourceRackId: rackId,
 			sourceRackLabel: rackLabel ?? "",
@@ -432,13 +609,11 @@ function TransferLineEditor({
 		}
 		const num = Number(value);
 		if (Number.isNaN(num)) return;
-		// Clamp to available.
 		const clamped = num > availableQty ? String(availableQty) : value;
 		onUpdate({ quantity: clamped });
 	}
 
 	function handleDestWarehouseChange(warehouseId: string) {
-		// Changing warehouse resets the dest rack.
 		onUpdate({
 			destWarehouseId: warehouseId,
 			destRackId: "",
@@ -470,55 +645,47 @@ function TransferLineEditor({
 				<div className="space-y-2 rounded-md border border-border/60 p-3">
 					<p className="text-xs font-semibold text-foreground">From (source)</p>
 					<div className="space-y-1.5">
+						<Label className="text-xs text-muted-foreground">
+							Source warehouse
+						</Label>
+						<WarehouseCombobox
+							value={item.sourceWarehouseId}
+							onChange={handleSourceWarehouseChange}
+							enabled={dialogOpen}
+							placeholder="Select source warehouse…"
+						/>
+					</div>
+					<div className="space-y-1.5">
 						<Label className="text-xs text-muted-foreground">Source rack</Label>
 						<RackLocationCombobox
+							key={item.sourceWarehouseId || "no-warehouse"}
+							remoteSearch
+							warehouseId={item.sourceWarehouseId || undefined}
+							enabled={dialogOpen}
 							value={item.sourceRackId}
 							onChange={handleSourceRackChange}
-							remoteSearch
+							disabled={!item.sourceWarehouseId}
 							fallbackLabel={item.sourceRackLabel || null}
-							placeholder="Select source rack…"
+							placeholder={
+								!item.sourceWarehouseId
+									? "Select a warehouse first"
+									: "Select source rack…"
+							}
 						/>
 					</div>
 					<div className="space-y-1.5">
 						<Label className="text-xs text-muted-foreground">Stock to move</Label>
-						<Select
-							value={item.sourceStockQuantId || "__none__"}
-							onValueChange={(val) =>
-								handleQuantChange(val === "__none__" ? "" : val)
-							}
+						<StockQuantCombobox
+							value={item.sourceStockQuantId}
+							onChange={handleQuantChange}
+							rackId={item.sourceRackId}
 							disabled={!item.sourceRackId}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue
-									placeholder={
-										!item.sourceRackId
-											? "Select a source rack first"
-											: quantsLoading
-												? "Loading stock…"
-												: quants.length === 0
-													? "No stock in this rack"
-													: "Select stock…"
-									}
-								/>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__none__">Select stock…</SelectItem>
-								{quants.map((q) => {
-									const avail = available(q.quantity, q.reservedQty);
-									const lot = q.lotNo?.trim() ? ` · Lot ${q.lotNo}` : "";
-									return (
-										<SelectItem
-											key={q.id}
-											value={q.id}
-											disabled={avail <= 0}
-										>
-											{q.skuCode ?? q.skuId}
-											{lot} · avail {avail}
-										</SelectItem>
-									);
-								})}
-							</SelectContent>
-						</Select>
+							placeholder={
+								!item.sourceRackId
+									? "Select a source rack first"
+									: "Select stock…"
+							}
+						/>
 					</div>
 					<div className="grid grid-cols-2 gap-2">
 						<div className="space-y-1.5">
@@ -556,8 +723,7 @@ function TransferLineEditor({
 						<WarehouseCombobox
 							value={item.destWarehouseId}
 							onChange={handleDestWarehouseChange}
-							warehouses={warehouses}
-							onWarehouseCreated={onWarehouseCreated}
+							enabled={dialogOpen}
 							placeholder="Select destination warehouse…"
 						/>
 					</div>
@@ -566,7 +732,9 @@ function TransferLineEditor({
 							Destination rack
 						</Label>
 						<RackLocationCombobox
-							racks={destRacks}
+							remoteSearch
+							warehouseId={item.destWarehouseId || undefined}
+							enabled={dialogOpen}
 							value={item.destRackId}
 							onChange={(rackId, rackLabel) =>
 								onUpdate({
