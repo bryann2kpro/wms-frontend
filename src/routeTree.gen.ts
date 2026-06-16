@@ -404,8 +404,8 @@ export interface FileRoutesByFullPath {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/returns': typeof AdminReturnsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -466,8 +466,8 @@ export interface FileRoutesByTo {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/returns': typeof AdminReturnsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -529,8 +529,8 @@ export interface FileRoutesById {
   '/admin/racks': typeof AdminRacksRoute
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
-  '/admin/returns': typeof AdminReturnsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -593,8 +593,8 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
-    | '/admin/returns'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -655,8 +655,8 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
-    | '/admin/returns'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -717,8 +717,8 @@ export interface FileRouteTypes {
     | '/admin/racks'
     | '/admin/rbac'
     | '/admin/reports'
-    | '/admin/returns'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -1234,8 +1234,8 @@ interface AdminRouteRouteChildren {
   AdminRacksRoute: typeof AdminRacksRoute
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
-  AdminReturnsRoute: typeof AdminReturnsRoute
   AdminReservationsRoute: typeof AdminReservationsRoute
+  AdminReturnsRoute: typeof AdminReturnsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminSetupAreaRoute: typeof AdminSetupAreaRoute
@@ -1277,8 +1277,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRacksRoute: AdminRacksRoute,
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
-  AdminReturnsRoute: AdminReturnsRoute,
   AdminReservationsRoute: AdminReservationsRoute,
+  AdminReturnsRoute: AdminReturnsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminSetupAreaRoute: AdminSetupAreaRoute,
