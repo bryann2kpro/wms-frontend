@@ -20,6 +20,7 @@ import {
 	Shield,
 	Tag,
 	Truck,
+	Undo2,
 	Users,
 	Warehouse,
 } from "lucide-react";
@@ -152,6 +153,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		href: "/admin/exceptions",
 		icon: PackageSearch,
 		allowedPermission: ["Exception"],
+		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-returns",
+		title: "Returns",
+		href: "/admin/returns",
+		icon: Undo2,
+		allowedPermission: ["Return", "Inventory"],
 		variant: "default",
 		group: "operations",
 	},
