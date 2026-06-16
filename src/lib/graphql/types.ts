@@ -235,6 +235,7 @@ export interface UpdateStockUnitInput {
 
 export interface Rack {
 	rackId: string;
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow: string;
@@ -269,6 +270,7 @@ export interface RackUtilization {
 }
 
 export interface CreateRackInput {
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow: string;
@@ -288,6 +290,7 @@ export interface CreateRackInput {
 }
 
 export interface UpdateRackInput {
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow?: string;
@@ -1212,7 +1215,7 @@ export interface UpdatePickingCriteriaInput {
 
 export type StockTransferType = "BIN_TO_BIN" | "WAREHOUSE_TO_WAREHOUSE";
 
-export type StockTransferStatus = "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
+export type StockTransferStatus = "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
 
 export interface StockTransferItemRack {
 	rackId: string;

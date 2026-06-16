@@ -14,7 +14,15 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { BinTransferQuickForm } from "@/components/stock-transfer/bin-transfer-quick-form";
 import { StockTransferFormDialog } from "@/components/stock-transfer/stock-transfer-form-dialog";
+import {
+	TransferDraftActions,
+	dashboardAccentButtonProps,
+	transferTableEmptyCellClassName,
+	transferTableMonoCellClassName,
+	transferTableWrapperClassName,
+} from "@/components/stock-transfer/stock-transfer-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,8 +62,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import {
+	APPROVE_STOCK_TRANSFER_MUTATION,
 	CANCEL_STOCK_TRANSFER_MUTATION,
 	RECEIVE_STOCK_TRANSFER_MUTATION,
+	REJECT_STOCK_TRANSFER_MUTATION,
 	STOCK_TRANSFERS_QUERY,
 	type StockTransfersQueryData,
 } from "@/lib/graphql/stock-transfer";
@@ -77,9 +87,9 @@ export const Route = createFileRoute("/admin/stock-transfer")({
 	head: () => ({
 		meta: [
 			{
-				title: "Bin to Bin Transfer - SME Edaran WMS",
+				title: "Bin to Bin - SME Edaran WMS",
 				description:
-					"Create and track bin-to-bin and warehouse-to-warehouse stock transfers.",
+					"Internal bin transfers and warehouse moves with draft approval.",
 			},
 		],
 	}),
@@ -114,6 +124,13 @@ function rackLabel(
 }
 
 function StatusBadge({ status }: { status: StockTransferStatus }) {
+	if (status === "DRAFT") {
+		return (
+			<Badge className="border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-400">
+				Draft
+			</Badge>
+		);
+	}
 	if (status === "IN_TRANSIT") {
 		return (
 			<Badge className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400">
@@ -168,6 +185,11 @@ function StockTransferComponent() {
 		pageSize,
 		pageNumber: page,
 	};
+	const draftsVars = {
+		filter: { status: "DRAFT" as const, sortBy: "CREATED_AT", sortOrder: "DESC" },
+		pageSize: 100,
+		pageNumber: 1,
+	};
 	const {
 		data: queryData,
 		isLoading: loading,
@@ -176,16 +198,45 @@ function StockTransferComponent() {
 		queryFn: () =>
 			gqlRequest<StockTransfersQueryData>(STOCK_TRANSFERS_QUERY, queryVars),
 	});
+	const {
+		data: draftsData,
+		isLoading: draftsLoading,
+		refetch: refetchDrafts,
+	} = useQuery({
+		queryKey: qk.stockTransfers.list(draftsVars),
+		queryFn: () =>
+			gqlRequest<StockTransfersQueryData>(STOCK_TRANSFERS_QUERY, draftsVars),
+	});
 
 	const transfers = queryData?.stockTransfers?.query ?? [];
+	const draftTransfers = draftsData?.stockTransfers?.query ?? [];
 	const pagination = queryData?.stockTransfers?.pagination;
 	const totalPages = pagination?.totalPages ?? 1;
 
 	function invalidate() {
 		queryClient.invalidateQueries({ queryKey: qk.stockTransfers.all });
-		// On-hand stock changes after a receive/cancel.
 		queryClient.invalidateQueries({ queryKey: qk.stockQuants.all });
 	}
+
+	const { mutateAsync: approveMutation, isPending: approving } = useMutation({
+		mutationFn: (id: string) =>
+			gqlRequest(APPROVE_STOCK_TRANSFER_MUTATION, { id }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: () => {
+			toast.success("Transfer approved and stock moved");
+			invalidate();
+		},
+	});
+
+	const { mutateAsync: rejectMutation, isPending: rejecting } = useMutation({
+		mutationFn: (id: string) =>
+			gqlRequest(REJECT_STOCK_TRANSFER_MUTATION, { id }),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: () => {
+			toast.success("Draft transfer rejected");
+			invalidate();
+		},
+	});
 
 	const { mutateAsync: receiveMutation, isPending: receiving } = useMutation({
 		mutationFn: (id: string) =>
@@ -210,6 +261,11 @@ function StockTransferComponent() {
 		},
 	});
 
+	function invalidateDrafts() {
+		invalidate();
+		void refetchDrafts();
+	}
+
 	async function handleConfirmCancel() {
 		if (!cancelTarget) return;
 		const reason = cancelReason.trim();
@@ -225,17 +281,137 @@ function StockTransferComponent() {
 			className="stock-transfer-page container mx-auto p-6 space-y-6"
 			aria-labelledby="stock-transfer-page-title"
 			aria-describedby="stock-transfer-page-description"
-			aria-busy={loading}
+			aria-busy={loading || draftsLoading || approving || rejecting}
 		>
 			<AdminPageHeader
 				icon={ArrowLeftRight}
-				title="Bin to Bin Transfer"
-				description="Move stock between racks. Same-warehouse moves complete instantly; cross-warehouse moves stay in transit until received."
+				title="Bin to Bin"
+				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve to move stock."
 				titleId="stock-transfer-page-title"
 				descriptionId="stock-transfer-page-description"
 			/>
 
-			<Card className="dashboard-card" style={{ animationDelay: "0ms" }}>
+			<BinTransferQuickForm
+				onDraftCreated={invalidateDrafts}
+				animationDelay="0ms"
+			/>
+
+			<Card className="dashboard-card" style={{ animationDelay: "50ms" }}>
+				<CardHeader>
+					<CardTitle style={{ fontFamily: "var(--dashboard-display)" }}>
+						Bin to Bin list
+					</CardTitle>
+					<CardDescription>
+						Draft transfers awaiting approval. Approve moves stock; reject cancels
+						the draft without moving stock.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="relative">
+					<GlobalLoadingShadow />
+					<div className={transferTableWrapperClassName}>
+						<Table aria-label="Pending transfer drafts">
+							<TableHeader>
+								<TableRow>
+									<TableHead>SKU Code</TableHead>
+									<TableHead>Description</TableHead>
+									<TableHead>Source Rack</TableHead>
+									<TableHead>Lot No</TableHead>
+									<TableHead>Destination Rack</TableHead>
+									<TableHead className="text-right">Quantity</TableHead>
+									<TableHead className="w-[200px] text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{draftTransfers.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={7}
+											className={transferTableEmptyCellClassName}
+										>
+											{draftsLoading
+												? "Loading..."
+												: "No draft transfers yet. Add a transfer using the form above."}
+										</TableCell>
+									</TableRow>
+								) : (
+									draftTransfers.map((t) => {
+										if (t.items.length === 1) {
+											const item = t.items[0];
+											return (
+												<TableRow
+													key={t.id}
+													className="transition-colors hover:bg-muted/50"
+												>
+													<TableCell className={transferTableMonoCellClassName}>
+														{item.skuCode ?? item.skuId}
+													</TableCell>
+													<TableCell className="max-w-[280px] truncate text-sm">
+														{item.skuDescription?.trim() || "—"}
+													</TableCell>
+													<TableCell className={transferTableMonoCellClassName}>
+														{rackLabel(item.sourceRack)}
+													</TableCell>
+													<TableCell className={transferTableMonoCellClassName}>
+														{item.lotNo?.trim() ? item.lotNo : "—"}
+													</TableCell>
+													<TableCell className={transferTableMonoCellClassName}>
+														{rackLabel(item.destinationRack)}
+													</TableCell>
+													<TableCell className="text-right text-sm font-medium">
+														{Number(item.quantity).toLocaleString()}
+													</TableCell>
+													<TableCell className="text-right">
+														<TransferDraftActions
+															disabled={approving || rejecting}
+															onApprove={() => approveMutation(t.id)}
+															onReject={() => rejectMutation(t.id)}
+															onView={() => setViewTransfer(t)}
+														/>
+													</TableCell>
+												</TableRow>
+											);
+										}
+
+										return (
+											<TableRow
+												key={t.id}
+												className="transition-colors hover:bg-muted/50"
+											>
+												<TableCell className={transferTableMonoCellClassName}>
+													{t.transferNo}
+												</TableCell>
+												<TableCell
+													colSpan={3}
+													className="text-sm text-muted-foreground"
+												>
+													Multi-line draft ({t.items.length} lines)
+													{t.type === "WAREHOUSE_TO_WAREHOUSE"
+														? " · cross-warehouse"
+														: ""}
+												</TableCell>
+												<TableCell />
+												<TableCell className="text-right text-sm font-medium">
+													<Badge variant="outline">{t.items.length} lines</Badge>
+												</TableCell>
+												<TableCell className="text-right">
+													<TransferDraftActions
+														disabled={approving || rejecting}
+														onApprove={() => approveMutation(t.id)}
+														onReject={() => rejectMutation(t.id)}
+														onView={() => setViewTransfer(t)}
+													/>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</CardContent>
+			</Card>
+
+			<Card className="dashboard-card" style={{ animationDelay: "100ms" }}>
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
@@ -243,8 +419,8 @@ function StockTransferComponent() {
 								Transfer records
 							</CardTitle>
 							<CardDescription>
-								Search by transfer number, filter by type and status, and open a
-								transfer to review its lines
+								Search by transfer number, filter by type and status. Use
+								Multi-line transfer for several lines or cross-warehouse moves.
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center w-full sm:w-auto">
@@ -262,15 +438,11 @@ function StockTransferComponent() {
 							</div>
 							<Button
 								type="button"
-								className="gap-2 text-white shrink-0 disabled:opacity-50"
-								style={{
-									background: "var(--dashboard-accent)",
-									borderColor: "var(--dashboard-accent)",
-								}}
+								{...dashboardAccentButtonProps}
 								onClick={() => setIsCreateOpen(true)}
 							>
 								<Plus className="h-4 w-4" aria-hidden />
-								Create Transfer
+								Multi-line transfer
 							</Button>
 						</div>
 					</div>
@@ -306,6 +478,7 @@ function StockTransferComponent() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="ALL">All statuses</SelectItem>
+								<SelectItem value="DRAFT">Draft</SelectItem>
 								<SelectItem value="IN_TRANSIT">In Transit</SelectItem>
 								<SelectItem value="COMPLETED">Completed</SelectItem>
 								<SelectItem value="CANCELLED">Cancelled</SelectItem>
@@ -315,8 +488,8 @@ function StockTransferComponent() {
 				</CardHeader>
 				<CardContent className="relative">
 					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
-						<Table>
+					<div className={transferTableWrapperClassName}>
+						<Table aria-label="Transfer records">
 							<TableHeader>
 								<TableRow>
 									<TableHead>Transfer No.</TableHead>
@@ -325,7 +498,7 @@ function StockTransferComponent() {
 									<TableHead className="text-center">Lines</TableHead>
 									<TableHead>Created By</TableHead>
 									<TableHead>Created At</TableHead>
-									<TableHead className="w-[160px] text-right">Actions</TableHead>
+									<TableHead className="w-[200px] text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -333,15 +506,18 @@ function StockTransferComponent() {
 									<TableRow>
 										<TableCell
 											colSpan={7}
-											className="text-center py-8 text-muted-foreground"
+											className={transferTableEmptyCellClassName}
 										>
 											{loading ? "Loading..." : "No stock transfers found."}
 										</TableCell>
 									</TableRow>
 								) : (
 									transfers.map((t) => (
-										<TableRow key={t.id}>
-											<TableCell className="font-mono text-sm">
+										<TableRow
+											key={t.id}
+											className="transition-colors hover:bg-muted/50"
+										>
+											<TableCell className={transferTableMonoCellClassName}>
 												{t.transferNo}
 											</TableCell>
 											<TableCell>
@@ -361,12 +537,20 @@ function StockTransferComponent() {
 											</TableCell>
 											<TableCell className="text-right">
 												<div className="flex items-center justify-end gap-1">
+													{t.status === "DRAFT" && (
+														<TransferDraftActions
+															disabled={approving || rejecting}
+															onApprove={() => approveMutation(t.id)}
+															onReject={() => rejectMutation(t.id)}
+															onView={() => setViewTransfer(t)}
+														/>
+													)}
 													{t.status === "IN_TRANSIT" && (
 														<>
 															<Button
 																variant="ghost"
 																size="icon"
-																className="text-emerald-600 hover:text-emerald-700"
+																className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
 																onClick={() => setReceiveTarget(t)}
 																title="Receive transfer"
 															>
@@ -375,7 +559,7 @@ function StockTransferComponent() {
 															<Button
 																variant="ghost"
 																size="icon"
-																className="text-destructive hover:text-destructive"
+																className="h-8 w-8 text-destructive hover:text-destructive"
 																onClick={() => {
 																	setCancelReason("");
 																	setCancelTarget(t);
@@ -386,14 +570,17 @@ function StockTransferComponent() {
 															</Button>
 														</>
 													)}
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={() => setViewTransfer(t)}
-														title="View details"
-													>
-														<Eye className="h-4 w-4" />
-													</Button>
+													{t.status !== "DRAFT" && (
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8"
+															onClick={() => setViewTransfer(t)}
+															title="View details"
+														>
+															<Eye className="h-4 w-4" />
+														</Button>
+													)}
 												</div>
 											</TableCell>
 										</TableRow>
@@ -440,7 +627,7 @@ function StockTransferComponent() {
 				onOpenChange={setIsCreateOpen}
 				onSuccess={() => {
 					setIsCreateOpen(false);
-					invalidate();
+					invalidateDrafts();
 				}}
 			/>
 
@@ -497,7 +684,7 @@ function StockTransferComponent() {
 									)}
 							</div>
 
-							<div className="rounded-lg border">
+							<div className={transferTableWrapperClassName}>
 								<Table>
 									<TableHeader>
 										<TableRow>
@@ -510,10 +697,13 @@ function StockTransferComponent() {
 									</TableHeader>
 									<TableBody>
 										{viewTransfer.items.map((item: StockTransferItem) => (
-											<TableRow key={item.id}>
+											<TableRow
+												key={item.id}
+												className="transition-colors hover:bg-muted/50"
+											>
 												<TableCell>
 													<div>
-														<p className="font-mono text-sm">
+														<p className={transferTableMonoCellClassName}>
 															{item.skuCode ?? "-"}
 														</p>
 														{item.skuDescription && (
@@ -523,7 +713,7 @@ function StockTransferComponent() {
 														)}
 													</div>
 												</TableCell>
-												<TableCell className="font-mono text-sm">
+												<TableCell className={transferTableMonoCellClassName}>
 													{item.lotNo?.trim() ? item.lotNo : "-"}
 												</TableCell>
 												<TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -532,7 +722,7 @@ function StockTransferComponent() {
 														: "-"}
 												</TableCell>
 												<TableCell>
-													<span className="flex items-center gap-1.5 font-mono text-sm whitespace-nowrap">
+													<span className={`flex items-center gap-1.5 ${transferTableMonoCellClassName} whitespace-nowrap`}>
 														{rackLabel(item.sourceRack)}
 														<ArrowRight
 															className="h-3.5 w-3.5 text-muted-foreground"
@@ -541,7 +731,7 @@ function StockTransferComponent() {
 														{rackLabel(item.destinationRack)}
 													</span>
 												</TableCell>
-												<TableCell className="text-right font-mono">
+												<TableCell className={`text-right ${transferTableMonoCellClassName}`}>
 													{item.quantity}
 												</TableCell>
 											</TableRow>
@@ -579,11 +769,7 @@ function StockTransferComponent() {
 							Cancel
 						</Button>
 						<Button
-							className="gap-2 text-white disabled:opacity-50"
-							style={{
-								background: "var(--dashboard-accent)",
-								borderColor: "var(--dashboard-accent)",
-							}}
+							{...dashboardAccentButtonProps}
 							onClick={() => receiveTarget && receiveMutation(receiveTarget.id)}
 							disabled={receiving}
 						>

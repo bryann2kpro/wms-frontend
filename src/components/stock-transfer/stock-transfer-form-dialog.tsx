@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
+import { dashboardAccentButtonProps } from "@/components/stock-transfer/stock-transfer-ui";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -366,7 +367,7 @@ export function StockTransferFormDialog({
 			gqlRequest(CREATE_STOCK_TRANSFER_MUTATION, { input }),
 		onError: (err) => toast.error(getErrorMessage(err)),
 		onSuccess: () => {
-			toast.success("Stock transfer created successfully");
+			toast.success("Stock transfer saved as draft");
 			resetForm();
 			onSuccess();
 		},
@@ -449,9 +450,8 @@ export function StockTransferFormDialog({
 						Create Bin to Bin Transfer
 					</DialogTitle>
 					<DialogDescription style={{ fontFamily: "var(--dashboard-body)" }}>
-						Move stock between rack locations. A transfer within the same
-						warehouse completes immediately; a transfer to a different warehouse
-						stays in transit until received.
+						Move stock between rack locations. Saving creates a draft — stock is
+						not moved until an approver confirms the transfer.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -519,15 +519,11 @@ export function StockTransferFormDialog({
 					</Button>
 					<Button
 						type="button"
-						className="gap-2 text-white disabled:opacity-50"
-						style={{
-							background: "var(--dashboard-accent)",
-							borderColor: "var(--dashboard-accent)",
-						}}
+						{...dashboardAccentButtonProps}
 						onClick={handleSubmit}
 						disabled={loading}
 					>
-						{loading ? "Creating…" : "Create transfer"}
+						{loading ? "Saving…" : "Save as draft"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
