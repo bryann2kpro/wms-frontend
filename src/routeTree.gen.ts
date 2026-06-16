@@ -29,6 +29,7 @@ import { Route as AdminSetupAreaRouteImport } from './routes/admin/setup-area'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReturnsRouteImport } from './routes/admin/returns'
+import { Route as AdminReservationsRouteImport } from './routes/admin/reservations'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
 import { Route as AdminRacksRouteImport } from './routes/admin/racks'
@@ -166,6 +167,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminReturnsRoute = AdminReturnsRouteImport.update({
   id: '/returns',
   path: '/returns',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReservationsRoute = AdminReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminReportsRoute = AdminReportsRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/returns': typeof AdminReturnsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -453,6 +460,7 @@ export interface FileRoutesByTo {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/returns': typeof AdminReturnsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -514,6 +522,7 @@ export interface FileRoutesById {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/returns': typeof AdminReturnsRoute
+  '/admin/reservations': typeof AdminReservationsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -576,6 +585,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/returns'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -636,6 +646,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/returns'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -696,6 +707,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/returns'
+    | '/admin/reservations'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -885,6 +897,13 @@ declare module '@tanstack/react-router' {
       path: '/returns'
       fullPath: '/admin/returns'
       preLoaderRoute: typeof AdminReturnsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reservations': {
+      id: '/admin/reservations'
+      path: '/reservations'
+      fullPath: '/admin/reservations'
+      preLoaderRoute: typeof AdminReservationsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/reports': {
@@ -1197,6 +1216,7 @@ interface AdminRouteRouteChildren {
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminReturnsRoute: typeof AdminReturnsRoute
+  AdminReservationsRoute: typeof AdminReservationsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminSetupAreaRoute: typeof AdminSetupAreaRoute
@@ -1238,6 +1258,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminReturnsRoute: AdminReturnsRoute,
+  AdminReservationsRoute: AdminReservationsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminSetupAreaRoute: AdminSetupAreaRoute,

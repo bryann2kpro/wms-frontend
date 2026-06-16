@@ -307,12 +307,25 @@ export function OutboundListCard({
 		setDateFilter("ALL");
 	}, [activeTab, statusFilter, searchTerm]);
 
+	// past-weeks: page 1 may be empty while older weeks have data — keep probing
+	const isProbingPastWeeks =
+		activeTab === "past-weeks" &&
+		!isLoading &&
+		paginatedDateKeys.length === 0 &&
+		hasNextPage;
+
 	// IntersectionObserver sentinel to auto-fetch next page
 	const handleFetchNext = useCallback(() => {
 		if (hasNextPage && !isFetchingNextPage) {
 			void fetchNextPage();
 		}
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	useEffect(() => {
+		if (isProbingPastWeeks && !isFetchingNextPage) {
+			void fetchNextPage();
+		}
+	}, [isProbingPastWeeks, isFetchingNextPage, fetchNextPage]);
 
 	useEffect(() => {
 		const el = sentinelRef.current;
@@ -934,7 +947,7 @@ export function OutboundListCard({
 										</div>
 									</TableCell>
 								</TableRow>
-							) : paginatedDateKeys.length === 0 ? (
+							) : paginatedDateKeys.length === 0 && !isProbingPastWeeks ? (
 								<TableRow>
 									<TableCell
 										colSpan={tableColCount}
@@ -963,6 +976,27 @@ export function OutboundListCard({
 										</div>
 									</TableCell>
 								</TableRow>
+							) : paginatedDateKeys.length === 0 && isProbingPastWeeks ? (
+								<>
+									<TableRow aria-live="polite" role="status">
+										<TableCell
+											colSpan={tableColCount}
+											className="px-6 py-12 text-center"
+										>
+											<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+												<Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+												Searching older deliveries…
+											</div>
+										</TableCell>
+									</TableRow>
+									<TableRow
+										ref={sentinelRef}
+										aria-hidden="true"
+										className="pointer-events-none"
+									>
+										<TableCell colSpan={tableColCount} className="py-0 h-1" />
+									</TableRow>
+								</>
 							) : (
 								<>
 									{paginatedDateKeys.flatMap((dateKey) => {

@@ -2,6 +2,7 @@ import { gql } from "graphql-request";
 import type {
 	Rack,
 	RackPaginatedResponse,
+	RackUtilization,
 	CreateRackInput,
 	UpdateRackInput,
 } from "./types";
@@ -53,6 +54,20 @@ export const RACKS_QUERY = gql`
 	}
 	${RACK_FRAGMENT}
 `;
+
+export const RACK_UTILIZATION_QUERY = gql`
+	query RackUtilization {
+		rackUtilization {
+			rackId
+			volCapacity
+			volCurrent
+			weightCapacity
+			weightCurrent
+		}
+	}
+`;
+
+export type RackUtilizationQueryData = { rackUtilization: RackUtilization[] };
 
 export const CREATE_RACK_MUTATION = gql`
 	mutation CreateRack($input: CreateRackInput!) {

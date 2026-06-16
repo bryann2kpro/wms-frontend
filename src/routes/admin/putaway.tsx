@@ -49,6 +49,11 @@ import {
 } from "@/lib/graphql/putaway";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
+import {
+	SUGGEST_INBOUND_RACK_QUERY,
+	type RackSkuCapacityGql,
+	type SuggestInboundRackQueryData,
+} from "@/lib/graphql/inbound-putaway";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import {
 	STOCK_QUANTS_QUERY,
@@ -205,6 +210,27 @@ function resolveStockQuant(
 	return matched[0];
 }
 
+/** Capacity hint for the destination rack, given the SKU's case dims and quantity to move. */
+function formatDestinationCapacityHint(
+	cap: RackSkuCapacityGql | null | undefined,
+	incomingQty: number,
+): string | null {
+	if (!cap) return null;
+	const used = cap.currentQuantity ?? 0;
+	if (cap.maxCapacity == null) {
+		if (used > 0) {
+			return `${used.toLocaleString()} carton(s) already in this rack. Add rack/SKU dimensions to see remaining capacity.`;
+		}
+		return null;
+	}
+	const available = cap.availableCapacity ?? Math.max(0, cap.maxCapacity - used);
+	let text = `${available.toLocaleString()} of ${cap.maxCapacity.toLocaleString()} carton(s) available (${used.toLocaleString()} in use)`;
+	if (incomingQty > 0 && incomingQty > available) {
+		text += ` — moving ${incomingQty.toLocaleString()} would exceed capacity`;
+	}
+	return text;
+}
+
 function getPutawayErrorMessage(err: unknown, fallback: string): string {
 	if (err && typeof err === "object") {
 		const responseErrors = (
@@ -264,6 +290,28 @@ function PutawayComponent() {
 	});
 
 	const draftLines: PutawayLineGql[] = draftsData?.putawayLines ?? [];
+
+	const {
+		data: destinationCapacityData,
+		isFetching: destinationCapacityLoading,
+	} = useQuery({
+		queryKey: [
+			...qk.putaway.all,
+			"destination-capacity",
+			selectedSkuId,
+			destinationRackId,
+		] as const,
+		queryFn: () =>
+			gqlRequest<SuggestInboundRackQueryData>(SUGGEST_INBOUND_RACK_QUERY, {
+				skuId: selectedSkuId,
+				quantity: 1,
+				forRackId: destinationRackId,
+			}),
+		enabled: !!selectedSkuId && !!destinationRackId,
+	});
+
+	const destinationCapacity: RackSkuCapacityGql | null =
+		destinationCapacityData?.suggestInboundRack?.capacityForRack ?? null;
 
 	const { mutateAsync: createPutawayDraft, isPending: createDraftLoading } =
 		useMutation({
@@ -378,6 +426,19 @@ function PutawayComponent() {
 		? stockQuantOnHand(selectedStockQuant)
 		: undefined;
 
+	const quantityNum = Number(quantity.trim());
+	const incomingQtyForCapacity =
+		Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 0;
+
+	const destinationCapacityHint = useMemo(
+		() => formatDestinationCapacityHint(destinationCapacity, incomingQtyForCapacity),
+		[destinationCapacity, incomingQtyForCapacity],
+	);
+
+	const destinationOverCapacity =
+		destinationCapacity?.availableCapacity != null &&
+		incomingQtyForCapacity > destinationCapacity.availableCapacity;
+
 	const handleAddToList = useCallback(async () => {
 		const qtyRaw = quantity.trim();
 
@@ -444,6 +505,16 @@ function PutawayComponent() {
 			return;
 		}
 
+		if (
+			destinationCapacity?.availableCapacity != null &&
+			qtyNum > destinationCapacity.availableCapacity
+		) {
+			toast.error("Not enough capacity", {
+				description: `Destination rack has ${destinationCapacity.availableCapacity.toLocaleString()} of ${destinationCapacity.maxCapacity?.toLocaleString() ?? "?"} carton(s) available; cannot move ${qtyNum.toLocaleString()}.`,
+			});
+			return;
+		}
+
 		try {
 			await createPutawayDraft({
 				input: {
@@ -463,6 +534,7 @@ function PutawayComponent() {
 		}
 	}, [
 		createPutawayDraft,
+		destinationCapacity,
 		destinationRackId,
 		quantity,
 		refetchDrafts,
@@ -726,6 +798,23 @@ function PutawayComponent() {
 								}
 								allowClear
 							/>
+							{selectedSkuId && destinationRackId ? (
+								destinationCapacityLoading && !destinationCapacityHint ? (
+									<p className="text-xs text-muted-foreground">
+										Checking capacity…
+									</p>
+								) : destinationCapacityHint ? (
+									<p
+										className={
+											destinationOverCapacity
+												? "text-xs font-medium text-destructive"
+												: "text-xs text-muted-foreground"
+										}
+									>
+										{destinationCapacityHint}
+									</p>
+								) : null
+							) : null}
 						</div>
 						<Button
 							type="button"

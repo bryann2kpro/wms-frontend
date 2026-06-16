@@ -87,4 +87,9 @@ export const qk = {
 	palletLabels: { all: ["pallet-labels"] as const },
 	pickFaceStrategies: { all: ["pick-face-strategies"] as const },
 	skuAssignments: { all: ["sku-assignments"] as const },
+	reservations: {
+		all: ["reservations"] as const,
+		list: (f: object) => ["reservations", "list", f] as const,
+	},
+	customerPriorities: { all: ["customer-priorities"] as const },
 } as const;
