@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 import {
 	SKUS_AND_UOM_QUERY,
 	CREATE_SKU_MUTATION,
+	buildSkuSearchFilter,
 	type CreateSkuInput,
 	type SkusAndUomQueryVariables,
 	type SkusAndUomQueryData,
@@ -91,28 +93,31 @@ export function SkuCombobox({
 }: SkuComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, 300);
+	const searchTerm = debouncedSearch.trim();
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
 	const {
 		data: skusData,
 		isLoading: loading,
-		fetchNextPage,
 		hasNextPage,
 		isFetchingNextPage,
+		fetchNextPage,
 	} = useInfiniteQuery<SkusAndUomQueryData>({
-		queryKey: [...qk.skus.all, "infinite", search],
-		queryFn: ({ pageParam }) =>
+		queryKey: [...qk.skus.all, "infinite", searchTerm],
+		queryFn: async ({ pageParam }) =>
 			gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
 				pageSize: 20,
 				pageNumber: Number(pageParam),
-				filter: search.trim() ? { search: search.trim() } : undefined,
+				filter: buildSkuSearchFilter(searchTerm),
 			}),
 		initialPageParam: 1,
 		getNextPageParam: (lastPage) => {
 			const p = lastPage.skus.pagination;
 			return p.hasNextPage ? p.currentPage + 1 : undefined;
 		},
+		enabled: open,
 	});
 
 	const skus = skusData?.pages.flatMap((page) => page.skus.query) ?? [];
@@ -207,7 +212,7 @@ export function SkuCombobox({
 					</Button>
 				</PopoverTrigger>
 				<PopoverContent
-					className="min-w-[280px] w-[var(--radix-popover-trigger-width)] max-w-[360px] p-0 shadow-md"
+					className="min-w-[320px] w-[var(--radix-popover-trigger-width)] max-w-[min(92vw,560px)] p-0 shadow-md"
 					align="start"
 				>
 					<div className="flex flex-col rounded-md">

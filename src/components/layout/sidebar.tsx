@@ -90,6 +90,17 @@ export function Sidebar() {
 		);
 		if (isSuperAdmin) return true;
 
+		if (link.allowedRoles?.length) {
+			const roleMatch = link.allowedRoles.some((role) =>
+				user.roles?.some((r) => r.toLowerCase() === role.toLowerCase()),
+			);
+			if (!roleMatch) return false;
+		}
+
+		if (!link.allowedPermission.length) {
+			return Boolean(link.allowedRoles?.length);
+		}
+
 		return link.allowedPermission.some(
 			(permission) =>
 				permission === "*" ||
@@ -117,7 +128,7 @@ export function Sidebar() {
 					isActive={active}
 					tooltip={link.title}
 					className={cn(
-						"border-l-4 border-transparent",
+						"border-l-4 border-transparent group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0",
 						active &&
 							"bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:border-amber-500 dark:hover:bg-amber-700",
 					)}
@@ -127,7 +138,9 @@ export function Sidebar() {
 						style={{ fontFamily: '"Figtree", sans-serif' }}
 					>
 						<link.icon className="shrink-0" />
-						<span>{link.title}</span>
+						<span className="group-data-[collapsible=icon]:hidden">
+							{link.title}
+						</span>
 					</Link>
 				</SidebarMenuButton>
 			</SidebarMenuItem>
@@ -141,7 +154,10 @@ export function Sidebar() {
 		if (!links?.length) continue;
 		const label = SIDEBAR_GROUP_LABELS[groupKey];
 		navSections.push(
-			<SidebarGroup key={groupKey} className="space-y-1">
+			<SidebarGroup
+				key={groupKey}
+				className="space-y-1 group-data-[collapsible=icon]:p-0"
+			>
 				<SidebarGroupLabel
 					className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 					style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
@@ -160,7 +176,10 @@ export function Sidebar() {
 		)
 			continue;
 		navSections.push(
-			<SidebarGroup key={groupKey} className="space-y-1">
+			<SidebarGroup
+				key={groupKey}
+				className="space-y-1 group-data-[collapsible=icon]:p-0"
+			>
 				<SidebarGroupLabel
 					className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 					style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
@@ -178,7 +197,7 @@ export function Sidebar() {
 				className="app-sidebar space-y-4 rounded-none border-r border-sidebar-border"
 				collapsible="icon"
 			>
-				<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-3 py-3">
+				<SidebarHeader className="border-b border-sidebar-border bg-muted/30 px-3 py-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
 					<div className="relative z-20 flex items-center justify-center">
 						<div className="flex flex-col">
 							<img
@@ -186,13 +205,15 @@ export function Sidebar() {
 								alt="SME Logo"
 								width={56}
 								height={56}
-								className="rounded-lg object-contain"
+								className="rounded-lg object-contain group-data-[collapsible=icon]:hidden"
 							/>
 						</div>
 					</div>
 				</SidebarHeader>
-				<SidebarContent className="px-3 py-4">
-					<div className="flex flex-col gap-6">{navSections}</div>
+				<SidebarContent className="px-3 py-4 group-data-[collapsible=icon]:overflow-y-auto group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
+					<div className="flex flex-col gap-6 group-data-[collapsible=icon]:gap-2">
+						{navSections}
+					</div>
 				</SidebarContent>
 				<SidebarRail />
 			</SidebarUi>

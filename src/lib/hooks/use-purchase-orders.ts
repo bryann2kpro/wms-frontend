@@ -263,7 +263,7 @@ export function useInfinitePurchaseOrders(
 			// past-weeks: one 7-day window per page, sliding backwards.
 			// page 1 → yesterday…7 days ago
 			// page 2 → 8…14 days ago
-			// Stops when the window contains zero raw orders OR MAX_PAST_WEEKS is hit.
+			// Stops after MAX_EMPTY_PAST_WEEKS consecutive empty windows or MAX_PAST_WEEKS.
 			const { fromDate, toDate } = getPastWeekWindow(pageNumber);
 
 			const data = await request<PurchaseOrdersByWeekQueryData>(
