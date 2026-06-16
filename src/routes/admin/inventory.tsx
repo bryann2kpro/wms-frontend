@@ -290,6 +290,7 @@ function InventoryComponent() {
 									<TableHead>Strategy</TableHead>
 									<TableHead>Expiry Date</TableHead>
 									<TableHead className="text-right">On Hand</TableHead>
+									<TableHead className="text-right">Loose Items</TableHead>
 									<TableHead className="text-right">Reserved</TableHead>
 									<TableHead className="text-right">Available</TableHead>
 									<TableHead>Unit</TableHead>
@@ -302,7 +303,7 @@ function InventoryComponent() {
 								{loading && items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={11}
+											colSpan={12}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading inventory...
@@ -311,7 +312,7 @@ function InventoryComponent() {
 								) : items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={11}
+											colSpan={12}
 											className="h-24 text-center text-muted-foreground"
 										>
 											{lowStockOnly
@@ -388,6 +389,15 @@ function InventoryComponent() {
 												</TableCell>
 												<TableCell className="text-right font-medium">
 													{Number(item.onHandQty).toLocaleString()}
+												</TableCell>
+												<TableCell className="text-right">
+													{Number(item.lossQty ?? "0") > 0 ? (
+														<span className="font-medium text-amber-600 dark:text-amber-400">
+															{Number(item.lossQty).toLocaleString()}
+														</span>
+													) : (
+														<span className="text-muted-foreground">0</span>
+													)}
 												</TableCell>
 												<TableCell className="text-right">
 													{reserved ? (
