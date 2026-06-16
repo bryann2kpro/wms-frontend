@@ -28,9 +28,24 @@ export function formatDateMedium(dateStr: string | null): string {
 }
 
 // Utility function to format dates
-export function formatDate(dateString: string): string {
+export function formatDate(
+	dateValue: string | number | Date | null | undefined,
+): string {
+	if (dateValue == null || dateValue === "") return "—";
 	try {
-		const date = new Date(dateString);
+		let date: Date;
+		if (typeof dateValue === "number") {
+			date = new Date(dateValue);
+		} else if (dateValue instanceof Date) {
+			date = dateValue;
+		} else if (typeof dateValue === "string" && /^\d+$/.test(dateValue.trim())) {
+			date = new Date(Number(dateValue));
+		} else {
+			date = new Date(dateValue);
+		}
+		if (isNaN(date.getTime())) {
+			return String(dateValue);
+		}
 		return new Intl.DateTimeFormat("en-MY", {
 			year: "numeric",
 			month: "short",
@@ -40,7 +55,7 @@ export function formatDate(dateString: string): string {
 			hour12: true,
 		}).format(date);
 	} catch {
-		return dateString;
+		return String(dateValue);
 	}
 }
 

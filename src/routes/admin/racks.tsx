@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -58,35 +57,27 @@ import {
 	type AreasQueryData,
 } from "@/lib/graphql/areas";
 import {
+	WAREHOUSES_QUERY,
+	type WarehousesQueryData,
+} from "@/lib/graphql/warehouses";
+import {
 	ZONES_QUERY,
 	type ZonesQueryData,
 } from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatDate } from "@/lib/utils";
 import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown, Upload } from "lucide-react";
-import type { Rack, Area } from "@/lib/graphql/types";
+import type { Rack } from "@/lib/graphql/types";
 import { ImportDialog } from "@/components/settings/master-data/import-dialog";
+import { RackFormDialog, formatLevel } from "@/components/racks/rack-form-dialog";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
-
-const BIN_TYPES = ["FIXED", "PICK_FACE", "RESERVE", "BULK"] as const;
-
-const formatLevel = (lvl: string | null | undefined): string => {
-	if (!lvl) return "";
-	const match = lvl.trim().match(/\d+/);
-	return match ? match[0].padStart(2, "0") : lvl.trim();
-};
 
 const formatNumericCell = (value: string | null | undefined) => {
 	const trimmed = value?.trim();
 	if (!trimmed) return <span className="opacity-30">—</span>;
 	return <span className="tabular-nums">{trimmed}</span>;
-};
-
-const toNumericInput = (value: string): string | null => {
-	const trimmed = value.trim();
-	return trimmed || null;
 };
 
 export const Route = createFileRoute("/admin/racks")({
@@ -131,6 +122,13 @@ function RacksPage() {
 		queryKey: [...qk.areas.all, "racks-page"],
 		queryFn: () => gqlRequest<AreasQueryData>(AREAS_QUERY, { pageSize: 500, pageNumber: 1 }),
 	});
+
+	const { data: whData } = useQuery({
+		queryKey: [...qk.warehouses.all, "racks-page"],
+		queryFn: () =>
+			gqlRequest<WarehousesQueryData>(WAREHOUSES_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+	const warehouses = whData?.warehouses?.query ?? [];
 
 	const { data: zonesData } = useQuery({
 		queryKey: [...qk.zones.all, "racks-page"],
@@ -482,6 +480,7 @@ function RacksPage() {
 				open={isCreateOpen}
 				onOpenChange={setIsCreateOpen}
 				areas={areas}
+				warehouses={warehouses}
 				onSubmit={(values) =>
 					createRack({
 						...values,
@@ -500,6 +499,7 @@ function RacksPage() {
 					open={!!editing}
 					onOpenChange={(open) => !open && setEditing(null)}
 					areas={areas}
+					warehouses={warehouses}
 					initial={editing}
 					onSubmit={(values) =>
 						updateRack({
@@ -526,372 +526,6 @@ function RacksPage() {
 	);
 }
 
-// ─── Form Dialog ─────────────────────────────────────────────────────────────
-
-type FormValues = {
-	rackRow: string;
-	rackColumn: string;
-	rackLevel: string;
-	binCode: string;
-	barCode: string;
-	binType: string;
-	length: string;
-	width: string;
-	height: string;
-	weight: string;
-	maxPallet: string;
-	areaId: string | null;
-	isActive: boolean;
-};
-
-function RackFormDialog({
-	open,
-	onOpenChange,
-	initial,
-	areas,
-	onSubmit,
-	loading,
-	title,
-	description,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	initial?: Rack;
-	areas: Area[];
-	onSubmit: (
-		v: Omit<FormValues, "binCode" | "barCode" | "length" | "width" | "height" | "weight" | "maxPallet"> & {
-			binCode?: string | null;
-			barCode?: string | null;
-			length?: string | null;
-			width?: string | null;
-			height?: string | null;
-			weight?: string | null;
-			maxPallet?: string | null;
-		},
-	) => void;
-	loading: boolean;
-	title: string;
-	description: string;
-}) {
-	const [rackRow, setRackRow] = useState(initial?.rackRow ?? "");
-	const [rackColumn, setRackColumn] = useState(initial?.rackColumn ?? "");
-	const [rackLevel, setRackLevel] = useState(initial?.rackLevel ?? "");
-	const [binCode, setBinCode] = useState(initial?.binCode ?? "");
-	const [barCode, setBarCode] = useState(initial?.barCode ?? "");
-	const [binType, setBinType] = useState(initial?.binType ?? "FIXED");
-	const [length, setLength] = useState(initial?.length ?? "");
-	const [width, setWidth] = useState(initial?.width ?? "");
-	const [height, setHeight] = useState(initial?.height ?? "");
-	const [weight, setWeight] = useState(initial?.weight ?? "");
-	const [maxPallet, setMaxPallet] = useState(initial?.maxPallet ?? "");
-	const [areaId, setAreaId] = useState<string | null>(initial?.areaId ?? null);
-	const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-	const [isBinCodeManuallyEdited, setIsBinCodeManuallyEdited] = useState(!!initial?.binCode);
-
-	useEffect(() => {
-		if (open) {
-			setRackRow(initial?.rackRow ?? "");
-			setRackColumn(initial?.rackColumn ?? "");
-			setRackLevel(initial?.rackLevel ?? "");
-			setBinCode(initial?.binCode ?? "");
-			setBarCode(initial?.barCode ?? "");
-			setBinType(initial?.binType ?? "FIXED");
-			setLength(initial?.length ?? "");
-			setWidth(initial?.width ?? "");
-			setHeight(initial?.height ?? "");
-			setWeight(initial?.weight ?? "");
-			setMaxPallet(initial?.maxPallet ?? "");
-			setAreaId(initial?.areaId ?? null);
-			setIsActive(initial?.isActive ?? true);
-			setIsBinCodeManuallyEdited(!!initial?.binCode);
-		}
-	}, [open, initial?.rackId]);
-
-	const handleOpenChange = (next: boolean) => {
-		if (!next) {
-			setRackRow(initial?.rackRow ?? "");
-			setRackColumn(initial?.rackColumn ?? "");
-			setRackLevel(initial?.rackLevel ?? "");
-			setBinCode(initial?.binCode ?? "");
-			setBarCode(initial?.barCode ?? "");
-			setBinType(initial?.binType ?? "FIXED");
-			setLength(initial?.length ?? "");
-			setWidth(initial?.width ?? "");
-			setHeight(initial?.height ?? "");
-			setWeight(initial?.weight ?? "");
-			setMaxPallet(initial?.maxPallet ?? "");
-			setAreaId(initial?.areaId ?? null);
-			setIsActive(initial?.isActive ?? true);
-			setIsBinCodeManuallyEdited(!!initial?.binCode);
-		}
-		onOpenChange(next);
-	};
-
-	useEffect(() => {
-		if (!isBinCodeManuallyEdited) {
-			const parts = [];
-			if (rackRow.trim()) parts.push(rackRow.trim());
-			if (rackColumn.trim()) parts.push(rackColumn.trim());
-			if (rackLevel.trim()) {
-				parts.push(formatLevel(rackLevel));
-			}
-			setBinCode(parts.join("-"));
-		}
-	}, [rackRow, rackColumn, rackLevel, isBinCodeManuallyEdited]);
-
-	const canSubmit =
-		rackRow.trim() && rackColumn.trim() && rackLevel.trim() && !loading;
-
-	return (
-		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent className="max-w-2xl rounded-2xl border-2 border-border bg-background shadow-xl">
-				<DialogHeader className="border-b bg-muted/50 px-6 py-4">
-					<DialogTitle
-						className="text-xl"
-						style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
-					>
-						{title}
-					</DialogTitle>
-					<DialogDescription style={{ fontFamily: '"Figtree", sans-serif' }}>
-						{description}
-					</DialogDescription>
-				</DialogHeader>
-				<div className="grid gap-4 px-6 py-4">
-					<div className="grid grid-cols-3 gap-3">
-						<div className="grid gap-2">
-							<Label htmlFor="rack-row" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Storage Row <span className="text-destructive">*</span>
-							</Label>
-							<Input
-								id="rack-row"
-								value={rackRow}
-								onChange={(e) => setRackRow(e.target.value)}
-								placeholder="e.g. A"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-col" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Storage Bay <span className="text-destructive">*</span>
-							</Label>
-							<Input
-								id="rack-col"
-								value={rackColumn}
-								onChange={(e) => setRackColumn(e.target.value)}
-								placeholder="e.g. A-101"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-level" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Level <span className="text-destructive">*</span>
-							</Label>
-							<Input
-								id="rack-level"
-								value={rackLevel}
-								onChange={(e) => setRackLevel(e.target.value)}
-								placeholder="e.g. 1"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-					</div>
-					<div className="grid grid-cols-2 gap-3">
-						<div className="grid gap-2">
-							<Label htmlFor="bin-code" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Bin Code
-							</Label>
-							<Input
-								id="bin-code"
-								value={binCode}
-								onChange={(e) => {
-									setBinCode(e.target.value);
-									setIsBinCodeManuallyEdited(true);
-								}}
-								placeholder="e.g. A1-L1-01"
-								className="rounded-lg border-muted-foreground/20 font-mono"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="barcode" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Barcode
-							</Label>
-							<Input
-								id="barcode"
-								value={barCode}
-								onChange={(e) => setBarCode(e.target.value)}
-								placeholder="e.g. ZZ000001"
-								className="rounded-lg border-muted-foreground/20 font-mono"
-							/>
-						</div>
-					</div>
-					<div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-						<div className="grid gap-2">
-							<Label htmlFor="rack-length" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Length (mm)
-							</Label>
-							<Input
-								id="rack-length"
-								type="number"
-								min={0}
-								step="any"
-								value={length}
-								onChange={(e) => setLength(e.target.value)}
-								placeholder="e.g. 1200"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-width" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Width (mm)
-							</Label>
-							<Input
-								id="rack-width"
-								type="number"
-								min={0}
-								step="any"
-								value={width}
-								onChange={(e) => setWidth(e.target.value)}
-								placeholder="e.g. 1000"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-height" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Height (mm)
-							</Label>
-							<Input
-								id="rack-height"
-								type="number"
-								min={0}
-								step="any"
-								value={height}
-								onChange={(e) => setHeight(e.target.value)}
-								placeholder="e.g. 2000"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-weight" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Weight (kg)
-							</Label>
-							<Input
-								id="rack-weight"
-								type="number"
-								min={0}
-								step="any"
-								value={weight}
-								onChange={(e) => setWeight(e.target.value)}
-								placeholder="e.g. 500"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="rack-max-pallet" style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Max Pallets
-							</Label>
-							<Input
-								id="rack-max-pallet"
-								type="number"
-								min={0}
-								step="any"
-								value={maxPallet}
-								onChange={(e) => setMaxPallet(e.target.value)}
-								placeholder="e.g. 2"
-								className="rounded-lg border-muted-foreground/20"
-							/>
-						</div>
-					</div>
-					<div className="grid grid-cols-2 gap-3">
-						<div className="grid gap-2">
-							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Storage Type
-							</Label>
-							<Select value={binType} onValueChange={setBinType}>
-								<SelectTrigger className="rounded-lg border-muted-foreground/20">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{BIN_TYPES.map((t) => (
-										<SelectItem key={t} value={t}>
-											{t}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="grid gap-2">
-							<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
-								Location (Area)
-							</Label>
-							<Select
-								value={areaId ?? "none"}
-								onValueChange={(v) => setAreaId(v === "none" ? null : v)}
-							>
-								<SelectTrigger className="rounded-lg border-muted-foreground/20">
-									<SelectValue placeholder="No area" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="none">No area</SelectItem>
-									{areas.map((a) => (
-										<SelectItem key={a.areaId} value={a.areaId}>
-											{a.areaCode} — {a.areaName}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-					<div className="flex items-center gap-2">
-						<Checkbox
-							id="is-active"
-							checked={isActive}
-							onCheckedChange={(v) => setIsActive(!!v)}
-						/>
-						<Label
-							htmlFor="is-active"
-							className="cursor-pointer"
-							style={{ fontFamily: '"Figtree", sans-serif' }}
-						>
-							Active
-						</Label>
-					</div>
-				</div>
-				<DialogFooter className="border-t bg-muted/20 px-6 py-3">
-					<Button
-						variant="outline"
-						onClick={() => handleOpenChange(false)}
-						className="rounded-lg"
-					>
-						Cancel
-					</Button>
-					<Button
-						disabled={!canSubmit}
-						onClick={() =>
-							onSubmit({
-								rackRow: rackRow.trim(),
-								rackColumn: rackColumn.trim(),
-								rackLevel: formatLevel(rackLevel),
-								binCode: binCode.trim() || null,
-								barCode: barCode.trim() || null,
-								binType,
-								length: toNumericInput(length),
-								width: toNumericInput(width),
-								height: toNumericInput(height),
-								weight: toNumericInput(weight),
-								maxPallet: toNumericInput(maxPallet),
-								areaId,
-								isActive,
-							})
-						}
-						className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
-					>
-						{loading ? "Saving..." : "Save"}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
-	);
-}
 
 // ─── Confirm Delete ───────────────────────────────────────────────────────────
 

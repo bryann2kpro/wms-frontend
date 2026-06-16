@@ -76,6 +76,7 @@ import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import {
 	applyRemainingQtyToLineItems,
+	remainingForSku,
 	sumHistoricalReceivedBySku,
 } from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
@@ -286,11 +287,8 @@ export type GRNLineItemForm = {
 function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	rackAllocations?: Array<{ rackId: string; quantity: number }>;
 } {
-	const netQty = Math.max(
-		0,
-		(Number(item.carton) || 0) - (Number(item.loss) || 0),
-	);
-	if (netQty <= 0) return {};
+	const cartonQty = Math.max(0, Number(item.carton) || 0);
+	if (cartonQty <= 0) return {};
 
 	if (item.rackAllocations && item.rackAllocations.length > 1) {
 		return {
@@ -303,7 +301,7 @@ function buildGrnItemRackPayload(item: GRNLineItemForm): {
 
 	const rackId = item.rackId?.trim();
 	if (!rackId) return {};
-	return { rackAllocations: [{ rackId, quantity: netQty }] };
+	return { rackAllocations: [{ rackId, quantity: cartonQty }] };
 }
 
 function formatPutawayPlanHint(
@@ -833,7 +831,7 @@ function GRNLineRow({
 	};
 
 	const canRecommendRack =
-		!!item.skuCode?.trim() && netQty > 0 && !!putawayPlan?.allocations.length;
+		!!item.skuCode?.trim() && inboundQty > 0 && !!putawayPlan?.allocations.length;
 
 	return (
 		<div className="group relative overflow-hidden rounded-xl border border-border/60 bg-card transition-all hover:border-border/90 hover:shadow-sm">
@@ -853,12 +851,24 @@ function GRNLineRow({
 							<SkuCombobox
 								value={skuValue}
 								onChange={(v: SkuLineValue) => {
+									const nextSkuCode = v.skuCode ?? "";
+									// CREATE-only: prefill carton with remaining PO qty (expected −
+									// already received) when ASN data is present. poAsnLines is undefined
+									// in edit mode, so this never affects edits. Fall back to 1.
+									const remaining = poAsnLines
+										? remainingForSku(
+												nextSkuCode,
+												poAsnLines,
+												poHistoricalReceivedBySku ?? new Map(),
+											)
+										: 0;
 									const newItems = [...items];
 									newItems[index] = {
 										...newItems[index],
-										skuCode: v.skuCode ?? "",
+										skuCode: nextSkuCode,
 										description: v.description ?? "",
 										uom: v.uom ?? "",
+										carton: remaining > 0 ? remaining : 1,
 										rackId: "",
 										rackAllocations: undefined,
 										rackAutoSuggested: false,
@@ -1041,12 +1051,19 @@ function GRNLineRow({
 										/>
 									</div>
 								</div>
-								{netQty > 0 ? (
+								{inboundQty > 0 || lossQty > 0 ? (
 									<p className="font-mono text-[10px] text-muted-foreground">
-										Net receive:{" "}
 										<span className="font-semibold text-foreground">
-											{netQty} {uomLabel ?? "CTN"}
+											{inboundQty} {uomLabel ?? "CTN"}
 										</span>
+										{lossQty > 0 ? (
+											<>
+												{" "}+{" "}
+												<span className="font-semibold text-amber-600">
+													{lossQty} loose item{lossQty !== 1 ? "s" : ""}
+												</span>
+											</>
+										) : null}
 									</p>
 								) : null}
 							</div>
@@ -1119,17 +1136,13 @@ function GRNLineRow({
 								loadingPlaceholder="Suggesting rack…"
 								onChange={(rackId, rackLabel) => {
 									const newItems = [...items];
-									const netQty = Math.max(
-										0,
-										(Number(newItems[index].carton) || 0) -
-											(Number(newItems[index].loss) || 0),
-									);
+									const cartonQty = Math.max(0, Number(newItems[index].carton) || 0);
 									newItems[index] = {
 										...newItems[index],
 										rackId,
 										rackAllocations:
-											rackId && netQty > 0
-												? [{ rackId, quantity: netQty, rackLabel }]
+											rackId && cartonQty > 0
+												? [{ rackId, quantity: cartonQty, rackLabel }]
 												: [],
 										rackAutoSuggested: false,
 									};
@@ -1298,7 +1311,7 @@ function GRNLineRow({
 										type="button"
 										className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
 										onClick={() => {
-											const remaining = Math.max(0, netQty - totalAllocQty);
+											const remaining = Math.max(0, inboundQty - totalAllocQty);
 											const newAllocations = [
 												...(item.rackAllocations ?? []),
 												{ rackId: "", quantity: remaining, rackLabel: "" },
@@ -1319,12 +1332,12 @@ function GRNLineRow({
 									<span
 										className={cn(
 											"font-mono text-[11px]",
-											totalAllocQty === netQty
+											totalAllocQty === inboundQty
 												? "text-green-600 dark:text-green-400"
 												: "text-destructive",
 										)}
 									>
-										{totalAllocQty} / {netQty} {uomLabel ?? "CTN"}
+										{totalAllocQty} / {inboundQty} {uomLabel ?? "CTN"}
 									</span>
 								</div>
 							</div>
@@ -1962,7 +1975,8 @@ export function GrnFormDialog({
 														htmlFor={field.name}
 														style={{ fontFamily: "var(--dashboard-body)" }}
 													>
-														End User PO
+														End User PO{" "}
+														<span className="text-destructive">*</span>
 													</FieldLabel>
 													<Input
 														id={field.name}

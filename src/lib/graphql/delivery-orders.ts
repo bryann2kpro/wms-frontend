@@ -14,6 +14,7 @@ import type {
 	PurchaseOrderListResult,
 	PurchaseOrderStatus,
 } from "@/data/purchase-orders.types";
+import type { ReturnLineInput } from "./returns";
 
 // ---------------------------------------------------------------------------
 // Fragments
@@ -102,6 +103,8 @@ export const SUBMIT_DELIVERY_PROOF_MUTATION = gql`
 		$fileName: String!
 		$fileSizeBytes: Int!
 		$mimeType: String!
+		$returns: [ReturnLineInput!]
+		$returnNotes: String
 	) {
 		submitDeliveryProof(
 			doId: $doId
@@ -109,6 +112,8 @@ export const SUBMIT_DELIVERY_PROOF_MUTATION = gql`
 			fileName: $fileName
 			fileSizeBytes: $fileSizeBytes
 			mimeType: $mimeType
+			returns: $returns
+			returnNotes: $returnNotes
 		) {
 			...DeliveryOrderFields
 		}
@@ -129,6 +134,8 @@ export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
 		qtyRequired
 		qtyPicked
 		qtyPacked
+		lotNo
+		expiryDate
 		createdAt
 		updatedAt
 		createdBy
@@ -304,6 +311,9 @@ export type SubmitDeliveryProofMutationVariables = {
 	fileName: string;
 	fileSizeBytes: number;
 	mimeType: string;
+	/** Optional returned goods captured at the outlet (created atomically with the DELIVERED flip). */
+	returns?: ReturnLineInput[] | null;
+	returnNotes?: string | null;
 };
 
 export type SubmitDeliveryProofMutationData = {

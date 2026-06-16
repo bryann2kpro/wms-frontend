@@ -21,6 +21,7 @@ import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-clien
 import { Route as AdminWarehouseMapRouteImport } from './routes/admin/warehouse-map'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
 import { Route as AdminTransportRouteImport } from './routes/admin/transport'
+import { Route as AdminStockTransferRouteImport } from './routes/admin/stock-transfer'
 import { Route as AdminStockQuantRouteImport } from './routes/admin/stock-quant'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
@@ -28,6 +29,7 @@ import { Route as AdminSkuAssignmentsRouteImport } from './routes/admin/sku-assi
 import { Route as AdminSetupAreaRouteImport } from './routes/admin/setup-area'
 import { Route as AdminSettlementRouteImport } from './routes/admin/settlement'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminReturnsRouteImport } from './routes/admin/returns'
 import { Route as AdminReservationsRouteImport } from './routes/admin/reservations'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminRbacRouteImport } from './routes/admin/rbac'
@@ -128,6 +130,11 @@ const AdminTransportRoute = AdminTransportRouteImport.update({
   path: '/transport',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminStockTransferRoute = AdminStockTransferRouteImport.update({
+  id: '/stock-transfer',
+  path: '/stock-transfer',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminStockQuantRoute = AdminStockQuantRouteImport.update({
   id: '/stock-quant',
   path: '/stock-quant',
@@ -161,6 +168,11 @@ const AdminSettlementRoute = AdminSettlementRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReturnsRoute = AdminReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminReservationsRoute = AdminReservationsRouteImport.update({
@@ -393,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -400,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -453,6 +467,7 @@ export interface FileRoutesByTo {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -460,6 +475,7 @@ export interface FileRoutesByTo {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -514,6 +530,7 @@ export interface FileRoutesById {
   '/admin/rbac': typeof AdminRbacRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reservations': typeof AdminReservationsRoute
+  '/admin/returns': typeof AdminReturnsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/settlement': typeof AdminSettlementRouteWithChildren
   '/admin/setup-area': typeof AdminSetupAreaRoute
@@ -521,6 +538,7 @@ export interface FileRoutesById {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -576,6 +594,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -583,6 +602,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -636,6 +656,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -643,6 +664,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -696,6 +718,7 @@ export interface FileRouteTypes {
     | '/admin/rbac'
     | '/admin/reports'
     | '/admin/reservations'
+    | '/admin/returns'
     | '/admin/settings'
     | '/admin/settlement'
     | '/admin/setup-area'
@@ -703,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -831,6 +855,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTransportRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/stock-transfer': {
+      id: '/admin/stock-transfer'
+      path: '/stock-transfer'
+      fullPath: '/admin/stock-transfer'
+      preLoaderRoute: typeof AdminStockTransferRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/stock-quant': {
       id: '/admin/stock-quant'
       path: '/stock-quant'
@@ -878,6 +909,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/returns': {
+      id: '/admin/returns'
+      path: '/returns'
+      fullPath: '/admin/returns'
+      preLoaderRoute: typeof AdminReturnsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/reservations': {
@@ -1197,6 +1235,7 @@ interface AdminRouteRouteChildren {
   AdminRbacRoute: typeof AdminRbacRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminReservationsRoute: typeof AdminReservationsRoute
+  AdminReturnsRoute: typeof AdminReturnsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSettlementRoute: typeof AdminSettlementRouteWithChildren
   AdminSetupAreaRoute: typeof AdminSetupAreaRoute
@@ -1204,6 +1243,7 @@ interface AdminRouteRouteChildren {
   AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminStockQuantRoute: typeof AdminStockQuantRoute
+  AdminStockTransferRoute: typeof AdminStockTransferRoute
   AdminTransportRoute: typeof AdminTransportRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
   AdminWarehouseMapRoute: typeof AdminWarehouseMapRoute
@@ -1238,6 +1278,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRbacRoute: AdminRbacRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminReservationsRoute: AdminReservationsRoute,
+  AdminReturnsRoute: AdminReturnsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSettlementRoute: AdminSettlementRouteWithChildren,
   AdminSetupAreaRoute: AdminSetupAreaRoute,
@@ -1245,6 +1286,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminStockQuantRoute: AdminStockQuantRoute,
+  AdminStockTransferRoute: AdminStockTransferRoute,
   AdminTransportRoute: AdminTransportRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
   AdminWarehouseMapRoute: AdminWarehouseMapRoute,

@@ -20,6 +20,7 @@ import {
 	Shield,
 	Tag,
 	Truck,
+	Undo2,
 	Users,
 	Warehouse,
 } from "lucide-react";
@@ -156,6 +157,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "operations",
 	},
 	{
+		key: "sidebar-returns",
+		title: "Returns",
+		href: "/admin/returns",
+		icon: Undo2,
+		allowedPermission: ["Return", "Inventory"],
+		variant: "default",
+		group: "operations",
+	},
+	{
 		key: "sidebar-inventory",
 		title: "Inventory",
 		href: "/admin/inventory",
@@ -228,9 +238,9 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "warehouse setup",
 	},
 	{
-		key: "sidebar-putaway",
+		key: "sidebar-stock-transfer",
 		title: "Bin to Bin",
-		href: "/admin/putaway",
+		href: "/admin/stock-transfer",
 		icon: ArrowLeftRight,
 		allowedPermission: ["Inventory"],
 		variant: "default",

@@ -235,6 +235,7 @@ export interface UpdateStockUnitInput {
 
 export interface Rack {
 	rackId: string;
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow: string;
@@ -269,6 +270,7 @@ export interface RackUtilization {
 }
 
 export interface CreateRackInput {
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow: string;
@@ -288,6 +290,7 @@ export interface CreateRackInput {
 }
 
 export interface UpdateRackInput {
+	warehouseId?: string | null;
 	zoneId?: string | null;
 	areaId?: string | null;
 	rackRow?: string;
@@ -819,6 +822,10 @@ export interface DeliveryOrderItemWithDetails {
 	qtyRequired: string;
 	qtyPicked: string | null;
 	qtyPacked: string | null;
+	/** Lot / batch number on the DO line (prefills return capture). */
+	lotNo: string | null;
+	/** Expiry date of the DO line lot (ISO 8601), prefills return capture. */
+	expiryDate: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -1200,4 +1207,60 @@ export interface UpdatePickingCriteriaInput {
 	item?: string;
 	minExpiryMonth?: number;
 	updatedBy: string;
+}
+
+// ============================================
+// STOCK TRANSFER (Bin to Bin / W2W)
+// ============================================
+
+export type StockTransferType = "BIN_TO_BIN" | "WAREHOUSE_TO_WAREHOUSE";
+
+export type StockTransferStatus = "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
+
+export interface StockTransferItemRack {
+	rackId: string;
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+}
+
+export interface StockTransferItem {
+	id: string;
+	skuId: string;
+	skuCode: string | null;
+	skuDescription: string | null;
+	lotNo: string | null;
+	expiryDate: string | null;
+	quantity: string;
+	sourceStockQuantId: string;
+	sourceRackId: string;
+	sourceRack: StockTransferItemRack | null;
+	destinationRackId: string;
+	destinationRack: StockTransferItemRack | null;
+}
+
+export interface StockTransfer {
+	id: string;
+	transferNo: string;
+	type: StockTransferType;
+	status: StockTransferStatus;
+	sourceWarehouseId: string | null;
+	destinationWarehouseId: string | null;
+	remarks: string | null;
+	dispatchedAt: string | null;
+	receivedAt: string | null;
+	receivedBy: string | null;
+	cancelledAt: string | null;
+	cancelledBy: string | null;
+	cancelReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	createdByUser: AuditUser | null;
+	items: StockTransferItem[];
+}
+
+export interface StockTransferPaginatedResponse {
+	query: StockTransfer[];
+	pagination: Pagination;
 }

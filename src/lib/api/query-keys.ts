@@ -38,6 +38,12 @@ export const qk = {
 		detail: (id: string) => ["dos", id] as const,
 	},
 	exceptions: { all: ["exceptions"] as const },
+	returns: {
+		all: ["returns"] as const,
+		list: (f: object) => ["returns", "list", f] as const,
+		detail: (id: string) => ["returns", "detail", id] as const,
+		stats: ["returns", "stats"] as const,
+	},
 	stockAdjustments: {
 		all: ["stock-adjustments"] as const,
 		list: (f: object) => ["stock-adjustments", "list", f] as const,
@@ -45,6 +51,11 @@ export const qk = {
 	stockQuants: {
 		all: ["stock-quants"] as const,
 		list: (f: object) => ["stock-quants", "list", f] as const,
+	},
+	stockTransfers: {
+		all: ["stock-transfers"] as const,
+		list: (f: object) => ["stock-transfers", "list", f] as const,
+		detail: (id: string) => ["stock-transfers", "detail", id] as const,
 	},
 	putaway: {
 		all: ["putaway"] as const,

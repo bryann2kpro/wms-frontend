@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutGrid, Search, Building2 } from "lucide-react";
+import { LayoutGrid, Search, Building2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { RackFormDialog } from "@/components/racks/rack-form-dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
 	Card,
@@ -25,13 +27,17 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
+import { AREAS_QUERY, type AreasQueryData } from "@/lib/graphql/areas";
 import {
 	RACKS_QUERY,
 	RACK_UTILIZATION_QUERY,
+	CREATE_RACK_MUTATION,
 	type RacksQueryData,
 	type RackUtilizationQueryData,
+	type CreateRackMutationData,
 } from "@/lib/graphql/racks";
 import {
 	WAREHOUSES_QUERY,
@@ -99,9 +105,13 @@ export const Route = createFileRoute("/admin/warehouse-map")({
 });
 
 function WarehouseMapComponent() {
+	const queryClient = useQueryClient();
+	const { user } = useCurrentUser();
+	const createdBy = user?.id ?? "";
 	const [search, setSearch] = useState("");
 	const [selectedCode, setSelectedCode] = useState<string | null>(null);
 	const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+	const [isCreateRackOpen, setIsCreateRackOpen] = useState(false);
 
 	const { data: warehousesData } = useQuery({
 		queryKey: [...qk.warehouses.all, "warehouse-map"] as const,
@@ -137,6 +147,33 @@ function WarehouseMapComponent() {
 	// auto-select first warehouse once loaded
 	const effectiveWarehouseId =
 		selectedWarehouseId || warehouses[0]?.warehouseId || "";
+	const selectedWarehouse =
+		warehouses.find((w) => w.warehouseId === effectiveWarehouseId) ?? null;
+
+	const { data: areasData } = useQuery({
+		queryKey: [
+			...qk.areas.all,
+			"warehouse-map-racks",
+			selectedWarehouse?.warehouseName,
+		] as const,
+		queryFn: () =>
+			gqlRequest<AreasQueryData>(AREAS_QUERY, {
+				filter: { warehouseName: selectedWarehouse?.warehouseName },
+				pageSize: 500,
+				pageNumber: 1,
+			}),
+		enabled: isCreateRackOpen && !!selectedWarehouse,
+	});
+	const rackAreas = areasData?.areas?.query ?? [];
+
+	const { mutate: createRack, isPending: createRackLoading } = useMutation({
+		mutationFn: (input: object) =>
+			gqlRequest<CreateRackMutationData>(CREATE_RACK_MUTATION, { input }),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: qk.racks.all });
+			setIsCreateRackOpen(false);
+		},
+	});
 
 	const zones = useMemo(
 		() =>
@@ -152,11 +189,13 @@ function WarehouseMapComponent() {
 		[zones],
 	);
 
-	// racks: if warehouse selected, only those assigned to a zone in that warehouse
+	// racks: zone-assigned in this warehouse, or directly linked via warehouseId
 	const racks = useMemo(() => {
 		if (!effectiveWarehouseId) return allRacks;
 		return allRacks.filter(
-			(r) => r.zoneId && warehouseZoneIds.has(r.zoneId),
+			(r) =>
+				r.warehouseId === effectiveWarehouseId ||
+				(r.zoneId != null && warehouseZoneIds.has(r.zoneId)),
 		);
 	}, [allRacks, effectiveWarehouseId, warehouseZoneIds]);
 
@@ -318,6 +357,16 @@ function WarehouseMapComponent() {
 									className="pl-9"
 								/>
 							</div>
+							{selectedWarehouse && (
+								<Button
+									onClick={() => setIsCreateRackOpen(true)}
+									disabled={!createdBy}
+									className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
+								>
+									<Plus className="mr-2 h-4 w-4" />
+									Add Rack
+								</Button>
+							)}
 						</div>
 					</div>
 				</CardHeader>
@@ -335,7 +384,7 @@ function WarehouseMapComponent() {
 								{isLoading
 									? "Loading rack layout..."
 									: effectiveWarehouseId
-										? "No zone-assigned racks for this warehouse. Assign racks to zones in Settings → Racks."
+										? "No rack positions for this warehouse yet. Use Add Rack to create one."
 										: "No rack positions found."}
 							</div>
 						) : (
@@ -561,6 +610,27 @@ function WarehouseMapComponent() {
 					)}
 				</CardContent>
 			</Card>
+
+			{selectedWarehouse && (
+				<RackFormDialog
+					key={selectedWarehouse.warehouseId}
+					open={isCreateRackOpen}
+					onOpenChange={setIsCreateRackOpen}
+					areas={rackAreas}
+					warehouses={[selectedWarehouse]}
+					defaultWarehouseId={selectedWarehouse.warehouseId}
+					onSubmit={(values) =>
+						createRack({
+							...values,
+							createdBy,
+							updatedBy: createdBy,
+						})
+					}
+					loading={createRackLoading}
+					title={`Add Rack — ${selectedWarehouse.warehouseName}`}
+					description="Create a storage bin location for this warehouse. Optionally link it to an area."
+				/>
+			)}
 		</main>
 	);
 }
