@@ -21,6 +21,7 @@ import { Route as DemoApolloClientRouteImport } from './routes/demo.apollo-clien
 import { Route as AdminWarehouseMapRouteImport } from './routes/admin/warehouse-map'
 import { Route as AdminUserManagementRouteImport } from './routes/admin/user-management'
 import { Route as AdminTransportRouteImport } from './routes/admin/transport'
+import { Route as AdminStockTransferRouteImport } from './routes/admin/stock-transfer'
 import { Route as AdminStockQuantRouteImport } from './routes/admin/stock-quant'
 import { Route as AdminStockAdjustmentRouteImport } from './routes/admin/stock-adjustment'
 import { Route as AdminSkuMovementRouteImport } from './routes/admin/sku-movement'
@@ -125,6 +126,11 @@ const AdminUserManagementRoute = AdminUserManagementRouteImport.update({
 const AdminTransportRoute = AdminTransportRouteImport.update({
   id: '/transport',
   path: '/transport',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminStockTransferRoute = AdminStockTransferRouteImport.update({
+  id: '/stock-transfer',
+  path: '/stock-transfer',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminStockQuantRoute = AdminStockQuantRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -452,6 +459,7 @@ export interface FileRoutesByTo {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -512,6 +520,7 @@ export interface FileRoutesById {
   '/admin/sku-movement': typeof AdminSkuMovementRoute
   '/admin/stock-adjustment': typeof AdminStockAdjustmentRoute
   '/admin/stock-quant': typeof AdminStockQuantRoute
+  '/admin/stock-transfer': typeof AdminStockTransferRoute
   '/admin/transport': typeof AdminTransportRoute
   '/admin/user-management': typeof AdminUserManagementRoute
   '/admin/warehouse-map': typeof AdminWarehouseMapRoute
@@ -573,6 +582,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -632,6 +642,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -691,6 +702,7 @@ export interface FileRouteTypes {
     | '/admin/sku-movement'
     | '/admin/stock-adjustment'
     | '/admin/stock-quant'
+    | '/admin/stock-transfer'
     | '/admin/transport'
     | '/admin/user-management'
     | '/admin/warehouse-map'
@@ -817,6 +829,13 @@ declare module '@tanstack/react-router' {
       path: '/transport'
       fullPath: '/admin/transport'
       preLoaderRoute: typeof AdminTransportRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/stock-transfer': {
+      id: '/admin/stock-transfer'
+      path: '/stock-transfer'
+      fullPath: '/admin/stock-transfer'
+      preLoaderRoute: typeof AdminStockTransferRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/stock-quant': {
@@ -1184,6 +1203,7 @@ interface AdminRouteRouteChildren {
   AdminSkuMovementRoute: typeof AdminSkuMovementRoute
   AdminStockAdjustmentRoute: typeof AdminStockAdjustmentRoute
   AdminStockQuantRoute: typeof AdminStockQuantRoute
+  AdminStockTransferRoute: typeof AdminStockTransferRoute
   AdminTransportRoute: typeof AdminTransportRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
   AdminWarehouseMapRoute: typeof AdminWarehouseMapRoute
@@ -1224,6 +1244,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSkuMovementRoute: AdminSkuMovementRoute,
   AdminStockAdjustmentRoute: AdminStockAdjustmentRoute,
   AdminStockQuantRoute: AdminStockQuantRoute,
+  AdminStockTransferRoute: AdminStockTransferRoute,
   AdminTransportRoute: AdminTransportRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
   AdminWarehouseMapRoute: AdminWarehouseMapRoute,

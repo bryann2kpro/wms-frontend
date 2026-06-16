@@ -216,8 +216,17 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	},
 	{
 		key: "sidebar-putaway",
-		title: "Bin to Bin",
+		title: "Putaway",
 		href: "/admin/putaway",
+		icon: ArrowLeftRight,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "operations",
+	},
+	{
+		key: "sidebar-stock-transfer",
+		title: "Bin to Bin Transfer",
+		href: "/admin/stock-transfer",
 		icon: ArrowLeftRight,
 		allowedPermission: ["Inventory"],
 		variant: "default",

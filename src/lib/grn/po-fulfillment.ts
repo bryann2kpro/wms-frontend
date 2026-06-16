@@ -45,6 +45,22 @@ export function computePoRemainingQty(
 }
 
 /**
+ * Remaining qty to receive for a single SKU (expected − already received),
+ * clamped to >= 0. Returns 0 when the SKU has no matching ASN line.
+ */
+export function remainingForSku(
+	skuCode: string,
+	poAsnLines: PoFulfillmentAsnLine[],
+	receivedBySku: Map<string, number>,
+): number {
+	const code = skuCode?.trim();
+	if (!code) return 0;
+	const asnLine = poAsnLines.find((l) => l.skuCode === code);
+	if (!asnLine) return 0;
+	return computePoRemainingQty(asnLine.expected, receivedBySku.get(code) ?? 0);
+}
+
+/**
  * Map ASN lines to skuCode + expected for fulfillment helpers.
  */
 export function asnLinesToFulfillmentLines(

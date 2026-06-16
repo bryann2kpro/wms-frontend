@@ -46,6 +46,11 @@ export const qk = {
 		all: ["stock-quants"] as const,
 		list: (f: object) => ["stock-quants", "list", f] as const,
 	},
+	stockTransfers: {
+		all: ["stock-transfers"] as const,
+		list: (f: object) => ["stock-transfers", "list", f] as const,
+		detail: (id: string) => ["stock-transfers", "detail", id] as const,
+	},
 	putaway: {
 		all: ["putaway"] as const,
 		drafts: (f: object) => ["putaway", "drafts", f] as const,

@@ -56,6 +56,8 @@ export interface PurchaseOrdersResult {
 export interface PurchaseOrdersInfinitePage {
 	result: PurchaseOrdersResult;
 	hasNextPage: boolean;
+	/** Past-weeks tab: whether this 7-day window returned any raw orders. */
+	hadRawOrders: boolean;
 }
 
 function getAuthHeaders(): Headers {
@@ -136,6 +138,13 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 
 /** Max weeks of history to offer for the Past Deliveries infinite scroll (≈ 1 year). */
 const MAX_PAST_WEEKS = 52;
+
+/**
+ * Stop past-deliveries paging only after this many *consecutive* empty weeks.
+ * A single empty week (no scheduled deliveries) is normal and must not halt
+ * the slide — older orders can still exist behind the gap.
+ */
+const MAX_EMPTY_PAST_WEEKS = 8;
 
 /**
  * Compute a UTC date-range window for a given week offset going backwards from today.
@@ -247,6 +256,7 @@ export function useInfinitePurchaseOrders(
 						),
 					},
 					hasNextPage: startIndex + dateGroupPageSize < fullResult.dateKeys.length,
+					hadRawOrders: true,
 				};
 			}
 
@@ -273,19 +283,37 @@ export function useInfinitePurchaseOrders(
 				{ searchTerm, statusFilter, regionFilter, activeTab, page: pageNumber },
 			);
 
-			// Stop when the raw API returned no orders for this window (gone far enough back)
-			// or when we've hit the safety limit.
-			const hasAnyRawOrders = data.purchaseOrdersByWeek.some(
+			// Whether *this* window had any raw orders. The stop decision lives in
+			// getNextPageParam, which can see the whole page history — so a lone
+			// empty week no longer permanently halts the slide.
+			const hadRawOrders = data.purchaseOrdersByWeek.some(
 				(e) => e.orders.length > 0,
 			);
 
 			return {
 				result: fullResult,
-				hasNextPage: hasAnyRawOrders && pageNumber < MAX_PAST_WEEKS,
+				hasNextPage: hadRawOrders,
+				hadRawOrders,
 			};
 		},
-		getNextPageParam: (lastPage, allPages) =>
-			lastPage.hasNextPage ? allPages.length + 1 : undefined,
+		getNextPageParam: (lastPage, allPages) => {
+			if (activeTab === "current-week") {
+				return lastPage.hasNextPage ? allPages.length + 1 : undefined;
+			}
+
+			// past-weeks: keep sliding backwards until we hit the safety limit or a
+			// long run of consecutive empty weeks (a real end-of-history signal).
+			if (allPages.length >= MAX_PAST_WEEKS) return undefined;
+
+			let emptyStreak = 0;
+			for (let i = allPages.length - 1; i >= 0; i--) {
+				if (allPages[i].hadRawOrders) break;
+				emptyStreak++;
+			}
+			if (emptyStreak >= MAX_EMPTY_PAST_WEEKS) return undefined;
+
+			return allPages.length + 1;
+		},
 		enabled,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,

@@ -1193,3 +1193,59 @@ export interface UpdatePickingCriteriaInput {
 	minExpiryMonth?: number;
 	updatedBy: string;
 }
+
+// ============================================
+// STOCK TRANSFER (Bin to Bin / W2W)
+// ============================================
+
+export type StockTransferType = "BIN_TO_BIN" | "WAREHOUSE_TO_WAREHOUSE";
+
+export type StockTransferStatus = "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
+
+export interface StockTransferItemRack {
+	rackId: string;
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+}
+
+export interface StockTransferItem {
+	id: string;
+	skuId: string;
+	skuCode: string | null;
+	skuDescription: string | null;
+	lotNo: string | null;
+	expiryDate: string | null;
+	quantity: string;
+	sourceStockQuantId: string;
+	sourceRackId: string;
+	sourceRack: StockTransferItemRack | null;
+	destinationRackId: string;
+	destinationRack: StockTransferItemRack | null;
+}
+
+export interface StockTransfer {
+	id: string;
+	transferNo: string;
+	type: StockTransferType;
+	status: StockTransferStatus;
+	sourceWarehouseId: string | null;
+	destinationWarehouseId: string | null;
+	remarks: string | null;
+	dispatchedAt: string | null;
+	receivedAt: string | null;
+	receivedBy: string | null;
+	cancelledAt: string | null;
+	cancelledBy: string | null;
+	cancelReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	createdByUser: AuditUser | null;
+	items: StockTransferItem[];
+}
+
+export interface StockTransferPaginatedResponse {
+	query: StockTransfer[];
+	pagination: Pagination;
+}

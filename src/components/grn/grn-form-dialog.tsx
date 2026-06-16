@@ -76,6 +76,7 @@ import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import {
 	applyRemainingQtyToLineItems,
+	remainingForSku,
 	sumHistoricalReceivedBySku,
 } from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
@@ -853,12 +854,24 @@ function GRNLineRow({
 							<SkuCombobox
 								value={skuValue}
 								onChange={(v: SkuLineValue) => {
+									const nextSkuCode = v.skuCode ?? "";
+									// CREATE-only: prefill carton with remaining PO qty (expected −
+									// already received) when ASN data is present. poAsnLines is undefined
+									// in edit mode, so this never affects edits. Fall back to 1.
+									const remaining = poAsnLines
+										? remainingForSku(
+												nextSkuCode,
+												poAsnLines,
+												poHistoricalReceivedBySku ?? new Map(),
+											)
+										: 0;
 									const newItems = [...items];
 									newItems[index] = {
 										...newItems[index],
-										skuCode: v.skuCode ?? "",
+										skuCode: nextSkuCode,
 										description: v.description ?? "",
 										uom: v.uom ?? "",
+										carton: remaining > 0 ? remaining : 1,
 										rackId: "",
 										rackAllocations: undefined,
 										rackAutoSuggested: false,
