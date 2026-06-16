@@ -8,6 +8,9 @@ import {
 	Store,
 	Package,
 	LayoutGrid,
+	Grid3x3,
+	Box,
+	ArrowDownToLine,
 } from "lucide-react";
 import {
 	SupplierSection,
@@ -18,6 +21,9 @@ import {
 	StockUnitSection,
 	RackSection,
 	SkusSection,
+	ZoneSection,
+	BinSection,
+	PutawayRuleSection,
 } from "./master-data";
 import type { SettingsMasterDataSubTabId } from "@/lib/settings-permissions";
 
@@ -29,7 +35,10 @@ type SubTab =
 	| "stock-unit"
 	| "rack"
 	| "skus"
-	| "warehouse";
+	| "warehouse"
+	| "zone"
+	| "bin"
+	| "putaway-rule";
 
 const SUB_TAB_ORDER: SubTab[] = [
 	"supplier",
@@ -40,6 +49,9 @@ const SUB_TAB_ORDER: SubTab[] = [
 	"stock-unit",
 	"rack",
 	"skus",
+	"zone",
+	"bin",
+	"putaway-rule",
 ];
 
 const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
@@ -51,6 +63,9 @@ const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
 	"stock-unit": { label: "Stock Units", icon: Package },
 	rack: { label: "Racks", icon: LayoutGrid },
 	skus: { label: "Stocks", icon: Package },
+	zone: { label: "Zones", icon: Grid3x3 },
+	bin: { label: "Bins", icon: Box },
+	"putaway-rule": { label: "Putaway Rules", icon: ArrowDownToLine },
 };
 
 interface MasterDataCardProps {
@@ -111,6 +126,9 @@ export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 			{subTab === "stock-unit" && <StockUnitSection />}
 			{subTab === "rack" && <RackSection />}
 			{subTab === "skus" && <SkusSection />}
+			{subTab === "zone" && <ZoneSection />}
+			{subTab === "bin" && <BinSection />}
+			{subTab === "putaway-rule" && <PutawayRuleSection />}
 		</div>
 	);
 }

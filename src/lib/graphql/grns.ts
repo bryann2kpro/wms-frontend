@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	Grn,
 	GrnItem,
@@ -36,6 +36,8 @@ export const GRNS_QUERY = gql`
 				approvedAt
 				notes
 				proofUrl
+				nsError
+				poFulfilled
 				createdAt
 				updatedAt
 				createdByUser {
@@ -73,6 +75,11 @@ export const GRNS_QUERY = gql`
 						rackLevel
 						rackRow
 						rackColumn
+					}
+					rackAllocations {
+						rackId
+						quantity
+						rackLabel
 					}
 				}
 			}
@@ -203,25 +210,52 @@ export const NEXT_GRN_NUMBER_QUERY = gql`
 	}
 `;
 
-/** List advance notices from NetSuite not yet linked to a GRN (for Create GRN dropdown) */
+/** Outstanding advance notices for Create GRN picker (server search + pagination). */
 export const LIST_PENDING_ADVANCE_NOTICES_QUERY = gql`
-	query ListPendingAdvanceNotices {
-		listPendingAdvanceNotices {
+	query ListPendingAdvanceNotices($search: String, $pageSize: Int, $pageNumber: Int) {
+		listPendingAdvanceNotices(search: $search, pageSize: $pageSize, pageNumber: $pageNumber) {
+			query {
+				id
+				tranid
+				entity
+				duedate
+				receivedAt
+				fulfillmentStatus
+				lines {
+					lineuniquekey
+					itemid
+					displayname
+					quantity
+					units
+					custrecord_r2o_order_code
+					islotitem
+					lotNo
+					expiryDate
+				}
+			}
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+		}
+	}
+`;
+
+/** Look up the advance notice (linked or not) for a PO — used to compute remaining-to-receive qty. */
+export const ADVANCE_NOTICE_BY_PO_NO_QUERY = gql`
+	query AdvanceNoticeByPoNo($poNo: String!) {
+		advanceNoticeByPoNo(poNo: $poNo) {
 			id
 			tranid
-			entity
-			duedate
-			receivedAt
 			lines {
-				lineuniquekey
 				itemid
 				displayname
 				quantity
 				units
-				custrecord_r2o_order_code
-				islotitem
-				lotNo
-				expiryDate
 			}
 		}
 	}
@@ -325,11 +359,41 @@ export type AdvanceNotice = {
 	entity: string;
 	duedate: string;
 	receivedAt: string;
+	/** PENDING = no GRN yet; PARTIAL = a GRN exists but qty remains outstanding for this PO. */
+	fulfillmentStatus: "PENDING" | "PARTIAL" | string;
 	lines: AdvanceNoticeLine[];
 };
 
+export type AdvanceNoticePaginatedResponse = {
+	query: AdvanceNotice[];
+	pagination: {
+		count: number;
+		totalCount: number;
+		currentPage: number;
+		totalPages: number;
+		hasNextPage: boolean;
+		hasPrevPage: boolean;
+	};
+};
+
+export type ListPendingAdvanceNoticesQueryVariables = {
+	search?: string | null;
+	pageSize?: number | null;
+	pageNumber?: number | null;
+};
+
 export type ListPendingAdvanceNoticesQueryData = {
-	listPendingAdvanceNotices: AdvanceNotice[];
+	listPendingAdvanceNotices: AdvanceNoticePaginatedResponse;
+};
+
+export type AdvanceNoticeByPoNoQueryVariables = {
+	poNo: string;
+};
+
+export type AdvanceNoticeByPoNoQueryData = {
+	advanceNoticeByPoNo: Pick<AdvanceNotice, "id" | "tranid"> & {
+		lines: Array<Pick<AdvanceNoticeLine, "itemid" | "displayname" | "quantity" | "units">>;
+	} | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -390,6 +454,9 @@ export function mapGrnsQueryToResult(
 			const location = rack
 				? `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`
 				: (i.warehouseName ?? warehouse?.warehouseName ?? undefined);
+			const rackAllocations = (i.rackAllocations ?? [])
+				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
+				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -402,6 +469,7 @@ export function mapGrnsQueryToResult(
 				expiryDate: i.expiryDate ?? null,
 				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
+				rackAllocations: rackAllocations.length > 0 ? rackAllocations : null,
 			};
 		});
 		const totalItems = lineItems.reduce(
@@ -430,6 +498,8 @@ export function mapGrnsQueryToResult(
 			updatedBy: g.updatedByUser?.displayName ?? null,
 			notes: g.notes ?? undefined,
 			proofUrl: g.proofUrl ?? null,
+			nsError: g.nsError ?? null,
+			poFulfilled: g.poFulfilled ?? null,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,

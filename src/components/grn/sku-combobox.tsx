@@ -1,10 +1,9 @@
-"use client";
-
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import request from "graphql-request";
-import { env } from "@/env";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,8 +25,10 @@ import { cn } from "@/lib/utils";
 import {
 	SKUS_AND_UOM_QUERY,
 	CREATE_SKU_MUTATION,
-	type Sku,
+	buildSkuSearchFilter,
 	type CreateSkuInput,
+	type SkusAndUomQueryVariables,
+	type SkusAndUomQueryData,
 } from "@/lib/graphql/skus";
 import { useForm } from "@tanstack/react-form";
 import z from "zod";
@@ -92,29 +93,35 @@ export function SkuCombobox({
 }: SkuComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, 300);
+	const searchTerm = debouncedSearch.trim();
 	const [createOpen, setCreateOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const { data, isLoading: loading } = useQuery({
-		queryKey: ["skus"],
-		queryFn: () => {
-			const headers = new Headers();
-			headers.set(
-				"Authorization",
-				`Bearer ${localStorage.getItem("access_token")}`,
-			);
-
-			return request(
-				env.VITE_GRAPHQL_ENDPOINT,
-				SKUS_AND_UOM_QUERY,
-				{},
-				headers,
-			);
+	const {
+		data: skusData,
+		isLoading: loading,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	} = useInfiniteQuery<SkusAndUomQueryData>({
+		queryKey: [...qk.skus.all, "infinite", searchTerm],
+		queryFn: async ({ pageParam }) =>
+			gqlRequest<SkusAndUomQueryData, SkusAndUomQueryVariables>(SKUS_AND_UOM_QUERY, {
+				pageSize: 20,
+				pageNumber: Number(pageParam),
+				filter: buildSkuSearchFilter(searchTerm),
+			}),
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => {
+			const p = lastPage.skus.pagination;
+			return p.hasNextPage ? p.currentPage + 1 : undefined;
 		},
+		enabled: open,
 	});
 
-	const skus = data?.skus.query ?? [];
-	const uoms = data?.stockUnits?.query ?? [];
+	const skus = skusData?.pages.flatMap((page) => page.skus.query) ?? [];
+	const uoms = skusData?.pages[0]?.stockUnits?.query ?? [];
 
 	function getErrorMessage(err: unknown): string {
 		if (err && typeof err === "object" && "response" in err) {
@@ -136,22 +143,10 @@ export function SkuCombobox({
 	}
 
 	const createSku = useMutation({
-		mutationFn: (input: CreateSkuInput & { isActive: boolean }) => {
-			const headers = new Headers();
-			headers.set(
-				"Authorization",
-				`Bearer ${localStorage.getItem("access_token")}`,
-			);
-
-			return request(
-				env.VITE_GRAPHQL_ENDPOINT,
-				CREATE_SKU_MUTATION,
-				{ input },
-				headers,
-			);
-		},
+		mutationFn: (input: CreateSkuInput & { isActive: boolean }) =>
+			gqlRequest(CREATE_SKU_MUTATION, { input }),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["skus"] });
+			queryClient.invalidateQueries({ queryKey: qk.skus.all });
 			toast.success("SKU created successfully");
 			setCreateOpen(false);
 			form.reset();
@@ -179,31 +174,19 @@ export function SkuCombobox({
 		},
 	});
 
-	const filtered = useMemo(() => {
-		let list = skus;
-		if (excludedSkuCodes?.length) {
-			list = list.filter((s: Skus) => !excludedSkuCodes.includes(s.skuCode));
-		}
-		if (!search.trim()) return list;
-		const q = search.toLowerCase();
-		return list.filter(
-			(s: Skus) =>
-				s.skuCode.toLowerCase().includes(q) ||
-				s.skuDescription?.toLowerCase().includes(q),
-		);
-	}, [skus, search, excludedSkuCodes]);
+	const filtered = skus;
 
-	function handleSelect(sku: Sku) {
-		const s = sku as unknown as Skus;
-		const uomUnit = uoms?.find((u: StockUnit) => u.stockUnitId === s.skuUom);
-		onChange({
-			sku: s.skuCode ?? s.skuDescription ?? sku.skuId,
-			skuCode: s.skuCode ?? "",
-			description: s.skuDescription ?? "",
-			uom: uomUnit?.unitCode ?? s.skuUom ?? "",
+	function handleSelect(sku: Skus) {
+		const uomUnit = uoms?.find((u: StockUnit) => u.stockUnitId === sku.skuUom);
+		const result: SkuLineValue = {
+			sku: sku.skuCode ?? sku.skuDescription ?? sku.skuId,
+			skuCode: sku.skuCode ?? "",
+			description: sku.skuDescription ?? "",
+			uom: uomUnit?.unitCode ?? sku.skuUom ?? "",
 			skuId: sku.skuId,
-			isActive: s.isActive ?? true,
-		});
+			isActive: sku.isActive,
+		};
+		onChange(result);
 		setOpen(false);
 		setSearch("");
 	}
@@ -229,7 +212,7 @@ export function SkuCombobox({
 					</Button>
 				</PopoverTrigger>
 				<PopoverContent
-					className="min-w-[280px] w-[var(--radix-popover-trigger-width)] max-w-[360px] p-0 shadow-md"
+					className="min-w-[320px] w-[var(--radix-popover-trigger-width)] max-w-[min(92vw,560px)] p-0 shadow-md"
 					align="start"
 				>
 					<div className="flex flex-col rounded-md">
@@ -242,7 +225,19 @@ export function SkuCombobox({
 								autoFocus
 							/>
 						</div>
-						<div className="h-[240px] overflow-y-auto overscroll-contain">
+						<div
+							className="h-[240px] overflow-y-auto overscroll-contain"
+							onScroll={(e) => {
+								const el = e.currentTarget;
+								if (
+									hasNextPage &&
+									!isFetchingNextPage &&
+									el.scrollHeight - el.scrollTop - el.clientHeight < 48
+								) {
+									fetchNextPage();
+								}
+							}}
+						>
 							{loading ? (
 								<div className="py-6 text-center text-xs text-muted-foreground">
 									Loading SKUs...
@@ -270,7 +265,7 @@ export function SkuCombobox({
 														"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
 														value?.skuId === sku.skuId && "bg-accent",
 													)}
-													onClick={() => handleSelect(sku as unknown as Sku)}
+													onClick={() => handleSelect(sku)}
 												>
 													{value?.skuId === sku.skuId ? (
 														<Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
@@ -298,6 +293,11 @@ export function SkuCombobox({
 											</li>
 										);
 									})}
+									{isFetchingNextPage && (
+										<li className="py-2 text-center text-[11px] text-muted-foreground">
+											Loading more…
+										</li>
+									)}
 								</ul>
 							)}
 						</div>

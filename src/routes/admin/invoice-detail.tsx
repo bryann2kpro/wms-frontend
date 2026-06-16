@@ -1,5 +1,7 @@
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import { ChevronLeft, Download, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -59,27 +61,37 @@ function InvoiceDetailComponent() {
 	"use no memo";
 	const { id } = Route.useSearch();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
-	const { data, loading, refetch } = useQuery<
-		InvoiceQueryData,
-		InvoiceQueryVariables
-	>(INVOICE_QUERY, {
-		variables: { id },
-		skip: !id,
-		fetchPolicy: "cache-and-network",
+	const { data, isLoading: loading, refetch } = useQuery({
+		queryKey: [...qk.invoices.all, "detail", id] as const,
+		queryFn: () =>
+			gqlRequest<InvoiceQueryData, InvoiceQueryVariables>(INVOICE_QUERY, {
+				id,
+			}),
+		enabled: !!id,
 	});
 
-	const [updateStatus, { loading: updating }] = useMutation<
-		UpdateInvoiceStatusData,
-		UpdateInvoiceStatusVariables
-	>(UPDATE_INVOICE_STATUS_MUTATION, {
-		onCompleted: () => refetch(),
+	const { mutate: updateStatus, isPending: updating } = useMutation({
+		mutationFn: (vars: UpdateInvoiceStatusVariables) =>
+			gqlRequest<UpdateInvoiceStatusData, UpdateInvoiceStatusVariables>(
+				UPDATE_INVOICE_STATUS_MUTATION,
+				vars,
+			),
+		onSuccess: () => {
+			refetch();
+			queryClient.invalidateQueries({ queryKey: qk.invoices.all });
+		},
 	});
 
-	const [generateProformaPdf, { loading: exportPdfLoading }] = useMutation<
-		GenerateProformaInvoicePdfData,
-		GenerateProformaInvoicePdfVariables
-	>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION);
+	const { mutate: generateProformaPdf, isPending: exportPdfLoading } =
+		useMutation({
+			mutationFn: (vars: GenerateProformaInvoicePdfVariables) =>
+				gqlRequest<
+					GenerateProformaInvoicePdfData,
+					GenerateProformaInvoicePdfVariables
+				>(GENERATE_PROFORMA_INVOICE_PDF_MUTATION, vars),
+		});
 
 	const parseSnapshotNumber = (
 		snapshot: Record<string, unknown> | null | undefined,
@@ -383,21 +395,23 @@ function InvoiceDetailComponent() {
 							disabled={exportPdfLoading}
 							className="gap-2"
 							onClick={() => {
-								void generateProformaPdf({
-									variables: { invoiceId: invoice.id },
-									onCompleted: (res) => {
-										const p = res?.generateProformaInvoicePdf;
-										if (p?.pdfBase64) {
-											downloadPdfFromBase64(p.pdfBase64, p.filename);
-											toast.success("Proforma PDF downloaded");
-										} else {
-											toast.error("No PDF returned");
-										}
+								generateProformaPdf(
+									{ invoiceId: invoice.id },
+									{
+										onSuccess: (res) => {
+											const p = res?.generateProformaInvoicePdf;
+											if (p?.pdfBase64) {
+												downloadPdfFromBase64(p.pdfBase64, p.filename);
+												toast.success("Proforma PDF downloaded");
+											} else {
+												toast.error("No PDF returned");
+											}
+										},
+										onError: (err: Error) => {
+											toast.error(err.message ?? "Failed to export PDF");
+										},
 									},
-									onError: (err) => {
-										toast.error(err.message ?? "Failed to export PDF");
-									},
-								});
+								);
 							}}
 						>
 							<Download className="h-4 w-4" aria-hidden />
@@ -412,9 +426,7 @@ function InvoiceDetailComponent() {
 									borderColor: "var(--invoice-detail-accent)",
 								}}
 								onClick={() =>
-									updateStatus({
-										variables: { id: invoice.id, status: "SENT" },
-									})
+									updateStatus({ id: invoice.id, status: "SENT" })
 								}
 								disabled={updating}
 							>

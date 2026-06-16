@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	Dialog,
 	DialogContent,
@@ -18,19 +18,37 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
 	CREATE_WAREHOUSE_MUTATION,
+	WAREHOUSE_QUERY,
+	WAREHOUSES_QUERY,
 	type CreateWarehouseMutationData,
+	type WarehouseQueryData,
+	type WarehousesQueryData,
+	type WarehousesQueryVariables,
 } from "@/lib/graphql/warehouses";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
+
+const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
 
 function getErrorMessage(err: unknown): string {
 	if (err && typeof err === "object" && "graphQLErrors" in err) {
 		const first = (err as { graphQLErrors?: Array<{ message?: string }> })
 			.graphQLErrors?.[0];
+		if (first?.message)
+			return toUserFriendlyMessage(first.message, "Something went wrong.");
+	}
+	if (err && typeof err === "object" && "response" in err) {
+		const first = (
+			err as { response?: { errors?: Array<{ message?: string }> } }
+		).response?.errors?.[0];
 		if (first?.message)
 			return toUserFriendlyMessage(first.message, "Something went wrong.");
 	}
@@ -48,13 +66,14 @@ export type WarehouseOption = {
 export type WarehouseComboboxProps = {
 	value: string;
 	onChange: (warehouseId: string) => void;
-	warehouses: WarehouseOption[];
-	/** Call to refetch warehouse list; awaited before setting new value so the new warehouse appears in the list */
+	/** @deprecated Warehouses are loaded via infinite query; use query invalidation instead. */
 	onWarehouseCreated?: () => void | Promise<void>;
 	placeholder?: string;
 	disabled?: boolean;
 	id?: string;
 	className?: string;
+	/** When false, skips fetching until the popover opens. */
+	enabled?: boolean;
 };
 
 function CreateWarehouseDialog({
@@ -143,30 +162,70 @@ function CreateWarehouseDialog({
 export function WarehouseCombobox({
 	value,
 	onChange,
-	warehouses,
 	onWarehouseCreated,
 	placeholder = "Search or select warehouse...",
 	disabled = false,
 	id,
 	className,
+	enabled = true,
 }: WarehouseComboboxProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
+	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
+	const queryClient = useQueryClient();
 
-	const [createWarehouse, { loading: createLoading }] =
-		useMutation<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
-			onError: (err) => toast.error(getErrorMessage(err)),
-			onCompleted: async (data) => {
-				const newId = data?.createWarehouse?.warehouseId;
-				if (!newId) return;
-				await onWarehouseCreated?.();
-				onChange(newId);
-				setCreateOpen(false);
-				setOpen(false);
-				toast.success("Warehouse created.");
-			},
-		});
+	const searchTerm = debouncedSearch.trim();
+
+	const {
+		data,
+		isLoading,
+		isFetching,
+		isFetchingNextPage,
+		hasNextPage,
+		fetchNextPage,
+	} = useInfiniteQuery({
+		queryKey: [...qk.warehouses.all, "combobox", searchTerm] as const,
+		queryFn: async ({ pageParam }) =>
+			gqlRequest<WarehousesQueryData, WarehousesQueryVariables>(
+				WAREHOUSES_QUERY,
+				{
+					pageSize: PAGE_SIZE,
+					pageNumber: pageParam,
+					...(searchTerm
+						? { filter: { warehouseName: searchTerm } }
+						: {}),
+				},
+			),
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => {
+			const p = lastPage.warehouses.pagination;
+			return p.hasNextPage ? p.currentPage + 1 : undefined;
+		},
+		enabled: enabled && open && !disabled,
+	});
+
+	const warehouses = useMemo(
+		() => data?.pages.flatMap((page) => page.warehouses.query) ?? [],
+		[data],
+	);
+
+	const { data: selectedWarehouseData } = useQuery({
+		queryKey: [...qk.warehouses.all, "by-id", value] as const,
+		queryFn: () => gqlRequest<WarehouseQueryData>(WAREHOUSE_QUERY, { id: value }),
+		enabled: Boolean(value) && !warehouses.some((w) => w.warehouseId === value),
+	});
+
+	const selectedFromList = warehouses.find((w) => w.warehouseId === value);
+	const selectedWarehouse =
+		selectedFromList ?? selectedWarehouseData?.warehouse ?? null;
+
+	const displayLabel = selectedWarehouse
+		? `${selectedWarehouse.warehouseName}${selectedWarehouse.warehouseCode ? ` (${selectedWarehouse.warehouseCode})` : ""}`
+		: null;
+
+	const listLoading = isLoading || (isFetching && !isFetchingNextPage);
 
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
@@ -178,18 +237,54 @@ export function WarehouseCombobox({
 		);
 	}, [warehouses, search]);
 
-	const selectedWarehouse = useMemo(
-		() => warehouses.find((w) => w.warehouseId === value),
-		[warehouses, value],
-	);
-	const displayLabel = selectedWarehouse
-		? `${selectedWarehouse.warehouseName}${selectedWarehouse.warehouseCode ? ` (${selectedWarehouse.warehouseCode})` : ""}`
-		: null;
+	const { mutate: createWarehouse, isPending: createLoading } = useMutation({
+		mutationFn: (input: {
+			warehouseName: string;
+			warehouseCode?: string;
+			warehouseAddress?: string;
+		}) =>
+			gqlRequest<CreateWarehouseMutationData>(CREATE_WAREHOUSE_MUTATION, {
+				input,
+			}),
+		onError: (err) => toast.error(getErrorMessage(err)),
+		onSuccess: async (data) => {
+			const newId = data?.createWarehouse?.warehouseId;
+			if (!newId) return;
+			await queryClient.invalidateQueries({ queryKey: qk.warehouses.all });
+			await onWarehouseCreated?.();
+			onChange(newId);
+			setCreateOpen(false);
+			setOpen(false);
+			toast.success("Warehouse created.");
+		},
+	});
 
 	const handleSelect = (warehouseId: string) => {
 		onChange(warehouseId);
 		setOpen(false);
+		setSearch("");
 	};
+
+	const handleFetchNext = useCallback(() => {
+		if (hasNextPage && !isFetchingNextPage) {
+			void fetchNextPage();
+		}
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el || !open) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) {
+					handleFetchNext();
+				}
+			},
+			{ threshold: 0.1 },
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [handleFetchNext, open, filtered.length]);
 
 	const handleCreateSubmit = (values: {
 		warehouseName: string;
@@ -197,19 +292,27 @@ export function WarehouseCombobox({
 		warehouseAddress: string;
 	}) => {
 		createWarehouse({
-			variables: {
-				input: {
-					warehouseName: values.warehouseName.trim(),
-					warehouseCode: values.warehouseCode.trim() || undefined,
-					warehouseAddress: values.warehouseAddress.trim() || undefined,
-				},
-			},
+			warehouseName: values.warehouseName.trim(),
+			warehouseCode: values.warehouseCode.trim() || undefined,
+			warehouseAddress: values.warehouseAddress.trim() || undefined,
 		});
 	};
 
+	const emptyMessage = listLoading
+		? "Loading warehouses…"
+		: searchTerm
+			? "No warehouses match your search."
+			: "No warehouses in the system.";
+
 	return (
 		<div className={cn("flex gap-1", className)}>
-			<Popover open={open} onOpenChange={setOpen}>
+			<Popover
+				open={open}
+				onOpenChange={(next) => {
+					setOpen(next);
+					if (!next) setSearch("");
+				}}
+			>
 				<PopoverTrigger asChild>
 					<Button
 						variant="outline"
@@ -228,6 +331,7 @@ export function WarehouseCombobox({
 				<PopoverContent
 					className="min-w-[280px] w-[var(--radix-popover-trigger-width)] max-w-[360px] p-0 shadow-md"
 					align="start"
+					onOpenAutoFocus={(e) => e.preventDefault()}
 				>
 					<div className="flex flex-col rounded-md">
 						<div className="border-b bg-muted/30 px-2 py-1.5">
@@ -239,12 +343,15 @@ export function WarehouseCombobox({
 								autoFocus
 							/>
 						</div>
-						<div className="h-[240px] overflow-y-auto overscroll-contain">
-							{filtered.length === 0 ? (
+						<div className="max-h-[240px] overflow-y-auto overscroll-contain">
+							{listLoading && filtered.length === 0 ? (
+								<div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+									<Loader2 className="h-3.5 w-3.5 animate-spin" />
+									Loading warehouses…
+								</div>
+							) : filtered.length === 0 ? (
 								<div className="py-6 text-center text-xs text-muted-foreground">
-									{search.trim()
-										? "No warehouses match your search."
-										: "No warehouses in the system."}
+									{emptyMessage}
 								</div>
 							) : (
 								<ul className="py-1 px-1">
@@ -257,6 +364,7 @@ export function WarehouseCombobox({
 													"flex w-full cursor-pointer items-start gap-1.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-accent",
 													value === w.warehouseId && "bg-accent",
 												)}
+												onMouseDown={(e) => e.preventDefault()}
 												onClick={() => handleSelect(w.warehouseId)}
 											>
 												{value === w.warehouseId ? (
@@ -277,6 +385,15 @@ export function WarehouseCombobox({
 											</button>
 										</li>
 									))}
+									<li aria-hidden className="h-px">
+										<div ref={sentinelRef} className="h-px" />
+									</li>
+									{isFetchingNextPage ? (
+										<li className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+											<Loader2 className="h-3.5 w-3.5 animate-spin" />
+											Loading more…
+										</li>
+									) : null}
 								</ul>
 							)}
 						</div>

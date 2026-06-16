@@ -1,7 +1,8 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	Rack,
 	RackPaginatedResponse,
+	RackUtilization,
 	CreateRackInput,
 	UpdateRackInput,
 } from "./types";
@@ -9,9 +10,21 @@ import type {
 export const RACK_FRAGMENT = gql`
 	fragment RackFields on Rack {
 		rackId
+		warehouseId
+		zoneId
+		areaId
 		rackRow
 		rackColumn
 		rackLevel
+		binCode
+		barCode
+		binType
+		length
+		width
+		height
+		weight
+		maxPallet
+		isActive
 		createdAt
 		updatedAt
 		createdBy
@@ -22,10 +35,11 @@ export const RACK_FRAGMENT = gql`
 export const RACKS_QUERY = gql`
 	query Racks(
 		$filter: RackFilterInput
+		$sort: RackSortInput
 		$pageSize: Int
 		$pageNumber: Int
 	) {
-		racks(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
+		racks(filter: $filter, sort: $sort, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				...RackFields
 			}
@@ -41,6 +55,20 @@ export const RACKS_QUERY = gql`
 	}
 	${RACK_FRAGMENT}
 `;
+
+export const RACK_UTILIZATION_QUERY = gql`
+	query RackUtilization {
+		rackUtilization {
+			rackId
+			volCapacity
+			volCurrent
+			weightCapacity
+			weightCurrent
+		}
+	}
+`;
+
+export type RackUtilizationQueryData = { rackUtilization: RackUtilization[] };
 
 export const CREATE_RACK_MUTATION = gql`
 	mutation CreateRack($input: CreateRackInput!) {
@@ -70,12 +98,21 @@ export type RacksQueryVariables = {
 	filter?: {
 		rackId?: string;
 		rackIds?: string[];
+		warehouseId?: string;
 		rackRow?: string;
 		rackRows?: string[];
 		rackColumn?: string;
 		rackColumns?: string[];
 		rackLevel?: string;
 		rackLevels?: string[];
+		binCode?: string;
+		binType?: string;
+		isActive?: boolean;
+		search?: string;
+	};
+	sort?: {
+		sortBy?: string;
+		sortOrder?: string;
 	};
 	pageSize?: number;
 	pageNumber?: number;

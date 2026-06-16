@@ -1,0 +1,100 @@
+export const qk = {
+	grns: {
+		all: ["grns"] as const,
+		list: (f: object) => ["grns", "list", f] as const,
+	},
+	purchaseOrders: {
+		all: ["purchase-orders"] as const,
+		list: (f: object) => ["purchase-orders", "list", f] as const,
+		byWeek: ["purchase-orders", "by-week"] as const,
+	},
+	invoices: {
+		all: ["invoices"] as const,
+		list: (f: object) => ["invoices", "list", f] as const,
+	},
+	warehouses: { all: ["warehouses"] as const },
+	racks: { all: ["racks"] as const },
+	transports: {
+		all: ["transports"] as const,
+		list: (f: object) => ["transports", "list", f] as const,
+	},
+	setupAreas: {
+		all: ["setup-areas"] as const,
+		list: (f: object) => ["setup-areas", "list", f] as const,
+	},
+	skus: { all: ["skus"] as const },
+	items: { all: ["items"] as const },
+	stockUnits: { all: ["stock-units"] as const },
+	suppliers: { all: ["suppliers"] as const },
+	outlets: { all: ["outlets"] as const },
+	regions: { all: ["regions"] as const },
+	deliveries: {
+		all: ["deliveries"] as const,
+		list: (f: object) => ["deliveries", "list", f] as const,
+	},
+	deliverySchedules: { all: ["delivery-schedules"] as const },
+	dos: {
+		all: ["dos"] as const,
+		detail: (id: string) => ["dos", id] as const,
+	},
+	exceptions: { all: ["exceptions"] as const },
+	returns: {
+		all: ["returns"] as const,
+		list: (f: object) => ["returns", "list", f] as const,
+		detail: (id: string) => ["returns", "detail", id] as const,
+		stats: ["returns", "stats"] as const,
+	},
+	stockAdjustments: {
+		all: ["stock-adjustments"] as const,
+		list: (f: object) => ["stock-adjustments", "list", f] as const,
+	},
+	stockQuants: {
+		all: ["stock-quants"] as const,
+		list: (f: object) => ["stock-quants", "list", f] as const,
+	},
+	stockTransfers: {
+		all: ["stock-transfers"] as const,
+		list: (f: object) => ["stock-transfers", "list", f] as const,
+		detail: (id: string) => ["stock-transfers", "detail", id] as const,
+	},
+	putaway: {
+		all: ["putaway"] as const,
+		drafts: (f: object) => ["putaway", "drafts", f] as const,
+	},
+	inventory: {
+		all: ["inventory"] as const,
+		list: (f: object) => ["inventory", "list", f] as const,
+		detail: (skuId: string) => ["inventory", "detail", skuId] as const,
+	},
+	inventoryMovements: {
+		all: ["inventory-movements"] as const,
+		list: (f: object) => ["inventory-movements", "list", f] as const,
+	},
+	stockCount: { all: ["stock-count"] as const },
+	dashboard: { all: ["dashboard"] as const },
+	auditLogs: {
+		all: ["audit-logs"] as const,
+		list: (f: object) => ["audit-logs", "list", f] as const,
+	},
+	users: {
+		all: ["users"] as const,
+		list: (f: object) => ["users", "list", f] as const,
+	},
+	roles: { all: ["roles"] as const },
+	esApiLogs: { all: ["es-api-logs"] as const },
+	documents: { all: ["documents"] as const },
+	reports: { all: ["reports"] as const },
+	zones: { all: ["zones"] as const },
+	bins: { all: ["bins"] as const },
+	areas: { all: ["areas"] as const },
+	putawayRules: { all: ["putaway-rules"] as const },
+	pickingCriterias: { all: ["picking-criterias"] as const },
+	palletLabels: { all: ["pallet-labels"] as const },
+	pickFaceStrategies: { all: ["pick-face-strategies"] as const },
+	skuAssignments: { all: ["sku-assignments"] as const },
+	reservations: {
+		all: ["reservations"] as const,
+		list: (f: object) => ["reservations", "list", f] as const,
+	},
+	customerPriorities: { all: ["customer-priorities"] as const },
+} as const;

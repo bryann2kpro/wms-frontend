@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useState, useMemo } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery } from "@tanstack/react-query";
+import { gqlRequest } from "@/lib/api/gql";
+import { qk } from "@/lib/api/query-keys";
 import {
 	Clock,
 	User as UserIcon,
@@ -104,24 +106,25 @@ function RouteComponent() {
 		return filterObj;
 	}, [dateFrom, dateTo, selectedAction, selectedEntity]);
 
-	const { data, loading, error } = useQuery<
-		AuditLogsQueryData,
-		AuditLogsQueryVariables
-	>(AUDIT_LOGS_QUERY, {
-		variables: {
-			filter,
-			pageSize,
-			pageNumber: currentPage,
-		},
-		fetchPolicy: "cache-and-network",
+	const auditVars: AuditLogsQueryVariables = {
+		filter,
+		pageSize,
+		pageNumber: currentPage,
+	};
+	const { data, isLoading: loading, error } = useQuery({
+		queryKey: qk.auditLogs.list(auditVars),
+		queryFn: () =>
+			gqlRequest<AuditLogsQueryData, AuditLogsQueryVariables>(
+				AUDIT_LOGS_QUERY,
+				auditVars,
+			),
 	});
 
-	const { data: filtersData } = useQuery<AuditLogFiltersQueryData>(
-		AUDIT_LOG_FILTERS_QUERY,
-		{
-			fetchPolicy: "cache-first",
-		},
-	);
+	const { data: filtersData } = useQuery({
+		queryKey: [...qk.auditLogs.all, "filters"] as const,
+		queryFn: () => gqlRequest<AuditLogFiltersQueryData>(AUDIT_LOG_FILTERS_QUERY),
+		staleTime: Infinity,
+	});
 
 	const auditLogs = data?.auditLogs.query || [];
 	const pagination = data?.auditLogs.pagination;
@@ -170,7 +173,7 @@ function RouteComponent() {
 			>
 				<div className="container mx-auto p-6">
 					<div className="rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:bg-red-950/30 dark:border-red-500/30 px-4 py-3">
-						Error loading audit logs: {error.message}
+						Error loading audit logs: {(error as Error).message}
 					</div>
 				</div>
 			</main>

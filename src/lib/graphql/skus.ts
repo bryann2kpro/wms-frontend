@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { gql } from "graphql-request";
 import type {
 	Skus,
 	SkusPaginatedResponse,
@@ -13,12 +13,10 @@ export const SKUS_QUERY = gql`
 				skuId
 				skuCode
 				skuDescription
-				skuPrice
-				skuQuantity
-				lossQuantity
-				skuExpiryDate
 				skuUom
 				pickingStrategy
+				isLotControlled
+				isExpiryControlled
 				skuSuppliers {
 					supplierId
 					originalSkuCode
@@ -30,14 +28,22 @@ export const SKUS_QUERY = gql`
 `;
 
 export const SKUS_AND_UOM_QUERY = gql`
-	query SkusAndUom {
-		skus {
+	query SkusAndUom(
+		$filter: SkuFilterInput
+		$pageSize: Int
+		$pageNumber: Int
+	) {
+		skus(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
 			query {
 				skuId
 				skuCode
 				skuDescription
 				skuUom
 				isActive
+			}
+			pagination {
+				currentPage
+				hasNextPage
 			}
 		}
 		stockUnits {
@@ -49,14 +55,44 @@ export const SKUS_AND_UOM_QUERY = gql`
 	}
 `;
 
+export type SkuSearchFilter = {
+	skuCode?: string;
+	skuCodes?: string[];
+	skuDescription?: string;
+};
+
+export type SkusAndUomQueryVariables = {
+	filter?: SkuSearchFilter;
+	pageSize?: number;
+	pageNumber?: number;
+};
+
+/** Code-like terms (e.g. RAW-E0012) search skuCode; others search skuDescription. */
+const SKU_CODE_SEARCH_PATTERN = /^[A-Z0-9_-]+$/i;
+
+export function buildSkuSearchFilter(
+	searchTerm: string,
+): SkuSearchFilter | undefined {
+	const term = searchTerm.trim();
+	if (!term) return undefined;
+	return SKU_CODE_SEARCH_PATTERN.test(term)
+		? { skuCode: term }
+		: { skuDescription: term };
+}
+
+export type SkusAndUomQueryData = {
+	skus: {
+		query: Skus[];
+		pagination: { currentPage: number; hasNextPage: boolean };
+	};
+	stockUnits: { query: { stockUnitId: string; unitCode: string }[] };
+};
+
 export const SKUS_FRAGMENT = gql`
 	fragment SkuFields on Sku {
 		skuId
 		skuCode
 		skuDescription
-		skuPrice
-		skuQuantity
-		lossQuantity
 		skuExpiryDate
 		skuSuppliers {
 			supplierId
@@ -64,7 +100,20 @@ export const SKUS_FRAGMENT = gql`
 		}
 		skuUom
 		pickingStrategy
+		isLotControlled
+		isExpiryControlled
 		isActive
+		barcode
+		brand
+		category
+		manufacturer
+		caseRate
+		caseExtLengthMm
+		caseExtWidthMm
+		caseExtHeightMm
+		caseGrossWeightKg
+		casesPerLayer
+		noOfLayers
 		createdAt
 		updatedAt
 		createdBy
@@ -131,7 +180,6 @@ export const CREATE_SKU_MUTATION = gql`
 		createSku(input: $input) {
 			skuCode
 			skuDescription
-			skuQuantity
 			skuUom
 		}
 	}
@@ -157,3 +205,43 @@ export type CreateSkuInput = {
 	skuQuantity: number;
 	skuUom: string;
 };
+
+export const ITEMS_QUERY = gql`
+	query Items {
+		skus {
+			query {
+				skuId
+				skuCode
+				skuDescription
+				barcode
+				brand
+				category
+				manufacturer
+				isActive
+				caseRate
+				caseExtLengthMm
+				caseExtWidthMm
+				caseExtHeightMm
+				caseGrossWeightKg
+				casesPerLayer
+				noOfLayers
+				skuSuppliers {
+					supplierId
+					originalSkuCode
+				}
+				skuUom
+				pickingStrategy
+				isLotControlled
+				isExpiryControlled
+				createdAt
+				updatedAt
+			}
+		}
+	}
+`;
+
+export type ItemsQueryData = {
+	skus: SkusPaginatedResponse;
+};
+
+export type ItemsQueryVariables = Record<string, never>;

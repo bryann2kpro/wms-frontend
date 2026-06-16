@@ -168,6 +168,9 @@ export interface Outlet {
 	outletName: string;
 	outletCode: string;
 	address: string | null;
+	chain: string | null;
+	channel: string | null;
+	debtor: string | null;
 	regionId: string | null;
 	regionName: string | null;
 	regionCode: string | null;
@@ -232,9 +235,21 @@ export interface UpdateStockUnitInput {
 
 export interface Rack {
 	rackId: string;
+	warehouseId?: string | null;
+	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
+	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -246,18 +261,152 @@ export interface RackPaginatedResponse {
 	pagination: Pagination;
 }
 
+export interface RackUtilization {
+	rackId: string;
+	volCapacity: number | null;
+	volCurrent: number;
+	weightCapacity: number | null;
+	weightCurrent: number;
+}
+
 export interface CreateRackInput {
+	warehouseId?: string | null;
+	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow: string;
 	rackColumn: string;
 	rackLevel: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType?: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
+	isActive?: boolean;
 	createdBy: string;
 	updatedBy: string;
 }
 
 export interface UpdateRackInput {
+	warehouseId?: string | null;
+	zoneId?: string | null;
+	areaId?: string | null;
 	rackRow?: string;
 	rackColumn?: string;
 	rackLevel?: string;
+	binCode?: string | null;
+	barCode?: string | null;
+	binType?: string;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	weight?: string | null;
+	maxPallet?: string | null;
+	isActive?: boolean;
+	updatedBy: string;
+}
+
+export interface Area {
+	areaId: string;
+	areaCode: string;
+	areaName: string;
+	areaDescription?: string | null;
+	warehouseName?: string | null;
+}
+
+export interface AreaPaginatedResponse {
+	query: Area[];
+	pagination: Pagination;
+}
+
+export interface Transport {
+	id: string;
+	code: string;
+	description?: string | null;
+	storageBinId?: string | null;
+	location?: string | null;
+	minLengthMm?: string | null;
+	minWidthMm?: string | null;
+	minHeightMm?: string | null;
+	minWeightKg?: string | null;
+	maxLengthMm?: string | null;
+	maxWidthMm?: string | null;
+	maxHeightMm?: string | null;
+	maxWeightKg?: string | null;
+	numberOfPallets?: number | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface TransportPaginatedResponse {
+	query: Transport[];
+	pagination: Pagination;
+}
+
+export interface CreateTransportInput {
+	code: string;
+	description?: string;
+	storageBinId?: string;
+	location?: string;
+	minLengthMm?: string;
+	minWidthMm?: string;
+	minHeightMm?: string;
+	minWeightKg?: string;
+	maxLengthMm?: string;
+	maxWidthMm?: string;
+	maxHeightMm?: string;
+	maxWeightKg?: string;
+	numberOfPallets?: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateTransportInput {
+	code?: string;
+	description?: string;
+	storageBinId?: string;
+	location?: string;
+	minLengthMm?: string;
+	minWidthMm?: string;
+	minHeightMm?: string;
+	minWeightKg?: string;
+	maxLengthMm?: string;
+	maxWidthMm?: string;
+	maxHeightMm?: string;
+	maxWeightKg?: string;
+	numberOfPallets?: number;
+	updatedBy: string;
+}
+
+export interface SetupArea {
+	id: string;
+	code: string;
+	description: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface SetupAreaPaginatedResponse {
+	query: SetupArea[];
+	pagination: Pagination;
+}
+
+export interface CreateSetupAreaInput {
+	code: string;
+	description: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSetupAreaInput {
+	code?: string;
+	description?: string;
 	updatedBy: string;
 }
 
@@ -298,13 +447,23 @@ export interface Skus {
 	skuId: string;
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number;
-	skuQuantity: number;
-	lossQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: SkuSupplier[];
 	skuUom: string;
 	pickingStrategy: string;
+	isLotControlled: boolean;
+	isExpiryControlled: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 	isActive: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -315,27 +474,48 @@ export interface Skus {
 export interface createSkusInput {
 	skuCode: string;
 	skuDescription: string;
-	skuPrice: number;
-	skuQuantity: number;
 	skuExpiryDate: string;
 	skuSuppliers: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 	initialOnHandQty?: number;
 }
 
 export interface UpdateSkusInput {
 	skuCode?: string;
 	skuDescription?: string;
-	skuPrice?: number;
-	skuQuantity?: number;
-	lossQuantity?: number;
 	skuExpiryDate?: string;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	skuUom?: string;
 	pickingStrategy?: string;
+	isLotControlled?: boolean;
+	isExpiryControlled?: boolean;
 	isActive?: boolean;
+	barcode?: string | null;
+	brand?: string | null;
+	category?: string | null;
+	manufacturer?: string | null;
+	caseRate?: number | null;
+	caseExtLengthMm?: number | null;
+	caseExtWidthMm?: number | null;
+	caseExtHeightMm?: number | null;
+	caseGrossWeightKg?: number | null;
+	casesPerLayer?: number | null;
+	noOfLayers?: number | null;
 }
 
 export interface SkusPaginatedResponse {
@@ -379,6 +559,10 @@ export interface Grn {
 	approvedAt: string | null;
 	notes: string | null;
 	proofUrl: string | null;
+	/** NetSuite error message when status is Failed (incl. our PO-not-fully-fulfilled block message). */
+	nsError?: string | null;
+	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
+	poFulfilled?: boolean | null;
 	createdAt: string;
 	updatedAt: string;
 	createdByUser: GrnAuditUser | null;
@@ -404,6 +588,8 @@ export interface GrnItem {
 	updatedBy: string | null;
 	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
 	rack: GrnRack | null;
+	/** Per-rack carton allocations for this GRN item. */
+	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
 	/** Optional expiry date for this GRN item (ISO string from backend). */
 	expiryDate?: string | null;
 	/** Lot number assigned by supplier/manufacturer to identify this production batch. */
@@ -519,6 +705,8 @@ export interface GrnItemForList {
 		rackRow: string;
 		rackColumn: string;
 	} | null;
+	/** Per-rack carton allocations (populated when multiple racks are used). */
+	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */
@@ -538,6 +726,10 @@ export interface GrnDetailForList {
 	updatedBy: string | null;
 	notes?: string;
 	proofUrl?: string | null;
+	/** NetSuite error message when status is Failed (incl. our PO-not-fully-fulfilled block message). */
+	nsError?: string | null;
+	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
+	poFulfilled?: boolean | null;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;
@@ -630,6 +822,10 @@ export interface DeliveryOrderItemWithDetails {
 	qtyRequired: string;
 	qtyPicked: string | null;
 	qtyPacked: string | null;
+	/** Lot / batch number on the DO line (prefills return capture). */
+	lotNo: string | null;
+	/** Expiry date of the DO line lot (ISO 8601), prefills return capture. */
+	expiryDate: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
@@ -658,6 +854,7 @@ export interface DeliveryOrderItemFilterInput {
 	doStatuses?: string[] | null;
 	search?: string | null;
 	regionId?: string | null;
+	regionIds?: string[] | null;
 	scheduledDeliveryDateFrom?: string | null;
 	scheduledDeliveryDateTo?: string | null;
 }
@@ -722,4 +919,348 @@ export interface PurchaseOrderFilterInput {
 	page?: number | null;
 	pageSize?: number | null;
 	pageNumber?: number | null;
+}
+
+// ============================================
+// ZONES
+// ============================================
+
+export type ZonePurpose = "GENERAL" | "WET" | "DRY" | "AMBIENT" | "DAMAGED";
+
+export interface Zone {
+	zoneId: string;
+	warehouseId: string;
+	zoneCode: string;
+	zoneName: string;
+	purpose: ZonePurpose;
+	warehouseName?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface ZonePaginatedResponse {
+	query: Zone[];
+	pagination: Pagination;
+}
+
+export interface CreateZoneInput {
+	warehouseId: string;
+	zoneCode: string;
+	zoneName: string;
+	purpose?: ZonePurpose;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateZoneInput {
+	zoneCode?: string;
+	zoneName?: string;
+	purpose?: ZonePurpose;
+	updatedBy: string;
+}
+
+// ============================================
+// BINS
+// ============================================
+
+export interface Bin {
+	binId: string;
+	rackId: string;
+	binCode: string;
+	level: string;
+	column: string;
+	capacityVolume: number | null;
+	capacityWeight: number | null;
+	currentVolume: number;
+	currentWeight: number;
+	isPickFace: boolean;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface BinPaginatedResponse {
+	query: Bin[];
+	pagination: Pagination;
+}
+
+export interface CreateBinInput {
+	rackId: string;
+	binCode: string;
+	level: string;
+	column: string;
+	capacityVolume?: number | null;
+	capacityWeight?: number | null;
+	isPickFace?: boolean;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateBinInput {
+	binCode?: string;
+	level?: string;
+	column?: string;
+	capacityVolume?: number | null;
+	capacityWeight?: number | null;
+	isPickFace?: boolean;
+	updatedBy: string;
+}
+
+// ============================================
+// PUTAWAY RULES
+// ============================================
+
+export interface PutawayRule {
+	putawayRuleId: string;
+	warehouseId: string;
+	itemAttributeKey: string;
+	itemAttributeValue: string;
+	targetZonePurpose: string;
+	priority: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PutawayRulePaginatedResponse {
+	query: PutawayRule[];
+	pagination: Pagination;
+}
+
+export interface CreatePutawayRuleInput {
+	warehouseId: string;
+	itemAttributeKey: string;
+	itemAttributeValue: string;
+	targetZonePurpose: string;
+	priority?: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePutawayRuleInput {
+	itemAttributeKey?: string;
+	itemAttributeValue?: string;
+	targetZonePurpose?: string;
+	priority?: number;
+	updatedBy: string;
+}
+
+export interface PalletLabel {
+	id: string;
+	itemCode: string;
+	barCode: string | null;
+	referenceNo: string | null;
+	storageBinId: string | null;
+	storageBinCode: string | null;
+	labelCode: string;
+	description: string | null;
+	itemDesc02: string | null;
+	printedCount: number;
+	firstPrintedAt: string | null;
+	lastPrintedAt: string | null;
+	isActive: boolean;
+	isDeleted: boolean;
+	deletedAt: string | null;
+	version: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PalletLabelPaginatedResponse {
+	query: PalletLabel[];
+	pagination: Pagination;
+}
+
+export interface CreatePalletLabelInput {
+	itemCode: string;
+	barCode?: string;
+	referenceNo?: string;
+	storageBinId?: string;
+	labelCode: string;
+	description?: string;
+	itemDesc02?: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePalletLabelInput {
+	itemCode?: string;
+	barCode?: string;
+	referenceNo?: string;
+	storageBinId?: string;
+	labelCode?: string;
+	description?: string;
+	itemDesc02?: string;
+	isActive?: boolean;
+	version: number;
+	updatedBy: string;
+}
+
+export interface SkuAssignmentOutlet {
+	outletId: string;
+	outletName: string;
+	outletCode: string;
+	chain: string | null;
+	channel: string | null;
+	debtor: string | null;
+}
+
+export interface SkuAssignmentSku {
+	skuId: string;
+	skuCode: string;
+	skuDescription: string;
+	brand: string | null;
+	category: string | null;
+	manufacturer: string | null;
+}
+
+export interface SkuAssignment {
+	id: string;
+	outlet: SkuAssignmentOutlet;
+	sku: SkuAssignmentSku;
+	minExpiryMonth: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface SkuAssignmentPaginatedResponse {
+	query: SkuAssignment[];
+	pagination: Pagination;
+}
+
+export interface CreateSkuAssignmentInput {
+	outletId: string;
+	skuId: string;
+	minExpiryMonth: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdateSkuAssignmentInput {
+	outletId?: string;
+	skuId?: string;
+	minExpiryMonth?: number;
+	updatedBy: string;
+}
+
+export interface PickingCriteria {
+	id: string;
+	userId: string;
+	category: string;
+	chain: string;
+	channel: string;
+	debtor: string;
+	deliveryPoint: string;
+	storageClass: string;
+	brand: string;
+	itemCategory: string;
+	manufacturer: string;
+	item: string;
+	minExpiryMonth: number;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface PickingCriteriaPaginatedResponse {
+	query: PickingCriteria[];
+	pagination: Pagination;
+}
+
+export interface CreatePickingCriteriaInput {
+	userId: string;
+	category: string;
+	chain: string;
+	channel: string;
+	debtor: string;
+	deliveryPoint: string;
+	storageClass: string;
+	brand: string;
+	itemCategory: string;
+	manufacturer: string;
+	item: string;
+	minExpiryMonth: number;
+	createdBy: string;
+	updatedBy: string;
+}
+
+export interface UpdatePickingCriteriaInput {
+	userId?: string;
+	category?: string;
+	chain?: string;
+	channel?: string;
+	debtor?: string;
+	deliveryPoint?: string;
+	storageClass?: string;
+	brand?: string;
+	itemCategory?: string;
+	manufacturer?: string;
+	item?: string;
+	minExpiryMonth?: number;
+	updatedBy: string;
+}
+
+// ============================================
+// STOCK TRANSFER (Bin to Bin / W2W)
+// ============================================
+
+export type StockTransferType = "BIN_TO_BIN" | "WAREHOUSE_TO_WAREHOUSE";
+
+export type StockTransferStatus = "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
+
+export interface StockTransferItemRack {
+	rackId: string;
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+}
+
+export interface StockTransferItem {
+	id: string;
+	skuId: string;
+	skuCode: string | null;
+	skuDescription: string | null;
+	lotNo: string | null;
+	expiryDate: string | null;
+	quantity: string;
+	sourceStockQuantId: string;
+	sourceRackId: string;
+	sourceRack: StockTransferItemRack | null;
+	destinationRackId: string;
+	destinationRack: StockTransferItemRack | null;
+}
+
+export interface StockTransfer {
+	id: string;
+	transferNo: string;
+	type: StockTransferType;
+	status: StockTransferStatus;
+	sourceWarehouseId: string | null;
+	destinationWarehouseId: string | null;
+	remarks: string | null;
+	dispatchedAt: string | null;
+	receivedAt: string | null;
+	receivedBy: string | null;
+	cancelledAt: string | null;
+	cancelledBy: string | null;
+	cancelReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string;
+	createdByUser: AuditUser | null;
+	items: StockTransferItem[];
+}
+
+export interface StockTransferPaginatedResponse {
+	query: StockTransfer[];
+	pagination: Pagination;
 }

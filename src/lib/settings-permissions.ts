@@ -22,6 +22,9 @@ export const SETTINGS_MASTER_DATA_MODULES: Record<string, string> = {
 	"stock-unit": "Stock Unit",
 	rack: "Rack",
 	skus: "SKU",
+	zone: "Zone",
+	bin: "Bin",
+	"putaway-rule": "Putaway Rule",
 };
 
 export type SettingsMasterDataSubTabId =
@@ -37,6 +40,9 @@ const MODULE_NAME_ALIASES: Record<string, string[]> = {
 	"Stock Unit": ["Stock Unit", "Stock Units", "UOM", "UoM"],
 	Rack: ["Rack", "Racks"],
 	SKU: ["SKU", "SKUs", "Stock", "Stocks"],
+	Zone: ["Zone", "Zones"],
+	Bin: ["Bin", "Bins"],
+	"Putaway Rule": ["Putaway Rule", "Putaway Rules"],
 };
 
 function normalizeModuleName(value: string): string {

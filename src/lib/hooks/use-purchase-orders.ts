@@ -56,6 +56,8 @@ export interface PurchaseOrdersResult {
 export interface PurchaseOrdersInfinitePage {
 	result: PurchaseOrdersResult;
 	hasNextPage: boolean;
+	/** Past-weeks tab: whether this 7-day window returned any raw orders. */
+	hadRawOrders: boolean;
 }
 
 function getAuthHeaders(): Headers {
@@ -138,35 +140,65 @@ export function usePurchaseOrders(options: UsePurchaseOrdersOptions = {}) {
 const MAX_PAST_WEEKS = 52;
 
 /**
+ * Stop past-deliveries paging only after this many *consecutive* empty weeks.
+ * A single empty week (no scheduled deliveries) is normal and must not halt
+ * the slide — older orders can still exist behind the gap.
+ */
+const MAX_EMPTY_PAST_WEEKS = 8;
+
+/**
  * Compute a UTC date-range window for a given week offset going backwards from today.
  * weekOffset=1 → yesterday back 7 days (the most-recent past week).
  * weekOffset=2 → 8–14 days ago, and so on.
  * Dates are aligned to UTC+8 business timezone midnight.
  */
+function getDayBoundsInBusinessTZ(d: Date): { start: Date; end: Date } {
+	const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000;
+	const shifted = new Date(d.getTime() + UTC8_OFFSET_MS);
+	const startShifted = Date.UTC(
+		shifted.getUTCFullYear(),
+		shifted.getUTCMonth(),
+		shifted.getUTCDate(),
+		0,
+		0,
+		0,
+		0,
+	);
+	const endShifted = Date.UTC(
+		shifted.getUTCFullYear(),
+		shifted.getUTCMonth(),
+		shifted.getUTCDate(),
+		23,
+		59,
+		59,
+		999,
+	);
+	return {
+		start: new Date(startShifted - UTC8_OFFSET_MS),
+		end: new Date(endShifted - UTC8_OFFSET_MS),
+	};
+}
+
 function getPastWeekWindow(weekOffset: number): {
 	fromDate: Date;
 	toDate: Date;
 } {
-	const UTC8_OFFSET_MS = 8 * 60 * 60 * 1000;
 	const now = new Date();
-	// Today in UTC+8, then snap to UTC midnight of that day
-	const todayUTC8 = new Date(now.getTime() + UTC8_OFFSET_MS);
-	todayUTC8.setUTCHours(0, 0, 0, 0);
-	const todayMidnightUTC = new Date(todayUTC8.getTime() - UTC8_OFFSET_MS);
+	const { start: currentWeekStart } = getDayBoundsInBusinessTZ(now);
+	const dayBeforeCurrentWeek = new Date(
+		currentWeekStart.getTime() - 24 * 60 * 60 * 1000,
+	);
+	const weekEndAnchor = new Date(
+		dayBeforeCurrentWeek.getTime() - (weekOffset - 1) * 7 * 24 * 60 * 60 * 1000,
+	);
+	const weekStartAnchor = new Date(
+		weekEndAnchor.getTime() - 6 * 24 * 60 * 60 * 1000,
+	);
 
-	// toDate: end of day for (weekOffset * 7) days ago, relative to yesterday
-	// page 1 → yesterday (today-1), page 2 → today-8, etc.
-	const daysBackTo = (weekOffset - 1) * 7 + 1;
-	const toDate = new Date(todayMidnightUTC);
-	toDate.setUTCDate(todayMidnightUTC.getUTCDate() - daysBackTo);
-	toDate.setUTCHours(23, 59, 59, 999);
-
-	// fromDate: 6 days before toDate → 7-day window total
-	const fromDate = new Date(toDate);
-	fromDate.setUTCDate(toDate.getUTCDate() - 6);
-	fromDate.setUTCHours(0, 0, 0, 0);
-
-	return { fromDate, toDate };
+	return {
+		fromDate: getDayBoundsInBusinessTZ(weekStartAnchor).start,
+		toDate: getDayBoundsInBusinessTZ(weekEndAnchor).end,
+	};
 }
 
 export function useInfinitePurchaseOrders(
@@ -224,13 +256,14 @@ export function useInfinitePurchaseOrders(
 						),
 					},
 					hasNextPage: startIndex + dateGroupPageSize < fullResult.dateKeys.length,
+					hadRawOrders: true,
 				};
 			}
 
 			// past-weeks: one 7-day window per page, sliding backwards.
 			// page 1 → yesterday…7 days ago
 			// page 2 → 8…14 days ago
-			// Stops when the window contains zero raw orders OR MAX_PAST_WEEKS is hit.
+			// Stops after MAX_EMPTY_PAST_WEEKS consecutive empty windows or MAX_PAST_WEEKS.
 			const { fromDate, toDate } = getPastWeekWindow(pageNumber);
 
 			const data = await request<PurchaseOrdersByWeekQueryData>(
@@ -250,19 +283,37 @@ export function useInfinitePurchaseOrders(
 				{ searchTerm, statusFilter, regionFilter, activeTab, page: pageNumber },
 			);
 
-			// Stop when the raw API returned no orders for this window (gone far enough back)
-			// or when we've hit the safety limit.
-			const hasAnyRawOrders = data.purchaseOrdersByWeek.some(
+			// Whether *this* window had any raw orders. The stop decision lives in
+			// getNextPageParam, which can see the whole page history — so a lone
+			// empty week no longer permanently halts the slide.
+			const hadRawOrders = data.purchaseOrdersByWeek.some(
 				(e) => e.orders.length > 0,
 			);
 
 			return {
 				result: fullResult,
-				hasNextPage: hasAnyRawOrders && pageNumber < MAX_PAST_WEEKS,
+				hasNextPage: hadRawOrders,
+				hadRawOrders,
 			};
 		},
-		getNextPageParam: (lastPage, allPages) =>
-			lastPage.hasNextPage ? allPages.length + 1 : undefined,
+		getNextPageParam: (lastPage, allPages) => {
+			if (activeTab === "current-week") {
+				return lastPage.hasNextPage ? allPages.length + 1 : undefined;
+			}
+
+			// past-weeks: keep sliding backwards until we hit the safety limit or a
+			// long run of consecutive empty weeks (a real end-of-history signal).
+			if (allPages.length >= MAX_PAST_WEEKS) return undefined;
+
+			let emptyStreak = 0;
+			for (let i = allPages.length - 1; i >= 0; i--) {
+				if (allPages[i].hadRawOrders) break;
+				emptyStreak++;
+			}
+			if (emptyStreak >= MAX_EMPTY_PAST_WEEKS) return undefined;
+
+			return allPages.length + 1;
+		},
 		enabled,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,

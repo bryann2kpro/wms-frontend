@@ -207,7 +207,12 @@ export type CreatePurchaseOrderMutationVariables = {
 	input: {
 		purchaseOrderNo: string;
 		outletId: string;
-		items: Array<{ skuCode: string; skuId?: string; qtyRequired: number }>;
+		items: Array<{
+			skuCode: string;
+			skuId?: string;
+			qtyRequired: number;
+			stockQuantId?: string;
+		}>;
 		isEmergency?: boolean;
 	};
 };
