@@ -128,6 +128,24 @@ export const CANCEL_STOCK_TRANSFER_MUTATION = gql`
 	${STOCK_TRANSFER_FRAGMENT}
 `;
 
+export const APPROVE_STOCK_TRANSFER_MUTATION = gql`
+	mutation ApproveStockTransfer($id: ID!) {
+		approveStockTransfer(id: $id) {
+			...StockTransferFields
+		}
+	}
+	${STOCK_TRANSFER_FRAGMENT}
+`;
+
+export const REJECT_STOCK_TRANSFER_MUTATION = gql`
+	mutation RejectStockTransfer($id: ID!) {
+		rejectStockTransfer(id: $id) {
+			...StockTransferFields
+		}
+	}
+	${STOCK_TRANSFER_FRAGMENT}
+`;
+
 // ============================================
 // VARIABLE / DATA TYPES
 // ============================================
@@ -184,4 +202,14 @@ export type CancelStockTransferMutationVariables = {
 };
 export type CancelStockTransferMutationData = {
 	cancelStockTransfer: StockTransfer;
+};
+
+export type ApproveStockTransferMutationVariables = { id: string };
+export type ApproveStockTransferMutationData = {
+	approveStockTransfer: StockTransfer;
+};
+
+export type RejectStockTransferMutationVariables = { id: string };
+export type RejectStockTransferMutationData = {
+	rejectStockTransfer: StockTransfer;
 };

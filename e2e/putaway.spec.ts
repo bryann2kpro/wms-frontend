@@ -1,5 +1,7 @@
 /**
- * Putaway E2E — internal bin transfers (draft → Approve / Reject)
+ * Bin to Bin E2E — internal bin transfers (draft → Approve / Reject)
+ *
+ * UI: /admin/stock-transfer (legacy /admin/putaway redirects here)
  *
  * UI flow:
  *   1. Source rack
@@ -16,7 +18,7 @@
  * • Frontend : E2E_BASE_URL     (default http://localhost:3000)
  * • Admin user with Inventory permission
  * • Source rack must have at least one stock quant with quantity > 0
- * • The putaway queue may already contain other draft lines; tests target rows
+ * • The draft queue may already contain other lines; tests target rows
  *   by SKU + source + destination + quantity (+ lot when needed).
  * • Optional env:
  *     E2E_PUTAWAY_SOURCE_RACK_LABEL  (default I1-L2-02)
@@ -40,9 +42,9 @@ const PUTAWAY_TEST_QTY = "1";
 const PUTAWAY_ALT_QTY = "2";
 
 async function gotoPutaway(page: Page) {
-  await page.goto("/admin/putaway");
+  await page.goto("/admin/stock-transfer");
   await expect(
-    page.getByRole("heading", { name: /^Putaway$/i }),
+    page.getByRole("heading", { name: /^Bin to Bin$/i }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(
     page.getByRole("region", { name: /Notifications/i }),
@@ -279,8 +281,8 @@ function putawayDraftRowLocator(
   },
 ) {
   const qtyDisplay = Number(p.qty).toLocaleString();
-  let row = page
-    .getByRole("table")
+  const table = page.getByRole("table", { name: /Pending transfer drafts/i });
+  let row = table
     .locator("tbody tr")
     .filter({ hasText: new RegExp(escapeRegExp(p.skuCode)) })
     .filter({ hasText: new RegExp(escapeRegExp(p.sourceLabel)) })
@@ -331,7 +333,7 @@ test.describe("Putaway validation", () => {
   }) => {
     await clickAddToList(page);
     await expectToast(page, /Missing fields/i);
-    await expectNoToast(page, /draft in putaway/i);
+    await expectNoToast(page, /draft in putaway|saved as draft/i);
   });
 
   test("shows error when source and destination rack are the same", async ({
@@ -374,7 +376,7 @@ test.describe("Putaway validation", () => {
     await clickAddToList(page);
     await expectToast(page, /Invalid racks/i);
     await expectToast(page, /Source and destination rack must be different/i);
-    await expectNoToast(page, /draft in putaway/i);
+    await expectNoToast(page, /draft in putaway|saved as draft/i);
   });
 
   test("shows error when quantity exceeds on-hand for selected lot", async ({
@@ -422,7 +424,7 @@ test.describe("Putaway validation", () => {
     await clickAddToList(page);
 
     await expectToast(page, /Quantity too high/i);
-    await expectNoToast(page, /draft in putaway/i);
+    await expectNoToast(page, /draft in putaway|saved as draft/i);
   });
 
   test("shows error when lot is required but not selected", async ({
@@ -466,7 +468,7 @@ test.describe("Putaway validation", () => {
 
       await clickAddToList(page);
       await expectToast(page, /Select lot/i);
-      await expectNoToast(page, /draft in putaway/i);
+      await expectNoToast(page, /draft in putaway|saved as draft/i);
       return;
     }
 
@@ -592,7 +594,7 @@ test.describe("Putaway queue", () => {
     if (!skipIfPrereqsMissing(addAlt, SOURCE_RACK_LABEL, ALT_DEST_RACK_LABEL)) {
       return;
     }
-    await expectToast(page, /draft in putaway/i);
+    await expectToast(page, /draft in putaway|saved as draft/i);
 
     const addPrimary = await addPutawayDraftLine(page, {
       sourceLabel: SOURCE_RACK_LABEL,
@@ -602,7 +604,7 @@ test.describe("Putaway queue", () => {
     if (!skipIfPrereqsMissing(addPrimary, SOURCE_RACK_LABEL, DEST_RACK_LABEL)) {
       return;
     }
-    await expectToast(page, /draft in putaway/i);
+    await expectToast(page, /draft in putaway|saved as draft/i);
 
     const rowToApprove = putawayDraftRowLocator(page, {
       skuCode: addPrimary.skuCode,
@@ -656,7 +658,7 @@ test.describe("Putaway happy path", () => {
       return;
     }
 
-    await expectToast(page, /draft in putaway/i);
+    await expectToast(page, /draft in putaway|saved as draft/i);
 
     const row = putawayDraftRowLocator(page, {
       skuCode: add.skuCode,
@@ -696,7 +698,7 @@ test.describe("Putaway happy path", () => {
       return;
     }
 
-    await expectToast(page, /draft in putaway/i);
+    await expectToast(page, /draft in putaway|saved as draft/i);
 
     const row = putawayDraftRowLocator(page, {
       skuCode: add.skuCode,
@@ -765,7 +767,7 @@ test.describe("Putaway happy path", () => {
     }
 
     await clickAddToList(page);
-    await expectToast(page, /draft in putaway/i);
+    await expectToast(page, /draft in putaway|saved as draft/i);
 
     const row = putawayDraftRowLocator(page, {
       skuCode,
