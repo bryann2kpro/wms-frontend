@@ -65,7 +65,6 @@ import {
 	type ZonesQueryData,
 } from "@/lib/graphql/zones";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { formatDate } from "@/lib/utils";
 import { Plus, Edit, Trash2, Search, LayoutGrid, ArrowUpDown, Upload } from "lucide-react";
 import type { Rack } from "@/lib/graphql/types";
 import { ImportDialog } from "@/components/settings/master-data/import-dialog";
@@ -79,6 +78,11 @@ const formatNumericCell = (value: string | null | undefined) => {
 	if (!trimmed) return <span className="opacity-30">—</span>;
 	return <span className="tabular-nums">{trimmed}</span>;
 };
+
+const rackLocationDescription = (row: Pick<Rack, "rackRow" | "rackColumn" | "rackLevel">) =>
+	`${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`;
+
+const emptyCell = <span className="opacity-30">—</span>;
 
 export const Route = createFileRoute("/admin/racks")({
 	beforeLoad: async ({ context }) => {
@@ -342,7 +346,7 @@ function RacksPage() {
 												<Checkbox />
 											</TableCell>
 											<TableCell className="px-4 font-mono text-sm">
-												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
+												{row.binCode ?? rackLocationDescription(row)}
 											</TableCell>
 											<TableCell className="px-4">
 												{row.barCode ? (
@@ -357,7 +361,7 @@ function RacksPage() {
 												)}
 											</TableCell>
 											<TableCell className="px-4 text-sm text-muted-foreground">
-												{row.binCode ?? `${row.rackRow}-${row.rackColumn}-${formatLevel(row.rackLevel)}`}
+												{rackLocationDescription(row)}
 											</TableCell>
 											<TableCell className="px-4 font-medium">
 												{row.rackRow}
@@ -405,7 +409,7 @@ function RacksPage() {
 												</Badge>
 											</TableCell>
 											<TableCell className="px-4 text-sm text-muted-foreground">
-												{formatDate(row.updatedAt)}
+												{emptyCell}
 											</TableCell>
 											<TableCell className="px-4 text-right">
 												<Button

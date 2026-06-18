@@ -48,6 +48,7 @@ import {
 	WAREHOUSES_QUERY,
 	type WarehousesQueryData,
 } from "@/lib/graphql/warehouses";
+import { formatLevel } from "@/components/racks/rack-form-dialog";
 import {
 	STOCK_UNITS_QUERY,
 	CREATE_STOCK_UNIT_MUTATION,
@@ -151,6 +152,14 @@ function parseStorageBay(value: string, rackRow: string): string {
 function parseOptionalNumericString(value: string): string | null {
 	const trimmed = value.trim();
 	return trimmed || null;
+}
+
+function rackLocationDescription(parts: {
+	rackRow: string;
+	rackColumn: string;
+	rackLevel: string;
+}): string {
+	return `${parts.rackRow}-${parts.rackColumn}-${formatLevel(parts.rackLevel)}`;
 }
 
 interface ImportDialogProps {
@@ -1515,7 +1524,11 @@ export function ImportDialog({
 												<>
 													<TableCell className="font-mono text-xs">{row.data.binCode ?? ""}</TableCell>
 													<TableCell className="font-mono text-xs">{row.data.barCode ?? ""}</TableCell>
-													<TableCell className="text-muted-foreground text-xs">—</TableCell>
+													<TableCell className="text-muted-foreground text-xs">
+														{row.data.rackRow && row.data.rackColumn && row.data.rackLevel
+															? rackLocationDescription(row.data)
+															: "—"}
+													</TableCell>
 													<TableCell>{row.data.rackRow}</TableCell>
 													<TableCell>{row.data.rackColumn}</TableCell>
 													<TableCell>{row.data.rackLevel}</TableCell>
