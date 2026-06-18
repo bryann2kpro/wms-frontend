@@ -39,6 +39,7 @@ import {
 import { toUserFriendlyMessage } from "@/lib/utils";
 import {
 	dashboardAccentButtonProps,
+	formatQtyWithUom,
 } from "@/components/stock-transfer/stock-transfer-ui";
 
 const RACKS_PAGE_SIZE = 500;
@@ -80,6 +81,7 @@ type SkuOption = {
 	skuId: string;
 	skuCode: string;
 	totalOnHand: number;
+	stockUnitCode: string | null;
 };
 
 type LotOption = {
@@ -97,7 +99,12 @@ function buildSkuOptions(quants: StockQuant[]): SkuOption[] {
 		if (existing) {
 			existing.totalOnHand += onHand;
 		} else {
-			map.set(q.skuId, { skuId: q.skuId, skuCode: code, totalOnHand: onHand });
+			map.set(q.skuId, {
+				skuId: q.skuId,
+				skuCode: code,
+				totalOnHand: onHand,
+				stockUnitCode: q.stockUnitCode ?? null,
+			});
 		}
 	}
 	return [...map.values()].sort((a, b) =>
@@ -338,6 +345,16 @@ export function BinTransferQuickForm({
 		[stockQuantsInRack, selectedSkuId, selectedLotChoice],
 	);
 
+	const selectedSkuOption = useMemo(
+		() => skuOptions.find((opt) => opt.skuId === selectedSkuId),
+		[skuOptions, selectedSkuId],
+	);
+
+	const selectedUom =
+		selectedStockQuant?.stockUnitCode?.trim() ||
+		selectedSkuOption?.stockUnitCode?.trim() ||
+		null;
+
 	const maxQtyForSelection = selectedStockQuant
 		? stockQuantOnHand(selectedStockQuant)
 		: undefined;
@@ -419,7 +436,7 @@ export function BinTransferQuickForm({
 				? ` (lot ${normalizeLotNo(quant.lotNo)})`
 				: "";
 			toast.error("Quantity too high", {
-				description: `At most ${maxAllowed.toLocaleString()} for this SKU${lotHint} on the source rack.`,
+				description: `At most ${formatQtyWithUom(maxAllowed, quant.stockUnitCode)} for this SKU${lotHint} on the source rack.`,
 			});
 			return;
 		}
@@ -539,7 +556,7 @@ export function BinTransferQuickForm({
 								<SelectItem value={SKU_SELECT_NONE}>Select SKU…</SelectItem>
 								{skuOptions.map((opt) => (
 									<SelectItem key={opt.skuId} value={opt.skuId}>
-										{opt.skuCode} — {opt.totalOnHand.toLocaleString()} on hand
+										{opt.skuCode} — {formatQtyWithUom(opt.totalOnHand, opt.stockUnitCode)} on hand
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -597,14 +614,21 @@ export function BinTransferQuickForm({
 								) : null}
 								{lotOptions.map((opt) => (
 									<SelectItem key={opt.key} value={opt.key}>
-										{opt.label} — {opt.onHand.toLocaleString()} on hand
+										{opt.label} — {formatQtyWithUom(opt.onHand, selectedUom)} on hand
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="putaway-qty">Quantity</Label>
+						<Label htmlFor="putaway-qty">
+							Quantity
+							{selectedUom ? (
+								<span className="ml-1 font-normal text-muted-foreground">
+									({selectedUom})
+								</span>
+							) : null}
+						</Label>
 						<Input
 							id="putaway-qty"
 							type="number"
@@ -614,13 +638,18 @@ export function BinTransferQuickForm({
 							inputMode="numeric"
 							placeholder={
 								maxQtyForSelection != null
-									? `1–${maxQtyForSelection.toLocaleString()}`
+									? `1–${formatQtyWithUom(maxQtyForSelection, selectedUom)}`
 									: "—"
 							}
 							value={quantity}
 							onChange={(e) => setQuantity(e.target.value)}
 							disabled={!selectedStockQuant || maxQtyForSelection === 0}
 						/>
+						{maxQtyForSelection != null && maxQtyForSelection > 0 ? (
+							<p className="text-xs text-muted-foreground">
+								Available: {formatQtyWithUom(maxQtyForSelection, selectedUom)}
+							</p>
+						) : null}
 					</div>
 				</div>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-end">

@@ -23,6 +23,16 @@ export const transferTableEmptyCellClassName =
 
 export const transferTableMonoCellClassName = "font-mono text-sm";
 
+/** Format quantity with optional SKU UOM code (e.g. "12 CTN"). */
+export function formatQtyWithUom(
+	qty: number,
+	stockUnitCode?: string | null,
+): string {
+	const amount = qty.toLocaleString();
+	const uom = stockUnitCode?.trim();
+	return uom ? `${amount} ${uom}` : amount;
+}
+
 type TransferDraftActionsProps = {
 	onApprove: () => void;
 	onReject: () => void;

@@ -21,6 +21,7 @@ export const STOCK_QUANTS_QUERY = gql`
 				id
 				skuId
 				skuCode
+				stockUnitCode
 				description
 				quantity
 				reservedQty
@@ -52,6 +53,7 @@ export interface StockQuant {
 	id: string;
 	skuId: string;
 	skuCode: string | null;
+	stockUnitCode: string | null;
 	description: string | null;
 	quantity: string;
 	reservedQty: string;
