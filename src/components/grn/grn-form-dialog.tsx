@@ -68,7 +68,10 @@ import {
 import type { Grn, GrnItem } from "@/lib/graphql/types";
 import {
 	CREATE_RACK_MUTATION,
+	RACKS_QUERY,
 	type CreateRackMutationData,
+	type RacksQueryData,
+	type RacksQueryVariables,
 } from "@/lib/graphql/racks";
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -276,6 +279,8 @@ export type GRNLineItemForm = {
 	lotNo: string;
 	/** Primary rack (first allocation). Same SKU allowed with different expiry/rack. */
 	rackId: string;
+	/** Rack for loose/loss items — must be LOOSE_STORAGE bin type. */
+	lossRackId?: string;
 	/** Multi-rack putaway split when quantity exceeds single-rack capacity. */
 	rackAllocations?: GrnRackAllocationForm[];
 	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
@@ -670,6 +675,18 @@ function GRNLineRow({
 	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
 	const [editingAllocationIdx, setEditingAllocationIdx] = useState<number | null>(null);
 
+	const { data: looseRacksData } = useQuery({
+		queryKey: [...qk.racks.all, "loose-storage"],
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
+				filter: { binType: "LOOSE_STORAGE" },
+				pageSize: 50,
+				pageNumber: 1,
+			}),
+		staleTime: 5 * 60 * 1000,
+	});
+	const looseRacks = looseRacksData?.racks?.query ?? [];
+
 	const resolvedSkuId = useMemo(() => {
 		if (!item.skuCode?.trim()) return "";
 		return skuOptions.find((s) => s.skuCode === item.skuCode)?.skuId ?? "";
@@ -677,6 +694,18 @@ function GRNLineRow({
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
 	const lossQty = Math.max(0, Number(item.loss) || 0);
+
+	useEffect(() => {
+		if (lossQty > 0 && !item.lossRackId && looseRacks.length > 0) {
+			const first = looseRacks[0];
+			onItemsChange(
+				items.map((row, i) =>
+					i === index ? { ...row, lossRackId: first.rackId } : row,
+				),
+			);
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [lossQty, looseRacks.length]);
 	const netQty = Math.max(0, inboundQty - lossQty);
 	const totalAllocQty = Math.round(
 		((item.rackAllocations ?? []).reduce((s, a) => s + (Number(a.quantity) || 0), 0)) * 100,
@@ -1356,6 +1385,30 @@ function GRNLineRow({
 							</p>
 						) : null}
 						</div>
+
+						{/* Loss rack — only shown when loss qty > 0 */}
+						{lossQty > 0 && (
+							<div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/30 p-2.5 dark:border-amber-900 dark:bg-amber-950/20">
+								<label
+									className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
+									Loose / Loss Rack
+								</label>
+								<RackLocationCombobox
+									remoteSearch
+									binType="LOOSE_STORAGE"
+									value={item.lossRackId ?? ""}
+									onChange={(rackId) => {
+										const newItems = [...items];
+										newItems[index] = { ...newItems[index], lossRackId: rackId };
+										onItemsChange(newItems);
+									}}
+									placeholder="Select loose storage rack…"
+									className="h-8"
+								/>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
@@ -1717,6 +1770,7 @@ export function GrnFormDialog({
 								skuDescription: i.description ?? undefined,
 								qty: String(i.carton),
 								lossQty: String(i.loss),
+								lossRackId: i.lossRackId?.trim() || undefined,
 								skuUom: uomId ?? undefined,
 								expiryDate: (i.expiryDate ?? "").trim() || undefined,
 								lotNo: (i.lotNo ?? "").trim() || undefined,
