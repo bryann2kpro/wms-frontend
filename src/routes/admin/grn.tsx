@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
@@ -98,6 +98,10 @@ import {
 	SUPPLIERS_QUERY,
 	type SuppliersQueryData,
 } from "@/lib/graphql/suppliers";
+import {
+	END_USERS_QUERY,
+	type EndUsersQueryData,
+} from "@/lib/graphql/end-users";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -473,7 +477,7 @@ function AsnPickerDialog({
 							}
 						}}
 					>
-						{selecting ? "Loading…" : "Continue"}
+						{selecting ? "Loadingâ€¦" : "Continue"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -550,6 +554,12 @@ function GRNRouteComponent() {
 			gqlRequest<SuppliersQueryData>(SUPPLIERS_QUERY, suppliersVariables),
 	});
 	const suppliers = suppliersData?.suppliers?.query ?? [];
+
+	const { data: endUsersData } = useQuery({
+		queryKey: [...qk.endUsers.all, "list"],
+		queryFn: () => gqlRequest<EndUsersQueryData>(END_USERS_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+	const endUsers = endUsersData?.endUsers?.query ?? [];
 
 	const grnsQueryVars: GrnsQueryVariables = {
 		filter: {
@@ -664,12 +674,14 @@ function GRNRouteComponent() {
 				unitPrice?: number;
 				expiryDate?: string;
 				lotNo?: string;
+				lossRackId?: string;
 				rackIds?: string[];
 				rackAllocations?: Array<{ rackId: string; quantity: number }>;
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
 			supplierId?: string;
+			endUserId?: string;
 		}) => {
 			const status: GRNStatus =
 				payload.submitIntent === "submit" ? "Submitted" : "Draft";
@@ -692,6 +704,7 @@ function GRNRouteComponent() {
 					skuDescription: i.description ?? undefined,
 					qty: String(i.carton),
 					lossQty: String(i.loss ?? 0),
+					lossRackId: (i.lossRackId ?? "").trim() || undefined,
 					skuUom: uomId ?? undefined,
 					expiryDate: (i.expiryDate ?? "").trim() || undefined,
 					lotNo: (i.lotNo ?? "").trim() || undefined,
@@ -710,6 +723,7 @@ function GRNRouteComponent() {
 				status: UI_STATUS_TO_GQL[status],
 				notes: payload.notes?.trim() || undefined,
 				warehouseId,
+				endUserId: payload.endUserId?.trim() || undefined,
 				items,
 			};
 			if (useCreateInbound) {
@@ -1078,6 +1092,7 @@ function GRNRouteComponent() {
 											warehouses={warehouses}
 											racks={racks}
 											suppliers={suppliers}
+											endUsers={endUsers}
 											supplierSelectionOptional={!!selectedAsnId}
 											initialValues={asnInitialValues}
 											onCreateSubmit={async (payload) => {
@@ -1091,6 +1106,7 @@ function GRNRouteComponent() {
 														: new Date(),
 													notes: payload.notes || undefined,
 													warehouseId: payload.warehouseId || undefined,
+													endUserId: payload.endUserId || undefined,
 													submitIntent: payload.submitIntent,
 													advanceNoticeId: selectedAsnId ?? undefined,
 													items: payload.items.map((i) => ({
@@ -1102,6 +1118,7 @@ function GRNRouteComponent() {
 														unitPrice: i.unitPrice,
 														expiryDate: i.expiryDate ?? "",
 														lotNo: i.lotNo ?? "",
+														lossRackId: i.lossRackId?.trim() || undefined,
 														rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
 													})),
 												});
@@ -1462,7 +1479,7 @@ function GRNRouteComponent() {
 												? 0
 												: (data.page - 1) * data.pageSize + 1}
 										</span>{" "}
-										–{" "}
+										â€“{" "}
 										<span className="font-semibold tabular-nums text-foreground">
 											{data.total === 0
 												? 0
@@ -1619,7 +1636,7 @@ function GRNRouteComponent() {
 																	selectedGRN.warehouse.warehouseCode,
 																]
 																	.filter(Boolean)
-																	.join(" · ") ||
+																	.join(" Â· ") ||
 																selectedGRN.warehouse.warehouseName
 																: "-"}
 														</p>
@@ -1793,7 +1810,7 @@ function GRNRouteComponent() {
 											className="text-white hover:opacity-90"
 										>
 											{statusMutation.status === "pending"
-												? "Approving…"
+												? "Approvingâ€¦"
 												: "Approve"}
 										</Button>
 									)}
@@ -1810,7 +1827,7 @@ function GRNRouteComponent() {
 										>
 											<Send className="mr-2 h-4 w-4" />
 											{statusMutation.status === "pending"
-												? "Sending…"
+												? "Sendingâ€¦"
 												: "Send to ES"}
 										</Button>
 									)}
@@ -1834,7 +1851,7 @@ function GRNRouteComponent() {
 										>
 											<RotateCcw className={`mr-2 h-4 w-4 ${statusMutation.status === "pending" ? "animate-spin" : ""}`} />
 											{statusMutation.status === "pending"
-												? "Retrying…"
+												? "Retryingâ€¦"
 												: "Retry"}
 										</Button>
 									)}
@@ -1843,7 +1860,7 @@ function GRNRouteComponent() {
 						</DialogContent>
 					</Dialog>
 
-					{/* Edit GRN – same form dialog as Create */}
+					{/* Edit GRN â€“ same form dialog as Create */}
 					<GrnFormDialog
 						mode="edit"
 						open={isEditOpen}

@@ -66,7 +66,7 @@ export function RackSection() {
 	const racksVars: RacksQueryVariables = {
 		pageSize: PAGE_SIZE,
 		pageNumber: page,
-		...(search.trim() ? { filter: { rackRow: search.trim() } } : {}),
+		...(search.trim() ? { filter: { search: search.trim() } } : {}),
 	};
 
 	const {
@@ -148,7 +148,7 @@ export function RackSection() {
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
-								placeholder="Search by row..."
+								placeholder="Search by row, level, column..."
 								value={search}
 								onChange={(e) => {
 									setSearch(e.target.value);
@@ -194,13 +194,19 @@ export function RackSection() {
 									className="px-6"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
+									Level
+								</TableHead>
+								<TableHead
+									className="px-6"
+									style={{ fontFamily: "var(--dashboard-body)" }}
+								>
 									Column
 								</TableHead>
 								<TableHead
 									className="px-6"
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
-									Level
+									Bin Type
 								</TableHead>
 								<TableHead
 									className="px-6"
@@ -220,7 +226,7 @@ export function RackSection() {
 							{loading ? (
 								<TableRow>
 									<TableCell
-										colSpan={5}
+										colSpan={6}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										Loading...
@@ -229,7 +235,7 @@ export function RackSection() {
 							) : list.length === 0 ? (
 								<TableRow>
 									<TableCell
-										colSpan={5}
+										colSpan={6}
 										className="h-24 px-6 text-center text-muted-foreground"
 									>
 										No racks found.
@@ -242,8 +248,11 @@ export function RackSection() {
 										className="transition-colors hover:bg-muted/50"
 									>
 										<TableCell className="px-6">{row.rackRow}</TableCell>
-										<TableCell className="px-6">{row.rackColumn}</TableCell>
 										<TableCell className="px-6">{row.rackLevel}</TableCell>
+										<TableCell className="px-6">{row.rackColumn}</TableCell>
+										<TableCell className="px-6 font-mono text-xs">
+											{row.binType ?? <span className="opacity-40">—</span>}
+										</TableCell>
 										<TableCell className="px-6 text-sm text-muted-foreground">
 											{zoneLabel(row.zoneId) ?? <span className="opacity-40">—</span>}
 										</TableCell>
@@ -316,6 +325,7 @@ export function RackSection() {
 						rackRow: values.rackRow,
 						rackColumn: values.rackColumn,
 						rackLevel: values.rackLevel,
+						binType: values.binType,
 						zoneId: values.zoneId,
 						createdBy,
 						updatedBy: createdBy,
@@ -336,6 +346,7 @@ export function RackSection() {
 						rackRow: editing.rackRow,
 						rackColumn: editing.rackColumn,
 						rackLevel: editing.rackLevel,
+						binType: editing.binType ?? "PALLET_STORAGE",
 						zoneId: editing.zoneId ?? null,
 					}}
 					onSubmit={(values) =>
@@ -345,6 +356,7 @@ export function RackSection() {
 								rackRow: values.rackRow,
 								rackColumn: values.rackColumn,
 								rackLevel: values.rackLevel,
+								binType: values.binType,
 								zoneId: values.zoneId,
 								updatedBy: createdBy,
 							},
@@ -391,12 +403,13 @@ function RackFormDialog({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	initial?: { rackRow: string; rackColumn: string; rackLevel: string; zoneId?: string | null };
+	initial?: { rackRow: string; rackColumn: string; rackLevel: string; binType?: string; zoneId?: string | null };
 	zones: Zone[];
 	onSubmit: (v: {
 		rackRow: string;
 		rackColumn: string;
 		rackLevel: string;
+		binType: string;
 		zoneId?: string | null;
 	}) => void;
 	loading: boolean;
@@ -406,6 +419,7 @@ function RackFormDialog({
 	const [rackRow, setRackRow] = useState(initial?.rackRow ?? "");
 	const [rackColumn, setRackColumn] = useState(initial?.rackColumn ?? "");
 	const [rackLevel, setRackLevel] = useState(initial?.rackLevel ?? "");
+	const [binType, setBinType] = useState(initial?.binType ?? "PALLET_STORAGE");
 	const [zoneId, setZoneId] = useState<string | null>(initial?.zoneId ?? null);
 
 	useEffect(() => {
@@ -413,15 +427,17 @@ function RackFormDialog({
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setBinType(initial?.binType ?? "PALLET_STORAGE");
 			setZoneId(initial?.zoneId ?? null);
 		}
-	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel, initial?.zoneId]);
+	}, [open, initial?.rackRow, initial?.rackColumn, initial?.rackLevel, initial?.binType, initial?.zoneId]);
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next) {
 			setRackRow(initial?.rackRow ?? "");
 			setRackColumn(initial?.rackColumn ?? "");
 			setRackLevel(initial?.rackLevel ?? "");
+			setBinType(initial?.binType ?? "PALLET_STORAGE");
 			setZoneId(initial?.zoneId ?? null);
 		}
 		onOpenChange(next);
@@ -489,6 +505,22 @@ function RackFormDialog({
 					</div>
 					<div className="grid gap-2">
 						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
+							Bin Type
+						</Label>
+						<Select value={binType} onValueChange={setBinType}>
+							<SelectTrigger className="rounded-lg border-muted-foreground/20">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="PALLET_STORAGE">PALLET_STORAGE</SelectItem>
+								<SelectItem value="BROKEN_CASE_STORAGE">BROKEN_CASE_STORAGE</SelectItem>
+								<SelectItem value="FIXED">FIXED</SelectItem>
+								<SelectItem value="LOOSE_STORAGE">LOOSE_STORAGE</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="grid gap-2">
+						<Label style={{ fontFamily: '"Figtree", sans-serif' }}>
 							Zone (optional)
 						</Label>
 						<Select
@@ -529,6 +561,7 @@ function RackFormDialog({
 								rackRow: rackRow.trim(),
 								rackColumn: rackColumn.trim(),
 								rackLevel: rackLevel.trim(),
+								binType,
 								zoneId,
 							})
 						}
