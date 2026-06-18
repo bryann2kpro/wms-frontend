@@ -30,7 +30,8 @@ import {
 } from "@/lib/graphql/pallet-labels";
 import { RACKS_QUERY, type RacksQueryData } from "@/lib/graphql/racks";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Plus, Edit, Trash2, Search, Database, ArrowUpDown } from "lucide-react";
+import { PalletLabelImportDialog } from "@/components/settings/master-data/pallet-label-import-dialog";
+import { Plus, Edit, Trash2, Search, Database, ArrowUpDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { PalletLabel, Rack } from "@/lib/graphql/types";
 
@@ -55,6 +56,7 @@ function StorageBinItemsPage() {
   const [sortField, setSortField] = useState<string>("UPDATED_AT");
   const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editing, setEditing] = useState<PalletLabel | null>(null);
   const [deleting, setDeleting] = useState<PalletLabel | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -216,6 +218,15 @@ function StorageBinItemsPage() {
                 Delete Selected ({selectedIds.length})
               </Button>
               <Button
+                variant="outline"
+                onClick={() => setIsImportOpen(true)}
+                disabled={!createdBy}
+                className="rounded-lg"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import Excel
+              </Button>
+              <Button
                 onClick={() => setIsCreateOpen(true)}
                 disabled={!createdBy}
                 className="rounded-lg bg-[var(--dashboard-accent)] text-white hover:opacity-90"
@@ -317,6 +328,13 @@ function StorageBinItemsPage() {
           )}
         </CardContent>
       </Card>
+
+      <PalletLabelImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        createdBy={createdBy}
+        onImported={() => void refetch()}
+      />
 
       <StorageBinItemFormDialog
         open={isCreateOpen}

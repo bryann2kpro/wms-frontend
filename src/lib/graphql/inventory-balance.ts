@@ -1,6 +1,12 @@
 import { gql } from "graphql-request";
 import type { Pagination } from "./types";
 
+/** Display label for lot_no on inventory lot balance rows. */
+export function formatLotNoDisplay(lotNo: string | null | undefined): string {
+	const trimmed = (lotNo ?? "").trim();
+	return trimmed === "" ? "No lot" : trimmed;
+}
+
 export const INVENTORY_BALANCES_QUERY = gql`
 	query GetInventoryBalances(
 		$filter: InventoryBalanceFilterInput
@@ -23,6 +29,46 @@ export const INVENTORY_BALANCES_QUERY = gql`
 			query {
 				id
 				skuId
+				skuCode
+				skuDescription
+				pickingStrategy
+				isExpiryControlled
+				skuExpiryDate
+				onHandQty
+				lossQty
+				reservedQty
+				updatedAt
+				unitCode
+				unitName
+			}
+		}
+	}
+`;
+
+export const INVENTORY_LOT_BALANCES_QUERY = gql`
+	query GetInventoryLotBalances(
+		$filter: InventoryBalanceFilterInput
+		$pageSize: Int
+		$pageNumber: Int
+	) {
+		inventoryLotBalances(
+			filter: $filter
+			pageSize: $pageSize
+			pageNumber: $pageNumber
+		) {
+			pagination {
+				count
+				totalCount
+				currentPage
+				totalPages
+				hasNextPage
+				hasPrevPage
+			}
+			query {
+				id
+				skuId
+				lotKey
+				lotNo
 				skuCode
 				skuDescription
 				pickingStrategy
@@ -63,6 +109,11 @@ export interface InventoryBalance {
 	unitName: string | null;
 }
 
+export interface InventoryLotBalance extends InventoryBalance {
+	lotKey: string;
+	lotNo: string | null;
+}
+
 export interface InventoryBalancePaginatedResponse {
 	query: InventoryBalance[];
 	pagination: Pagination;
@@ -77,6 +128,17 @@ export type InventoryBalancesQueryVariables = {
 	pageSize?: number;
 	pageNumber?: number;
 };
+
+export interface InventoryLotBalancePaginatedResponse {
+	query: InventoryLotBalance[];
+	pagination: Pagination;
+}
+
+export type InventoryLotBalancesQueryData = {
+	inventoryLotBalances: InventoryLotBalancePaginatedResponse;
+};
+
+export type InventoryLotBalancesQueryVariables = InventoryBalancesQueryVariables;
 
 /** Derived fields computed from raw balance strings */
 export function getAvailableQty(balance: InventoryBalance): number {
