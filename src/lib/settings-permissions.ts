@@ -25,6 +25,7 @@ export const SETTINGS_MASTER_DATA_MODULES: Record<string, string> = {
 	zone: "Zone",
 	bin: "Bin",
 	"putaway-rule": "Putaway Rule",
+	"end-user": "End User",
 };
 
 export type SettingsMasterDataSubTabId =
@@ -43,6 +44,7 @@ const MODULE_NAME_ALIASES: Record<string, string[]> = {
 	Zone: ["Zone", "Zones"],
 	Bin: ["Bin", "Bins"],
 	"Putaway Rule": ["Putaway Rule", "Putaway Rules"],
+	"End User": ["End User", "End Users"],
 };
 
 function normalizeModuleName(value: string): string {

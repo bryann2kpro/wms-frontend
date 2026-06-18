@@ -37,6 +37,7 @@ export const GRNS_QUERY = gql`
 				notes
 				proofUrl
 				nsError
+				endUserId
 				poFulfilled
 				createdAt
 				updatedAt
