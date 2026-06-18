@@ -97,4 +97,5 @@ export const qk = {
 		list: (f: object) => ["reservations", "list", f] as const,
 	},
 	customerPriorities: { all: ["customer-priorities"] as const },
+	endUsers: { all: ["end-users"] as const },
 } as const;

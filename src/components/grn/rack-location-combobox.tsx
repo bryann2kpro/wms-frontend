@@ -61,6 +61,8 @@ export type RackLocationComboboxProps = {
 	remoteSearch?: boolean;
 	/** When set with `remoteSearch`, limits API results to this warehouse. */
 	warehouseId?: string;
+	/** When set with `remoteSearch`, limits API results to racks of this bin type. */
+	binType?: string;
 	/** Label shown when `value` is set but the rack is not in the loaded list. */
 	fallbackLabel?: string | null;
 	/** Show a loading state in the trigger (e.g. while suggesting a rack). */
@@ -81,6 +83,7 @@ export function RackLocationCombobox({
 	allowClear = false,
 	remoteSearch = false,
 	warehouseId,
+	binType,
 	fallbackLabel = null,
 	loading = false,
 	loadingPlaceholder = "Loading…",
@@ -96,9 +99,10 @@ export function RackLocationCombobox({
 	const remoteQueryFilter = useMemo((): RacksQueryVariables["filter"] => {
 		const filter: NonNullable<RacksQueryVariables["filter"]> = {};
 		if (warehouseId) filter.warehouseId = warehouseId;
+		if (binType) filter.binType = binType;
 		if (searchTerm) filter.search = searchTerm;
 		return Object.keys(filter).length > 0 ? filter : undefined;
-	}, [searchTerm, warehouseId]);
+	}, [searchTerm, warehouseId, binType]);
 
 	const {
 		data: remoteData,
