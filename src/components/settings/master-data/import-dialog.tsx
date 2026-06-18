@@ -41,6 +41,14 @@ import {
 	type RacksQueryVariables,
 } from "@/lib/graphql/racks";
 import {
+	AREAS_QUERY,
+	type AreasQueryData,
+} from "@/lib/graphql/areas";
+import {
+	WAREHOUSES_QUERY,
+	type WarehousesQueryData,
+} from "@/lib/graphql/warehouses";
+import {
 	STOCK_UNITS_QUERY,
 	CREATE_STOCK_UNIT_MUTATION,
 	type CreateStockUnitMutationData,
@@ -52,6 +60,65 @@ import { excelSerialToDateString } from "@/lib/utils";
 
 export type ImportMode = "skus" | "racks";
 
+/** Matches /admin/items table column order (importable fields only). */
+export const ITEMS_IMPORT_HEADERS = [
+	"SKU Code",
+	"Description",
+	"Barcode",
+	"Brand",
+	"Category",
+	"Manufacturer",
+	"Status",
+	"Case Rate",
+	"Case Ext Length (mm)",
+	"Case Ext Width (mm)",
+	"Case Ext Height (mm)",
+	"Case Gross Weight (kg)",
+	"Cases Per Layer",
+	"No Of Layers",
+] as const;
+
+/** Parsed Items-import row fields shown in preview / validation / error report. */
+export interface ItemsImportPreviewFields {
+	barcode: string;
+	brand: string;
+	category: string;
+	manufacturer: string;
+	isActive: boolean;
+	caseRate: number | null;
+	caseExtLengthMm: number | null;
+	caseExtWidthMm: number | null;
+	caseExtHeightMm: number | null;
+	caseGrossWeightKg: number | null;
+	casesPerLayer: number | null;
+	noOfLayers: number | null;
+}
+
+/** Matches /admin/racks table column order. Description & Last Count Date are display-only. */
+export const RACKS_IMPORT_HEADERS = [
+	"Code",
+	"Barcode",
+	"Description",
+	"Storage Row",
+	"Storage Bay",
+	"Level",
+	"Storage Type",
+	"Length (mm)",
+	"Width (mm)",
+	"Height (mm)",
+	"Weight (kg)",
+	"Max Pallets",
+	"Location",
+	"Status",
+	"Last Count Date",
+] as const;
+
+/** Rack page columns with no CreateRackInput field — present in template for table alignment. */
+export const RACKS_NON_IMPORTABLE_HEADERS = [
+	"Description",
+	"Last Count Date",
+] as const;
+
 const STORAGE_TYPE_TO_BIN_TYPE: Record<string, string> = {
 	PICK_FACE: "PICK_FACE",
 	RESERVE_STORAGE: "RESERVE",
@@ -60,7 +127,30 @@ const STORAGE_TYPE_TO_BIN_TYPE: Record<string, string> = {
 
 function mapStorageToBinType(storageType: string): string {
 	const upper = storageType.trim().toUpperCase();
-	return STORAGE_TYPE_TO_BIN_TYPE[upper] ?? (upper.includes("RESERVE") ? "RESERVE" : upper.includes("BULK") ? "BULK" : "FIXED");
+	if (["FIXED", "PICK_FACE", "RESERVE", "BULK"].includes(upper)) return upper;
+	return (
+		STORAGE_TYPE_TO_BIN_TYPE[upper] ??
+		(upper.includes("RESERVE") ? "RESERVE" : upper.includes("BULK") ? "BULK" : "FIXED")
+	);
+}
+
+function parseStorageBay(value: string, rackRow: string): string {
+	const trimmed = value.trim();
+	if (!trimmed) return "";
+	if (trimmed.includes("-") && rackRow) {
+		const prefix = `${rackRow}-`;
+		if (trimmed.toLowerCase().startsWith(prefix.toLowerCase())) {
+			return trimmed.slice(prefix.length);
+		}
+		const parts = trimmed.split("-");
+		return parts[parts.length - 1]?.trim() ?? trimmed;
+	}
+	return trimmed;
+}
+
+function parseOptionalNumericString(value: string): string | null {
+	const trimmed = value.trim();
+	return trimmed || null;
 }
 
 interface ImportDialogProps {
@@ -82,6 +172,7 @@ type PreviewRow =
 				skuUomLabel: string;
 				pickingStrategy: string;
 				skuExpiryDate: string;
+				itemsImport?: ItemsImportPreviewFields;
 			};
 			errors: string[];
 			skuPayload?: CreateSkusMutationVariables["input"];
@@ -95,6 +186,12 @@ type PreviewRow =
 				binCode?: string;
 				barCode?: string;
 				binType?: string;
+				length?: string;
+				width?: string;
+				height?: string;
+				weight?: string;
+				maxPallet?: string;
+				location?: string;
 				isActive?: boolean;
 			};
 			errors: string[];
@@ -108,6 +205,40 @@ function isSkuRow(
 	{ skuPayload?: CreateSkusMutationVariables["input"] }
 > {
 	return "skuPayload" in row;
+}
+
+function formatItemsImportCell(value: string | number | null | undefined): string {
+	if (value == null || value === "") return "";
+	return String(value);
+}
+
+function formatItemsImportStatus(isActive: boolean): string {
+	return isActive ? "Active" : "Inactive";
+}
+
+function itemsImportPreviewValues(
+	row: Extract<PreviewRow, { skuPayload?: CreateSkusMutationVariables["input"] }>,
+): string[] {
+	const fields = row.data.itemsImport;
+	const payload = row.skuPayload;
+	return [
+		row.data.skuCode,
+		row.data.skuDescription,
+		formatItemsImportCell(fields?.barcode ?? payload?.barcode),
+		formatItemsImportCell(fields?.brand ?? payload?.brand),
+		formatItemsImportCell(fields?.category ?? payload?.category),
+		formatItemsImportCell(fields?.manufacturer ?? payload?.manufacturer),
+		formatItemsImportStatus(
+			fields?.isActive ?? (payload?.isActive !== false),
+		),
+		formatItemsImportCell(fields?.caseRate ?? payload?.caseRate),
+		formatItemsImportCell(fields?.caseExtLengthMm ?? payload?.caseExtLengthMm),
+		formatItemsImportCell(fields?.caseExtWidthMm ?? payload?.caseExtWidthMm),
+		formatItemsImportCell(fields?.caseExtHeightMm ?? payload?.caseExtHeightMm),
+		formatItemsImportCell(fields?.caseGrossWeightKg ?? payload?.caseGrossWeightKg),
+		formatItemsImportCell(fields?.casesPerLayer ?? payload?.casesPerLayer),
+		formatItemsImportCell(fields?.noOfLayers ?? payload?.noOfLayers),
+	];
 }
 
 function normalize(value: unknown): string {
@@ -162,41 +293,59 @@ function parseBinCode(binCode: string): {
 	return { rackRow, rackLevel, rackColumn };
 }
 
-function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
+function downloadErrorReport(
+	mode: ImportMode,
+	rows: PreviewRow[],
+	skuFormat: "default" | "items" = "default",
+) {
 	const failed = rows.filter((row) => row.errors.length > 0);
 	if (failed.length === 0) return;
 	const sheetData =
 		mode === "skus"
-			? [
-					[
-						"Row",
-						"SKU Code",
-						"Description",
-						"Quantity",
-						"Unit of Measure",
-						"Picking Strategy",
-						"Expiry Date",
-						"Errors",
-					],
-					...failed.map((row) => {
-						const data = row.data as Extract<
-							PreviewRow,
-							{ skuPayload?: unknown }
-						>["data"];
-						return [
+			? skuFormat === "items"
+				? [
+						["Row", ...ITEMS_IMPORT_HEADERS, "Errors"],
+						...failed.map((row) => [
 							row.rowNumber,
-							data.skuCode,
-							data.skuDescription,
-							data.skuQuantity,
-							data.skuUomLabel,
-							data.pickingStrategy,
-							data.skuExpiryDate,
+							...itemsImportPreviewValues(
+								row as Extract<
+									PreviewRow,
+									{ skuPayload?: CreateSkusMutationVariables["input"] }
+								>,
+							),
 							row.errors.join("; "),
-						];
-					}),
-				]
+						]),
+					]
+				: [
+						[
+							"Row",
+							"SKU Code",
+							"Description",
+							"Quantity",
+							"Unit of Measure",
+							"Picking Strategy",
+							"Expiry Date",
+							"Errors",
+						],
+						...failed.map((row) => {
+							const data = row.data as Extract<
+								PreviewRow,
+								{ skuPayload?: unknown }
+							>["data"];
+							return [
+								row.rowNumber,
+								data.skuCode,
+								data.skuDescription,
+								data.skuQuantity,
+								data.skuUomLabel,
+								data.pickingStrategy,
+								data.skuExpiryDate,
+								row.errors.join("; "),
+							];
+						}),
+					]
 			: [
-					["Row", "Code", "Barcode", "Storage Row", "Bay", "Level", "Bin Type", "Status", "Errors"],
+					["Row", ...RACKS_IMPORT_HEADERS, "Errors"],
 					...failed.map((row) => {
 						const data = row.data as Extract<
 							PreviewRow,
@@ -206,11 +355,23 @@ function downloadErrorReport(mode: ImportMode, rows: PreviewRow[]) {
 							row.rowNumber,
 							data.binCode ?? "",
 							data.barCode ?? "",
+							"",
 							data.rackRow,
 							data.rackColumn,
 							data.rackLevel,
 							data.binType ?? "",
-							data.isActive === undefined ? "" : data.isActive ? "ACTIVE" : "INACTIVE",
+							data.length ?? "",
+							data.width ?? "",
+							data.height ?? "",
+							data.weight ?? "",
+							data.maxPallet ?? "",
+							data.location ?? "",
+							data.isActive === undefined
+								? ""
+								: data.isActive
+									? "ACTIVE"
+									: "INACTIVE",
+							"",
 							row.errors.join("; "),
 						];
 					}),
@@ -260,6 +421,23 @@ export function ImportDialog({
 				pageNumber: 1,
 			}),
 		enabled: open,
+	});
+
+	const { data: areasData } = useQuery({
+		queryKey: [...qk.areas.all, "import-dialog"],
+		queryFn: () =>
+			gqlRequest<AreasQueryData>(AREAS_QUERY, { pageSize: 500, pageNumber: 1 }),
+		enabled: mode === "racks" && open,
+	});
+
+	const { data: warehousesData } = useQuery({
+		queryKey: [...qk.warehouses.all, "import-dialog"],
+		queryFn: () =>
+			gqlRequest<WarehousesQueryData>(WAREHOUSES_QUERY, {
+				pageSize: 500,
+				pageNumber: 1,
+			}),
+		enabled: mode === "racks" && open,
 	});
 
 	const { data: skusData, isLoading: skusLoading } = useQuery({
@@ -319,22 +497,7 @@ export function ImportDialog({
 		const headers =
 			mode === "skus"
 				? skuFormat === "items"
-					? [[
-							"Code",
-							"Description",
-							"Barcode",
-							"Brand",
-							"Category",
-							"Manufacturer",
-							"Status",
-							"Case Rate",
-							"Case Ext Length (mm)",
-							"Case Ext Width ((mm)",
-							"Case Ext Height (mm)",
-							"Case Gross Weight (kg)",
-							"Cases Per Layer",
-							"No Of Layers",
-						]]
+					? [Array.from(ITEMS_IMPORT_HEADERS)]
 					: [
 							[
 								"SKU Code",
@@ -345,16 +508,7 @@ export function ImportDialog({
 								"Expiry Date",
 							],
 						]
-				: [[
-						"CODE",
-						"BARCODE",
-						"DESC_01",
-						"STATUS",
-						"ROW",
-						"BAY",
-						"LEVEL",
-						"STORAGE_TYPE",
-					]];
+				: [Array.from(RACKS_IMPORT_HEADERS)];
 		const worksheet = utils.aoa_to_sheet(headers);
 		const workbook = utils.book_new();
 		utils.book_append_sheet(workbook, worksheet, "Template");
@@ -545,7 +699,8 @@ export function ImportDialog({
 
 			return rawRows.map((row, index) => {
 				const headers = rowToHeaders(row);
-				const skuCode = headers.code ?? headers["sku code"] ?? headers["item code"] ?? "";
+				const skuCode =
+					headers["sku code"] ?? headers.code ?? headers["item code"] ?? "";
 				const skuDescription = isItemExcelFormat
 					? (headers["desc 01"] ?? headers.description ?? "")
 					: (headers.description ?? "");
@@ -590,7 +745,7 @@ export function ImportDialog({
 					: defaultStockUnitId;
 
 				const errors: string[] = [];
-				if (!skuCode) errors.push("Code is required");
+				if (!skuCode) errors.push("SKU Code is required");
 				if (!skuDescription) errors.push("Description is required");
 				if (!resolvedUomId) errors.push("No stock unit available (expected CTN)");
 
@@ -627,6 +782,20 @@ export function ImportDialog({
 						skuUomLabel: caseUomLabel || "CTN",
 						pickingStrategy,
 						skuExpiryDate: "",
+						itemsImport: {
+							barcode,
+							brand,
+							category,
+							manufacturer,
+							isActive,
+							caseRate,
+							caseExtLengthMm,
+							caseExtWidthMm,
+							caseExtHeightMm,
+							caseGrossWeightKg,
+							casesPerLayer,
+							noOfLayers,
+						},
 					},
 					errors,
 					skuPayload: payload,
@@ -730,12 +899,18 @@ export function ImportDialog({
 			),
 		);
 		const inFileKeys = new Map<string, number>();
+		const areas = areasData?.areas?.query ?? [];
+		const warehouses = warehousesData?.warehouses?.query ?? [];
 
-		// Detect storage bin format by presence of CODE/BAY columns
 		const firstHeaders = Object.fromEntries(
 			Object.entries(rawRows[0] ?? {}).map(([k]) => [normalizeKey(k), true]),
 		);
-		const isBinFormat = Boolean(firstHeaders["code"] || firstHeaders["bay"]);
+		const isPageFormat = Boolean(
+			firstHeaders["storage row"] || firstHeaders["storage bay"],
+		);
+		const isBinFormat = Boolean(
+			firstHeaders["code"] || firstHeaders["bay"] || isPageFormat,
+		);
 		setIsStorageBinFormat(isBinFormat);
 
 		return rawRows.map((row, index) => {
@@ -749,16 +924,59 @@ export function ImportDialog({
 			let binCode: string | undefined;
 			let barCode: string | undefined;
 			let binType: string | undefined;
+			let length: string | undefined;
+			let width: string | undefined;
+			let height: string | undefined;
+			let weight: string | undefined;
+			let maxPallet: string | undefined;
+			let location: string | undefined;
 			let isActive: boolean | undefined;
+			let areaId: string | null | undefined;
+			let warehouseId: string | null | undefined;
 
-			if (isBinFormat) {
-				rackRow = headers["row"] ?? "";
-				rackColumn = headers["bay"] ?? "";
+			if (isPageFormat) {
+				rackRow = headers["storage row"] ?? headers["row"] ?? "";
+				const bayRaw =
+					headers["storage bay"] ?? headers["bay"] ?? headers["column"] ?? "";
+				rackLevel = headers["level"] ?? "";
+				rackColumn = parseStorageBay(bayRaw, rackRow);
+				binCode = headers["code"] || undefined;
+				barCode = headers["barcode"] || undefined;
+				const storageType =
+					headers["storage type"] ??
+					headers["storage_type"] ??
+					headers["storagetype"] ??
+					"";
+				binType = storageType ? mapStorageToBinType(storageType) : "FIXED";
+				length = parseOptionalNumericString(headers["length mm"] ?? "") ?? undefined;
+				width = parseOptionalNumericString(headers["width mm"] ?? "") ?? undefined;
+				height = parseOptionalNumericString(headers["height mm"] ?? "") ?? undefined;
+				weight = parseOptionalNumericString(headers["weight kg"] ?? "") ?? undefined;
+				maxPallet =
+					parseOptionalNumericString(headers["max pallets"] ?? "") ?? undefined;
+				location = headers["location"] || undefined;
+				const statusRaw = (headers["status"] ?? "active").trim().toUpperCase();
+				isActive = statusRaw !== "INACTIVE";
+			} else if (isBinFormat) {
+				rackRow = headers["row"] ?? headers["storage row"] ?? "";
+				const bayRaw = headers["bay"] ?? headers["storage bay"] ?? "";
+				rackColumn = parseStorageBay(bayRaw, rackRow);
 				rackLevel = headers["level"] ?? "";
 				binCode = headers["code"] || undefined;
 				barCode = headers["barcode"] || undefined;
-				const storageType = headers["storage type"] ?? headers["storage_type"] ?? headers["storagetype"] ?? "";
+				const storageType =
+					headers["storage type"] ??
+					headers["storage_type"] ??
+					headers["storagetype"] ??
+					"";
 				binType = storageType ? mapStorageToBinType(storageType) : "FIXED";
+				length = parseOptionalNumericString(headers["length mm"] ?? "") ?? undefined;
+				width = parseOptionalNumericString(headers["width mm"] ?? "") ?? undefined;
+				height = parseOptionalNumericString(headers["height mm"] ?? "") ?? undefined;
+				weight = parseOptionalNumericString(headers["weight kg"] ?? "") ?? undefined;
+				maxPallet =
+					parseOptionalNumericString(headers["max pallets"] ?? "") ?? undefined;
+				location = headers["location"] || undefined;
 				const statusRaw = (headers["status"] ?? "active").trim().toUpperCase();
 				isActive = statusRaw !== "INACTIVE";
 			} else {
@@ -767,13 +985,44 @@ export function ImportDialog({
 				rackLevel = headers["level"] ?? "";
 			}
 
+			if (location) {
+				const locationKey = normalizeKey(location);
+				const matchedArea = areas.find(
+					(area) =>
+						normalizeKey(area.warehouseName ?? "") === locationKey ||
+						normalizeKey(area.areaName ?? "") === locationKey ||
+						normalizeKey(area.areaCode ?? "") === locationKey,
+				);
+				if (matchedArea) {
+					areaId = matchedArea.areaId;
+				} else {
+					const matchedWarehouse = warehouses.find(
+						(wh) => normalizeKey(wh.warehouseName) === locationKey,
+					);
+					if (matchedWarehouse) {
+						warehouseId = matchedWarehouse.warehouseId;
+					}
+				}
+			}
+
 			const key = normalizeKey(`${rackRow}|${rackColumn}|${rackLevel}`);
 			inFileKeys.set(key, (inFileKeys.get(key) ?? 0) + 1);
 
 			const errors: string[] = [];
-			if (!rackRow) errors.push("Row is required");
-			if (!rackColumn) errors.push(isBinFormat ? "Bay is required" : "Column is required");
+			if (!rackRow) {
+				errors.push(isPageFormat ? "Storage Row is required" : "Row is required");
+			}
+			if (!rackColumn) {
+				errors.push(
+					isBinFormat || isPageFormat
+						? "Storage Bay is required"
+						: "Column is required",
+				);
+			}
 			if (!rackLevel) errors.push("Level is required");
+			if (location && !areaId && !warehouseId) {
+				errors.push("Location not found (match warehouse or area name)");
+			}
 			if (key && (inFileKeys.get(key) ?? 0) > 1) {
 				errors.push("Duplicate rack in file");
 			}
@@ -783,7 +1032,21 @@ export function ImportDialog({
 
 			return {
 				rowNumber: index + 2,
-				data: { rackRow, rackColumn, rackLevel, binCode, barCode, binType, isActive },
+				data: {
+					rackRow,
+					rackColumn,
+					rackLevel,
+					binCode,
+					barCode,
+					binType,
+					length,
+					width,
+					height,
+					weight,
+					maxPallet,
+					location,
+					isActive,
+				},
 				errors,
 				rackPayload:
 					errors.length === 0
@@ -794,6 +1057,13 @@ export function ImportDialog({
 								binCode: binCode ?? null,
 								barCode: barCode ?? null,
 								binType: binType ?? "FIXED",
+								length: length ?? null,
+								width: width ?? null,
+								height: height ?? null,
+								weight: weight ?? null,
+								maxPallet: maxPallet ?? null,
+								areaId: areaId ?? null,
+								warehouseId: warehouseId ?? null,
 								isActive: isActive ?? true,
 								createdBy,
 								updatedBy: createdBy,
@@ -1107,7 +1377,7 @@ export function ImportDialog({
 								type="button"
 								variant="outline"
 								className="rounded-lg"
-								onClick={() => downloadErrorReport(mode, rows)}
+								onClick={() => downloadErrorReport(mode, rows, skuFormat)}
 							>
 								<FileSpreadsheet className="mr-2 h-4 w-4" />
 								Download Error Report
@@ -1165,12 +1435,9 @@ export function ImportDialog({
 									{mode === "skus" ? (
 									skuFormat === "items" ? (
 										<>
-											<TableHead>Code</TableHead>
-											<TableHead>Description</TableHead>
-											<TableHead>Barcode</TableHead>
-											<TableHead>Brand</TableHead>
-											<TableHead>Category</TableHead>
-											<TableHead>Manufacturer</TableHead>
+											{ITEMS_IMPORT_HEADERS.map((header) => (
+												<TableHead key={header}>{header}</TableHead>
+											))}
 										</>
 									) : (
 										<>
@@ -1184,13 +1451,9 @@ export function ImportDialog({
 									)
 									) : isStorageBinFormat ? (
 										<>
-											<TableHead>Code</TableHead>
-											<TableHead>Barcode</TableHead>
-											<TableHead>Row</TableHead>
-											<TableHead>Bay</TableHead>
-											<TableHead>Level</TableHead>
-											<TableHead>Bin Type</TableHead>
-											<TableHead>Status</TableHead>
+											{RACKS_IMPORT_HEADERS.map((header) => (
+												<TableHead key={header}>{header}</TableHead>
+											))}
 										</>
 									) : (
 										<>
@@ -1206,7 +1469,15 @@ export function ImportDialog({
 								{rows.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={mode === "skus" ? 8 : isStorageBinFormat ? 9 : 5}
+											colSpan={
+												mode === "skus"
+													? skuFormat === "items"
+														? ITEMS_IMPORT_HEADERS.length + 2
+														: 8
+													: isStorageBinFormat
+														? RACKS_IMPORT_HEADERS.length + 2
+														: 5
+											}
 											className="h-20 text-center text-muted-foreground"
 										>
 											Upload a file to preview rows.
@@ -1223,14 +1494,13 @@ export function ImportDialog({
 											<TableCell>{row.rowNumber}</TableCell>
 											{isSkuRow(row) ? (
 												skuFormat === "items" ? (
-													<>
-														<TableCell>{row.data.skuCode}</TableCell>
-														<TableCell>{row.data.skuDescription}</TableCell>
-														<TableCell>{(row.skuPayload?.barcode as string | null) ?? ""}</TableCell>
-														<TableCell>{(row.skuPayload?.brand as string | null) ?? ""}</TableCell>
-														<TableCell>{(row.skuPayload?.category as string | null) ?? ""}</TableCell>
-														<TableCell>{(row.skuPayload?.manufacturer as string | null) ?? ""}</TableCell>
-													</>
+													itemsImportPreviewValues(row).map(
+														(value, cellIndex) => (
+															<TableCell key={ITEMS_IMPORT_HEADERS[cellIndex]}>
+																{value}
+															</TableCell>
+														),
+													)
 												) : (
 													<>
 														<TableCell>{row.data.skuCode}</TableCell>
@@ -1245,11 +1515,19 @@ export function ImportDialog({
 												<>
 													<TableCell className="font-mono text-xs">{row.data.binCode ?? ""}</TableCell>
 													<TableCell className="font-mono text-xs">{row.data.barCode ?? ""}</TableCell>
+													<TableCell className="text-muted-foreground text-xs">—</TableCell>
 													<TableCell>{row.data.rackRow}</TableCell>
 													<TableCell>{row.data.rackColumn}</TableCell>
 													<TableCell>{row.data.rackLevel}</TableCell>
 													<TableCell>{row.data.binType ?? ""}</TableCell>
+													<TableCell>{row.data.length ?? ""}</TableCell>
+													<TableCell>{row.data.width ?? ""}</TableCell>
+													<TableCell>{row.data.height ?? ""}</TableCell>
+													<TableCell>{row.data.weight ?? ""}</TableCell>
+													<TableCell>{row.data.maxPallet ?? ""}</TableCell>
+													<TableCell>{row.data.location ?? ""}</TableCell>
 													<TableCell>{row.data.isActive === undefined ? "" : row.data.isActive ? "ACTIVE" : "INACTIVE"}</TableCell>
+													<TableCell className="text-muted-foreground text-xs">—</TableCell>
 												</>
 											) : (
 												<>

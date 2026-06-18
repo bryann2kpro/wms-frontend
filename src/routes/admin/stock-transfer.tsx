@@ -67,6 +67,7 @@ import {
 	RECEIVE_STOCK_TRANSFER_MUTATION,
 	REJECT_STOCK_TRANSFER_MUTATION,
 	STOCK_TRANSFERS_QUERY,
+	type ApproveStockTransferMutationData,
 	type StockTransfersQueryData,
 } from "@/lib/graphql/stock-transfer";
 import type {
@@ -216,14 +217,36 @@ function StockTransferComponent() {
 	function invalidate() {
 		queryClient.invalidateQueries({ queryKey: qk.stockTransfers.all });
 		queryClient.invalidateQueries({ queryKey: qk.stockQuants.all });
+		queryClient.invalidateQueries({ queryKey: qk.racks.all });
 	}
 
 	const { mutateAsync: approveMutation, isPending: approving } = useMutation({
-		mutationFn: (id: string) =>
-			gqlRequest(APPROVE_STOCK_TRANSFER_MUTATION, { id }),
+		mutationFn: async (id: string) => {
+			const data = await gqlRequest<ApproveStockTransferMutationData>(
+				APPROVE_STOCK_TRANSFER_MUTATION,
+				{ id },
+			);
+			const approved = data.approveStockTransfer;
+			// Cross-warehouse: approve only dispatches (IN_TRANSIT). Auto-receive so stock
+			// lands at the destination warehouse in one user action.
+			if (
+				approved.type === "WAREHOUSE_TO_WAREHOUSE" &&
+				approved.status === "IN_TRANSIT"
+			) {
+				await gqlRequest(RECEIVE_STOCK_TRANSFER_MUTATION, { id });
+				return { ...data, autoReceived: true as const };
+			}
+			return { ...data, autoReceived: false as const };
+		},
 		onError: (err) => toast.error(getErrorMessage(err)),
-		onSuccess: () => {
-			toast.success("Transfer approved and stock moved");
+		onSuccess: (data) => {
+			if (data.autoReceived) {
+				toast.success(
+					"Cross-warehouse transfer completed — stock received at destination",
+				);
+			} else {
+				toast.success("Transfer approved and stock moved");
+			}
 			invalidate();
 		},
 	});
@@ -286,7 +309,7 @@ function StockTransferComponent() {
 			<AdminPageHeader
 				icon={ArrowLeftRight}
 				title="Bin to Bin"
-				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve to move stock."
+				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve moves stock; cross-warehouse transfers also receive at destination automatically."
 				titleId="stock-transfer-page-title"
 				descriptionId="stock-transfer-page-description"
 			/>

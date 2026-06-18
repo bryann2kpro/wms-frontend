@@ -70,7 +70,13 @@ type RackCapacity = {
 	volCurrent: number;
 	weightCapacity: number;
 	weightCurrent: number;
+	cartonCount: number;
 };
+
+function rackHasOccupancy(cap: RackCapacity | undefined): boolean {
+	if (!cap) return false;
+	return cap.cartonCount > 0 || cap.volCurrent > 0 || cap.weightCurrent > 0;
+}
 
 function pct(current: number, capacity: number): number {
 	if (!capacity || capacity <= 0) return 0;
@@ -213,6 +219,7 @@ function WarehouseMapComponent() {
 				volCurrent: row.volCurrent ?? 0,
 				weightCapacity: row.weightCapacity ?? 0,
 				weightCurrent: row.weightCurrent ?? 0,
+				cartonCount: row.cartonCount ?? 0,
 			});
 		}
 		return map;
@@ -439,6 +446,7 @@ function WarehouseMapComponent() {
 													? PURPOSE_COLOR[cellPurpose]
 													: null;
 												const cap = capacityByRackId.get(cell.rackId);
+												const occupied = rackHasOccupancy(cap);
 												const volPct = cap ? pct(cap.volCurrent, cap.volCapacity) : 0;
 												const wtPct = cap ? pct(cap.weightCurrent, cap.weightCapacity) : 0;
 												const hasVol = !!(cap && cap.volCapacity > 0);
@@ -456,33 +464,42 @@ function WarehouseMapComponent() {
 																<p className={`font-semibold ${colorStyle ? colorStyle.text : "text-foreground"}`}>
 																	{code}
 																</p>
+																{occupied && cap!.cartonCount > 0 && (
+																	<p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+																		{fmtNum(cap!.cartonCount)} ctns
+																	</p>
+																)}
 																<div className="mt-1 space-y-1">
 																	<div className="flex items-center gap-1">
 																		<span className="text-[9px] font-semibold text-muted-foreground w-3">V</span>
 																		<div className="flex-1 h-1.5 rounded-sm bg-muted-foreground/15 overflow-hidden">
-																			{hasVol && (
+																			{hasVol ? (
 																				<div
 																					className={`h-full rounded-sm transition-[width] ${utilBarColor(volPct)}`}
 																					style={{ width: `${volPct}%` }}
 																				/>
-																			)}
+																			) : occupied && cap!.volCurrent > 0 ? (
+																				<div className="h-full w-full rounded-sm bg-emerald-500/70" />
+																			) : null}
 																		</div>
 																		<span className="text-[9px] text-muted-foreground tabular-nums w-9 text-right">
-																			{hasVol ? `${volPct}%` : "—"}
+																			{hasVol ? `${volPct}%` : occupied && cap!.volCurrent > 0 ? fmtNum(cap!.volCurrent) : "—"}
 																		</span>
 																	</div>
 																	<div className="flex items-center gap-1">
 																		<span className="text-[9px] font-semibold text-muted-foreground w-3">W</span>
 																		<div className="flex-1 h-1.5 rounded-sm bg-muted-foreground/15 overflow-hidden">
-																			{hasWt && (
+																			{hasWt ? (
 																				<div
 																					className={`h-full rounded-sm transition-[width] ${utilBarColor(wtPct)}`}
 																					style={{ width: `${wtPct}%` }}
 																				/>
-																			)}
+																			) : occupied && cap!.weightCurrent > 0 ? (
+																				<div className="h-full w-full rounded-sm bg-emerald-500/70" />
+																			) : null}
 																		</div>
 																		<span className="text-[9px] text-muted-foreground tabular-nums w-9 text-right">
-																			{hasWt ? `${wtPct}%` : "—"}
+																			{hasWt ? `${wtPct}%` : occupied && cap!.weightCurrent > 0 ? fmtNum(cap!.weightCurrent) : "—"}
 																		</span>
 																	</div>
 																</div>
@@ -494,10 +511,23 @@ function WarehouseMapComponent() {
 																{cap ? (
 																	<>
 																		<p className="text-[11px] tabular-nums">
-																			Vol {fmtNum(cap.volCurrent)}/{fmtNum(cap.volCapacity)} m³ ({volPct}%)
+																			Cartons {fmtNum(cap.cartonCount)}
 																		</p>
 																		<p className="text-[11px] tabular-nums">
-																			Wt {fmtNum(cap.weightCurrent)}/{fmtNum(cap.weightCapacity)} kg ({wtPct}%)
+																			Vol {fmtNum(cap.volCurrent)}
+																			{hasVol
+																				? `/${fmtNum(cap.volCapacity)} m³ (${volPct}%)`
+																				: cap.volCurrent > 0
+																					? " m³ (rack capacity not set)"
+																					: ""}
+																		</p>
+																		<p className="text-[11px] tabular-nums">
+																			Wt {fmtNum(cap.weightCurrent)}
+																			{hasWt
+																				? `/${fmtNum(cap.weightCapacity)} kg (${wtPct}%)`
+																				: cap.weightCurrent > 0
+																					? " kg (rack capacity not set)"
+																					: ""}
 																		</p>
 																	</>
 																) : (
@@ -546,6 +576,7 @@ function WarehouseMapComponent() {
 				<CardContent>
 					{selectedCell ? (() => {
 						const cap = capacityByRackId.get(selectedCell.rackId);
+						const occupied = rackHasOccupancy(cap);
 						const volPct = cap ? pct(cap.volCurrent, cap.volCapacity) : 0;
 						const wtPct = cap ? pct(cap.weightCurrent, cap.weightCapacity) : 0;
 						const hasVol = !!(cap && cap.volCapacity > 0);
@@ -557,16 +588,32 @@ function WarehouseMapComponent() {
 							<DetailCell label="Level" value={selectedCell.level} />
 							<DetailCell label="Column" value={selectedCell.column} />
 							<DetailCell
+								label="Cartons On Hand"
+								value={occupied ? fmtNum(cap!.cartonCount) : "—"}
+							/>
+							<DetailCell
 								label="Volume Used"
-								value={hasVol ? `${fmtNum(cap!.volCurrent)} / ${fmtNum(cap!.volCapacity)} m³` : "—"}
+								value={
+									occupied && cap!.volCurrent > 0
+										? hasVol
+											? `${fmtNum(cap!.volCurrent)} / ${fmtNum(cap!.volCapacity)} m³`
+											: `${fmtNum(cap!.volCurrent)} m³ (rack capacity not set)`
+										: "—"
+								}
 							/>
 							<DetailCell
 								label="Weight Used"
-								value={hasWt ? `${fmtNum(cap!.weightCurrent)} / ${fmtNum(cap!.weightCapacity)} kg` : "—"}
+								value={
+									occupied && cap!.weightCurrent > 0
+										? hasWt
+											? `${fmtNum(cap!.weightCurrent)} / ${fmtNum(cap!.weightCapacity)} kg`
+											: `${fmtNum(cap!.weightCurrent)} kg (rack capacity not set)`
+										: "—"
+								}
 							/>
 							<DetailCell
 								label="Utilization"
-								value={hasVol || hasWt ? `V ${volPct}% · W ${wtPct}%` : "—"}
+								value={hasVol || hasWt ? `V ${volPct}% · W ${wtPct}%` : occupied ? "Occupied (no rack capacity)" : "—"}
 							/>
 							<div className="rounded-lg border p-3 sm:col-span-2 lg:col-span-4">
 								<p className="text-xs text-muted-foreground mb-2">Capacity bars</p>
