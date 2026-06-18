@@ -3,6 +3,24 @@
  * Aligned with backend schema at /graphql.
  */
 
+export interface EndUser {
+	endUserId: string;
+	userName: string;
+}
+
+export interface EndUserPaginatedResponse {
+	query: EndUser[];
+	pagination: Pagination;
+}
+
+export interface CreateEndUserInput {
+	userName: string;
+}
+
+export interface UpdateEndUserInput {
+	userName: string;
+}
+
 export interface Pagination {
 	count: number;
 	totalCount: number;
@@ -561,6 +579,7 @@ export interface Grn {
 	proofUrl: string | null;
 	/** NetSuite error message when status is Failed (incl. our PO-not-fully-fulfilled block message). */
 	nsError?: string | null;
+	endUserId?: string | null;
 	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
 	poFulfilled?: boolean | null;
 	createdAt: string;

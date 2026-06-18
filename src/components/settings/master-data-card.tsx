@@ -11,6 +11,7 @@ import {
 	Grid3x3,
 	Box,
 	ArrowDownToLine,
+	User,
 } from "lucide-react";
 import {
 	SupplierSection,
@@ -24,6 +25,7 @@ import {
 	ZoneSection,
 	BinSection,
 	PutawayRuleSection,
+	EndUserSection,
 } from "./master-data";
 import type { SettingsMasterDataSubTabId } from "@/lib/settings-permissions";
 
@@ -38,7 +40,8 @@ type SubTab =
 	| "warehouse"
 	| "zone"
 	| "bin"
-	| "putaway-rule";
+	| "putaway-rule"
+	| "end-user";
 
 const SUB_TAB_ORDER: SubTab[] = [
 	"supplier",
@@ -52,6 +55,7 @@ const SUB_TAB_ORDER: SubTab[] = [
 	"zone",
 	"bin",
 	"putaway-rule",
+	"end-user",
 ];
 
 const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
@@ -66,6 +70,7 @@ const SUB_TAB_CONFIG: Record<SubTab, { label: string; icon: typeof Truck }> = {
 	zone: { label: "Zones", icon: Grid3x3 },
 	bin: { label: "Bins", icon: Box },
 	"putaway-rule": { label: "Putaway Rules", icon: ArrowDownToLine },
+	"end-user": { label: "End Users", icon: User },
 };
 
 interface MasterDataCardProps {
@@ -129,6 +134,7 @@ export function MasterDataCard({ allowedSubTabs }: MasterDataCardProps) {
 			{subTab === "zone" && <ZoneSection />}
 			{subTab === "bin" && <BinSection />}
 			{subTab === "putaway-rule" && <PutawayRuleSection />}
+			{subTab === "end-user" && <EndUserSection />}
 		</div>
 	);
 }

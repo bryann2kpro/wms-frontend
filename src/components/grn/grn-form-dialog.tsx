@@ -90,7 +90,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Supplier } from "@/lib/graphql/types";
+import type { Supplier, EndUser } from "@/lib/graphql/types";
 import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
@@ -1388,12 +1388,12 @@ function GRNLineRow({
 
 						{/* Loss rack — only shown when loss qty > 0 */}
 						{lossQty > 0 && (
-							<div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/30 p-2.5 dark:border-amber-900 dark:bg-amber-950/20">
+							<div className={`space-y-1.5 rounded-lg border p-2.5 ${!(item.lossRackId ?? "").trim() ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
 								<label
-									className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
+									className={`text-[10px] font-semibold uppercase tracking-wider ${!(item.lossRackId ?? "").trim() ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
-									Loose / Loss Rack
+									Loose / Loss Rack *
 								</label>
 								<RackLocationCombobox
 									remoteSearch
@@ -1425,6 +1425,7 @@ export type GrnCreateSubmitPayload = {
 	receivedDate: string;
 	notes: string;
 	warehouseId: string;
+	endUserId: string;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -1452,6 +1453,8 @@ export type GrnFormDialogProps = {
 	}>;
 	/** Suppliers from m_suppliers for receipt details */
 	suppliers: Supplier[];
+	/** End users from m_end_user for receipt details */
+	endUsers: EndUser[];
 	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
 	supplierSelectionOptional?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
@@ -1488,6 +1491,7 @@ export function GrnFormDialog({
 	warehouses: _warehouses,
 	racks,
 	suppliers,
+	endUsers,
 	supplierSelectionOptional = false,
 	onCreateSubmit,
 	onSuccess,
@@ -1630,6 +1634,7 @@ export function GrnFormDialog({
 			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
 			warehouseId: "",
+			endUserId: "",
 			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
@@ -1651,53 +1656,73 @@ export function GrnFormDialog({
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
 				} else {
+					const itemErrors: string[] = [];
+
 					const invalidQty = items.find(
 						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
 					);
 					if (invalidQty) {
-						fields.items =
-							"Each line item must have total quantity (Carton + Loss) greater than zero.";
-					} else {
-						const missingControlledFields = items.find((i) => {
-							if (!i.skuCode?.trim()) return false;
-							const { requireLot, requireExpiry } = getGrnLineSkuControls(
+						itemErrors.push(
+							"Each line item must have total quantity (Carton + Loss) greater than zero.",
+						);
+					}
+
+					const missingControlledFields = items.find((i) => {
+						if (!i.skuCode?.trim()) return false;
+						const { requireLot, requireExpiry } = getGrnLineSkuControls(
+							i.skuCode,
+							skuOptions,
+							i.asnLotTracked,
+						);
+						if (requireLot && !i.lotNo?.trim()) return true;
+						if (requireExpiry && !i.expiryDate?.trim()) return true;
+						return false;
+					});
+					if (missingControlledFields) {
+						itemErrors.push(
+							"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.",
+						);
+					}
+
+					const missingRack = items.find(
+						(i) => !(i.rackId ?? "").trim(),
+					);
+					if (missingRack) {
+						itemErrors.push("Each line item must have a rack.");
+					}
+
+					const missingLossRack = items.find(
+						(i) => (Number(i.loss) || 0) > 0 && !(i.lossRackId ?? "").trim(),
+					);
+					if (missingLossRack) {
+						itemErrors.push(
+							"Each line item with a loss quantity must have a Loose / Loss Rack selected.",
+						);
+					}
+
+					if (itemErrors.length === 0) {
+						const seen = new Set<string>();
+						const hasDuplicate = items.some((i) => {
+							const key = grnLineDuplicateKey(
 								i.skuCode,
 								skuOptions,
+								i.expiryDate ?? "",
+								i.lotNo ?? "",
 								i.asnLotTracked,
 							);
-							if (requireLot && !i.lotNo?.trim()) return true;
-							if (requireExpiry && !i.expiryDate?.trim()) return true;
+							if (seen.has(key)) return true;
+							seen.add(key);
 							return false;
 						});
-						if (missingControlledFields) {
-							fields.items =
-								"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.";
-						} else {
-							const missingRack = items.find(
-								(i) => !(i.rackId ?? "").trim(),
+						if (hasDuplicate) {
+							itemErrors.push(
+								"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.",
 							);
-							if (missingRack) {
-								fields.items = "Each line item must have a rack.";
-							} else {
-								const seen = new Set<string>();
-								const hasDuplicate = items.some((i) => {
-									const key = grnLineDuplicateKey(
-										i.skuCode,
-										skuOptions,
-										i.expiryDate ?? "",
-										i.lotNo ?? "",
-										i.asnLotTracked,
-									);
-									if (seen.has(key)) return true;
-									seen.add(key);
-									return false;
-								});
-								if (hasDuplicate) {
-									fields.items =
-										"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.";
-								}
-							}
 						}
+					}
+
+					if (itemErrors.length > 0) {
+						fields.items = itemErrors.join(" ");
 					}
 				}
 				if (Object.keys(fields).length > 0) {
@@ -1711,6 +1736,15 @@ export function GrnFormDialog({
 		},
 		onSubmit: async ({ value }) => {
 			if (mode === "create") {
+				const missingLossRack = (value.items ?? []).find(
+					(i) => (Number(i.loss) || 0) > 0 && !(i.lossRackId ?? "").trim(),
+				);
+				if (missingLossRack) {
+					toast.error(
+						"Each line item with a loss quantity must have a Loose / Loss Rack selected.",
+					);
+					return;
+				}
 				const payload: GrnCreateSubmitPayload = {
 					grnNumber: value.grnNumber,
 					poReference: value.poReference ?? "",
@@ -1719,6 +1753,7 @@ export function GrnFormDialog({
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
 					warehouseId: value.warehouseId ?? "",
+					endUserId: value.endUserId ?? "",
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
 						...i,
@@ -1859,6 +1894,7 @@ export function GrnFormDialog({
 				receivedDate: initialValues?.receivedDate ?? "",
 				notes: "",
 				warehouseId: "",
+				endUserId: "",
 				items: (initialValues?.items ?? []) as GRNLineItemForm[],
 			});
 			setProofFiles([]);
@@ -2165,6 +2201,41 @@ export function GrnFormDialog({
 												</Field>
 											);
 										}}
+									</form.Field>
+									<form.Field name="endUserId">
+										{(field) => (
+											<Field>
+												<FieldLabel
+													htmlFor={field.name}
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													End User
+												</FieldLabel>
+												<Select
+													value={field.state.value || undefined}
+													onValueChange={(v) => field.handleChange(v)}
+												>
+													<SelectTrigger
+														id={field.name}
+														className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
+													>
+														<SelectValue placeholder="Select end user…" />
+													</SelectTrigger>
+													<SelectContent>
+														{endUsers.map((u) => (
+															<SelectItem key={u.endUserId} value={u.endUserId}>
+																{u.userName}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												{endUsers.length === 0 ? (
+													<p className="text-xs text-amber-600 mt-1">
+														No end users in master data. Add end users in Settings first.
+													</p>
+												) : null}
+											</Field>
+										)}
 									</form.Field>
 									<form.Field name="supplierDO">
 										{(field) => {

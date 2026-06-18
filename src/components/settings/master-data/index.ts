@@ -9,3 +9,4 @@ export { SkusSection } from "./skus-section";
 export { ZoneSection } from "./zone-section";
 export { BinSection } from "./bin-section";
 export { PutawayRuleSection } from "./putaway-rule-section";
+export { EndUserSection } from "./enduser-section";
