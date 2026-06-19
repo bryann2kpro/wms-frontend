@@ -1,10 +1,12 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
 	ClientOnly,
 	Link,
 	useLocation,
 	useSearch,
 } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import { Collapsible } from "radix-ui";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import {
 	Sidebar as SidebarUi,
@@ -13,8 +15,12 @@ import {
 	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
+	SidebarMenuAction,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuSub,
+	SidebarMenuSubButton,
+	SidebarMenuSubItem,
 	SidebarRail,
 } from "@/components/ui/sidebar";
 import {
@@ -26,6 +32,107 @@ import {
 } from "@/constants/links";
 import { cn } from "@/lib/utils";
 
+function getNavHref(link: Pick<NavLinkSchemaType, "href" | "search">): string {
+	if (!link.search || Object.keys(link.search).length === 0) {
+		return link.href;
+	}
+	const params = new URLSearchParams(link.search).toString();
+	return params ? `${link.href}?${params}` : link.href;
+}
+
+function navLinkActiveClass(active: boolean) {
+	return cn(
+		active &&
+			"bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:border-amber-500 dark:hover:bg-amber-700",
+	);
+}
+
+type NavActiveFn = (href: string, search?: Record<string, string>) => boolean;
+
+function CollapsibleNavMenuItem({
+	link,
+	visibleChildren,
+	isActive,
+}: {
+	link: NavLinkSchemaType;
+	visibleChildren: NavLinkSchemaType[];
+	isActive: NavActiveFn;
+}) {
+	const childActive = visibleChildren.some((child) =>
+		isActive(child.href, child.search),
+	);
+	const parentSectionActive = isActive(link.href, link.search);
+	const parentButtonActive = parentSectionActive && !childActive;
+	const [open, setOpen] = useState(childActive);
+
+	useEffect(() => {
+		if (childActive) setOpen(true);
+	}, [childActive]);
+
+	return (
+		<Collapsible.Root
+			open={open}
+			onOpenChange={setOpen}
+			className="group/collapsible"
+		>
+			<SidebarMenuItem>
+				<SidebarMenuButton
+					asChild
+					isActive={parentButtonActive}
+					tooltip={link.title}
+					className={cn(
+						"border-l-4 border-transparent group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0",
+						navLinkActiveClass(parentButtonActive),
+					)}
+				>
+					<Link
+						to={link.href}
+						search={link.search}
+						style={{ fontFamily: '"Figtree", sans-serif' }}
+					>
+						<link.icon className="shrink-0" />
+						<span className="group-data-[collapsible=icon]:hidden">
+							{link.title}
+						</span>
+					</Link>
+				</SidebarMenuButton>
+				<Collapsible.Trigger asChild>
+					<SidebarMenuAction
+						className="transition-transform data-[state=open]:rotate-90"
+						aria-label={`Toggle ${link.title} submenu`}
+					>
+						<ChevronRight />
+					</SidebarMenuAction>
+				</Collapsible.Trigger>
+				<Collapsible.Content>
+					<SidebarMenuSub>
+						{visibleChildren.map((child) => {
+							const childIsActive = isActive(child.href, child.search);
+							return (
+								<SidebarMenuSubItem key={`nav-${child.key}`}>
+									<SidebarMenuSubButton
+										asChild
+										isActive={childIsActive}
+										className={navLinkActiveClass(childIsActive)}
+									>
+										<Link
+											to={child.href}
+											search={child.search}
+											style={{ fontFamily: '"Figtree", sans-serif' }}
+										>
+											<span>{child.title}</span>
+										</Link>
+									</SidebarMenuSubButton>
+								</SidebarMenuSubItem>
+							);
+						})}
+					</SidebarMenuSub>
+				</Collapsible.Content>
+			</SidebarMenuItem>
+		</Collapsible.Root>
+	);
+}
+
 export function Sidebar() {
 	const location = useLocation();
 
@@ -34,11 +141,12 @@ export function Sidebar() {
 		from: "/admin",
 	});
 
-	const isActive = (href: string) => {
+	const isActive = (href: string, search?: Record<string, string>) => {
+		const fullHref = getNavHref({ href, search });
 		// Remove /en prefix if it exists in the pathname
 		const cleanPathname = location.pathname.replace(/^\/en/, "");
 		// Remove /en prefix if it exists in the href
-		const cleanHref = href.replace(/^\/en/, "");
+		const cleanHref = fullHref.replace(/^\/en/, "");
 
 		// Build the full URL with search params for comparison
 		const currentUrl =
@@ -57,13 +165,16 @@ export function Sidebar() {
 		const pathnameWithoutQuery = cleanPathname.split("?")[0];
 		const hrefWithoutQuery = cleanHref.split("?")[0];
 
+		if (search && Object.keys(search).length > 0) {
+			return normalizedCurrentUrl === normalizedCleanHref;
+		}
+
 		if (href === "/admin/master-data") {
 			return pathnameWithoutQuery === hrefWithoutQuery;
 		}
 
 		// For exact matches (including query parameters) - this should catch child items
 		if (normalizedCurrentUrl === normalizedCleanHref) {
-			// console.log('Exact match found:', { normalizedCurrentUrl, normalizedCleanHref });
 			return true;
 		}
 
@@ -109,7 +220,12 @@ export function Sidebar() {
 		);
 	};
 
-	const visibleItems = allNavigationItems.filter(accessControl);
+	const visibleItems = allNavigationItems
+		.filter(accessControl)
+		.map((link) => ({
+			...link,
+			children: link.children?.filter(accessControl),
+		}));
 
 	// Partition by group, preserving item order within each group
 	const byGroup = new Map<SidebarGroupKey | string, NavLinkSchemaType[]>();
@@ -120,7 +236,20 @@ export function Sidebar() {
 	}
 
 	const renderNavLink = (link: NavLinkSchemaType) => {
-		const active = isActive(link.href);
+		const visibleChildren = link.children ?? [];
+		if (visibleChildren.length > 0) {
+			return (
+				<CollapsibleNavMenuItem
+					key={`nav-${link.key}`}
+					link={link}
+					visibleChildren={visibleChildren}
+					isActive={isActive}
+				/>
+			);
+		}
+
+		const active = isActive(link.href, link.search);
+
 		return (
 			<SidebarMenuItem key={`nav-${link.key}`}>
 				<SidebarMenuButton
@@ -129,12 +258,12 @@ export function Sidebar() {
 					tooltip={link.title}
 					className={cn(
 						"border-l-4 border-transparent group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0",
-						active &&
-							"bg-amber-600 text-white border-amber-700 hover:bg-amber-700 hover:text-white dark:bg-amber-600 dark:border-amber-500 dark:hover:bg-amber-700",
+						navLinkActiveClass(active),
 					)}
 				>
 					<Link
 						to={link.href}
+						search={link.search}
 						style={{ fontFamily: '"Figtree", sans-serif' }}
 					>
 						<link.icon className="shrink-0" />
