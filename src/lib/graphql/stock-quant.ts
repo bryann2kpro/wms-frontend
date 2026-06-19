@@ -24,6 +24,7 @@ export const STOCK_QUANTS_QUERY = gql`
 				stockUnitCode
 				description
 				quantity
+				lossQty
 				reservedQty
 				rackId
 				rackLabel
@@ -56,6 +57,7 @@ export interface StockQuant {
 	stockUnitCode: string | null;
 	description: string | null;
 	quantity: string;
+	lossQty: string;
 	reservedQty: string;
 	rackId: string;
 	rackLabel: string | null;

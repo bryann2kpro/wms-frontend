@@ -124,6 +124,22 @@ function rackLabel(
 	return `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
 }
 
+function formatTransferQtyDisplay(item: {
+	quantity: string;
+	lossQuantity?: string | null;
+}): string {
+	const carton = Number(item.quantity ?? 0);
+	const loose = Number(item.lossQuantity ?? 0);
+	const parts: string[] = [];
+	if (Number.isFinite(carton) && carton > 0) {
+		parts.push(`${carton.toLocaleString()} CTN`);
+	}
+	if (Number.isFinite(loose) && loose > 0) {
+		parts.push(`${loose.toLocaleString()} loose`);
+	}
+	return parts.length > 0 ? parts.join(" + ") : "0";
+}
+
 function StatusBadge({ status }: { status: StockTransferStatus }) {
 	if (status === "DRAFT") {
 		return (
@@ -340,7 +356,7 @@ function StockTransferComponent() {
 									<TableHead>Source Rack</TableHead>
 									<TableHead>Lot No</TableHead>
 									<TableHead>Destination Rack</TableHead>
-									<TableHead className="text-right">Quantity</TableHead>
+									<TableHead className="text-right">Qty (CTN / loose)</TableHead>
 									<TableHead className="w-[200px] text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -381,7 +397,7 @@ function StockTransferComponent() {
 														{rackLabel(item.destinationRack)}
 													</TableCell>
 													<TableCell className="text-right text-sm font-medium">
-														{Number(item.quantity).toLocaleString()}
+														{formatTransferQtyDisplay(item)}
 													</TableCell>
 													<TableCell className="text-right">
 														<TransferDraftActions
@@ -715,7 +731,7 @@ function StockTransferComponent() {
 											<TableHead>Lot</TableHead>
 											<TableHead>Expiry</TableHead>
 											<TableHead>Movement</TableHead>
-											<TableHead className="text-right">Qty</TableHead>
+											<TableHead className="text-right">Qty (CTN / loose)</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -755,7 +771,7 @@ function StockTransferComponent() {
 													</span>
 												</TableCell>
 												<TableCell className={`text-right ${transferTableMonoCellClassName}`}>
-													{item.quantity}
+													{formatTransferQtyDisplay(item)}
 												</TableCell>
 											</TableRow>
 										))}

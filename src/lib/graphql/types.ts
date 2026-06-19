@@ -1252,6 +1252,7 @@ export interface StockTransferItem {
 	lotNo: string | null;
 	expiryDate: string | null;
 	quantity: string;
+	lossQuantity: string;
 	sourceStockQuantId: string;
 	sourceRackId: string;
 	sourceRack: StockTransferItemRack | null;
