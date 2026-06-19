@@ -38,6 +38,7 @@ export const STOCK_TRANSFER_FRAGMENT = gql`
 			lotNo
 			expiryDate
 			quantity
+			lossQuantity
 			sourceStockQuantId
 			sourceRackId
 			sourceRack {
@@ -177,6 +178,7 @@ export type CreateStockTransferLineInput = {
 	sourceStockQuantId: string;
 	destinationRackId: string;
 	quantity: string;
+	lossQuantity?: string;
 };
 
 export type CreateStockTransferInput = {
