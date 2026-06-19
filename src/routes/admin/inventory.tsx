@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	CustomerPriorityRanking,
+	ReservationListCard,
+} from "@/components/reservation";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { hasAdminRole } from "@/lib/rbac/require-admin-role";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
@@ -49,7 +56,14 @@ import { formatDate } from "@/lib/utils";
 import { getAvailablePickingStrategies } from "@/lib/picking-strategy";
 import { toast } from "sonner";
 
+type InventoryTab = "inventory" | "reservations";
+
 export const Route = createFileRoute("/admin/inventory")({
+	validateSearch: (search: Record<string, unknown>) => {
+		const raw = (search.tab as string) ?? "inventory";
+		const tab: InventoryTab = raw === "reservations" ? "reservations" : "inventory";
+		return { tab };
+	},
 	beforeLoad: async ({ context }) => {
 		await requirePermission(context.queryClient, ["Inventory"]);
 	},
@@ -73,6 +87,56 @@ const ALL_ITEMS_PAGE_SIZE = 9999;
 const DEFAULT_LOW_STOCK_THRESHOLD = 20;
 
 function InventoryComponent() {
+	const { tab } = Route.useSearch();
+	const navigate = useNavigate();
+	const { user } = useCurrentUser();
+	const isAdmin = hasAdminRole(user?.roles);
+	const activeTab: InventoryTab =
+		tab === "reservations" && isAdmin ? "reservations" : "inventory";
+
+	return (
+		<main
+			className="inventory-page container mx-auto p-6 space-y-6"
+			aria-labelledby="inventory-page-title"
+			aria-describedby="inventory-page-description"
+		>
+			<AdminPageHeader
+				icon={Boxes}
+				title="Inventory"
+				description="Real-time on-hand stock levels and reserved quantities for all SKUs."
+				titleId="inventory-page-title"
+				descriptionId="inventory-page-description"
+			/>
+
+			<Tabs
+				value={activeTab}
+				onValueChange={(t) =>
+					navigate({ to: "/admin/inventory", search: { tab: t as InventoryTab } })
+				}
+			>
+				<TabsList className="mb-4">
+					<TabsTrigger value="inventory">Inventory</TabsTrigger>
+					{isAdmin && (
+						<TabsTrigger value="reservations">Order Reservations</TabsTrigger>
+					)}
+				</TabsList>
+				<TabsContent value="inventory">
+					<InventoryBalancesTab />
+				</TabsContent>
+				{isAdmin && (
+					<TabsContent value="reservations">
+						<div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] xl:items-start xl:gap-5">
+							<ReservationListCard className="min-h-0 xl:min-h-[28rem]" />
+							<CustomerPriorityRanking className="xl:sticky xl:top-4" />
+						</div>
+					</TabsContent>
+				)}
+			</Tabs>
+		</main>
+	);
+}
+
+function InventoryBalancesTab() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
@@ -185,21 +249,7 @@ function InventoryComponent() {
 	};
 
 	return (
-		<main
-			className="inventory-page container mx-auto p-6 space-y-6"
-			aria-labelledby="inventory-page-title"
-			aria-describedby="inventory-page-description"
-			aria-busy={loading}
-		>
-			<AdminPageHeader
-				icon={Boxes}
-				title="Inventory"
-				description="Real-time on-hand stock levels and reserved quantities for all SKUs."
-				titleId="inventory-page-title"
-				descriptionId="inventory-page-description"
-			/>
-
-			<Card className="dashboard-card">
+		<Card className="dashboard-card" aria-busy={loading}>
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 						<div>
@@ -541,7 +591,6 @@ function InventoryComponent() {
 						</div>
 					)}
 				</CardContent>
-			</Card>
-		</main>
+		</Card>
 	);
 }

@@ -2,11 +2,11 @@ import {
 	Activity,
 	ArrowRightLeft,
 	BarChart3,
+	Bookmark,
 	Box,
 	Boxes,
 	ClipboardCheck,
 	ClipboardList,
-	Bookmark,
 	FileCheck,
 	FileText,
 	GitCompareArrows,
@@ -62,6 +62,8 @@ const ChildNavLinkSchema = z.object({
 	allowedPermission: z.array(z.string()),
 	/** When set, only users with one of these roles see the link (Admin route guard). */
 	allowedRoles: z.array(z.string()).optional(),
+	/** Optional search params appended to href (TanStack Router `search`). */
+	search: z.record(z.string(), z.string()).optional(),
 	/** Group key – items with the same group are shown under one labeled section. */
 	group: z.string().optional(),
 });
@@ -109,16 +111,6 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		allowedPermission: ["Delivery Order"],
 		variant: "default",
 		group: "outbound",
-	},
-	{
-		key: "sidebar-reservations",
-		title: "Order Reservations",
-		href: "/admin/reservations",
-		icon: Bookmark,
-		allowedPermission: [],
-		allowedRoles: ["Admin", "Super Admin"],
-		variant: "default",
-		group: "inventory",
 	},
 	{
 		key: "sidebar-do-work-queue",
@@ -173,6 +165,18 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		allowedPermission: ["Inventory"],
 		variant: "default",
 		group: "operations",
+		children: [
+			{
+				key: "sidebar-inventory-reservations",
+				title: "Order Reservations",
+				href: "/admin/inventory",
+				search: { tab: "reservations" },
+				icon: Bookmark,
+				allowedPermission: ["Inventory"],
+				allowedRoles: ["Admin", "Super Admin"],
+				variant: "ghost",
+			},
+		],
 	},
 	{
 		key: "sidebar-warehouse-map",

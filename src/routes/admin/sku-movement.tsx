@@ -298,7 +298,7 @@ function SkuMovementComponent() {
 				<Button
 					variant="ghost"
 					size="icon"
-					onClick={() => navigate({ to: "/admin/inventory" })}
+					onClick={() => navigate({ to: "/admin/inventory", search: { tab: "inventory" } })}
 					aria-label="Back to inventory"
 				>
 					<ChevronLeft className="h-4 w-4" />
