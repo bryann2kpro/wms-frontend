@@ -285,6 +285,7 @@ export interface RackUtilization {
 	volCurrent: number;
 	weightCapacity: number | null;
 	weightCurrent: number;
+	cartonCount: number;
 }
 
 export interface CreateRackInput {

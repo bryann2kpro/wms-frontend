@@ -118,7 +118,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		allowedPermission: [],
 		allowedRoles: ["Admin", "Super Admin"],
 		variant: "default",
-		group: "outbound",
+		group: "inventory",
 	},
 	{
 		key: "sidebar-do-work-queue",

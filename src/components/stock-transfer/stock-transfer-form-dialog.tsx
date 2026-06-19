@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
-import { dashboardAccentButtonProps } from "@/components/stock-transfer/stock-transfer-ui";
+import { dashboardAccentButtonProps, formatQtyWithUom } from "@/components/stock-transfer/stock-transfer-ui";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -102,7 +102,7 @@ function available(quantity: string, reservedQty: string): number {
 function formatStockQuantLabel(quant: StockQuant): string {
 	const avail = available(quant.quantity, quant.reservedQty);
 	const lot = quant.lotNo?.trim() ? ` · Lot ${quant.lotNo}` : "";
-	return `${quant.skuCode ?? quant.skuId}${lot} · avail ${avail}`;
+	return `${quant.skuCode ?? quant.skuId}${lot} · avail ${formatQtyWithUom(avail, quant.stockUnitCode)}`;
 }
 
 // ============================================
@@ -688,12 +688,24 @@ function TransferLineEditor({
 							<Label className="text-xs text-muted-foreground">Available</Label>
 							<Input
 								readOnly
-								value={selectedQuant ? String(availableQty) : "-"}
+								value={
+									selectedQuant
+										? formatQtyWithUom(availableQty, selectedQuant.stockUnitCode)
+										: "-"
+								}
 								className="font-mono text-sm bg-muted/40"
 							/>
 						</div>
 						<div className="space-y-1.5">
-							<Label className="text-xs text-muted-foreground">Quantity</Label>
+							<Label className="text-xs text-muted-foreground">
+								Quantity
+								{selectedQuant?.stockUnitCode?.trim() ? (
+									<span className="font-normal text-muted-foreground">
+										{" "}
+										({selectedQuant.stockUnitCode.trim()})
+									</span>
+								) : null}
+							</Label>
 							<Input
 								type="number"
 								min={0}

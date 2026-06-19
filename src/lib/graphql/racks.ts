@@ -64,6 +64,7 @@ export const RACK_UTILIZATION_QUERY = gql`
 			volCurrent
 			weightCapacity
 			weightCurrent
+			cartonCount
 		}
 	}
 `;
