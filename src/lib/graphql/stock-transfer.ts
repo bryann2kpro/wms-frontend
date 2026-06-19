@@ -1,8 +1,5 @@
 import { gql } from "graphql-request";
-import type {
-	StockTransfer,
-	StockTransferPaginatedResponse,
-} from "./types";
+import type { StockTransfer, StockTransferPaginatedResponse } from "./types";
 
 // ============================================
 // FRAGMENTS
@@ -129,6 +126,15 @@ export const CANCEL_STOCK_TRANSFER_MUTATION = gql`
 	${STOCK_TRANSFER_FRAGMENT}
 `;
 
+export const DISPATCH_STOCK_TRANSFER_MUTATION = gql`
+	mutation DispatchStockTransfer($id: ID!) {
+		dispatchStockTransfer(id: $id) {
+			...StockTransferFields
+		}
+	}
+	${STOCK_TRANSFER_FRAGMENT}
+`;
+
 export const APPROVE_STOCK_TRANSFER_MUTATION = gql`
 	mutation ApproveStockTransfer($id: ID!) {
 		approveStockTransfer(id: $id) {
@@ -204,6 +210,11 @@ export type CancelStockTransferMutationVariables = {
 };
 export type CancelStockTransferMutationData = {
 	cancelStockTransfer: StockTransfer;
+};
+
+export type DispatchStockTransferMutationVariables = { id: string };
+export type DispatchStockTransferMutationData = {
+	dispatchStockTransfer: StockTransfer;
 };
 
 export type ApproveStockTransferMutationVariables = { id: string };

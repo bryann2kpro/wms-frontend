@@ -10,7 +10,8 @@
  *   4. Quantity (≤ on-hand for chosen lot)
  *   5. Destination rack (must differ from source)
  *   6. Add to list → draft row in table
- *   7. Approve (moves stock) or Reject (no stock move)
+ *   7. Approve (dispatches from source → work queue) or Reject (no stock move)
+ *   8. Confirm receipt on Internal Transfer Work Queue → COMPLETED
  *
  * Prerequisites
  * ─────────────
@@ -27,10 +28,11 @@
  */
 
 import { test, expect, type Page } from "@playwright/test";
+import { seedLooseStockForBinTransfer } from "./helpers/stock-quant";
 
-const SOURCE_RACK_LABEL =
+let SOURCE_RACK_LABEL =
   process.env.E2E_PUTAWAY_SOURCE_RACK_LABEL ?? "I1-L2-07";
-const DEST_RACK_LABEL =
+let DEST_RACK_LABEL =
   process.env.E2E_PUTAWAY_DEST_RACK_LABEL ?? "G2-L1-07";
 const ALT_DEST_RACK_LABEL =
   process.env.E2E_PUTAWAY_ALT_DEST_RACK_LABEL ?? "A1-L1-01";
@@ -288,7 +290,10 @@ function putawayDraftRowLocator(
     .filter({ hasText: new RegExp(escapeRegExp(p.sourceLabel)) })
     .filter({ hasText: new RegExp(escapeRegExp(p.destLabel)) })
     .filter({
-      has: page.locator("td").nth(5).getByText(qtyDisplay, { exact: true }),
+      has: page
+        .locator("td")
+        .nth(5)
+        .getByText(new RegExp(`${escapeRegExp(qtyDisplay)} CTN`, "i")),
     });
 
   if (p.lotLabel != null) {
@@ -625,7 +630,10 @@ test.describe("Putaway queue", () => {
     await expect(rowToKeep).toBeVisible();
 
     await rowToApprove.getByRole("button", { name: /^Approve$/i }).click();
-    await expectToast(page, /Transferred|success|approved|completed/i);
+    await expectToast(
+      page,
+      /confirm receipt|work queue|Transferred|success|approved|completed/i,
+    );
 
     await expect(rowToApprove).not.toBeVisible({ timeout: 15_000 });
     await expect(rowToKeep).toBeVisible({ timeout: 10_000 });
@@ -636,7 +644,27 @@ test.describe("Putaway queue", () => {
 // Happy path
 // ============================================================================
 
-test.describe("Putaway happy path", () => {
+test.describe("Putaway happy path @smoke", () => {
+  test.beforeAll(async () => {
+    if (
+      process.env.E2E_PUTAWAY_SOURCE_RACK_LABEL &&
+      process.env.E2E_PUTAWAY_DEST_RACK_LABEL
+    ) {
+      return;
+    }
+    try {
+      const seed = await seedLooseStockForBinTransfer({
+        rackLabel: process.env.E2E_PUTAWAY_SOURCE_RACK_LABEL,
+        destRackLabel: process.env.E2E_PUTAWAY_DEST_RACK_LABEL,
+      });
+      SOURCE_RACK_LABEL = seed.sourceRackLabel;
+      DEST_RACK_LABEL = seed.destRackLabel;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      test.skip(true, `Could not seed stock for putaway E2E: ${message}`);
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     await gotoPutaway(page);
   });
@@ -670,7 +698,7 @@ test.describe("Putaway happy path", () => {
 
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByRole("cell").nth(5)).toHaveText(
-      Number(PUTAWAY_TEST_QTY).toLocaleString(),
+      `${Number(PUTAWAY_TEST_QTY).toLocaleString()} CTN`,
     );
     await expect(row.getByRole("cell").nth(3)).toHaveText(
       lotNoTableCellText(add.lotLabel),
@@ -710,7 +738,10 @@ test.describe("Putaway happy path", () => {
 
     await expect(row).toBeVisible({ timeout: 10_000 });
     await row.getByRole("button", { name: /^Approve$/i }).click();
-    await expectToast(page, /Transferred|success|approved|completed/i);
+    await expectToast(
+      page,
+      /confirm receipt|work queue|Transferred|success|approved|completed/i,
+    );
     await expect(row).not.toBeVisible({ timeout: 15_000 });
   });
 
@@ -778,7 +809,10 @@ test.describe("Putaway happy path", () => {
     });
     await expect(row).toBeVisible({ timeout: 10_000 });
     await row.getByRole("button", { name: /^Approve$/i }).click();
-    await expectToast(page, /Transferred|success|approved|completed/i);
+    await expectToast(
+      page,
+      /confirm receipt|work queue|Transferred|success|approved|completed/i,
+    );
     await expect(row).not.toBeVisible({ timeout: 15_000 });
 
     const srcAgain = await selectRackByLocationLabel(
@@ -818,5 +852,78 @@ test.describe("Putaway happy path", () => {
     const onHandAfter = await readMaximumQtyHint(page);
     expect(onHandAfter).not.toBeNull();
     expect(onHandAfter).toBe(onHandBefore - Number(PUTAWAY_TEST_QTY));
+  });
+
+  test("approve dispatches to work queue; confirm completes transfer", async ({
+    page,
+  }) => {
+    try {
+      const seed = await seedLooseStockForBinTransfer();
+      SOURCE_RACK_LABEL = seed.sourceRackLabel;
+      DEST_RACK_LABEL = seed.destRackLabel;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      test.skip(true, `Could not seed stock for work-queue E2E: ${message}`);
+    }
+
+    test.skip(
+      SOURCE_RACK_LABEL === DEST_RACK_LABEL,
+      "Set different E2E_PUTAWAY_SOURCE_RACK_LABEL and E2E_PUTAWAY_DEST_RACK_LABEL.",
+    );
+
+    await gotoPutaway(page);
+
+    const add = await addPutawayDraftLine(page, {
+      sourceLabel: SOURCE_RACK_LABEL,
+      destLabel: DEST_RACK_LABEL,
+      qty: PUTAWAY_TEST_QTY,
+    });
+    if (!skipIfPrereqsMissing(add, SOURCE_RACK_LABEL, DEST_RACK_LABEL)) {
+      return;
+    }
+
+    await expectToast(page, /draft in putaway|saved as draft/i);
+
+    const row = putawayDraftRowLocator(page, {
+      skuCode: add.skuCode,
+      sourceLabel: SOURCE_RACK_LABEL,
+      destLabel: DEST_RACK_LABEL,
+      qty: PUTAWAY_TEST_QTY,
+      lotLabel: add.lotLabel,
+    });
+
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await row.getByRole("button", { name: /^Approve$/i }).click();
+    await expectToast(
+      page,
+      /confirm receipt|approved|work queue|success/i,
+    );
+    await expect(row).not.toBeVisible({ timeout: 15_000 });
+
+    await page.goto("/admin/bin-transfer-work-queue");
+    await expect(
+      page.getByRole("heading", { name: /Internal Transfer Work Queue/i }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const queueTable = page.getByRole("table", {
+      name: /In-transit internal transfers awaiting confirmation/i,
+    });
+    const queueItemRow = queueTable
+      .getByRole("row")
+      .filter({ hasText: add.skuCode })
+      .filter({ hasText: new RegExp(DEST_RACK_LABEL.replace(/-/g, "[^0-9]*")) });
+    await expect(queueItemRow.first()).toBeVisible({ timeout: 15_000 });
+    const queueCountBefore = await queueItemRow.count();
+
+    await queueItemRow
+      .last()
+      .locator("xpath=preceding-sibling::tr[1]")
+      .getByRole("button", { name: /^Confirm$/i })
+      .click();
+    await expectToast(page, /received|completed|success/i);
+
+    await expect(queueItemRow).toHaveCount(queueCountBefore - 1, {
+      timeout: 15_000,
+    });
   });
 });

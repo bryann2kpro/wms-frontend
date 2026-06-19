@@ -55,6 +55,7 @@ import { Route as AdminDoWorkQueueRouteImport } from './routes/admin/do-work-que
 import { Route as AdminDoDetailRouteImport } from './routes/admin/do-detail'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as AdminBinTransferWorkQueueRouteImport } from './routes/admin/bin-transfer-work-queue'
 import { Route as AdminAuditLogRouteImport } from './routes/admin/audit-log'
 import { Route as AdminApiLogRouteImport } from './routes/admin/api-log'
 import { Route as AdminApiKeysRouteImport } from './routes/admin/api-keys'
@@ -300,6 +301,12 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminBinTransferWorkQueueRoute =
+  AdminBinTransferWorkQueueRouteImport.update({
+    id: '/bin-transfer-work-queue',
+    path: '/bin-transfer-work-queue',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
   id: '/audit-log',
   path: '/audit-log',
@@ -380,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/bin-transfer-work-queue': typeof AdminBinTransferWorkQueueRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -442,6 +450,7 @@ export interface FileRoutesByTo {
   '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/bin-transfer-work-queue': typeof AdminBinTransferWorkQueueRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -505,6 +514,7 @@ export interface FileRoutesById {
   '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/api-log': typeof AdminApiLogRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/bin-transfer-work-queue': typeof AdminBinTransferWorkQueueRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/do-detail': typeof AdminDoDetailRoute
@@ -569,6 +579,7 @@ export interface FileRouteTypes {
     | '/admin/api-keys'
     | '/admin/api-log'
     | '/admin/audit-log'
+    | '/admin/bin-transfer-work-queue'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -631,6 +642,7 @@ export interface FileRouteTypes {
     | '/admin/api-keys'
     | '/admin/api-log'
     | '/admin/audit-log'
+    | '/admin/bin-transfer-work-queue'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -693,6 +705,7 @@ export interface FileRouteTypes {
     | '/admin/api-keys'
     | '/admin/api-log'
     | '/admin/audit-log'
+    | '/admin/bin-transfer-work-queue'
     | '/admin/dashboard'
     | '/admin/deliveries'
     | '/admin/do-detail'
@@ -1093,6 +1106,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/bin-transfer-work-queue': {
+      id: '/admin/bin-transfer-work-queue'
+      path: '/bin-transfer-work-queue'
+      fullPath: '/admin/bin-transfer-work-queue'
+      preLoaderRoute: typeof AdminBinTransferWorkQueueRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/audit-log': {
       id: '/admin/audit-log'
       path: '/audit-log'
@@ -1210,6 +1230,7 @@ interface AdminRouteRouteChildren {
   AdminApiKeysRoute: typeof AdminApiKeysRoute
   AdminApiLogRoute: typeof AdminApiLogRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
+  AdminBinTransferWorkQueueRoute: typeof AdminBinTransferWorkQueueRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDoDetailRoute: typeof AdminDoDetailRoute
@@ -1253,6 +1274,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminApiKeysRoute: AdminApiKeysRoute,
   AdminApiLogRoute: AdminApiLogRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
+  AdminBinTransferWorkQueueRoute: AdminBinTransferWorkQueueRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDoDetailRoute: AdminDoDetailRoute,
