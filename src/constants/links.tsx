@@ -131,6 +131,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "work-queues",
 	},
 	{
+		key: "sidebar-bin-transfer-work-queue",
+		title: "Internal Transfer Work Queue",
+		href: "/admin/bin-transfer-work-queue",
+		icon: ArrowLeftRight,
+		allowedPermission: ["Inventory"],
+		variant: "default",
+		group: "work-queues",
+	},
+	{
 		key: "sidebar-proof-of-delivery",
 		title: "Settlement",
 		href: "/admin/proof-of-delivery",

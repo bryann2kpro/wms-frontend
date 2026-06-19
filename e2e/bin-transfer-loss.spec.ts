@@ -193,4 +193,93 @@ test.describe("Bin-to-Bin loose (LOSS) transfer @smoke", () => {
 			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
 		await expect(draftRow.first()).toBeVisible({ timeout: 10_000 });
 	});
+
+	test("loose draft → approve → work queue confirm → completed", async ({
+		page,
+	}) => {
+		await gotoBinTransfer(page);
+
+		const sourceOk = await selectRackByLocationLabel(
+			page,
+			"putaway-source-rack",
+			sourceRackLabel,
+		);
+		expect(sourceOk, `Source rack ${sourceRackLabel} not found`).toBe(true);
+
+		await page.locator("#putaway-sku").click();
+		const skuOptions = page.getByRole("option");
+		await expect(skuOptions.first()).toBeVisible({ timeout: 8_000 });
+		const skuOptionTexts = await skuOptions.allTextContents();
+		const skuWithStock = seededSkuCode
+			? skuOptionTexts.find((t) => t.includes(seededSkuCode!))
+			: skuOptionTexts.find((t) => !/Select SKU/i.test(t));
+		expect(skuWithStock, "No SKU with stock on source rack").toBeTruthy();
+		const skuCode = skuCodeFromOptionText(skuWithStock!);
+		await page.getByRole("option", { name: new RegExp(skuCode) }).first().click();
+
+		await ensureSeededLotSelected(page, seededLotNo);
+
+		const lossInput = page.locator("#putaway-loss-qty");
+		await expect(lossInput).toBeEnabled({ timeout: 10_000 });
+		await lossInput.fill(LOOSE_TEST_QTY);
+
+		const destOk = await selectRackByLocationLabel(
+			page,
+			"putaway-dest-rack",
+			destRackLabel,
+		);
+		expect(destOk, `Destination rack ${destRackLabel} not found`).toBe(true);
+
+		await page.getByRole("button", { name: /^Add to list$/i }).click();
+		await expect(
+			page.locator("[data-sonner-toast]").getByText(/saved as draft/i).first(),
+		).toBeVisible({ timeout: 10_000 });
+
+		const draftRow = page
+			.getByRole("table", { name: /Pending transfer drafts/i })
+			.getByRole("row")
+			.filter({ hasText: skuCode })
+			.filter({ hasText: sourceRackLabel })
+			.filter({ hasText: destRackLabel })
+			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
+		await expect(draftRow.last()).toBeVisible({ timeout: 10_000 });
+		await draftRow.last().getByRole("button", { name: /^Approve$/i }).click();
+		await expect(
+			page
+				.locator("[data-sonner-toast]")
+				.getByText(/confirm receipt|work queue|approved|received|success/i)
+				.first(),
+		).toBeVisible({ timeout: 15_000 });
+
+		await page.goto("/admin/bin-transfer-work-queue");
+		await expect(
+			page.getByRole("heading", { name: /Internal Transfer Work Queue/i }),
+		).toBeVisible({ timeout: 15_000 });
+
+		const queueTable = page.getByRole("table", {
+			name: /In-transit internal transfers awaiting confirmation/i,
+		});
+		const queueItemRow = queueTable
+			.getByRole("row")
+			.filter({ hasText: skuCode })
+			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
+		await expect(queueItemRow.first()).toBeVisible({ timeout: 15_000 });
+		const queueCountBefore = await queueItemRow.count();
+
+		await queueItemRow
+			.last()
+			.locator("xpath=preceding-sibling::tr[1]")
+			.getByRole("button", { name: /^Confirm$/i })
+			.click();
+		await expect(
+			page
+				.locator("[data-sonner-toast]")
+				.getByText(/received|completed|success/i)
+				.first(),
+		).toBeVisible({ timeout: 10_000 });
+
+		await expect(queueItemRow).toHaveCount(queueCountBefore - 1, {
+			timeout: 15_000,
+		});
+	});
 });

@@ -84,6 +84,7 @@ type RackRow = {
 	rackRow: string;
 	rackLevel: string;
 	rackColumn: string;
+	warehouseId: string | null;
 };
 
 function rackLocationLabel(rack: RackRow): string {
@@ -94,32 +95,77 @@ function normalizeLotNo(lot: string | null | undefined): string {
 	return (lot ?? "").trim();
 }
 
-function pickSeedQuant(
+function warehouseKey(warehouseId: string | null | undefined): string {
+	return warehouseId ?? "__unzoned__";
+}
+
+function buildBinToBinRackPairs(
+	racks: RackRow[],
+): Map<string, { source: RackRow; dest: RackRow }> {
+	const byWarehouse = new Map<string, RackRow[]>();
+	for (const rack of racks) {
+		const key = warehouseKey(rack.warehouseId);
+		const group = byWarehouse.get(key) ?? [];
+		group.push(rack);
+		byWarehouse.set(key, group);
+	}
+
+	const pairs = new Map<string, { source: RackRow; dest: RackRow }>();
+	for (const group of byWarehouse.values()) {
+		if (group.length < 2) continue;
+		for (let i = 0; i < group.length; i++) {
+			for (let j = 0; j < group.length; j++) {
+				if (i === j) continue;
+				const source = group[i]!;
+				const dest = group[j]!;
+				pairs.set(rackLocationLabel(source), { source, dest });
+			}
+		}
+	}
+	return pairs;
+}
+
+function pickSeedQuantForBinToBin(
 	rows: StockQuantRow[],
+	binToBinPairs: Map<string, { source: RackRow; dest: RackRow }>,
 	preferredRackLabel?: string,
-): StockQuantRow | undefined {
-	const withCarton = rows.filter((row) => Number(row.quantity) > 0);
-	const scoped = preferredRackLabel
-		? withCarton.filter((row) => row.rackLabel === preferredRackLabel)
-		: withCarton;
+	preferredDestRackLabel?: string,
+): { quant: StockQuantRow; destRackLabel: string } | undefined {
+	const withCarton = rows.filter(
+		(row) =>
+			Number(row.quantity) > 0 &&
+			row.rackLabel &&
+			binToBinPairs.has(row.rackLabel) &&
+			(!preferredRackLabel || row.rackLabel === preferredRackLabel),
+	);
 
 	const byRackSku = new Map<string, StockQuantRow[]>();
-	for (const row of scoped) {
+	for (const row of withCarton) {
 		const key = `${row.rackLabel ?? ""}::${row.skuId}`;
 		const group = byRackSku.get(key) ?? [];
 		group.push(row);
 		byRackSku.set(key, group);
 	}
 
-	const unambiguous = [...byRackSku.values()]
+	const candidates = [...byRackSku.values()]
 		.filter((group) => group.length === 1)
 		.map((group) => group[0]!);
 
-	if (unambiguous.length > 0) {
-		return unambiguous[0];
+	const ordered = candidates.length > 0 ? candidates : withCarton;
+	for (const quant of ordered) {
+		const pair = binToBinPairs.get(quant.rackLabel!);
+		if (!pair) continue;
+		const destLabel = preferredDestRackLabel ?? rackLocationLabel(pair.dest);
+		if (destLabel === quant.rackLabel) continue;
+		const destInSameWarehouse = [...binToBinPairs.entries()].some(
+			([sourceLabel, p]) =>
+				sourceLabel === quant.rackLabel &&
+				rackLocationLabel(p.dest) === destLabel,
+		);
+		if (!destInSameWarehouse && preferredDestRackLabel) continue;
+		return { quant, destRackLabel: destLabel };
 	}
-
-	return scoped[0];
+	return undefined;
 }
 
 export type LooseStockSeedResult = {
@@ -145,6 +191,34 @@ export async function seedLooseStockForBinTransfer(options?: {
 	const accessToken = await loginForE2E();
 	const lossQty = options?.lossQty ?? "5";
 	const preferredRackLabel = options?.rackLabel?.trim() || undefined;
+	const preferredDestRackLabel = options?.destRackLabel?.trim() || undefined;
+
+	const racksData = await gql<{
+		racks: { query: RackRow[] };
+	}>(
+		accessToken,
+		`
+			query RacksForDest($pageSize: Int) {
+				racks(pageSize: $pageSize, pageNumber: 1) {
+					query {
+						rackId
+						rackRow
+						rackLevel
+						rackColumn
+						warehouseId
+					}
+				}
+			}
+		`,
+		{ pageSize: 500 },
+	);
+
+	const binToBinPairs = buildBinToBinRackPairs(racksData.racks.query ?? []);
+	if (binToBinPairs.size === 0) {
+		throw new Error(
+			"No bin-to-bin rack pairs found (need two racks in the same warehouse).",
+		);
+	}
 
 	const quantData = await gql<{
 		stockQuants: { query: StockQuantRow[] };
@@ -201,13 +275,23 @@ export async function seedLooseStockForBinTransfer(options?: {
 		rows = anyData.stockQuants.query ?? [];
 	}
 
-	const quant = pickSeedQuant(rows, preferredRackLabel);
-	if (!quant?.rackLabel || !quant.skuCode) {
+	const picked = pickSeedQuantForBinToBin(
+		rows,
+		binToBinPairs,
+		preferredRackLabel,
+		preferredDestRackLabel,
+	);
+	if (!picked) {
 		throw new Error(
 			preferredRackLabel
-				? `No stock quant with carton stock on rack "${preferredRackLabel}".`
-				: "No stock quant with carton stock found in the database.",
+				? `No bin-to-bin seed quant on rack "${preferredRackLabel}" with a same-warehouse destination.`
+				: "No stock quant with carton stock on a rack that supports bin-to-bin transfer.",
 		);
+	}
+
+	const { quant, destRackLabel } = picked;
+	if (!quant.rackLabel || !quant.skuCode) {
+		throw new Error("Seed quant is missing rack label or SKU code.");
 	}
 
 	const currentLoss = Number(quant.lossQty ?? 0);
@@ -234,13 +318,180 @@ export async function seedLooseStockForBinTransfer(options?: {
 		}
 	}
 
+	return {
+		quantId: quant.id,
+		skuId: quant.skuId,
+		skuCode: quant.skuCode,
+		sourceRackLabel: quant.rackLabel,
+		destRackLabel,
+		lossQty: targetLoss.toFixed(2),
+		lotNo: normalizeLotNo(quant.lotNo),
+	};
+}
+
+function buildW2WRackPairs(
+	racks: RackRow[],
+): Array<{ source: RackRow; dest: RackRow }> {
+	const zoned = racks.filter((r) => r.warehouseId);
+	const pairs: Array<{ source: RackRow; dest: RackRow }> = [];
+	for (let i = 0; i < zoned.length; i++) {
+		for (let j = 0; j < zoned.length; j++) {
+			if (i === j) continue;
+			if (zoned[i]!.warehouseId !== zoned[j]!.warehouseId) {
+				pairs.push({ source: zoned[i]!, dest: zoned[j]! });
+			}
+		}
+	}
+	return pairs;
+}
+
+export type W2WStockSeedResult = {
+	quantId: string;
+	skuCode: string;
+	skuId: string;
+	sourceRackLabel: string;
+	destRackLabel: string;
+	sourceWarehouseId: string;
+	destWarehouseId: string;
+	transferQty: string;
+	sourceQtyBefore: string;
+};
+
+/**
+ * Finds a cross-warehouse rack pair with carton stock on the source quant.
+ */
+export async function seedStockForW2WTransfer(options?: {
+	sourceRackLabel?: string;
+	destRackLabel?: string;
+	transferQty?: string;
+}): Promise<W2WStockSeedResult> {
+	const accessToken = await loginForE2E();
+	const transferQty = options?.transferQty ?? "1";
+
 	const racksData = await gql<{
 		racks: { query: RackRow[] };
 	}>(
 		accessToken,
 		`
-			query RacksForDest($pageSize: Int) {
+			query RacksForW2W($pageSize: Int) {
 				racks(pageSize: $pageSize, pageNumber: 1) {
+					query {
+						rackId
+						rackRow
+						rackLevel
+						rackColumn
+						warehouseId
+					}
+				}
+			}
+		`,
+		{ pageSize: 500 },
+	);
+
+	const w2wPairs = buildW2WRackPairs(racksData.racks.query ?? []);
+	if (w2wPairs.length === 0) {
+		throw new Error(
+			"No warehouse-to-warehouse rack pairs found (need racks in two different warehouses).",
+		);
+	}
+
+	const quantData = await gql<{
+		stockQuants: { query: StockQuantRow[] };
+	}>(
+		accessToken,
+		`
+			query StockQuantsForW2WSeed($pageSize: Int) {
+				stockQuants(pageSize: $pageSize, pageNumber: 1) {
+					query {
+						id
+						skuId
+						skuCode
+						quantity
+						rackId
+						rackLabel
+						lotNo
+					}
+				}
+			}
+		`,
+		{ pageSize: 500 },
+	);
+
+	const rows = quantData.stockQuants.query ?? [];
+	const preferredSource = options?.sourceRackLabel?.trim();
+	const preferredDest = options?.destRackLabel?.trim();
+
+	for (const pair of w2wPairs) {
+		const sourceLabel = rackLocationLabel(pair.source);
+		const destLabel = rackLocationLabel(pair.dest);
+		if (preferredSource && sourceLabel !== preferredSource) continue;
+		if (preferredDest && destLabel !== preferredDest) continue;
+
+		const quant = rows.find(
+			(r) =>
+				r.rackLabel === sourceLabel &&
+				Number(r.quantity) >= Number(transferQty) &&
+				r.skuCode,
+		);
+		if (!quant?.rackLabel || !quant.skuCode || !pair.source.warehouseId || !pair.dest.warehouseId) {
+			continue;
+		}
+
+		return {
+			quantId: quant.id,
+			skuId: quant.skuId,
+			skuCode: quant.skuCode,
+			sourceRackLabel: sourceLabel,
+			destRackLabel: destLabel,
+			sourceWarehouseId: pair.source.warehouseId,
+			destWarehouseId: pair.dest.warehouseId,
+			transferQty,
+			sourceQtyBefore: quant.quantity,
+		};
+	}
+
+	throw new Error(
+		preferredSource
+			? `No W2W seed quant on rack "${preferredSource}" with qty >= ${transferQty}.`
+			: "No stock quant with sufficient carton stock on a cross-warehouse source rack.",
+	);
+}
+
+export async function getStockQuantQuantity(quantId: string): Promise<string> {
+	const accessToken = await loginForE2E();
+	const data = await gql<{
+		stockQuant: { quantity: string } | null;
+	}>(
+		accessToken,
+		`
+			query StockQuantQty($id: ID!) {
+				stockQuant(id: $id) {
+					quantity
+				}
+			}
+		`,
+		{ id: quantId },
+	);
+	if (!data.stockQuant) {
+		throw new Error(`Stock quant not found (id=${quantId}).`);
+	}
+	return data.stockQuant.quantity;
+}
+
+export async function createAndApproveW2WTransfer(seed: W2WStockSeedResult): Promise<{
+	transferId: string;
+	transferNo: string;
+	status: string;
+}> {
+	const accessToken = await loginForE2E();
+
+	const racksData = await gql<{
+		racks: { query: RackRow[] };
+	}>(
+		accessToken,
+		`
+			query RacksByLabel($filter: RackFilterInput, $pageSize: Int) {
+				racks(filter: $filter, pageSize: $pageSize, pageNumber: 1) {
 					query {
 						rackId
 						rackRow
@@ -250,29 +501,69 @@ export async function seedLooseStockForBinTransfer(options?: {
 				}
 			}
 		`,
-		{ pageSize: 100 },
+		{
+			filter: { search: seed.destRackLabel },
+			pageSize: 20,
+		},
 	);
 
-	const preferredDest = options?.destRackLabel?.trim();
-	let destRackLabel = preferredDest;
-
-	if (!destRackLabel) {
-		const destRack = racksData.racks.query.find(
-			(rack) => rackLocationLabel(rack) !== quant.rackLabel,
-		);
-		if (!destRack) {
-			throw new Error("Need at least two racks for bin-to-bin transfer E2E.");
-		}
-		destRackLabel = rackLocationLabel(destRack);
+	const destRack = racksData.racks.query?.find(
+		(r) => rackLocationLabel(r) === seed.destRackLabel,
+	);
+	if (!destRack) {
+		throw new Error(`Destination rack not found: ${seed.destRackLabel}`);
 	}
 
+	const created = await gql<{
+		createStockTransfer: { id: string; transferNo: string; status: string; type: string };
+	}>(
+		accessToken,
+		`
+			mutation CreateW2WTransfer($input: CreateStockTransferInput!) {
+				createStockTransfer(input: $input) {
+					id
+					transferNo
+					status
+					type
+				}
+			}
+		`,
+		{
+			input: {
+				lines: [
+					{
+						sourceStockQuantId: seed.quantId,
+						destinationRackId: destRack.rackId,
+						quantity: seed.transferQty,
+					},
+				],
+			},
+		},
+	);
+
+	if (created.createStockTransfer.type !== "WAREHOUSE_TO_WAREHOUSE") {
+		throw new Error("Expected WAREHOUSE_TO_WAREHOUSE transfer type.");
+	}
+
+	const approved = await gql<{
+		approveStockTransfer: { id: string; transferNo: string; status: string };
+	}>(
+		accessToken,
+		`
+			mutation ApproveW2WTransfer($id: ID!) {
+				approveStockTransfer(id: $id) {
+					id
+					transferNo
+					status
+				}
+			}
+		`,
+		{ id: created.createStockTransfer.id },
+	);
+
 	return {
-		quantId: quant.id,
-		skuId: quant.skuId,
-		skuCode: quant.skuCode,
-		sourceRackLabel: quant.rackLabel,
-		destRackLabel,
-		lossQty: targetLoss.toFixed(2),
-		lotNo: normalizeLotNo(quant.lotNo),
+		transferId: approved.approveStockTransfer.id,
+		transferNo: approved.approveStockTransfer.transferNo,
+		status: approved.approveStockTransfer.status,
 	};
 }

@@ -148,6 +148,13 @@ function StatusBadge({ status }: { status: StockTransferStatus }) {
 			</Badge>
 		);
 	}
+	if (status === "AWAITING_DISPATCH") {
+		return (
+			<Badge className="border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-400">
+				Awaiting Dispatch
+			</Badge>
+		);
+	}
 	if (status === "IN_TRANSIT") {
 		return (
 			<Badge className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400">
@@ -237,28 +244,24 @@ function StockTransferComponent() {
 	}
 
 	const { mutateAsync: approveMutation, isPending: approving } = useMutation({
-		mutationFn: async (id: string) => {
-			const data = await gqlRequest<ApproveStockTransferMutationData>(
+		mutationFn: (id: string) =>
+			gqlRequest<ApproveStockTransferMutationData>(
 				APPROVE_STOCK_TRANSFER_MUTATION,
 				{ id },
-			);
-			const approved = data.approveStockTransfer;
-			// Cross-warehouse: approve only dispatches (IN_TRANSIT). Auto-receive so stock
-			// lands at the destination warehouse in one user action.
-			if (
-				approved.type === "WAREHOUSE_TO_WAREHOUSE" &&
-				approved.status === "IN_TRANSIT"
-			) {
-				await gqlRequest(RECEIVE_STOCK_TRANSFER_MUTATION, { id });
-				return { ...data, autoReceived: true as const };
-			}
-			return { ...data, autoReceived: false as const };
-		},
+			),
 		onError: (err) => toast.error(getErrorMessage(err)),
 		onSuccess: (data) => {
-			if (data.autoReceived) {
+			const approved = data.approveStockTransfer;
+			if (
+				approved.type === "WAREHOUSE_TO_WAREHOUSE" &&
+				approved.status === "AWAITING_DISPATCH"
+			) {
 				toast.success(
-					"Cross-warehouse transfer completed — stock received at destination",
+					"Transfer approved — dispatch from Internal Transfer Work Queue",
+				);
+			} else if (approved.status === "IN_TRANSIT") {
+				toast.success(
+					"Transfer approved — confirm receipt in Internal Transfer Work Queue",
 				);
 			} else {
 				toast.success("Transfer approved and stock moved");
@@ -325,7 +328,7 @@ function StockTransferComponent() {
 			<AdminPageHeader
 				icon={ArrowLeftRight}
 				title="Bin to Bin"
-				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve moves stock; cross-warehouse transfers also receive at destination automatically."
+				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve dispatches stock from source; confirm receipt in the Internal Transfer Work Queue."
 				titleId="stock-transfer-page-title"
 				descriptionId="stock-transfer-page-description"
 			/>
@@ -518,6 +521,9 @@ function StockTransferComponent() {
 							<SelectContent>
 								<SelectItem value="ALL">All statuses</SelectItem>
 								<SelectItem value="DRAFT">Draft</SelectItem>
+								<SelectItem value="AWAITING_DISPATCH">
+									Awaiting Dispatch
+								</SelectItem>
 								<SelectItem value="IN_TRANSIT">In Transit</SelectItem>
 								<SelectItem value="COMPLETED">Completed</SelectItem>
 								<SelectItem value="CANCELLED">Cancelled</SelectItem>
