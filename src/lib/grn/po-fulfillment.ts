@@ -116,3 +116,43 @@ export function applyRemainingQtyToLineItems<
 		return { ...item, carton: remaining };
 	});
 }
+
+/** Ordered carton qty for fulfillment display (PO/ASN line or manual entry). */
+export function resolveOrderedCtnForDisplay(
+	orderedFromPo: number | null,
+	manualOrderedQty: number | undefined,
+): number | null {
+	if (orderedFromPo != null && Number.isFinite(orderedFromPo) && orderedFromPo >= 0) {
+		return orderedFromPo;
+	}
+	if (
+		manualOrderedQty != null &&
+		Number.isFinite(manualOrderedQty) &&
+		manualOrderedQty >= 0
+	) {
+		return manualOrderedQty;
+	}
+	return null;
+}
+
+/** Fulfilled cartons as cumulative progress vs ordered (e.g. 5/20). */
+export function formatFulfilledCtnDisplay(
+	fulfilled: number,
+	ordered: number | null | undefined,
+): string {
+	const fulfilledNum = Number(fulfilled);
+	const safeFulfilled =
+		Number.isFinite(fulfilledNum) && fulfilledNum >= 0 ? fulfilledNum : 0;
+	const orderedNum = ordered == null ? null : Number(ordered);
+	if (orderedNum == null || !Number.isFinite(orderedNum) || orderedNum < 0) {
+		return String(safeFulfilled);
+	}
+	return `${safeFulfilled}/${orderedNum}`;
+}
+
+/** Cumulative loss qty; no ordered baseline on GRN lines. */
+export function formatFulfilledLossDisplay(fulfilledLoss: number): string {
+	const lossNum = Number(fulfilledLoss);
+	const safeLoss = Number.isFinite(lossNum) && lossNum >= 0 ? lossNum : 0;
+	return String(safeLoss);
+}
