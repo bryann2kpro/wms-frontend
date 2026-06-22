@@ -583,6 +583,8 @@ export interface Grn {
 	endUserId?: string | null;
 	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
 	poFulfilled?: boolean | null;
+	/** True when Send to ES must be hidden — no real ES ASN for this End User PO. */
+	manualInbound?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdByUser: GrnAuditUser | null;
@@ -627,6 +629,7 @@ export interface CreateGrnItemInput {
 	skuId?: string | null;
 	qty: string;
 	lossQty?: string | null;
+	orderedQty?: string | null;
 	remarks?: string | null;
 	/** @deprecated Prefer rackIds. Single rack for legacy backends. */
 	rackId?: string | null;
@@ -655,6 +658,26 @@ export interface CreateGrnInput {
 	createdBy?: string | null;
 	updatedBy?: string | null;
 	items?: CreateGrnItemInput[] | null;
+}
+
+export interface CreateInboundInput {
+	userId: string;
+	grnNo: string;
+	supplierId?: string | null;
+	supplierDeliveryId?: string | null;
+	supplierDeliveryNo?: string | null;
+	poNo?: string | null;
+	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
+	warehouseId?: string | null;
+	endUserId?: string | null;
+	status?: string | null;
+	items?: CreateGrnItemInput[] | null;
+	inboundQty?: number | null;
+	skuId?: string | null;
+	poFulfilled?: boolean | null;
+	advanceNoticeId?: string | null;
 }
 
 export interface GrnFilterInput {
@@ -758,6 +781,8 @@ export interface GrnDetailForList {
 	nsError?: string | null;
 	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
 	poFulfilled?: boolean | null;
+	/** True when Send to ES must be hidden — no real ES ASN for this End User PO. */
+	manualInbound?: boolean;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;
