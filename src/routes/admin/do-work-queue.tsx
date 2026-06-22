@@ -91,6 +91,7 @@ interface GRNGroup {
 	grnNo: string;
 	grnStatus: string;
 	receivedAt: string | null;
+	manualInbound: boolean;
 	items: GRNGroupItem[];
 }
 
@@ -141,6 +142,7 @@ function DOWorkQueueComponent() {
 			grnNo: grn.grnNo,
 			grnStatus: grn.status,
 			receivedAt: grn.receivedAt ?? null,
+			manualInbound: grn.manualInbound ?? false,
 			items: grn.items ?? [],
 		}));
 	}, [data]);
@@ -329,7 +331,9 @@ function DOWorkQueueComponent() {
 															Approve
 														</Button>
 													)}
-													{group.grnStatus === "Approved" && canApprove && (
+													{group.grnStatus === "Approved" &&
+														canApprove &&
+														!group.manualInbound && (
 														<Button
 															size="sm"
 															variant="default"

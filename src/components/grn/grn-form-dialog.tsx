@@ -21,6 +21,7 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import {
@@ -269,6 +270,7 @@ export type GRNLineItemForm = {
 	description: string;
 	/** Quantity in cartons */
 	carton: number;
+	orderedQty?: number;
 	/** Quantity lost */
 	loss: number;
 	uom: string;
@@ -307,6 +309,26 @@ function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	const rackId = item.rackId?.trim();
 	if (!rackId) return {};
 	return { rackAllocations: [{ rackId, quantity: cartonQty }] };
+}
+
+/** Map stock-unit id or code to a display unit code (never leak UUIDs in labels). */
+function resolveDisplayUnitCode(
+	units: string | null | undefined,
+	stockUnits: Array<{ stockUnitId: string; unitCode: string }>,
+	fallback = "CTN",
+): string {
+	const raw = units?.trim();
+	if (!raw) return fallback;
+	const match = stockUnits.find(
+		(u) =>
+			u.stockUnitId === raw ||
+			u.unitCode.toLowerCase() === raw.toLowerCase(),
+	);
+	if (match?.unitCode) return match.unitCode;
+	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+		return fallback;
+	}
+	return raw;
 }
 
 function formatPutawayPlanHint(
@@ -585,9 +607,9 @@ function GRNLineRow({
 	skuOptions,
 	stockUnits,
 	racks,
-	onOpenCreateRack,
 	poAsnLines,
 	poHistoricalReceivedBySku,
+	showOrderedQty,
 }: {
 	item: GRNLineItemForm;
 	index: number;
@@ -598,6 +620,7 @@ function GRNLineRow({
 	poAsnLines?: Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>;
 	/** Qty already received by PRIOR saved GRNs for this PO, keyed by skuCode. */
 	poHistoricalReceivedBySku?: Map<string, number>;
+	showOrderedQty?: boolean;
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	racks: Array<{
 		rackId: string;
@@ -605,7 +628,6 @@ function GRNLineRow({
 		rackColumn: string;
 		rackLevel: string;
 	}>;
-	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
@@ -625,7 +647,8 @@ function GRNLineRow({
 		return !skuOptions.some((s) => s.skuCode === item.skuCode);
 	}, [item.skuCode, skuOptions]);
 
-	const uomLabel = useMemo(() => {
+	/** SKU base / inner stock UOM (e.g. PKT) — used for loss qty and the SKU badge. */
+	const baseUomLabel = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
 		if (!sku?.skuUom) return null;
@@ -659,7 +682,7 @@ function GRNLineRow({
 		const span = Math.max(expected, received, 1);
 		return {
 			displayName: line.displayName,
-			units: line.units,
+			units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
 			expected,
 			historical,
 			inProgress,
@@ -668,7 +691,11 @@ function GRNLineRow({
 			historicalPct: Math.min(100, (historical / span) * 100),
 			inProgressPct: Math.min(100 - Math.min(100, (historical / span) * 100), (inProgress / span) * 100),
 		};
-	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku]);
+	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku, stockUnits]);
+
+	/** Receiving / putaway unit — GRN carton qty and rack allocations are always in CTN. */
+	const cartonUomLabel = poGauge?.units?.trim() || "CTN";
+
 	const [putawayPlan, setPutawayPlan] = useState<InboundPutawayPlanGql | null>(
 		null,
 	);
@@ -729,16 +756,16 @@ function GRNLineRow({
 			item.rackId?.trim() && (putawayPlan?.allocations.length ?? 0) <= 1
 				? formatRackCapacityHint(
 						putawayPlan?.capacityForRack,
-						uomLabel,
+						cartonUomLabel,
 						inboundQty,
 					)
 				: null,
-		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, uomLabel, inboundQty],
+		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, cartonUomLabel, inboundQty],
 	);
 
 	const putawayPlanHint = useMemo(
-		() => formatPutawayPlanHint(putawayPlan, uomLabel, inboundQty),
-		[putawayPlan, uomLabel, inboundQty],
+		() => formatPutawayPlanHint(putawayPlan, cartonUomLabel, inboundQty),
+		[putawayPlan, cartonUomLabel, inboundQty],
 	);
 
 	const rackSuggestionMessage = putawayPlan?.message ?? null;
@@ -898,6 +925,7 @@ function GRNLineRow({
 										description: v.description ?? "",
 										uom: v.uom ?? "",
 										carton: remaining > 0 ? remaining : 1,
+										orderedQty: undefined,
 										rackId: "",
 										rackAllocations: undefined,
 										rackAutoSuggested: false,
@@ -920,12 +948,12 @@ function GRNLineRow({
 								New
 							</Badge>
 						)}
-						{uomLabel && (
+						{baseUomLabel && (
 							<Badge
 								variant="outline"
 								className="shrink-0 font-mono text-xs h-6"
 							>
-								{uomLabel}
+								{baseUomLabel}
 							</Badge>
 						)}
 						<Button
@@ -1030,13 +1058,13 @@ function GRNLineRow({
 								>
 									Quantities
 								</p>
-								<div className="grid grid-cols-2 gap-2">
+								<div className={`grid gap-2 ${showOrderedQty ? "grid-cols-3" : "grid-cols-2"}`}>
 									<div className="space-y-1">
 										<label
 											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 											style={{ fontFamily: "var(--dashboard-body)" }}
 										>
-											Carton
+											Carton ({cartonUomLabel})
 										</label>
 										<Input
 											type="number"
@@ -1055,12 +1083,43 @@ function GRNLineRow({
 											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
 										/>
 									</div>
+									{showOrderedQty ? (
+										<div className="space-y-1">
+											<label
+												className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+												style={{ fontFamily: "var(--dashboard-body)" }}
+											>
+												Ordered ({cartonUomLabel})
+											</label>
+											<Input
+												type="number"
+												min={0}
+												value={item.orderedQty ?? ""}
+												onChange={(e) => {
+													const newItems = [...items];
+													const v = Number(e.target.value);
+													newItems[index] = {
+														...newItems[index],
+														orderedQty:
+															e.target.value === ""
+																? undefined
+																: Number.isFinite(v) && v >= 0
+																	? v
+																	: 0,
+													};
+													onItemsChange(newItems);
+												}}
+												placeholder="0"
+												className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+											/>
+										</div>
+									) : null}
 									<div className="space-y-1">
 										<label
 											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 											style={{ fontFamily: "var(--dashboard-body)" }}
 										>
-											Loss
+											Loss ({baseUomLabel ?? "PKT"})
 										</label>
 										<Input
 											type="number"
@@ -1082,14 +1141,16 @@ function GRNLineRow({
 								</div>
 								{inboundQty > 0 || lossQty > 0 ? (
 									<p className="font-mono text-[10px] text-muted-foreground">
-										<span className="font-semibold text-foreground">
-											{inboundQty} {uomLabel ?? "CTN"}
-										</span>
+										{inboundQty > 0 ? (
+											<span className="font-semibold text-foreground">
+												{inboundQty} {cartonUomLabel}
+											</span>
+										) : null}
 										{lossQty > 0 ? (
 											<>
-												{" "}+{" "}
+												{inboundQty > 0 ? " · " : null}
 												<span className="font-semibold text-amber-600">
-													{lossQty} loose item{lossQty !== 1 ? "s" : ""}
+													{lossQty} {baseUomLabel ?? "PKT"} loss
 												</span>
 											</>
 										) : null}
@@ -1301,7 +1362,7 @@ function GRNLineRow({
 														}}
 														className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
 													/>
-													<span className="shrink-0 text-muted-foreground">{uomLabel ?? "CTN"}</span>
+													<span className="shrink-0 text-muted-foreground">{cartonUomLabel}</span>
 													<div className="ml-auto flex shrink-0 items-center gap-1">
 														<button
 															type="button"
@@ -1366,7 +1427,7 @@ function GRNLineRow({
 												: "text-destructive",
 										)}
 									>
-										{totalAllocQty} / {inboundQty} {uomLabel ?? "CTN"}
+										{totalAllocQty} / {inboundQty} {cartonUomLabel}
 									</span>
 								</div>
 							</div>
@@ -1426,6 +1487,7 @@ export type GrnCreateSubmitPayload = {
 	notes: string;
 	warehouseId: string;
 	endUserId: string;
+	poFulfilled: boolean;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -1457,6 +1519,8 @@ export type GrnFormDialogProps = {
 	endUsers: EndUser[];
 	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
 	supplierSelectionOptional?: boolean;
+	/** Show manual-GRN PO fulfillment checkbox. Hidden for ASN-backed creates. */
+	showPoFulfilledToggle?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -1493,6 +1557,7 @@ export function GrnFormDialog({
 	suppliers,
 	endUsers,
 	supplierSelectionOptional = false,
+	showPoFulfilledToggle = false,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -1505,6 +1570,7 @@ export function GrnFormDialog({
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	const [poFulfilledChecked, setPoFulfilledChecked] = useState(true);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	/** Prior GRNs found for a manually-typed PO — shown as a "fulfillment history" hint. */
 	const [poHistory, setPoHistory] = useState<
@@ -1550,14 +1616,13 @@ export function GrnFormDialog({
 			if (asnLines.length > 0) {
 				const receivedBySku = sumHistoricalReceivedBySku(history);
 				setPoHistoricalReceivedBySku(receivedBySku);
-				setPoAsnLines(
-					asnLines.map((line) => ({
-						skuCode: line.itemid,
-						displayName: line.displayname,
-						expected: line.quantity,
-						units: line.units,
-					})),
-				);
+				const mappedLines = asnLines.map((line) => ({
+					skuCode: line.itemid,
+					displayName: line.displayname,
+					expected: line.quantity,
+					units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
+				}));
+				setPoAsnLines(mappedLines);
 			} else {
 				setPoAsnLines([]);
 				setPoHistoricalReceivedBySku(new Map());
@@ -1635,6 +1700,7 @@ export function GrnFormDialog({
 			notes: "",
 			warehouseId: "",
 			endUserId: "",
+			poFulfilled: true,
 			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
@@ -1700,6 +1766,19 @@ export function GrnFormDialog({
 						);
 					}
 
+					if (value.poFulfilled === false) {
+						const invalidOrderedQty = items.find((i) => {
+							const orderedQty = Number(i.orderedQty);
+							const cartonQty = Number(i.carton) || 0;
+							return i.orderedQty == null || !Number.isFinite(orderedQty) || orderedQty < cartonQty;
+						});
+						if (invalidOrderedQty) {
+							itemErrors.push(
+								"Partial delivery requires an ordered quantity for every line, and each ordered quantity must be at least the received carton quantity.",
+							);
+						}
+					}
+
 					if (itemErrors.length === 0) {
 						const seen = new Set<string>();
 						const hasDuplicate = items.some((i) => {
@@ -1754,9 +1833,11 @@ export function GrnFormDialog({
 					notes: value.notes ?? "",
 					warehouseId: value.warehouseId ?? "",
 					endUserId: value.endUserId ?? "",
+					poFulfilled: value.poFulfilled !== false,
 					submitIntent: createIntentRef.current,
 					items: (value.items ?? []).map((i) => ({
 						...i,
+						orderedQty: value.poFulfilled === false ? i.orderedQty : undefined,
 						...buildGrnItemRackPayload(i),
 					})),
 				};
@@ -1883,8 +1964,11 @@ export function GrnFormDialog({
 				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
+				endUserId: (grn as { endUserId?: string | null }).endUserId ?? "",
+				poFulfilled: true,
 				items: initialItems,
 			});
+			setPoFulfilledChecked(true);
 		} else if (mode === "create") {
 			form.reset({
 				grnNumber: "",
@@ -1895,8 +1979,10 @@ export function GrnFormDialog({
 				notes: "",
 				warehouseId: "",
 				endUserId: "",
+				poFulfilled: true,
 				items: (initialValues?.items ?? []) as GRNLineItemForm[],
 			});
+			setPoFulfilledChecked(true);
 			setProofFiles([]);
 		}
 	}, [open, mode, grn?.id, initialValues]);
@@ -2141,6 +2227,37 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
+									{isCreate && showPoFulfilledToggle ? (
+										<form.Field name="poFulfilled">
+											{(field) => (
+												<div className="flex flex-row items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+													<Checkbox
+														id={field.name}
+														checked={Boolean(field.state.value)}
+														onCheckedChange={(checked) => {
+															const next = checked === true;
+															field.handleChange(next);
+															setPoFulfilledChecked(next);
+														}}
+														onBlur={field.handleBlur}
+														className="mt-0.5 shrink-0"
+													/>
+													<div className="grid gap-1.5 leading-none min-w-0">
+														<FieldLabel
+															htmlFor={field.name}
+															className="cursor-pointer text-sm font-medium"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															PO fully fulfilled by this delivery
+														</FieldLabel>
+														<p className="text-xs text-muted-foreground">
+															Uncheck for a partial PO delivery and enter ordered quantities per line.
+														</p>
+													</div>
+												</div>
+											)}
+										</form.Field>
+									) : null}
 									<form.Field name="supplierId">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -2450,10 +2567,11 @@ export function GrnFormDialog({
 															racks={racks}
 															poAsnLines={isCreate ? poAsnLines : undefined}
 															poHistoricalReceivedBySku={isCreate ? poHistoricalReceivedBySku : undefined}
-															onOpenCreateRack={(lineIndex) => {
-																setCreateRackForLineIndex(lineIndex);
-																setCreateRackOpen(true);
-															}}
+															showOrderedQty={
+																isCreate &&
+																showPoFulfilledToggle &&
+																!poFulfilledChecked
+															}
 														/>
 													))}
 												</div>
