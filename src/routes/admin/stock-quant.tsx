@@ -156,6 +156,11 @@ function StockQuantComponent() {
 				description="Current stock quant records grouped by SKU and rack."
 				titleId="stock-quant-page-title"
 				descriptionId="stock-quant-page-description"
+				rightSlot={
+					<p className="text-sm text-muted-foreground tabular-nums">
+						{formatDateOnly(new Date())}
+					</p>
+				}
 			/>
 
 			<Card className="dashboard-card">

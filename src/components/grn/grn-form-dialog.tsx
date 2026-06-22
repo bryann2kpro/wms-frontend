@@ -80,7 +80,10 @@ import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import {
 	applyRemainingQtyToLineItems,
+	formatFulfilledCtnDisplay,
+	formatFulfilledLossDisplay,
 	remainingForSku,
+	resolveOrderedCtnForDisplay,
 	sumHistoricalLossBySku,
 	sumHistoricalReceivedBySku,
 } from "@/lib/grn/po-fulfillment";
@@ -420,6 +423,15 @@ function GrnQuantitiesTable({
 }) {
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
 	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const orderedCtnForDisplay = resolveOrderedCtnForDisplay(
+		orderedCtn,
+		item.orderedQty,
+	);
+	const fulfilledCtnDisplay = formatFulfilledCtnDisplay(
+		fulfilledCtn,
+		orderedCtnForDisplay,
+	);
+	const fulfilledLossDisplay = formatFulfilledLossDisplay(fulfilledLoss);
 
 	const readOnlyCellClass =
 		"h-8 rounded-lg border border-border/40 bg-muted/30 px-2 font-mono text-sm tabular-nums text-muted-foreground flex items-center justify-center";
@@ -539,17 +551,21 @@ function GrnQuantitiesTable({
 						<td className="p-0.5 pr-1">
 							<div
 								className={cn(readOnlyCellClass, "text-foreground")}
-								title={`${cartonUomLabel} received to date incl. this delivery`}
+								title={
+									orderedCtnForDisplay != null
+										? `${fulfilledCtn} of ${orderedCtnForDisplay} ${cartonUomLabel} ordered (prior GRNs + this delivery)`
+										: `${fulfilledCtn} ${cartonUomLabel} received to date incl. this delivery`
+								}
 							>
-								{fulfilledCtn}
+								{fulfilledCtnDisplay}
 							</div>
 						</td>
 						<td className="p-0.5">
 							<div
 								className={cn(readOnlyCellClass, "text-foreground")}
-								title={`${lossUomLabel} loss to date incl. this delivery`}
+								title={`${fulfilledLoss} ${lossUomLabel} cumulative loss (prior GRNs + this delivery)`}
 							>
-								{fulfilledLoss}
+								{fulfilledLossDisplay}
 							</div>
 						</td>
 					</tr>
