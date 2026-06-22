@@ -158,7 +158,7 @@ function StockQuantComponent() {
 				descriptionId="stock-quant-page-description"
 				rightSlot={
 					<p className="text-sm text-muted-foreground tabular-nums">
-						{formatDateOnly(new Date())}
+						{formatDate(new Date())}
 					</p>
 				}
 			/>
