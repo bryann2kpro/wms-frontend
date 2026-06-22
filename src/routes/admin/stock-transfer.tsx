@@ -19,6 +19,7 @@ import { StockTransferFormDialog } from "@/components/stock-transfer/stock-trans
 import {
 	TransferDraftActions,
 	dashboardAccentButtonProps,
+	formatTransferQtyDisplay,
 	transferTableEmptyCellClassName,
 	transferTableMonoCellClassName,
 	transferTableWrapperClassName,
@@ -122,22 +123,6 @@ function rackLabel(
 ): string {
 	if (!rack) return "-";
 	return `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
-}
-
-function formatTransferQtyDisplay(item: {
-	quantity: string;
-	lossQuantity?: string | null;
-}): string {
-	const carton = Number(item.quantity ?? 0);
-	const loose = Number(item.lossQuantity ?? 0);
-	const parts: string[] = [];
-	if (Number.isFinite(carton) && carton > 0) {
-		parts.push(`${carton.toLocaleString()} CTN`);
-	}
-	if (Number.isFinite(loose) && loose > 0) {
-		parts.push(`${loose.toLocaleString()} loose`);
-	}
-	return parts.length > 0 ? parts.join(" + ") : "0";
 }
 
 function StatusBadge({ status }: { status: StockTransferStatus }) {
@@ -359,7 +344,7 @@ function StockTransferComponent() {
 									<TableHead>Source Rack</TableHead>
 									<TableHead>Lot No</TableHead>
 									<TableHead>Destination Rack</TableHead>
-									<TableHead className="text-right">Qty (CTN / loose)</TableHead>
+									<TableHead className="text-right">Qty (ctn | loss)</TableHead>
 									<TableHead className="w-[200px] text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -737,7 +722,7 @@ function StockTransferComponent() {
 											<TableHead>Lot</TableHead>
 											<TableHead>Expiry</TableHead>
 											<TableHead>Movement</TableHead>
-											<TableHead className="text-right">Qty (CTN / loose)</TableHead>
+											<TableHead className="text-right">Qty (ctn | loss)</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>

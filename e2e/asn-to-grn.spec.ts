@@ -217,20 +217,22 @@ async function fillItemFields(
   itemIndex: number,
   opts: { carton?: number; loss?: number; expiryDate?: string; lotNo?: string },
 ) {
-  // Item cards are separated by "Remove item" buttons — nth(itemIndex) gives the right card.
-  // The Carton and Loss inputs use placeholder="0" and type="number".
-  // Within each card the order is: Carton(0), Loss(1), Expiry(2-text), LotNo(3-text)
+  // Delivered Ctn / Loss use aria-labels in the quantities table.
   const cards = grnDialog.locator(
     ".relative.rounded-xl.border.bg-card",
   );
   const card = cards.nth(itemIndex);
 
   if (opts.carton !== undefined) {
-    const cartonInput = card.locator('input[type="number"]').first();
+    const cartonInput = card.getByRole("spinbutton", {
+      name: /Delivered carton quantity/i,
+    });
     await cartonInput.fill(String(opts.carton));
   }
   if (opts.loss !== undefined) {
-    const lossInput = card.locator('input[type="number"]').nth(1);
+    const lossInput = card.getByRole("spinbutton", {
+      name: /Delivered loss quantity/i,
+    });
     await lossInput.fill(String(opts.loss));
   }
   if (opts.expiryDate !== undefined) {

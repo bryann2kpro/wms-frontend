@@ -190,7 +190,7 @@ test.describe("Bin-to-Bin loose (LOSS) transfer @smoke", () => {
 			.getByRole("table", { name: /Pending transfer drafts/i })
 			.getByRole("row")
 			.filter({ hasText: skuCode })
-			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
+			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} Loss`, "i") });
 		await expect(draftRow.first()).toBeVisible({ timeout: 10_000 });
 	});
 
@@ -241,7 +241,7 @@ test.describe("Bin-to-Bin loose (LOSS) transfer @smoke", () => {
 			.filter({ hasText: skuCode })
 			.filter({ hasText: sourceRackLabel })
 			.filter({ hasText: destRackLabel })
-			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
+			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} Loss`, "i") });
 		await expect(draftRow.last()).toBeVisible({ timeout: 10_000 });
 		await draftRow.last().getByRole("button", { name: /^Approve$/i }).click();
 		await expect(
@@ -262,7 +262,7 @@ test.describe("Bin-to-Bin loose (LOSS) transfer @smoke", () => {
 		const queueItemRow = queueTable
 			.getByRole("row")
 			.filter({ hasText: skuCode })
-			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} loose`, "i") });
+			.filter({ hasText: new RegExp(`${LOOSE_TEST_QTY} Loss`, "i") });
 		await expect(queueItemRow.first()).toBeVisible({ timeout: 15_000 });
 		const queueCountBefore = await queueItemRow.count();
 

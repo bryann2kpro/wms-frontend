@@ -5,11 +5,13 @@ import {
 	ArrowLeftRight,
 	Loader2,
 	PackageOpen,
+	Printer,
 	Search,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { formatTransferQtyDisplay } from "@/components/stock-transfer/stock-transfer-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,8 +39,11 @@ import { qk } from "@/lib/api/query-keys";
 import {
 	CANCEL_STOCK_TRANSFER_MUTATION,
 	DISPATCH_STOCK_TRANSFER_MUTATION,
+	GENERATE_STOCK_TRANSFER_WORK_QUEUE_LIST_MUTATION,
 	RECEIVE_STOCK_TRANSFER_MUTATION,
 	STOCK_TRANSFERS_QUERY,
+	type GenerateStockTransferWorkQueueListMutationData,
+	type GenerateStockTransferWorkQueueListMutationVariables,
 	type StockTransfersQueryData,
 } from "@/lib/graphql/stock-transfer";
 import type {
@@ -48,6 +53,7 @@ import type {
 	StockTransferType,
 } from "@/lib/graphql/types";
 import { requirePermission } from "@/lib/rbac";
+import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 
 const PAGE_TITLE = "Internal Transfer Work Queue";
@@ -100,22 +106,6 @@ function formatRackLocation(
 ): string {
 	if (!rack) return "-";
 	return `${rack.rackRow}-${rack.rackLevel}-${rack.rackColumn}`;
-}
-
-function formatTransferQtyDisplay(item: {
-	quantity: string;
-	lossQuantity?: string | null;
-}): string {
-	const carton = Number(item.quantity ?? 0);
-	const loose = Number(item.lossQuantity ?? 0);
-	const parts: string[] = [];
-	if (Number.isFinite(carton) && carton > 0) {
-		parts.push(`${carton.toLocaleString()} CTN`);
-	}
-	if (Number.isFinite(loose) && loose > 0) {
-		parts.push(`${loose.toLocaleString()} loose`);
-	}
-	return parts.length > 0 ? parts.join(" + ") : "0";
 }
 
 function formatSkuLot(item: StockTransferItem): string {
@@ -272,6 +262,28 @@ function BinTransferWorkQueueComponent() {
 		},
 	});
 
+	const workQueueListFilter = useMemo(
+		() => ({
+			...(trimmedSearchTerm ? { search: trimmedSearchTerm } : {}),
+		}),
+		[trimmedSearchTerm],
+	);
+
+	const { mutate: generateWorkQueueList, isPending: generatingWorkQueueList } =
+		useMutation({
+			mutationFn: (vars: GenerateStockTransferWorkQueueListMutationVariables) =>
+				gqlRequest<
+					GenerateStockTransferWorkQueueListMutationData,
+					GenerateStockTransferWorkQueueListMutationVariables
+				>(GENERATE_STOCK_TRANSFER_WORK_QUEUE_LIST_MUTATION, vars),
+			onSuccess(data) {
+				const { pdfBase64, filename } =
+					data.generateStockTransferWorkQueueList;
+				downloadPdfFromBase64(pdfBase64, filename);
+			},
+			onError: (err) => toast.error(getErrorMessage(err)),
+		});
+
 	const handlePrimaryAction = useCallback(
 		async (transfer: StockTransfer) => {
 			if (actionTransferId || receiving || dispatching) return;
@@ -358,6 +370,23 @@ function BinTransferWorkQueueComponent() {
 					}
 				/>
 
+				<div className="flex items-center justify-end">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => generateWorkQueueList({ filter: workQueueListFilter })}
+						disabled={generatingWorkQueueList || queryLoading}
+						className="h-7 text-xs gap-1.5"
+					>
+						{generatingWorkQueueList ? (
+							<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+						) : (
+							<Printer className="h-3 w-3" aria-hidden />
+						)}
+						{generatingWorkQueueList ? "Generating…" : "Print Work Queue"}
+					</Button>
+				</div>
+
 				{queryLoading && (
 					<div
 						className="flex items-center gap-2 text-muted-foreground text-sm"
@@ -394,7 +423,9 @@ function BinTransferWorkQueueComponent() {
 				>
 					<GlobalLoadingShadow />
 					<div className="overflow-x-auto rounded-lg border">
-						<Table aria-label="Internal transfers awaiting dispatch or receipt">
+						<Table
+							aria-label="Internal transfers awaiting dispatch or receipt"
+						>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Transfer No.</TableHead>
@@ -531,14 +562,14 @@ function BinTransferWorkQueueComponent() {
 			</main>
 
 			<Dialog
-				open={!!cancelTarget}
-				onOpenChange={(open) => {
-					if (!open) {
-						setCancelTarget(null);
-						setCancelReason("");
-					}
-				}}
-			>
+					open={!!cancelTarget}
+					onOpenChange={(open) => {
+						if (!open) {
+							setCancelTarget(null);
+							setCancelReason("");
+						}
+					}}
+				>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
 						<DialogTitle>Cancel transfer</DialogTitle>

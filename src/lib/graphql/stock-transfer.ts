@@ -153,6 +153,17 @@ export const REJECT_STOCK_TRANSFER_MUTATION = gql`
 	${STOCK_TRANSFER_FRAGMENT}
 `;
 
+export const GENERATE_STOCK_TRANSFER_WORK_QUEUE_LIST_MUTATION = gql`
+	mutation GenerateStockTransferWorkQueueList(
+		$filter: StockTransferWorkQueueFilterInput
+	) {
+		generateStockTransferWorkQueueList(filter: $filter) {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
 // ============================================
 // VARIABLE / DATA TYPES
 // ============================================
@@ -225,4 +236,19 @@ export type ApproveStockTransferMutationData = {
 export type RejectStockTransferMutationVariables = { id: string };
 export type RejectStockTransferMutationData = {
 	rejectStockTransfer: StockTransfer;
+};
+
+export type StockTransferWorkQueueFilterInput = {
+	search?: string | null;
+};
+
+export type GenerateStockTransferWorkQueueListMutationVariables = {
+	filter?: StockTransferWorkQueueFilterInput | null;
+};
+
+export type GenerateStockTransferWorkQueueListMutationData = {
+	generateStockTransferWorkQueueList: {
+		pdfBase64: string;
+		filename: string;
+	};
 };

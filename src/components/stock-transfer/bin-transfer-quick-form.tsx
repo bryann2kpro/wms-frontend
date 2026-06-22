@@ -39,6 +39,8 @@ import {
 import { toUserFriendlyMessage } from "@/lib/utils";
 import {
 	dashboardAccentButtonProps,
+	formatCtnLossComma,
+	formatCtnLossPipe,
 	formatQtyWithUom,
 } from "@/components/stock-transfer/stock-transfer-ui";
 
@@ -86,10 +88,15 @@ function sumOnHand(rows: StockQuant[]): number {
 	return rows.reduce((sum, q) => sum + stockQuantOnHand(q), 0);
 }
 
+function sumOnHandLoss(rows: StockQuant[]): number {
+	return rows.reduce((sum, q) => sum + stockQuantOnHandLoss(q), 0);
+}
+
 type SkuOption = {
 	skuId: string;
 	skuCode: string;
 	totalOnHand: number;
+	totalOnHandLoss: number;
 	stockUnitCode: string | null;
 };
 
@@ -97,6 +104,7 @@ type LotOption = {
 	key: string;
 	label: string;
 	onHand: number;
+	onHandLoss: number;
 };
 
 function buildSkuOptions(quants: StockQuant[]): SkuOption[] {
@@ -104,14 +112,17 @@ function buildSkuOptions(quants: StockQuant[]): SkuOption[] {
 	for (const q of quants) {
 		const code = q.skuCode ?? q.skuId;
 		const onHand = stockQuantOnHand(q);
+		const onHandLoss = stockQuantOnHandLoss(q);
 		const existing = map.get(q.skuId);
 		if (existing) {
 			existing.totalOnHand += onHand;
+			existing.totalOnHandLoss += onHandLoss;
 		} else {
 			map.set(q.skuId, {
 				skuId: q.skuId,
 				skuCode: code,
 				totalOnHand: onHand,
+				totalOnHandLoss: onHandLoss,
 				stockUnitCode: q.stockUnitCode ?? null,
 			});
 		}
@@ -131,6 +142,7 @@ function buildLotOptions(quants: StockQuant[], skuId: string): LotOption[] {
 			key: LOT_NO_LOT_KEY,
 			label: "No lot",
 			onHand: sumOnHand(noLotRows),
+			onHandLoss: sumOnHandLoss(noLotRows),
 		});
 	}
 
@@ -149,6 +161,7 @@ function buildLotOptions(quants: StockQuant[], skuId: string): LotOption[] {
 			key: lot,
 			label: lot,
 			onHand: sumOnHand(lotRows),
+			onHandLoss: sumOnHandLoss(lotRows),
 		});
 	}
 
@@ -420,7 +433,7 @@ export function BinTransferQuickForm({
 
 		if (!qtyRaw && !lossQtyRaw) {
 			toast.error("Missing quantity", {
-				description: "Enter a carton quantity, loose quantity, or both.",
+				description: "Enter a ctn quantity, Loss quantity, or both.",
 			});
 			return;
 		}
@@ -439,7 +452,7 @@ export function BinTransferQuickForm({
 
 		if (qtyNum <= 0 && lossNum <= 0) {
 			toast.error("Invalid quantity", {
-				description: "At least one of carton or loose quantity must be greater than zero.",
+				description: "At least one of ctn or Loss quantity must be greater than zero.",
 			});
 			return;
 		}
@@ -480,8 +493,8 @@ export function BinTransferQuickForm({
 			const lotHint = normalizeLotNo(quant.lotNo)
 				? ` (lot ${normalizeLotNo(quant.lotNo)})`
 				: "";
-			toast.error("Loose quantity too high", {
-				description: `At most ${maxLossAllowed.toLocaleString()} loose unit(s) for this SKU${lotHint} on the source rack.`,
+			toast.error("Loss quantity too high", {
+				description: `At most ${maxLossAllowed.toLocaleString()} Loss for this SKU${lotHint} on the source rack.`,
 			});
 			return;
 		}
@@ -548,9 +561,9 @@ export function BinTransferQuickForm({
 					New transfer
 				</CardTitle>
 				<CardDescription>
-					Pick a source rack and SKU, set carton and/or loose quantity (capped by
-					on-hand), and a destination rack — Add to list saves a draft in the queue
-					below.
+					Pick a source rack and stock to move, set ctn and/or Loss quantity (capped
+					by on-hand), and a destination rack — Add to list saves a draft in the
+					queue below.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
@@ -578,7 +591,7 @@ export function BinTransferQuickForm({
 						/>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="putaway-sku">SKU (stock in source rack)</Label>
+						<Label htmlFor="putaway-sku">Stock to move</Label>
 						<Select
 							value={selectedSkuId || SKU_SELECT_NONE}
 							onValueChange={(val) => {
@@ -608,7 +621,8 @@ export function BinTransferQuickForm({
 								<SelectItem value={SKU_SELECT_NONE}>Select SKU…</SelectItem>
 								{skuOptions.map((opt) => (
 									<SelectItem key={opt.skuId} value={opt.skuId}>
-										{opt.skuCode} — {formatQtyWithUom(opt.totalOnHand, opt.stockUnitCode)} on hand
+										{opt.skuCode} —{" "}
+										{formatCtnLossComma(opt.totalOnHand, opt.totalOnHandLoss)}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -667,73 +681,83 @@ export function BinTransferQuickForm({
 								) : null}
 								{lotOptions.map((opt) => (
 									<SelectItem key={opt.key} value={opt.key}>
-										{opt.label} — {formatQtyWithUom(opt.onHand, selectedUom)} on hand
+										{opt.label} —{" "}
+										{formatCtnLossComma(opt.onHand, opt.onHandLoss)}
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
 					</div>
-					<div className="space-y-2">
-						<Label htmlFor="putaway-qty">
-							Carton quantity
-							{selectedUom ? (
-								<span className="ml-1 font-normal text-muted-foreground">
-									({selectedUom})
-								</span>
-							) : null}
-						</Label>
-						<Input
-							id="putaway-qty"
-							type="number"
-							min={0}
-							max={maxQtyForSelection ?? undefined}
-							step={1}
-							inputMode="numeric"
-							placeholder={
-								maxQtyForSelection != null
-									? `0–${formatQtyWithUom(maxQtyForSelection, selectedUom)}`
-									: "—"
-							}
-							value={quantity}
-							onChange={(e) => setQuantity(e.target.value)}
-							disabled={
-								!selectedStockQuant ||
-								maxQtyForSelection === 0 ||
-								maxQtyForSelection == null
-							}
-						/>
-						{maxQtyForSelection != null && maxQtyForSelection > 0 ? (
+					<div className="space-y-2 md:col-span-2">
+						<Label>Quantity (ctn | loss)</Label>
+						<div className="grid grid-cols-2 gap-2">
+							<div className="space-y-1">
+								<Label
+									htmlFor="putaway-qty"
+									className="text-xs font-normal text-muted-foreground"
+								>
+									ctn
+									{selectedUom ? (
+										<span className="ml-1">({selectedUom})</span>
+									) : null}
+								</Label>
+								<Input
+									id="putaway-qty"
+									type="number"
+									min={0}
+									max={maxQtyForSelection ?? undefined}
+									step={1}
+									inputMode="numeric"
+									placeholder={
+										maxQtyForSelection != null
+											? `0–${maxQtyForSelection.toLocaleString()}`
+											: "—"
+									}
+									value={quantity}
+									onChange={(e) => setQuantity(e.target.value)}
+									disabled={
+										!selectedStockQuant ||
+										maxQtyForSelection === 0 ||
+										maxQtyForSelection == null
+									}
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label
+									htmlFor="putaway-loss-qty"
+									className="text-xs font-normal text-muted-foreground"
+								>
+									loss
+								</Label>
+								<Input
+									id="putaway-loss-qty"
+									type="number"
+									min={0}
+									max={maxLossQtyForSelection ?? undefined}
+									step={1}
+									inputMode="numeric"
+									placeholder={
+										maxLossQtyForSelection != null
+											? `0–${maxLossQtyForSelection.toLocaleString()}`
+											: "—"
+									}
+									value={lossQuantity}
+									onChange={(e) => setLossQuantity(e.target.value)}
+									disabled={
+										!selectedStockQuant ||
+										maxLossQtyForSelection === 0 ||
+										maxLossQtyForSelection == null
+									}
+								/>
+							</div>
+						</div>
+						{selectedStockQuant ? (
 							<p className="text-xs text-muted-foreground">
-								Available: {formatQtyWithUom(maxQtyForSelection, selectedUom)}
-							</p>
-						) : null}
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="putaway-loss-qty">Loose quantity</Label>
-						<Input
-							id="putaway-loss-qty"
-							type="number"
-							min={0}
-							max={maxLossQtyForSelection ?? undefined}
-							step={1}
-							inputMode="numeric"
-							placeholder={
-								maxLossQtyForSelection != null
-									? `0–${maxLossQtyForSelection.toLocaleString()}`
-									: "—"
-							}
-							value={lossQuantity}
-							onChange={(e) => setLossQuantity(e.target.value)}
-							disabled={
-								!selectedStockQuant ||
-								maxLossQtyForSelection === 0 ||
-								maxLossQtyForSelection == null
-							}
-						/>
-						{maxLossQtyForSelection != null && maxLossQtyForSelection > 0 ? (
-							<p className="text-xs text-muted-foreground">
-								Available: {maxLossQtyForSelection.toLocaleString()} loose unit
-								{maxLossQtyForSelection !== 1 ? "s" : ""}
+								Available:{" "}
+								{formatCtnLossPipe(
+									maxQtyForSelection ?? 0,
+									maxLossQtyForSelection ?? 0,
+								)}
 							</p>
 						) : null}
 					</div>

@@ -16,20 +16,42 @@ export type PoFulfillmentGrn = {
 /**
  * Sum qty received on prior GRNs for a PO, keyed by SKU code.
  */
-export function sumHistoricalReceivedBySku(
-	grns: PoFulfillmentGrn[],
+export type PoFulfillmentGrnItemWithLoss = PoFulfillmentGrnItem & {
+	lossQty?: string | number | null;
+};
+
+export type PoFulfillmentGrnWithLoss = {
+	items?: PoFulfillmentGrnItemWithLoss[] | null;
+};
+
+function sumHistoricalQtyBySku(
+	grns: PoFulfillmentGrnWithLoss[],
+	field: "qty" | "lossQty",
 ): Map<string, number> {
-	const receivedBySku = new Map<string, number>();
+	const totalsBySku = new Map<string, number>();
 	for (const grn of grns) {
 		for (const item of grn.items ?? []) {
 			const skuCode = item.skuCode?.trim();
 			if (!skuCode) continue;
-			const qty = Number(item.qty ?? 0);
+			const qty = Number(item[field] ?? 0);
 			if (!Number.isFinite(qty) || qty <= 0) continue;
-			receivedBySku.set(skuCode, (receivedBySku.get(skuCode) ?? 0) + qty);
+			totalsBySku.set(skuCode, (totalsBySku.get(skuCode) ?? 0) + qty);
 		}
 	}
-	return receivedBySku;
+	return totalsBySku;
+}
+
+export function sumHistoricalReceivedBySku(
+	grns: PoFulfillmentGrn[],
+): Map<string, number> {
+	return sumHistoricalQtyBySku(grns, "qty");
+}
+
+/** Sum loss qty on prior GRNs for a PO, keyed by SKU code. */
+export function sumHistoricalLossBySku(
+	grns: PoFulfillmentGrnWithLoss[],
+): Map<string, number> {
+	return sumHistoricalQtyBySku(grns, "lossQty");
 }
 
 /** Remaining qty to receive for one SKU on a PO (never negative). */
