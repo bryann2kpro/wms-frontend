@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Boxes, ChevronLeft, ChevronRight } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { Badge } from "@/components/ui/badge";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
@@ -55,6 +56,25 @@ export const Route = createFileRoute("/admin/stock-quant")({
 
 const PAGE_SIZE = 20;
 const FILTER_ALL = "__all__";
+
+/** Badge distinguishing loose-storage stock (loose units) from carton/pallet stock, by rack bin type. */
+function StockTypeBadge({ rackBinType }: { rackBinType: string | null }) {
+	if (rackBinType === "LOOSE_STORAGE") {
+		return (
+			<Badge
+				variant="outline"
+				className="border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+			>
+				Loose
+			</Badge>
+		);
+	}
+	return (
+		<Badge variant="outline" className="text-muted-foreground">
+			CTN
+		</Badge>
+	);
+}
 /** Load enough rows to build SKU/rack filter options from actual stock quant data. */
 const FILTER_OPTIONS_PAGE_SIZE = 5000;
 
@@ -255,6 +275,7 @@ function StockQuantComponent() {
 									<TableHead>SKU Code</TableHead>
 									<TableHead>Description</TableHead>
 									<TableHead>Rack</TableHead>
+									<TableHead>Type</TableHead>
 									<TableHead>Lot No</TableHead>
 									<TableHead>Expiry</TableHead>
 									<TableHead className="text-right">Quantity</TableHead>
@@ -264,13 +285,13 @@ function StockQuantComponent() {
 							<TableBody>
 								{loading && items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
 											Loading stock quant data...
 										</TableCell>
 									</TableRow>
 								) : items.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+										<TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
 											{hasActiveFilters
 												? "No stock quant records match the current filters."
 												: "No stock quant records found."}
@@ -287,6 +308,9 @@ function StockQuantComponent() {
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{item.rackLabel ?? item.rackId}
+											</TableCell>
+											<TableCell>
+												<StockTypeBadge rackBinType={item.rackBinType} />
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{item.lotNo?.trim() ? item.lotNo : "—"}
