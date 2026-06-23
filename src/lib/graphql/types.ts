@@ -583,6 +583,8 @@ export interface Grn {
 	endUserId?: string | null;
 	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
 	poFulfilled?: boolean | null;
+	/** True when Send to ES must be hidden — no real ES ASN for this End User PO. */
+	manualInbound?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	createdByUser: GrnAuditUser | null;
@@ -609,7 +611,11 @@ export interface GrnItem {
 	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
 	rack: GrnRack | null;
 	/** Per-rack carton allocations for this GRN item. */
-	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
+	rackAllocations?: Array<{
+		rackId: string;
+		quantity: number;
+		rackLabel?: string | null;
+	}> | null;
 	/** Optional expiry date for this GRN item (ISO string from backend). */
 	expiryDate?: string | null;
 	/** Lot number assigned by supplier/manufacturer to identify this production batch. */
@@ -623,6 +629,7 @@ export interface CreateGrnItemInput {
 	skuId?: string | null;
 	qty: string;
 	lossQty?: string | null;
+	orderedQty?: string | null;
 	remarks?: string | null;
 	/** @deprecated Prefer rackIds. Single rack for legacy backends. */
 	rackId?: string | null;
@@ -651,6 +658,26 @@ export interface CreateGrnInput {
 	createdBy?: string | null;
 	updatedBy?: string | null;
 	items?: CreateGrnItemInput[] | null;
+}
+
+export interface CreateInboundInput {
+	userId: string;
+	grnNo: string;
+	supplierId?: string | null;
+	supplierDeliveryId?: string | null;
+	supplierDeliveryNo?: string | null;
+	poNo?: string | null;
+	receivedAt?: string | null;
+	notes?: string | null;
+	proofUrl?: string | null;
+	warehouseId?: string | null;
+	endUserId?: string | null;
+	status?: string | null;
+	items?: CreateGrnItemInput[] | null;
+	inboundQty?: number | null;
+	skuId?: string | null;
+	poFulfilled?: boolean | null;
+	advanceNoticeId?: string | null;
 }
 
 export interface GrnFilterInput {
@@ -726,7 +753,11 @@ export interface GrnItemForList {
 		rackColumn: string;
 	} | null;
 	/** Per-rack carton allocations (populated when multiple racks are used). */
-	rackAllocations?: Array<{ rackId: string; quantity: number; rackLabel?: string | null }> | null;
+	rackAllocations?: Array<{
+		rackId: string;
+		quantity: number;
+		rackLabel?: string | null;
+	}> | null;
 }
 
 /** GRN list row – uses same field names as API (grnNo, poNo, receivedAt, etc.) to avoid confusion. */
@@ -750,6 +781,8 @@ export interface GrnDetailForList {
 	nsError?: string | null;
 	/** null = nothing to enforce (no linked ASN, or not Approved yet). Gates the "Send to ES" action. */
 	poFulfilled?: boolean | null;
+	/** True when Send to ES must be hidden — no real ES ASN for this End User PO. */
+	manualInbound?: boolean;
 	items: GrnItemForList[];
 	totalItems: number;
 	receivedItems: number;
@@ -1235,7 +1268,12 @@ export interface UpdatePickingCriteriaInput {
 
 export type StockTransferType = "BIN_TO_BIN" | "WAREHOUSE_TO_WAREHOUSE";
 
-export type StockTransferStatus = "DRAFT" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
+export type StockTransferStatus =
+	| "DRAFT"
+	| "AWAITING_DISPATCH"
+	| "IN_TRANSIT"
+	| "COMPLETED"
+	| "CANCELLED";
 
 export interface StockTransferItemRack {
 	rackId: string;
@@ -1252,6 +1290,7 @@ export interface StockTransferItem {
 	lotNo: string | null;
 	expiryDate: string | null;
 	quantity: string;
+	lossQuantity: string;
 	sourceStockQuantId: string;
 	sourceRackId: string;
 	sourceRack: StockTransferItemRack | null;

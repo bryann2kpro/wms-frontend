@@ -39,6 +39,7 @@ export const GRNS_QUERY = gql`
 				nsError
 				endUserId
 				poFulfilled
+				manualInbound
 				createdAt
 				updatedAt
 				createdByUser {
@@ -105,6 +106,7 @@ export const GRNS_WORK_QUEUE_QUERY = gql`
 				grnNo
 				status
 				receivedAt
+				manualInbound
 				items {
 					id
 					grnId
@@ -285,7 +287,7 @@ export type GrnsWorkQueueQueryVariables = {
 export type GrnsWorkQueueQueryData = {
 	grns: Pick<GrnPaginatedResponse, "pagination"> & {
 		query: Array<
-			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt"> & {
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt" | "manualInbound"> & {
 				items: Array<
 					Pick<
 						GrnItem,
@@ -501,6 +503,7 @@ export function mapGrnsQueryToResult(
 			proofUrl: g.proofUrl ?? null,
 			nsError: g.nsError ?? null,
 			poFulfilled: g.poFulfilled ?? null,
+			manualInbound: g.manualInbound ?? false,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,

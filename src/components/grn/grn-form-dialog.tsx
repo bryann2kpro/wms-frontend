@@ -21,6 +21,7 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import {
@@ -79,7 +80,11 @@ import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import {
 	applyRemainingQtyToLineItems,
+	formatFulfilledCtnDisplay,
+	formatFulfilledLossDisplay,
 	remainingForSku,
+	resolveOrderedCtnForDisplay,
+	sumHistoricalLossBySku,
 	sumHistoricalReceivedBySku,
 } from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
@@ -269,6 +274,7 @@ export type GRNLineItemForm = {
 	description: string;
 	/** Quantity in cartons */
 	carton: number;
+	orderedQty?: number;
 	/** Quantity lost */
 	loss: number;
 	uom: string;
@@ -289,6 +295,19 @@ export type GRNLineItemForm = {
 	asnLotTracked?: boolean;
 };
 
+function resolveLineOrderedCtn(
+	item: GRNLineItemForm,
+	poAsnLines: Array<{ skuCode: string; expected: number }>,
+): number | undefined {
+	if (item.orderedQty != null && Number.isFinite(item.orderedQty)) {
+		return item.orderedQty;
+	}
+	const code = item.skuCode?.trim();
+	if (!code) return undefined;
+	const asnLine = poAsnLines.find((l) => l.skuCode === code);
+	return asnLine?.expected;
+}
+
 function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	rackAllocations?: Array<{ rackId: string; quantity: number }>;
 } {
@@ -307,6 +326,26 @@ function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	const rackId = item.rackId?.trim();
 	if (!rackId) return {};
 	return { rackAllocations: [{ rackId, quantity: cartonQty }] };
+}
+
+/** Map stock-unit id or code to a display unit code (never leak UUIDs in labels). */
+function resolveDisplayUnitCode(
+	units: string | null | undefined,
+	stockUnits: Array<{ stockUnitId: string; unitCode: string }>,
+	fallback = "CTN",
+): string {
+	const raw = units?.trim();
+	if (!raw) return fallback;
+	const match = stockUnits.find(
+		(u) =>
+			u.stockUnitId === raw ||
+			u.unitCode.toLowerCase() === raw.toLowerCase(),
+	);
+	if (match?.unitCode) return match.unitCode;
+	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+		return fallback;
+	}
+	return raw;
 }
 
 function formatPutawayPlanHint(
@@ -355,6 +394,201 @@ function normalizeFieldErrors(
 		typeof e === "string"
 			? { message: e }
 			: (e as { message?: string } | undefined),
+	);
+}
+
+function GrnQuantitiesTable({
+	item,
+	index,
+	items,
+	onItemsChange,
+	orderedCtn,
+	orderedCtnEditable,
+	fulfilledCtn,
+	fulfilledLoss,
+	cartonUomLabel,
+	lossUomLabel,
+}: {
+	item: GRNLineItemForm;
+	index: number;
+	items: GRNLineItemForm[];
+	onItemsChange: (newItems: GRNLineItemForm[]) => void;
+	/** PO / ASN ordered carton qty; null when unknown. */
+	orderedCtn: number | null;
+	orderedCtnEditable: boolean;
+	fulfilledCtn: number;
+	fulfilledLoss: number;
+	cartonUomLabel: string;
+	lossUomLabel: string;
+}) {
+	const inboundQty = Math.max(0, Number(item.carton) || 0);
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const orderedCtnForDisplay = resolveOrderedCtnForDisplay(
+		orderedCtn,
+		item.orderedQty,
+	);
+	const fulfilledCtnDisplay = formatFulfilledCtnDisplay(
+		fulfilledCtn,
+		orderedCtnForDisplay,
+	);
+	const fulfilledLossDisplay = formatFulfilledLossDisplay(fulfilledLoss);
+
+	const readOnlyCellClass =
+		"h-8 rounded-lg border border-border/40 bg-muted/30 px-2 font-mono text-sm tabular-nums text-muted-foreground flex items-center justify-center";
+
+	const subHeaderClass =
+		"text-[9px] font-semibold uppercase tracking-wider text-muted-foreground text-center";
+
+	return (
+		<div className="overflow-x-auto">
+			<table className="w-full min-w-[320px] border-collapse text-xs">
+				<thead>
+					<tr>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Ordered
+						</th>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Delivered
+						</th>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Fulfilled
+						</th>
+					</tr>
+					<tr>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr className="align-middle">
+						<td className="p-0.5 pr-1">
+							{orderedCtnEditable ? (
+								<Input
+									type="number"
+									min={0}
+									aria-label="Ordered carton quantity"
+									value={item.orderedQty ?? ""}
+									onChange={(e) => {
+										const newItems = [...items];
+										const v = Number(e.target.value);
+										newItems[index] = {
+											...newItems[index],
+											orderedQty:
+												e.target.value === ""
+													? undefined
+													: Number.isFinite(v) && v >= 0
+														? v
+														: 0,
+										};
+										onItemsChange(newItems);
+									}}
+									placeholder="0"
+									className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+								/>
+							) : (
+								<div className={readOnlyCellClass} title={cartonUomLabel}>
+									{orderedCtn != null ? orderedCtn : "—"}
+								</div>
+							)}
+						</td>
+						<td className="p-0.5 pr-1">
+							<div className={readOnlyCellClass}>—</div>
+						</td>
+						<td className="p-0.5 pr-1">
+							<Input
+								type="number"
+								min={0}
+								aria-label="Delivered carton quantity"
+								value={item.carton}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										carton: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</td>
+						<td className="p-0.5 pr-1">
+							<Input
+								type="number"
+								min={0}
+								aria-label="Delivered loss quantity"
+								value={item.loss}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										loss: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</td>
+						<td className="p-0.5 pr-1">
+							<div
+								className={cn(readOnlyCellClass, "text-foreground")}
+								title={
+									orderedCtnForDisplay != null
+										? `${fulfilledCtn} of ${orderedCtnForDisplay} ${cartonUomLabel} ordered (prior GRNs + this delivery)`
+										: `${fulfilledCtn} ${cartonUomLabel} received to date incl. this delivery`
+								}
+							>
+								{fulfilledCtnDisplay}
+							</div>
+						</td>
+						<td className="p-0.5">
+							<div
+								className={cn(readOnlyCellClass, "text-foreground")}
+								title={`${fulfilledLoss} ${lossUomLabel} cumulative loss (prior GRNs + this delivery)`}
+							>
+								{fulfilledLossDisplay}
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			{inboundQty > 0 || lossQty > 0 ? (
+				<p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+					{inboundQty > 0 ? (
+						<span className="font-semibold text-foreground">
+							{inboundQty} {cartonUomLabel} delivered
+						</span>
+					) : null}
+					{lossQty > 0 ? (
+						<>
+							{inboundQty > 0 ? " · " : null}
+							<span className="font-semibold text-amber-600">
+								{lossQty} {lossUomLabel} loss
+							</span>
+						</>
+					) : null}
+				</p>
+			) : null}
+		</div>
 	);
 }
 
@@ -585,9 +819,10 @@ function GRNLineRow({
 	skuOptions,
 	stockUnits,
 	racks,
-	onOpenCreateRack,
 	poAsnLines,
 	poHistoricalReceivedBySku,
+	poHistoricalLossBySku,
+	showOrderedQty,
 }: {
 	item: GRNLineItemForm;
 	index: number;
@@ -598,6 +833,9 @@ function GRNLineRow({
 	poAsnLines?: Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>;
 	/** Qty already received by PRIOR saved GRNs for this PO, keyed by skuCode. */
 	poHistoricalReceivedBySku?: Map<string, number>;
+	/** Loss qty on PRIOR saved GRNs for this PO, keyed by skuCode. */
+	poHistoricalLossBySku?: Map<string, number>;
+	showOrderedQty?: boolean;
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	racks: Array<{
 		rackId: string;
@@ -605,7 +843,6 @@ function GRNLineRow({
 		rackColumn: string;
 		rackLevel: string;
 	}>;
-	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
@@ -625,7 +862,8 @@ function GRNLineRow({
 		return !skuOptions.some((s) => s.skuCode === item.skuCode);
 	}, [item.skuCode, skuOptions]);
 
-	const uomLabel = useMemo(() => {
+	/** SKU base / inner stock UOM (e.g. PKT) — used for loss qty and the SKU badge. */
+	const baseUomLabel = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
 		if (!sku?.skuUom) return null;
@@ -659,7 +897,7 @@ function GRNLineRow({
 		const span = Math.max(expected, received, 1);
 		return {
 			displayName: line.displayName,
-			units: line.units,
+			units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
 			expected,
 			historical,
 			inProgress,
@@ -668,7 +906,11 @@ function GRNLineRow({
 			historicalPct: Math.min(100, (historical / span) * 100),
 			inProgressPct: Math.min(100 - Math.min(100, (historical / span) * 100), (inProgress / span) * 100),
 		};
-	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku]);
+	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku, stockUnits]);
+
+	/** Receiving / putaway unit — GRN carton qty and rack allocations are always in CTN. */
+	const cartonUomLabel = poGauge?.units?.trim() || "CTN";
+
 	const [putawayPlan, setPutawayPlan] = useState<InboundPutawayPlanGql | null>(
 		null,
 	);
@@ -729,16 +971,16 @@ function GRNLineRow({
 			item.rackId?.trim() && (putawayPlan?.allocations.length ?? 0) <= 1
 				? formatRackCapacityHint(
 						putawayPlan?.capacityForRack,
-						uomLabel,
+						cartonUomLabel,
 						inboundQty,
 					)
 				: null,
-		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, uomLabel, inboundQty],
+		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, cartonUomLabel, inboundQty],
 	);
 
 	const putawayPlanHint = useMemo(
-		() => formatPutawayPlanHint(putawayPlan, uomLabel, inboundQty),
-		[putawayPlan, uomLabel, inboundQty],
+		() => formatPutawayPlanHint(putawayPlan, cartonUomLabel, inboundQty),
+		[putawayPlan, cartonUomLabel, inboundQty],
 	);
 
 	const rackSuggestionMessage = putawayPlan?.message ?? null;
@@ -862,6 +1104,18 @@ function GRNLineRow({
 	const canRecommendRack =
 		!!item.skuCode?.trim() && inboundQty > 0 && !!putawayPlan?.allocations.length;
 
+	const orderedCtnFromPo =
+		poGauge?.expected ??
+		(poAsnLines?.length
+			? poAsnLines.find((l) => l.skuCode === item.skuCode)?.expected ?? null
+			: null);
+	const orderedCtnEditable = Boolean(showOrderedQty && orderedCtnFromPo == null);
+	const historicalCtn = poHistoricalReceivedBySku?.get(item.skuCode) ?? 0;
+	const historicalLoss = poHistoricalLossBySku?.get(item.skuCode) ?? 0;
+	const fulfilledCtn = historicalCtn + inboundQty;
+	const fulfilledLoss = historicalLoss + lossQty;
+	const lossUomLabel = baseUomLabel ?? "PKT";
+
 	return (
 		<div className="group relative overflow-hidden rounded-xl border border-border/60 bg-card transition-all hover:border-border/90 hover:shadow-sm">
 			<div className="flex items-stretch">
@@ -898,6 +1152,7 @@ function GRNLineRow({
 										description: v.description ?? "",
 										uom: v.uom ?? "",
 										carton: remaining > 0 ? remaining : 1,
+										orderedQty: undefined,
 										rackId: "",
 										rackAllocations: undefined,
 										rackAutoSuggested: false,
@@ -920,12 +1175,12 @@ function GRNLineRow({
 								New
 							</Badge>
 						)}
-						{uomLabel && (
+						{baseUomLabel && (
 							<Badge
 								variant="outline"
 								className="shrink-0 font-mono text-xs h-6"
 							>
-								{uomLabel}
+								{baseUomLabel}
 							</Badge>
 						)}
 						<Button
@@ -1030,71 +1285,18 @@ function GRNLineRow({
 								>
 									Quantities
 								</p>
-								<div className="grid grid-cols-2 gap-2">
-									<div className="space-y-1">
-										<label
-											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											Carton
-										</label>
-										<Input
-											type="number"
-											min={0}
-											value={item.carton}
-											onChange={(e) => {
-												const newItems = [...items];
-												const v = Number(e.target.value);
-												newItems[index] = {
-													...newItems[index],
-													carton: Number.isFinite(v) && v >= 0 ? v : 0,
-												};
-												onItemsChange(newItems);
-											}}
-											placeholder="0"
-											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-										/>
-									</div>
-									<div className="space-y-1">
-										<label
-											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											Loss
-										</label>
-										<Input
-											type="number"
-											min={0}
-											value={item.loss}
-											onChange={(e) => {
-												const newItems = [...items];
-												const v = Number(e.target.value);
-												newItems[index] = {
-													...newItems[index],
-													loss: Number.isFinite(v) && v >= 0 ? v : 0,
-												};
-												onItemsChange(newItems);
-											}}
-											placeholder="0"
-											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-										/>
-									</div>
-								</div>
-								{inboundQty > 0 || lossQty > 0 ? (
-									<p className="font-mono text-[10px] text-muted-foreground">
-										<span className="font-semibold text-foreground">
-											{inboundQty} {uomLabel ?? "CTN"}
-										</span>
-										{lossQty > 0 ? (
-											<>
-												{" "}+{" "}
-												<span className="font-semibold text-amber-600">
-													{lossQty} loose item{lossQty !== 1 ? "s" : ""}
-												</span>
-											</>
-										) : null}
-									</p>
-								) : null}
+								<GrnQuantitiesTable
+									item={item}
+									index={index}
+									items={items}
+									onItemsChange={onItemsChange}
+									orderedCtn={orderedCtnFromPo}
+									orderedCtnEditable={orderedCtnEditable}
+									fulfilledCtn={fulfilledCtn}
+									fulfilledLoss={fulfilledLoss}
+									cartonUomLabel={cartonUomLabel}
+									lossUomLabel={lossUomLabel}
+								/>
 							</div>
 							<div className="space-y-1">
 								<label
@@ -1301,7 +1503,7 @@ function GRNLineRow({
 														}}
 														className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
 													/>
-													<span className="shrink-0 text-muted-foreground">{uomLabel ?? "CTN"}</span>
+													<span className="shrink-0 text-muted-foreground">{cartonUomLabel}</span>
 													<div className="ml-auto flex shrink-0 items-center gap-1">
 														<button
 															type="button"
@@ -1366,7 +1568,7 @@ function GRNLineRow({
 												: "text-destructive",
 										)}
 									>
-										{totalAllocQty} / {inboundQty} {uomLabel ?? "CTN"}
+										{totalAllocQty} / {inboundQty} {cartonUomLabel}
 									</span>
 								</div>
 							</div>
@@ -1426,6 +1628,7 @@ export type GrnCreateSubmitPayload = {
 	notes: string;
 	warehouseId: string;
 	endUserId: string;
+	poFulfilled: boolean;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -1457,6 +1660,8 @@ export type GrnFormDialogProps = {
 	endUsers: EndUser[];
 	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
 	supplierSelectionOptional?: boolean;
+	/** Show manual-GRN PO fulfillment checkbox. Hidden for ASN-backed creates. */
+	showPoFulfilledToggle?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -1493,6 +1698,7 @@ export function GrnFormDialog({
 	suppliers,
 	endUsers,
 	supplierSelectionOptional = false,
+	showPoFulfilledToggle = false,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -1505,6 +1711,7 @@ export function GrnFormDialog({
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	const [poFulfilledChecked, setPoFulfilledChecked] = useState(true);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	/** Prior GRNs found for a manually-typed PO — shown as a "fulfillment history" hint. */
 	const [poHistory, setPoHistory] = useState<
@@ -1525,6 +1732,7 @@ export function GrnFormDialog({
 		Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>
 	>([]);
 	const [poHistoricalReceivedBySku, setPoHistoricalReceivedBySku] = useState<Map<string, number>>(new Map());
+	const [poHistoricalLossBySku, setPoHistoricalLossBySku] = useState<Map<string, number>>(new Map());
 	const lastLookedUpPoRef = useRef<string>("");
 	const poRemainingAppliedRef = useRef(false);
 	const lookupPoHistory = async (poNo: string) => {
@@ -1549,23 +1757,26 @@ export function GrnFormDialog({
 			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
 			if (asnLines.length > 0) {
 				const receivedBySku = sumHistoricalReceivedBySku(history);
+				const lossBySku = sumHistoricalLossBySku(history);
 				setPoHistoricalReceivedBySku(receivedBySku);
-				setPoAsnLines(
-					asnLines.map((line) => ({
-						skuCode: line.itemid,
-						displayName: line.displayname,
-						expected: line.quantity,
-						units: line.units,
-					})),
-				);
+				setPoHistoricalLossBySku(lossBySku);
+				const mappedLines = asnLines.map((line) => ({
+					skuCode: line.itemid,
+					displayName: line.displayname,
+					expected: line.quantity,
+					units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
+				}));
+				setPoAsnLines(mappedLines);
 			} else {
 				setPoAsnLines([]);
 				setPoHistoricalReceivedBySku(new Map());
+				setPoHistoricalLossBySku(new Map());
 			}
 		} catch {
 			setPoHistory([]);
 			setPoAsnLines([]);
 			setPoHistoricalReceivedBySku(new Map());
+			setPoHistoricalLossBySku(new Map());
 		} finally {
 			setPoHistoryLoading(false);
 		}
@@ -1635,6 +1846,7 @@ export function GrnFormDialog({
 			notes: "",
 			warehouseId: "",
 			endUserId: "",
+			poFulfilled: true,
 			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
@@ -1700,6 +1912,23 @@ export function GrnFormDialog({
 						);
 					}
 
+					if (value.poFulfilled === false) {
+						const invalidOrderedQty = items.find((i) => {
+							const orderedQty = resolveLineOrderedCtn(i, poAsnLines);
+							const cartonQty = Number(i.carton) || 0;
+							return (
+								orderedQty == null ||
+								!Number.isFinite(orderedQty) ||
+								orderedQty < cartonQty
+							);
+						});
+						if (invalidOrderedQty) {
+							itemErrors.push(
+								"Partial delivery requires an ordered quantity for every line, and each ordered quantity must be at least the received carton quantity.",
+							);
+						}
+					}
+
 					if (itemErrors.length === 0) {
 						const seen = new Set<string>();
 						const hasDuplicate = items.some((i) => {
@@ -1754,11 +1983,19 @@ export function GrnFormDialog({
 					notes: value.notes ?? "",
 					warehouseId: value.warehouseId ?? "",
 					endUserId: value.endUserId ?? "",
+					poFulfilled: value.poFulfilled !== false,
 					submitIntent: createIntentRef.current,
-					items: (value.items ?? []).map((i) => ({
-						...i,
-						...buildGrnItemRackPayload(i),
-					})),
+					items: (value.items ?? []).map((i) => {
+						const orderedCtn =
+							value.poFulfilled === false
+								? resolveLineOrderedCtn(i, poAsnLines)
+								: undefined;
+						return {
+							...i,
+							orderedQty: orderedCtn,
+							...buildGrnItemRackPayload(i),
+						};
+					}),
 				};
 
 
@@ -1883,8 +2120,11 @@ export function GrnFormDialog({
 				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
+				endUserId: (grn as { endUserId?: string | null }).endUserId ?? "",
+				poFulfilled: true,
 				items: initialItems,
 			});
+			setPoFulfilledChecked(true);
 		} else if (mode === "create") {
 			form.reset({
 				grnNumber: "",
@@ -1895,8 +2135,10 @@ export function GrnFormDialog({
 				notes: "",
 				warehouseId: "",
 				endUserId: "",
+				poFulfilled: true,
 				items: (initialValues?.items ?? []) as GRNLineItemForm[],
 			});
+			setPoFulfilledChecked(true);
 			setProofFiles([]);
 		}
 	}, [open, mode, grn?.id, initialValues]);
@@ -2056,6 +2298,41 @@ export function GrnFormDialog({
 								<GrnFormSection icon={FileText} title="Receipt Details">
 									<div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
 										<FieldGroup className="gap-4">
+											<form.Field name="endUserId">
+										{(field) => (
+											<Field>
+												<FieldLabel
+													htmlFor={field.name}
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													End User
+												</FieldLabel>
+												<Select
+													value={field.state.value || undefined}
+													onValueChange={(v) => field.handleChange(v)}
+												>
+													<SelectTrigger
+														id={field.name}
+														className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
+													>
+														<SelectValue placeholder="Select end user…" />
+													</SelectTrigger>
+													<SelectContent>
+														{endUsers.map((u) => (
+															<SelectItem key={u.endUserId} value={u.endUserId}>
+																{u.userName}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												{endUsers.length === 0 ? (
+													<p className="text-xs text-amber-600 mt-1">
+														No end users in master data. Add end users in Settings first.
+													</p>
+												) : null}
+											</Field>
+										)}
+									</form.Field>
 											<form.Field name="poReference">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -2141,6 +2418,37 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
+									{isCreate && showPoFulfilledToggle ? (
+										<form.Field name="poFulfilled">
+											{(field) => (
+												<div className="flex flex-row items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+													<Checkbox
+														id={field.name}
+														checked={Boolean(field.state.value)}
+														onCheckedChange={(checked) => {
+															const next = checked === true;
+															field.handleChange(next);
+															setPoFulfilledChecked(next);
+														}}
+														onBlur={field.handleBlur}
+														className="mt-0.5 shrink-0"
+													/>
+													<div className="grid gap-1.5 leading-none min-w-0">
+														<FieldLabel
+															htmlFor={field.name}
+															className="cursor-pointer text-sm font-medium"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															PO fully fulfilled by this delivery
+														</FieldLabel>
+														<p className="text-xs text-muted-foreground">
+															Uncheck for a partial PO delivery and enter ordered quantities per line.
+														</p>
+													</div>
+												</div>
+											)}
+										</form.Field>
+									) : null}
 									<form.Field name="supplierId">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -2201,41 +2509,6 @@ export function GrnFormDialog({
 												</Field>
 											);
 										}}
-									</form.Field>
-									<form.Field name="endUserId">
-										{(field) => (
-											<Field>
-												<FieldLabel
-													htmlFor={field.name}
-													style={{ fontFamily: "var(--dashboard-body)" }}
-												>
-													End User
-												</FieldLabel>
-												<Select
-													value={field.state.value || undefined}
-													onValueChange={(v) => field.handleChange(v)}
-												>
-													<SelectTrigger
-														id={field.name}
-														className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
-													>
-														<SelectValue placeholder="Select end user…" />
-													</SelectTrigger>
-													<SelectContent>
-														{endUsers.map((u) => (
-															<SelectItem key={u.endUserId} value={u.endUserId}>
-																{u.userName}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-												{endUsers.length === 0 ? (
-													<p className="text-xs text-amber-600 mt-1">
-														No end users in master data. Add end users in Settings first.
-													</p>
-												) : null}
-											</Field>
-										)}
 									</form.Field>
 									<form.Field name="supplierDO">
 										{(field) => {
@@ -2450,10 +2723,12 @@ export function GrnFormDialog({
 															racks={racks}
 															poAsnLines={isCreate ? poAsnLines : undefined}
 															poHistoricalReceivedBySku={isCreate ? poHistoricalReceivedBySku : undefined}
-															onOpenCreateRack={(lineIndex) => {
-																setCreateRackForLineIndex(lineIndex);
-																setCreateRackOpen(true);
-															}}
+															poHistoricalLossBySku={isCreate ? poHistoricalLossBySku : undefined}
+															showOrderedQty={
+																isCreate &&
+																showPoFulfilledToggle &&
+																!poFulfilledChecked
+															}
 														/>
 													))}
 												</div>

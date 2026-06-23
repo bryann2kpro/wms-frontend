@@ -109,10 +109,14 @@ async function fillItemFields(
   const card = grnDialog.locator(".relative.rounded-xl.border.bg-card").nth(itemIndex);
 
   if (opts.carton !== undefined) {
-    await card.locator('input[type="number"]').first().fill(String(opts.carton));
+    await card
+      .getByRole("spinbutton", { name: /Delivered carton quantity/i })
+      .fill(String(opts.carton));
   }
   if (opts.loss !== undefined) {
-    await card.locator('input[type="number"]').nth(1).fill(String(opts.loss));
+    await card
+      .getByRole("spinbutton", { name: /Delivered loss quantity/i })
+      .fill(String(opts.loss));
   }
   if (opts.expiryDate !== undefined) {
     await card.locator('input[placeholder="YYYY-MM-DD"]').fill(opts.expiryDate);

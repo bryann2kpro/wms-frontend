@@ -16,20 +16,42 @@ export type PoFulfillmentGrn = {
 /**
  * Sum qty received on prior GRNs for a PO, keyed by SKU code.
  */
-export function sumHistoricalReceivedBySku(
-	grns: PoFulfillmentGrn[],
+export type PoFulfillmentGrnItemWithLoss = PoFulfillmentGrnItem & {
+	lossQty?: string | number | null;
+};
+
+export type PoFulfillmentGrnWithLoss = {
+	items?: PoFulfillmentGrnItemWithLoss[] | null;
+};
+
+function sumHistoricalQtyBySku(
+	grns: PoFulfillmentGrnWithLoss[],
+	field: "qty" | "lossQty",
 ): Map<string, number> {
-	const receivedBySku = new Map<string, number>();
+	const totalsBySku = new Map<string, number>();
 	for (const grn of grns) {
 		for (const item of grn.items ?? []) {
 			const skuCode = item.skuCode?.trim();
 			if (!skuCode) continue;
-			const qty = Number(item.qty ?? 0);
+			const qty = Number(item[field] ?? 0);
 			if (!Number.isFinite(qty) || qty <= 0) continue;
-			receivedBySku.set(skuCode, (receivedBySku.get(skuCode) ?? 0) + qty);
+			totalsBySku.set(skuCode, (totalsBySku.get(skuCode) ?? 0) + qty);
 		}
 	}
-	return receivedBySku;
+	return totalsBySku;
+}
+
+export function sumHistoricalReceivedBySku(
+	grns: PoFulfillmentGrn[],
+): Map<string, number> {
+	return sumHistoricalQtyBySku(grns, "qty");
+}
+
+/** Sum loss qty on prior GRNs for a PO, keyed by SKU code. */
+export function sumHistoricalLossBySku(
+	grns: PoFulfillmentGrnWithLoss[],
+): Map<string, number> {
+	return sumHistoricalQtyBySku(grns, "lossQty");
 }
 
 /** Remaining qty to receive for one SKU on a PO (never negative). */
@@ -93,4 +115,44 @@ export function applyRemainingQtyToLineItems<
 		);
 		return { ...item, carton: remaining };
 	});
+}
+
+/** Ordered carton qty for fulfillment display (PO/ASN line or manual entry). */
+export function resolveOrderedCtnForDisplay(
+	orderedFromPo: number | null,
+	manualOrderedQty: number | undefined,
+): number | null {
+	if (orderedFromPo != null && Number.isFinite(orderedFromPo) && orderedFromPo >= 0) {
+		return orderedFromPo;
+	}
+	if (
+		manualOrderedQty != null &&
+		Number.isFinite(manualOrderedQty) &&
+		manualOrderedQty >= 0
+	) {
+		return manualOrderedQty;
+	}
+	return null;
+}
+
+/** Fulfilled cartons as cumulative progress vs ordered (e.g. 5/20). */
+export function formatFulfilledCtnDisplay(
+	fulfilled: number,
+	ordered: number | null | undefined,
+): string {
+	const fulfilledNum = Number(fulfilled);
+	const safeFulfilled =
+		Number.isFinite(fulfilledNum) && fulfilledNum >= 0 ? fulfilledNum : 0;
+	const orderedNum = ordered == null ? null : Number(ordered);
+	if (orderedNum == null || !Number.isFinite(orderedNum) || orderedNum < 0) {
+		return String(safeFulfilled);
+	}
+	return `${safeFulfilled}/${orderedNum}`;
+}
+
+/** Cumulative loss qty; no ordered baseline on GRN lines. */
+export function formatFulfilledLossDisplay(fulfilledLoss: number): string {
+	const lossNum = Number(fulfilledLoss);
+	const safeLoss = Number.isFinite(lossNum) && lossNum >= 0 ? lossNum : 0;
+	return String(safeLoss);
 }
