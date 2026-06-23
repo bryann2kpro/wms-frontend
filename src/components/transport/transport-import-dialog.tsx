@@ -31,6 +31,11 @@ import {
 	type TransportsQueryData,
 	type TransportsQueryVariables,
 } from "@/lib/graphql/transports";
+import {
+	applyCapacityTemplate,
+	parseCapacityTemplateCode,
+	vehicleRegistryRowToCreateInput,
+} from "@/lib/transport/transport-capacity";
 
 const FT_TO_MM = 304.8;
 
@@ -44,6 +49,7 @@ interface TransportImportDialogProps {
 type PreviewRow = {
 	rowNumber: number;
 	code: string;
+	capacityClass: string;
 	btm: string;
 	bdm: string;
 	payload: string;
@@ -52,6 +58,7 @@ type PreviewRow = {
 	heightFt: string;
 	pallets: string;
 	errors: string[];
+	warnings: string[];
 	payloadInput?: CreateTransportMutationVariables["input"];
 };
 
@@ -180,7 +187,89 @@ export function TransportImportDialog({
 		? Math.round((processedCount / validRows.length) * 100)
 		: 0;
 
-	function parseRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
+	function isVehicleRegistryFormat(rawRows: Record<string, unknown>[]): boolean {
+		if (rawRows.length === 0) return false;
+		const headers = rowToHeaders(rawRows[0]);
+		return Boolean(headers.code) && !headers.btm && !headers.bdm;
+	}
+
+	function parseVehicleRegistryRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
+		const existingCodes = new Set(
+			(transportsData?.transports.query ?? []).map((t) =>
+				t.code.trim().toLowerCase(),
+			),
+		);
+		const counts = new Map<string, number>();
+		for (const row of rawRows) {
+			const headers = rowToHeaders(row);
+			const code = headers.code ?? "";
+			if (!code) continue;
+			counts.set(code.toLowerCase(), (counts.get(code.toLowerCase()) ?? 0) + 1);
+		}
+
+		return rawRows.map((row, index) => {
+			const headers = rowToHeaders(row);
+			const code = headers.code ?? "";
+			const barcode = headers.barcode ?? "";
+			const description = headers.desc_01 ?? headers.desc01 ?? headers.description ?? code;
+			const location = headers.aisle ?? headers.status ?? "";
+			const capacityClass = parseCapacityTemplateCode(code) ?? "";
+			const errors: string[] = [];
+
+			if (!code) errors.push("Code is required");
+			if (code && (counts.get(code.toLowerCase()) ?? 0) > 1) {
+				errors.push("Duplicate code in file");
+			}
+			if (code && existingCodes.has(code.toLowerCase())) {
+				errors.push("Code already exists");
+			}
+
+			const tonnageWarning =
+				code && !capacityClass
+					? "No tonnage class in code — will import without auto-filled specs"
+					: "";
+			const warnings = tonnageWarning ? [tonnageWarning] : [];
+
+			const merged = code && capacityClass
+				? applyCapacityTemplate({
+						code,
+						description,
+						minWeightKg: null,
+						maxWeightKg: null,
+						maxLengthMm: null,
+						maxWidthMm: null,
+						maxHeightMm: null,
+						numberOfPallets: null,
+					})
+				: null;
+
+			const payload =
+				errors.length === 0 && code
+					? vehicleRegistryRowToCreateInput(
+							{ code, barcode, description, location },
+							createdBy,
+						)
+					: undefined;
+
+			return {
+				rowNumber: index + 2,
+				code,
+				capacityClass: merged?.capacityClass ?? capacityClass,
+				btm: merged?.minWeightKg ?? "",
+				bdm: merged?.maxWeightKg ?? "",
+				payload: merged?.description ?? description,
+				lengthFt: merged?.maxLengthMm ? String(Number(merged.maxLengthMm) / FT_TO_MM) : "",
+				widthFt: merged?.maxWidthMm ? String(Number(merged.maxWidthMm) / FT_TO_MM) : "",
+				heightFt: merged?.maxHeightMm ? String(Number(merged.maxHeightMm) / FT_TO_MM) : "",
+				pallets: merged?.numberOfPallets != null ? String(merged.numberOfPallets) : "",
+				errors,
+				warnings,
+				payloadInput: payload,
+			};
+		});
+	}
+
+	function parseSpecSheetRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
 		const existingCodes = new Set(
 			(transportsData?.transports.query ?? []).map((t) =>
 				t.code.trim().toLowerCase(),
@@ -279,6 +368,7 @@ export function TransportImportDialog({
 			return {
 				rowNumber: index + 2,
 				code,
+				capacityClass: parseCapacityTemplateCode(code) ?? "",
 				btm,
 				bdm,
 				payload: payloadRaw,
@@ -287,9 +377,16 @@ export function TransportImportDialog({
 				heightFt,
 				pallets,
 				errors,
+				warnings: [],
 				payloadInput: payload,
 			};
 		});
+	}
+
+	function parseRows(rawRows: Record<string, unknown>[]): PreviewRow[] {
+		return isVehicleRegistryFormat(rawRows)
+			? parseVehicleRegistryRows(rawRows)
+			: parseSpecSheetRows(rawRows);
 	}
 
 	async function handleFile(file: File) {
@@ -399,7 +496,8 @@ export function TransportImportDialog({
 								Import Transports from Excel
 							</DialogTitle>
 							<DialogDescription className="mt-1" style={{ fontFamily: "var(--dashboard-body)" }}>
-								Upload an Excel file with vehicle specs, review validation, then import valid rows.
+								Upload vehicle registry (CODE, BARCODE) or spec sheet (BTM, BDM, dimensions).
+								Tonnage in code like WTH4155 (3 TON) maps to 3T specs automatically.
 							</DialogDescription>
 						</div>
 						<div className="flex flex-wrap items-center gap-2 text-xs">
@@ -481,6 +579,7 @@ export function TransportImportDialog({
 								<TableRow className="bg-muted/40">
 									<TableHead className="w-16">Row</TableHead>
 									<TableHead>Code</TableHead>
+									<TableHead>Class</TableHead>
 									<TableHead>BTM</TableHead>
 									<TableHead>BDM</TableHead>
 									<TableHead>Payload</TableHead>
@@ -494,7 +593,7 @@ export function TransportImportDialog({
 							<TableBody>
 								{rows.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={10} className="h-20 text-center text-muted-foreground">
+										<TableCell colSpan={11} className="h-20 text-center text-muted-foreground">
 											Upload a file to preview rows.
 										</TableCell>
 									</TableRow>
@@ -502,10 +601,17 @@ export function TransportImportDialog({
 									rows.map((row) => (
 										<TableRow
 											key={row.rowNumber}
-											className={row.errors.length > 0 ? "bg-destructive/10" : ""}
+											className={
+												row.errors.length > 0
+													? "bg-destructive/10"
+													: row.warnings.length > 0
+														? "bg-amber-500/10"
+														: ""
+											}
 										>
 											<TableCell>{row.rowNumber}</TableCell>
 											<TableCell className="font-mono text-xs">{row.code}</TableCell>
+											<TableCell className="font-mono text-xs">{row.capacityClass || "-"}</TableCell>
 											<TableCell>{row.btm}</TableCell>
 											<TableCell>{row.bdm}</TableCell>
 											<TableCell>{row.payload}</TableCell>
@@ -514,7 +620,11 @@ export function TransportImportDialog({
 											<TableCell>{row.heightFt}</TableCell>
 											<TableCell>{row.pallets}</TableCell>
 											<TableCell className="text-xs">
-												{row.errors.length > 0 ? row.errors.join(" | ") : "Ready"}
+												{row.errors.length > 0
+													? row.errors.join(" | ")
+													: row.warnings.length > 0
+														? row.warnings.join(" | ")
+														: "Ready"}
 											</TableCell>
 										</TableRow>
 									))
