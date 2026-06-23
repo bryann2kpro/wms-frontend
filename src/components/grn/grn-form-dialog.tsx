@@ -1394,8 +1394,8 @@ function GRNLineRow({
 						</div>
 
 						{/* Putaway (CTN rack + loose/loss rack share one border) */}
-						<div className="space-y-2.5 rounded-lg border border-border/50 bg-muted/15 p-2.5 lg:col-start-2">
-						<div className="space-y-1.5">
+						<div className="rounded-lg border border-border/50 bg-muted/15 p-2.5 lg:col-start-2">
+						<div className={cn("space-y-1.5", lossQty > 0 && "mb-2.5")}>
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
@@ -1475,12 +1475,19 @@ function GRNLineRow({
 								{rackCapacityHint}
 							</p>
 						) : null}
-						{hasAllocations ? (
-							<div className="mt-1 rounded-lg border border-border/60 bg-muted/20">
+						{hasAllocations || lossQty > 0 ? (
+							<div
+								className={cn(
+									"mt-1 rounded-lg border bg-muted/20",
+									lossQty > 0 && !isLossRackAllocationValid(item)
+										? "border-red-300 dark:border-red-800"
+										: "border-border/60",
+								)}
+							>
 								<ul className="divide-y divide-border/40">
 									{(item.rackAllocations ?? []).map((allocation, allocIdx) => (
 										<li
-											key={allocIdx}
+											key={`putaway-${allocIdx}`}
 											className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
 										>
 											{editingAllocationIdx === allocIdx ? (
@@ -1582,121 +1589,9 @@ function GRNLineRow({
 											)}
 										</li>
 									))}
-								</ul>
-								<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
-									<button
-										type="button"
-										className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
-										onClick={() => {
-											const remaining = Math.max(0, inboundQty - totalAllocQty);
-											const newAllocations = [
-												...(item.rackAllocations ?? []),
-												{ rackId: "", quantity: remaining, rackLabel: "" },
-											];
-											const newItems = [...items];
-											newItems[index] = {
-												...newItems[index],
-												rackAllocations: newAllocations,
-												rackAutoSuggested: false,
-											};
-											onItemsChange(newItems);
-											setEditingAllocationIdx(newAllocations.length - 1);
-										}}
-									>
-										<Plus className="h-3 w-3" />
-										Add rack
-									</button>
-									<span
-										className={cn(
-											"font-mono text-[11px]",
-											totalAllocQty === inboundQty
-												? "text-green-600 dark:text-green-400"
-												: "text-destructive",
-										)}
-									>
-										{totalAllocQty} / {inboundQty} {cartonUomLabel}
-									</span>
-								</div>
-							</div>
-						) : null}
-						{rackSuggestionMessage ? (
-							<p className="text-[11px] text-muted-foreground leading-snug">
-								{item.rackAutoSuggested ? (
-									<Badge
-										variant="outline"
-										className="mr-1.5 h-4 px-1 text-[10px] font-normal"
-									>
-										Suggested
-									</Badge>
-								) : null}
-								{rackSuggestionMessage}
-							</p>
-						) : null}
-						</div>
-
-						{/* Loss rack — only shown when loss qty > 0; shares the Putaway border above */}
-						{lossQty > 0 && (
-							<div className={`space-y-1.5 rounded-md border-t p-2.5 -mx-2.5 -mb-2.5 ${!isLossRackAllocationValid(item) ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
-								<label
-									className={`text-[10px] font-semibold uppercase tracking-wider ${!isLossRackAllocationValid(item) ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}
-									style={{ fontFamily: "var(--dashboard-body)" }}
-								>
-									Loose / Loss Rack *
-								</label>
-								{!hasLossAllocations ? (
-									<div className="flex flex-wrap items-center gap-2">
-										<div className="min-w-0 flex-1">
-											<RackLocationCombobox
-												remoteSearch
-												binType="LOOSE_STORAGE"
-												value={item.lossRackId ?? ""}
-												onChange={(rackId) => {
-													const newItems = [...items];
-													newItems[index] = { ...newItems[index], lossRackId: rackId };
-													onItemsChange(newItems);
-												}}
-												placeholder="Select loose storage rack…"
-												className="h-8"
-											/>
-										</div>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
-											disabled={lossQty <= 0}
-											title="Split the loss quantity across more than one loose storage rack"
-											onClick={() => {
-												const current = (item.lossRackId ?? "").trim();
-												const currentRack = looseRacks.find(
-													(r) => r.rackId === current,
-												);
-												const currentLabel = currentRack
-													? formatRackLocationLabel(currentRack)
-													: undefined;
-												const newAllocations = current
-													? [
-															{ rackId: current, quantity: lossQty, rackLabel: currentLabel },
-															{ rackId: "", quantity: 0, rackLabel: undefined },
-														]
-													: [{ rackId: "", quantity: lossQty, rackLabel: undefined }];
-												const newItems = [...items];
-												newItems[index] = {
-													...newItems[index],
-													lossRackAllocations: newAllocations,
-												};
-												onItemsChange(newItems);
-												setEditingLossAllocationIdx(newAllocations.length - 1);
-											}}
-										>
-											<Plus className="h-3 w-3" />
-											Split rack
-										</Button>
-									</div>
-								) : (
-									<div className="rounded-lg border border-border/60 bg-muted/20">
-										<ul className="divide-y divide-border/40">
-											{lossRackAllocations.map((allocation, allocIdx) => {
+									{lossQty > 0 &&
+										(hasLossAllocations ? (
+											lossRackAllocations.map((allocation, allocIdx) => {
 												const usedElsewhere = lossRackAllocations
 													.filter((_, i) => i !== allocIdx)
 													.map((a) => a.rackId);
@@ -1705,9 +1600,15 @@ function GRNLineRow({
 												);
 												return (
 													<li
-														key={allocIdx}
+														key={`loss-${allocIdx}`}
 														className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
 													>
+														<Badge
+															variant="outline"
+															className="h-4 shrink-0 px-1 text-[10px] font-normal text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-800"
+														>
+															Loss
+														</Badge>
 														{editingLossAllocationIdx === allocIdx ? (
 															<div className="flex min-w-0 flex-1 items-center gap-1.5">
 																<div className="min-w-0 flex-1">
@@ -1814,45 +1715,135 @@ function GRNLineRow({
 														)}
 													</li>
 												);
-											})}
-										</ul>
-										<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
-											<button
-												type="button"
-												className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
-												onClick={() => {
-													const remaining = Math.max(0, lossQty - totalLossAllocQty);
-													const newAllocations = [
-														...lossRackAllocations,
-														{ rackId: "", quantity: remaining, rackLabel: "" },
-													];
-													const newItems = [...items];
-													newItems[index] = {
-														...newItems[index],
-														lossRackAllocations: newAllocations,
-													};
-													onItemsChange(newItems);
-													setEditingLossAllocationIdx(newAllocations.length - 1);
-												}}
-											>
-												<Plus className="h-3 w-3" />
-												Add rack
-											</button>
+											})
+										) : (
+											<li className="flex items-center gap-1.5 px-2 py-1 text-[11px]">
+												<Badge
+													variant="outline"
+													className="h-4 shrink-0 px-1 text-[10px] font-normal text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-800"
+												>
+													Loss
+												</Badge>
+												<div className="min-w-0 flex-1">
+													<RackLocationCombobox
+														remoteSearch
+														binType="LOOSE_STORAGE"
+														value={item.lossRackId ?? ""}
+														onChange={(rackId) => {
+															const newItems = [...items];
+															newItems[index] = { ...newItems[index], lossRackId: rackId };
+															onItemsChange(newItems);
+														}}
+														placeholder="Select loose storage rack…"
+														className="h-7"
+													/>
+												</div>
+												<span className="shrink-0 font-mono text-foreground/85">
+													{lossQty} {lossUomLabel}
+												</span>
+												<button
+													type="button"
+													title="Split the loss quantity across more than one loose storage rack"
+													className="shrink-0 text-muted-foreground hover:text-foreground"
+													onClick={() => {
+														const current = (item.lossRackId ?? "").trim();
+														const currentRack = looseRacks.find(
+															(r) => r.rackId === current,
+														);
+														const currentLabel = currentRack
+															? formatRackLocationLabel(currentRack)
+															: undefined;
+														const newAllocations = current
+															? [
+																{ rackId: current, quantity: lossQty, rackLabel: currentLabel },
+																{ rackId: "", quantity: 0, rackLabel: undefined },
+															]
+															: [{ rackId: "", quantity: lossQty, rackLabel: undefined }];
+														const newItems = [...items];
+														newItems[index] = {
+															...newItems[index],
+															lossRackAllocations: newAllocations,
+														};
+														onItemsChange(newItems);
+														setEditingLossAllocationIdx(newAllocations.length - 1);
+													}}
+												>
+													<Plus className="h-3 w-3" />
+												</button>
+											</li>
+									))}
+								</ul>
+								<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
+									<button
+										type="button"
+										className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
+										onClick={() => {
+											const remaining = Math.max(0, inboundQty - totalAllocQty);
+											const newAllocations = [
+												...(item.rackAllocations ?? []),
+												{ rackId: "", quantity: remaining, rackLabel: "" },
+											];
+											const newItems = [...items];
+											newItems[index] = {
+												...newItems[index],
+												rackAllocations: newAllocations,
+												rackAutoSuggested: false,
+											};
+											onItemsChange(newItems);
+											setEditingAllocationIdx(newAllocations.length - 1);
+										}}
+									>
+										<Plus className="h-3 w-3" />
+										Add rack
+									</button>
+									<div className="flex shrink-0 items-center gap-2.5">
+										<span
+											className={cn(
+												"font-mono text-[11px]",
+												totalAllocQty === inboundQty
+													? "text-green-600 dark:text-green-400"
+													: "text-destructive",
+											)}
+										>
+											{totalAllocQty} / {inboundQty} {cartonUomLabel}
+										</span>
+										{lossQty > 0 ? (
 											<span
 												className={cn(
 													"font-mono text-[11px]",
-													totalLossAllocQty === lossQty
+													isLossRackAllocationValid(item)
 														? "text-green-600 dark:text-green-400"
 														: "text-destructive",
 												)}
 											>
-												{totalLossAllocQty} / {lossQty} {lossUomLabel}
+												Loss{" "}
+												{hasLossAllocations
+													? totalLossAllocQty
+													: item.lossRackId?.trim()
+														? lossQty
+														: 0}{" "}
+												/ {lossQty} {lossUomLabel}
 											</span>
-										</div>
+										) : null}
 									</div>
-								)}
+								</div>
 							</div>
-						)}
+						) : null}
+						{rackSuggestionMessage ? (
+							<p className="text-[11px] text-muted-foreground leading-snug">
+								{item.rackAutoSuggested ? (
+									<Badge
+										variant="outline"
+										className="mr-1.5 h-4 px-1 text-[10px] font-normal"
+									>
+										Suggested
+									</Badge>
+								) : null}
+								{rackSuggestionMessage}
+							</p>
+						) : null}
+						</div>
+
 					</div>
 					</div>
 				</div>
