@@ -397,6 +397,16 @@ export function SkusSection() {
 				},
 			},
 			{
+				id: "looseQuantity",
+				accessorKey: "looseQuantity",
+				header: "Loose Qty",
+				size: 100,
+				cell: (info) => {
+					const val = info.getValue<number | null>();
+					return val != null ? val : "—";
+				},
+			},
+			{
 				id: "isActive",
 				accessorKey: "isActive",
 				header: "Status",
@@ -813,16 +823,12 @@ export function SkusSection() {
 							input: {
 								skuCode: values.skuCode,
 								skuDescription: values.skuDescription,
-								skuPrice:
-									values.skuPrice === 0 || values.skuPrice === null
-										? null
-										: Number(values.skuPrice),
-								skuQuantity: Number(values.skuQuantity),
 								skuExpiryDate: "",
 								skuUom: values.skuUom,
 								pickingStrategy: values.pickingStrategy,
 								isLotControlled: values.isLotControlled,
 								isExpiryControlled: values.isExpiryControlled,
+								looseQuantity: values.looseQuantity ?? null,
 								skuSuppliers:
 									values.skuSuppliers?.map((s) => ({
 										supplierId: s.supplierId,
@@ -873,6 +879,7 @@ export function SkusSection() {
 						pickingStrategy: editing.pickingStrategy ?? "FIFO",
 						isLotControlled: editing.isLotControlled ?? false,
 						isExpiryControlled: editing.isExpiryControlled ?? false,
+						looseQuantity: editing.looseQuantity,
 						skuSuppliers: editing.skuSuppliers,
 						isActive: editing.isActive,
 						barcode: editing.barcode,
@@ -894,36 +901,31 @@ export function SkusSection() {
 						updateSkus({
 							id: editing.skuId,
 							input: {
-									skuCode: values.skuCode,
-									skuDescription: values.skuDescription,
-									skuPrice:
-										values.skuPrice === 0 || values.skuPrice === null
-											? null
-											: Number(values.skuPrice),
-									skuQuantity: Number(values.skuQuantity),
-									lossQuantity: Number(values.lossQuantity ?? 0),
-									skuExpiryDate: "",
-									skuUom: values.skuUom,
-									pickingStrategy: values.pickingStrategy,
-									isLotControlled: values.isLotControlled,
-									isExpiryControlled: values.isExpiryControlled,
-									skuSuppliers:
-										values.skuSuppliers?.map((s) => ({
-											supplierId: s.supplierId,
-											originalSkuCode: s.originalSkuCode || null,
-										})) || [],
-									isActive: values.isActive,
-									barcode: values.barcode ?? null,
-									brand: values.brand ?? null,
-									category: values.category ?? null,
-									manufacturer: values.manufacturer ?? null,
-									caseRate: values.caseRate ?? null,
-									caseExtLengthMm: values.caseExtLengthMm ?? null,
-									caseExtWidthMm: values.caseExtWidthMm ?? null,
-									caseExtHeightMm: values.caseExtHeightMm ?? null,
-									caseGrossWeightKg: values.caseGrossWeightKg ?? null,
-									casesPerLayer: values.casesPerLayer ?? null,
-									noOfLayers: values.noOfLayers ?? null,
+								skuCode: values.skuCode,
+								skuDescription: values.skuDescription,
+								skuExpiryDate: "",
+								skuUom: values.skuUom,
+								pickingStrategy: values.pickingStrategy,
+								isLotControlled: values.isLotControlled,
+								isExpiryControlled: values.isExpiryControlled,
+								looseQuantity: values.looseQuantity ?? null,
+								skuSuppliers:
+									values.skuSuppliers?.map((s) => ({
+										supplierId: s.supplierId,
+										originalSkuCode: s.originalSkuCode || null,
+									})) || [],
+								isActive: values.isActive,
+								barcode: values.barcode ?? null,
+								brand: values.brand ?? null,
+								category: values.category ?? null,
+								manufacturer: values.manufacturer ?? null,
+								caseRate: values.caseRate ?? null,
+								caseExtLengthMm: values.caseExtLengthMm ?? null,
+								caseExtWidthMm: values.caseExtWidthMm ?? null,
+								caseExtHeightMm: values.caseExtHeightMm ?? null,
+								caseGrossWeightKg: values.caseGrossWeightKg ?? null,
+								casesPerLayer: values.casesPerLayer ?? null,
+								noOfLayers: values.noOfLayers ?? null,
 							},
 						});
 					}}

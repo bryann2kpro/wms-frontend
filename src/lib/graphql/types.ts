@@ -472,6 +472,7 @@ export interface Skus {
 	pickingStrategy: string;
 	isLotControlled: boolean;
 	isExpiryControlled: boolean;
+	looseQuantity?: number | null;
 	barcode?: string | null;
 	brand?: string | null;
 	category?: string | null;
@@ -499,6 +500,7 @@ export interface createSkusInput {
 	pickingStrategy?: string;
 	isLotControlled?: boolean;
 	isExpiryControlled?: boolean;
+	looseQuantity?: number | null;
 	isActive?: boolean;
 	barcode?: string | null;
 	brand?: string | null;
@@ -523,6 +525,7 @@ export interface UpdateSkusInput {
 	pickingStrategy?: string;
 	isLotControlled?: boolean;
 	isExpiryControlled?: boolean;
+	looseQuantity?: number | null;
 	isActive?: boolean;
 	barcode?: string | null;
 	brand?: string | null;
