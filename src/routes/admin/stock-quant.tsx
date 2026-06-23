@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Boxes, ChevronLeft, ChevronRight } from "lucide-react";
@@ -168,6 +168,15 @@ function StockQuantComponent() {
 	const totalCount = pagination?.totalCount ?? 0;
 	const totalQuantity = Number(data?.stockQuants?.totalQuantity ?? "0");
 
+	const [dateNow, setDateNow] = useState(new Date());
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setDateNow(new Date());
+		}, 1000);
+		return () => clearInterval(interval);
+	}, []);
+
 	return (
 		<main className="container mx-auto space-y-6 p-6" aria-busy={loading || isFetching}>
 			<AdminPageHeader
@@ -178,7 +187,7 @@ function StockQuantComponent() {
 				descriptionId="stock-quant-page-description"
 				rightSlot={
 					<p className="text-sm text-muted-foreground tabular-nums">
-						{formatDateOnly(new Date())}
+						{formatDate(dateNow)}
 					</p>
 				}
 			/>
