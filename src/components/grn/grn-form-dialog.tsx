@@ -289,6 +289,8 @@ export type GRNLineItemForm = {
 	lossRackId?: string;
 	/** Multi-rack putaway split when quantity exceeds single-rack capacity. */
 	rackAllocations?: GrnRackAllocationForm[];
+	/** Multi-rack loose/loss split when loss qty is spread across loose-storage racks. */
+	lossRackAllocations?: GrnRackAllocationForm[];
 	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
 	rackAutoSuggested?: boolean;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
@@ -326,6 +328,43 @@ function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	const rackId = item.rackId?.trim();
 	if (!rackId) return {};
 	return { rackAllocations: [{ rackId, quantity: cartonQty }] };
+}
+
+function buildGrnItemLossRackPayload(item: GRNLineItemForm): {
+	lossRackAllocations?: Array<{ rackId: string; quantity: number }>;
+} {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return {};
+
+	if (item.lossRackAllocations && item.lossRackAllocations.length > 1) {
+		return {
+			lossRackAllocations: item.lossRackAllocations.map((row) => ({
+				rackId: row.rackId,
+				quantity: row.quantity,
+			})),
+		};
+	}
+
+	const lossRackId = item.lossRackId?.trim();
+	if (!lossRackId) return {};
+	return { lossRackAllocations: [{ rackId: lossRackId, quantity: lossQty }] };
+}
+
+/** True when the loose/loss rack(s) for this line cover the full loss quantity (or there's no loss to cover). */
+function isLossRackAllocationValid(item: GRNLineItemForm): boolean {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return true;
+	if (item.lossRackAllocations && item.lossRackAllocations.length > 0) {
+		const allFilled = item.lossRackAllocations.every((row) =>
+			(row.rackId ?? "").trim(),
+		);
+		const total = item.lossRackAllocations.reduce(
+			(sum, row) => sum + (Number(row.quantity) || 0),
+			0,
+		);
+		return allFilled && total === lossQty;
+	}
+	return !!item.lossRackId?.trim();
 }
 
 /** Map stock-unit id or code to a display unit code (never leak UUIDs in labels). */
@@ -916,6 +955,7 @@ function GRNLineRow({
 	);
 	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
 	const [editingAllocationIdx, setEditingAllocationIdx] = useState<number | null>(null);
+	const [editingLossAllocationIdx, setEditingLossAllocationIdx] = useState<number | null>(null);
 
 	const { data: looseRacksData } = useQuery({
 		queryKey: [...qk.racks.all, "loose-storage"],
@@ -953,6 +993,11 @@ function GRNLineRow({
 		((item.rackAllocations ?? []).reduce((s, a) => s + (Number(a.quantity) || 0), 0)) * 100,
 	) / 100;
 	const hasAllocations = (item.rackAllocations ?? []).length > 0;
+	const lossRackAllocations = item.lossRackAllocations ?? [];
+	const hasLossAllocations = lossRackAllocations.length > 0;
+	const totalLossAllocQty = Math.round(
+		lossRackAllocations.reduce((s, a) => s + (Number(a.quantity) || 0), 0) * 100,
+	) / 100;
 
 	// Stable key representing rack IDs already assigned to other items in the same form.
 	// Used to exclude those racks from this item's suggestion so each SKU gets distinct locations.
@@ -1348,8 +1393,9 @@ function GRNLineRow({
 							</div>
 						</div>
 
-						{/* Putaway */}
-						<div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/15 p-2.5">
+						{/* Putaway (CTN rack + loose/loss rack share one border) */}
+						<div className="space-y-2.5 rounded-lg border border-border/50 bg-muted/15 p-2.5 lg:col-start-2">
+						<div className="space-y-1.5">
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
@@ -1588,29 +1634,220 @@ function GRNLineRow({
 						) : null}
 						</div>
 
-						{/* Loss rack — only shown when loss qty > 0 */}
+						{/* Loss rack — only shown when loss qty > 0; shares the Putaway border above */}
 						{lossQty > 0 && (
-							<div className={`space-y-1.5 rounded-lg border p-2.5 lg:col-start-2 ${!(item.lossRackId ?? "").trim() ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
+							<div className={`space-y-1.5 rounded-md border-t p-2.5 -mx-2.5 -mb-2.5 ${!isLossRackAllocationValid(item) ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
 								<label
-									className={`text-[10px] font-semibold uppercase tracking-wider ${!(item.lossRackId ?? "").trim() ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}
+									className={`text-[10px] font-semibold uppercase tracking-wider ${!isLossRackAllocationValid(item) ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}
 									style={{ fontFamily: "var(--dashboard-body)" }}
 								>
 									Loose / Loss Rack *
 								</label>
-								<RackLocationCombobox
-									remoteSearch
-									binType="LOOSE_STORAGE"
-									value={item.lossRackId ?? ""}
-									onChange={(rackId) => {
-										const newItems = [...items];
-										newItems[index] = { ...newItems[index], lossRackId: rackId };
-										onItemsChange(newItems);
-									}}
-									placeholder="Select loose storage rack…"
-									className="h-8"
-								/>
+								{!hasLossAllocations ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<div className="min-w-0 flex-1">
+											<RackLocationCombobox
+												remoteSearch
+												binType="LOOSE_STORAGE"
+												value={item.lossRackId ?? ""}
+												onChange={(rackId) => {
+													const newItems = [...items];
+													newItems[index] = { ...newItems[index], lossRackId: rackId };
+													onItemsChange(newItems);
+												}}
+												placeholder="Select loose storage rack…"
+												className="h-8"
+											/>
+										</div>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
+											disabled={lossQty <= 0}
+											title="Split the loss quantity across more than one loose storage rack"
+											onClick={() => {
+												const current = (item.lossRackId ?? "").trim();
+												const newAllocations = current
+													? [
+															{ rackId: current, quantity: lossQty, rackLabel: "" },
+															{ rackId: "", quantity: 0, rackLabel: "" },
+														]
+													: [{ rackId: "", quantity: lossQty, rackLabel: "" }];
+												const newItems = [...items];
+												newItems[index] = {
+													...newItems[index],
+													lossRackAllocations: newAllocations,
+												};
+												onItemsChange(newItems);
+												setEditingLossAllocationIdx(newAllocations.length - 1);
+											}}
+										>
+											<Plus className="h-3 w-3" />
+											Split rack
+										</Button>
+									</div>
+								) : (
+									<div className="rounded-lg border border-border/60 bg-muted/20">
+										<ul className="divide-y divide-border/40">
+											{lossRackAllocations.map((allocation, allocIdx) => {
+												const usedElsewhere = lossRackAllocations
+													.filter((_, i) => i !== allocIdx)
+													.map((a) => a.rackId);
+												const availableLooseRacks = looseRacks.filter(
+													(r) => !usedElsewhere.includes(r.rackId),
+												);
+												return (
+													<li
+														key={allocIdx}
+														className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
+													>
+														{editingLossAllocationIdx === allocIdx ? (
+															<div className="flex min-w-0 flex-1 items-center gap-1.5">
+																<div className="min-w-0 flex-1">
+																	<RackLocationCombobox
+																		racks={availableLooseRacks}
+																		value={allocation.rackId}
+																		className="h-7"
+																		onChange={(rackId, rackLabel) => {
+																			const newAllocations = lossRackAllocations.map(
+																				(a, i) =>
+																					i === allocIdx
+																						? { ...a, rackId, rackLabel }
+																						: a,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																			};
+																			onItemsChange(newItems);
+																			setEditingLossAllocationIdx(null);
+																		}}
+																	/>
+																</div>
+																<button
+																	type="button"
+																	title="Cancel"
+																	className="shrink-0 text-muted-foreground hover:text-foreground"
+																	onClick={() => {
+																		if (!allocation.rackId) {
+																			const newAllocations = lossRackAllocations.filter(
+																				(_, i) => i !== allocIdx,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																			};
+																			onItemsChange(newItems);
+																		}
+																		setEditingLossAllocationIdx(null);
+																	}}
+																>
+																	<X className="h-3 w-3" />
+																</button>
+															</div>
+														) : (
+															<>
+																<span
+																	className="w-20 shrink-0 font-mono text-foreground/85 truncate"
+																	title={allocation.rackLabel ?? allocation.rackId}
+																>
+																	{allocation.rackLabel ?? allocation.rackId}
+																</span>
+																<Input
+																	type="number"
+																	min={0}
+																	value={allocation.quantity}
+																	onChange={(e) => {
+																		const newQty = Math.max(0, Number(e.target.value) || 0);
+																		const newAllocations = lossRackAllocations.map(
+																			(a, i) => (i === allocIdx ? { ...a, quantity: newQty } : a),
+																		);
+																		const newItems = [...items];
+																		newItems[index] = {
+																			...newItems[index],
+																			lossRackAllocations: newAllocations,
+																		};
+																		onItemsChange(newItems);
+																	}}
+																	className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
+																/>
+																<span className="shrink-0 text-muted-foreground">{lossUomLabel}</span>
+																<div className="ml-auto flex shrink-0 items-center gap-1">
+																	<button
+																		type="button"
+																		title="Change rack"
+																		className="text-muted-foreground hover:text-foreground"
+																		onClick={() => setEditingLossAllocationIdx(allocIdx)}
+																	>
+																		<Pencil className="h-3 w-3" />
+																	</button>
+																	<button
+																		type="button"
+																		title="Remove rack"
+																		className="text-muted-foreground hover:text-destructive"
+																		onClick={() => {
+																			const newAllocations = lossRackAllocations.filter(
+																				(_, i) => i !== allocIdx,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																				lossRackId: newAllocations[0]?.rackId ?? "",
+																			};
+																			onItemsChange(newItems);
+																		}}
+																	>
+																		<Trash2 className="h-3 w-3" />
+																	</button>
+																</div>
+															</>
+														)}
+													</li>
+												);
+											})}
+										</ul>
+										<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
+											<button
+												type="button"
+												className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
+												onClick={() => {
+													const remaining = Math.max(0, lossQty - totalLossAllocQty);
+													const newAllocations = [
+														...lossRackAllocations,
+														{ rackId: "", quantity: remaining, rackLabel: "" },
+													];
+													const newItems = [...items];
+													newItems[index] = {
+														...newItems[index],
+														lossRackAllocations: newAllocations,
+													};
+													onItemsChange(newItems);
+													setEditingLossAllocationIdx(newAllocations.length - 1);
+												}}
+											>
+												<Plus className="h-3 w-3" />
+												Add rack
+											</button>
+											<span
+												className={cn(
+													"font-mono text-[11px]",
+													totalLossAllocQty === lossQty
+														? "text-green-600 dark:text-green-400"
+														: "text-destructive",
+												)}
+											>
+												{totalLossAllocQty} / {lossQty} {lossUomLabel}
+											</span>
+										</div>
+									</div>
+								)}
 							</div>
 						)}
+					</div>
 					</div>
 				</div>
 			</div>
@@ -1904,11 +2141,11 @@ export function GrnFormDialog({
 					}
 
 					const missingLossRack = items.find(
-						(i) => (Number(i.loss) || 0) > 0 && !(i.lossRackId ?? "").trim(),
+						(i) => !isLossRackAllocationValid(i),
 					);
 					if (missingLossRack) {
 						itemErrors.push(
-							"Each line item with a loss quantity must have a Loose / Loss Rack selected.",
+							"Each line item with a loss quantity must have Loose / Loss Rack(s) covering the full loss quantity.",
 						);
 					}
 
@@ -1966,11 +2203,11 @@ export function GrnFormDialog({
 		onSubmit: async ({ value }) => {
 			if (mode === "create") {
 				const missingLossRack = (value.items ?? []).find(
-					(i) => (Number(i.loss) || 0) > 0 && !(i.lossRackId ?? "").trim(),
+					(i) => !isLossRackAllocationValid(i),
 				);
 				if (missingLossRack) {
 					toast.error(
-						"Each line item with a loss quantity must have a Loose / Loss Rack selected.",
+						"Each line item with a loss quantity must have Loose / Loss Rack(s) covering the full loss quantity.",
 					);
 					return;
 				}
@@ -1994,6 +2231,7 @@ export function GrnFormDialog({
 							...i,
 							orderedQty: orderedCtn,
 							...buildGrnItemRackPayload(i),
+							...buildGrnItemLossRackPayload(i),
 						};
 					}),
 				};
@@ -2034,6 +2272,7 @@ export function GrnFormDialog({
 									?.stockUnitId ?? i.uom)
 								: undefined;
 							const rackPayload = buildGrnItemRackPayload(i);
+							const lossRackPayload = buildGrnItemLossRackPayload(i);
 							return {
 								skuId:
 									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
@@ -2047,6 +2286,7 @@ export function GrnFormDialog({
 								expiryDate: (i.expiryDate ?? "").trim() || undefined,
 								lotNo: (i.lotNo ?? "").trim() || undefined,
 								...rackPayload,
+								...lossRackPayload,
 							};
 						}),
 					},
@@ -2099,6 +2339,13 @@ export function GrnFormDialog({
 						: undefined);
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
+				const lossRackAllocationsSource = it.lossRackAllocations ?? undefined;
+				const lossRackId =
+					lossRackAllocationsSource?.[0]?.rackId ?? it.lossRackId ?? "";
+				const lossRackAllocations = lossRackAllocationsSource?.map((row) => ({
+					rackId: row.rackId,
+					quantity: row.quantity,
+				}));
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -2110,6 +2357,8 @@ export function GrnFormDialog({
 					lotNo,
 					rackId,
 					rackAllocations,
+					lossRackId,
+					lossRackAllocations,
 				};
 			});
 			form.reset({

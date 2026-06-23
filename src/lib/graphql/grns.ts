@@ -65,6 +65,7 @@ export const GRNS_QUERY = gql`
 					skuDescription
 					qty
 					lossQty
+					lossRackId
 					remarks
 					expiryDate
 					lotNo
@@ -79,6 +80,11 @@ export const GRNS_QUERY = gql`
 						rackColumn
 					}
 					rackAllocations {
+						rackId
+						quantity
+						rackLabel
+					}
+					lossRackAllocations {
 						rackId
 						quantity
 						rackLabel
@@ -460,6 +466,9 @@ export function mapGrnsQueryToResult(
 			const rackAllocations = (i.rackAllocations ?? [])
 				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
 				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
+			const lossRackAllocations = (i.lossRackAllocations ?? [])
+				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
+				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -472,7 +481,9 @@ export function mapGrnsQueryToResult(
 				expiryDate: i.expiryDate ?? null,
 				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
+				lossRackId: i.lossRackId ?? null,
 				rackAllocations: rackAllocations.length > 0 ? rackAllocations : null,
+				lossRackAllocations: lossRackAllocations.length > 0 ? lossRackAllocations : null,
 			};
 		});
 		const totalItems = lineItems.reduce(
