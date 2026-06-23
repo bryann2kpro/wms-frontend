@@ -1668,12 +1668,18 @@ function GRNLineRow({
 											title="Split the loss quantity across more than one loose storage rack"
 											onClick={() => {
 												const current = (item.lossRackId ?? "").trim();
+												const currentRack = looseRacks.find(
+													(r) => r.rackId === current,
+												);
+												const currentLabel = currentRack
+													? formatRackLocationLabel(currentRack)
+													: undefined;
 												const newAllocations = current
 													? [
-															{ rackId: current, quantity: lossQty, rackLabel: "" },
-															{ rackId: "", quantity: 0, rackLabel: "" },
+															{ rackId: current, quantity: lossQty, rackLabel: currentLabel },
+															{ rackId: "", quantity: 0, rackLabel: undefined },
 														]
-													: [{ rackId: "", quantity: lossQty, rackLabel: "" }];
+													: [{ rackId: "", quantity: lossQty, rackLabel: undefined }];
 												const newItems = [...items];
 												newItems[index] = {
 													...newItems[index],
