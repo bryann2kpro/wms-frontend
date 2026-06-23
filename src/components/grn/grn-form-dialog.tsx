@@ -1590,7 +1590,7 @@ function GRNLineRow({
 
 						{/* Loss rack — only shown when loss qty > 0 */}
 						{lossQty > 0 && (
-							<div className={`space-y-1.5 rounded-lg border p-2.5 ${!(item.lossRackId ?? "").trim() ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
+							<div className={`space-y-1.5 rounded-lg border p-2.5 lg:col-start-2 ${!(item.lossRackId ?? "").trim() ? "border-red-400 bg-red-50/30 dark:border-red-700 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/20"}`}>
 								<label
 									className={`text-[10px] font-semibold uppercase tracking-wider ${!(item.lossRackId ?? "").trim() ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}
 									style={{ fontFamily: "var(--dashboard-body)" }}
