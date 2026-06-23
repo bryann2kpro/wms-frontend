@@ -679,6 +679,7 @@ function GRNRouteComponent() {
 				lossRackId?: string;
 				rackIds?: string[];
 				rackAllocations?: Array<{ rackId: string; quantity: number }>;
+				lossRackAllocations?: Array<{ rackId: string; quantity: number }>;
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
@@ -699,6 +700,9 @@ function GRNRouteComponent() {
 					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
 				);
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
+				const lossRackAllocations = (i.lossRackAllocations ?? []).filter(
+					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
+				);
 				return {
 					skuId:
 						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
@@ -716,6 +720,7 @@ function GRNRouteComponent() {
 						: rackIds.length > 0
 							? { rackIds }
 							: {}),
+					...(lossRackAllocations.length > 0 ? { lossRackAllocations } : {}),
 				};
 			});
 			const baseInput = {
@@ -1127,6 +1132,8 @@ function GRNRouteComponent() {
 														lotNo: i.lotNo ?? "",
 														lossRackId: i.lossRackId?.trim() || undefined,
 														rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
+														rackAllocations: i.rackAllocations,
+														lossRackAllocations: i.lossRackAllocations,
 													})),
 												});
 											}}

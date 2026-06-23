@@ -610,8 +610,16 @@ export interface GrnItem {
 	updatedBy: string | null;
 	/** Rack location for this line (replaces warehouse on item when backend uses rack) */
 	rack: GrnRack | null;
+	/** Loose/loss rack for this item (single rack — legacy/fallback for lossRackAllocations). */
+	lossRackId?: string | null;
 	/** Per-rack carton allocations for this GRN item. */
 	rackAllocations?: Array<{
+		rackId: string;
+		quantity: number;
+		rackLabel?: string | null;
+	}> | null;
+	/** Per-rack loose/loss allocations for this GRN item's lossQty. */
+	lossRackAllocations?: Array<{
 		rackId: string;
 		quantity: number;
 		rackLabel?: string | null;
@@ -635,6 +643,12 @@ export interface CreateGrnItemInput {
 	rackId?: string | null;
 	/** Rack IDs for this line item (backend accepts string[]). */
 	rackIds?: string[] | null;
+	/** Per-rack carton allocations (preferred over rackIds when splitting putaway). */
+	rackAllocations?: Array<{ rackId: string; quantity: number }> | null;
+	/** Loose/loss rack for this item (single rack — legacy/fallback). */
+	lossRackId?: string | null;
+	/** Per-rack loose/loss allocations (preferred over lossRackId when splitting loose storage). */
+	lossRackAllocations?: Array<{ rackId: string; quantity: number }> | null;
 	/** Expiry date (ISO date string YYYY-MM-DD). */
 	expiryDate?: string | null;
 	/** Lot number assigned by supplier/manufacturer. */
@@ -752,8 +766,16 @@ export interface GrnItemForList {
 		rackRow: string;
 		rackColumn: string;
 	} | null;
+	/** Loose/loss rack for this item (single rack — legacy/fallback for lossRackAllocations). */
+	lossRackId?: string | null;
 	/** Per-rack carton allocations (populated when multiple racks are used). */
 	rackAllocations?: Array<{
+		rackId: string;
+		quantity: number;
+		rackLabel?: string | null;
+	}> | null;
+	/** Per-rack loose/loss allocations (populated when loss qty is split across racks). */
+	lossRackAllocations?: Array<{
 		rackId: string;
 		quantity: number;
 		rackLabel?: string | null;
