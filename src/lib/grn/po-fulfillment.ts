@@ -160,10 +160,10 @@ export function formatFulfilledLossDisplay(fulfilledLoss: number): string {
 /**
  * Cartons + loose pieces still owed against a PO/ASN line, after this delivery.
  *
- * CTN: plain Ordered − Delivered (whole cartons), plus one extra carton for every full
- * loose_quantity's worth of loss (a whole carton lost in transit still needs replacing).
- * Loose pieces: the complement of the loss within its partial carton — e.g. losing 8 of a
- * 10-pieces-per-carton SKU still needs 2 more pieces to make that carton whole again.
+ * Mixed-radix subtraction: Ordered (expressed as whole cartons) minus Delivered
+ * (cartons + loose pieces), carrying/borrowing between the two via the SKU's
+ * loose_quantity (pieces/carton) — e.g. Ordered 100 CTN, Delivered 40 CTN + 6 loose,
+ * loose_quantity 10 -> 1000 - 406 = 594 -> 59 CTN + 4 loose still owed.
  * Returns null when there's no PO/ASN expected qty to compare against (manual GRN line).
  */
 export function computeRemainingOwed(
@@ -176,12 +176,14 @@ export function computeRemainingOwed(
 	const radix = looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0
 		? looseQuantity
 		: 1;
-	const safeLoss = Math.max(0, cumulativeLossPieces);
-	const extraCtnFromLoss = Math.floor(safeLoss / radix);
-	const lossRemainder = safeLoss % radix;
-	const remainingCtn = Math.max(0, expectedCtn - cumulativeDeliveredCtn) + extraCtnFromLoss;
-	const remainingLoosePcs = lossRemainder === 0 ? 0 : radix - lossRemainder;
-	return { remainingCtn, remainingLoosePcs };
+	const remainingPieces = Math.max(
+		0,
+		(expectedCtn - cumulativeDeliveredCtn) * radix - Math.max(0, cumulativeLossPieces),
+	);
+	return {
+		remainingCtn: Math.floor(remainingPieces / radix),
+		remainingLoosePcs: remainingPieces % radix,
+	};
 }
 
 /**
