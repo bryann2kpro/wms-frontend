@@ -78,6 +78,7 @@ import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
 	applyRemainingQtyToLineItems,
 	formatFulfilledCtnDisplay,
@@ -976,6 +977,9 @@ function GRNLineRow({
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
 	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const debouncedSkuCode = useDebouncedValue(item.skuCode, 350);
+	const debouncedInboundQty = useDebouncedValue(inboundQty, 350);
+	const debouncedResolvedSkuId = useDebouncedValue(resolvedSkuId, 350);
 
 	useEffect(() => {
 		if (lossQty > 0 && !item.lossRackId && looseRacks.length > 0) {
@@ -1044,8 +1048,11 @@ function GRNLineRow({
 		return rack ? formatRackLocationLabel(rack as Rack) : null;
 	}, [item.rackId, item.rackAllocations, putawayPlan, racks]);
 
+	const suggestForRackId =
+		item.rackAutoSuggested === true ? null : item.rackId?.trim() || null;
+
 	useEffect(() => {
-		if (!item.skuCode?.trim()) {
+		if (!debouncedSkuCode?.trim()) {
 			setPutawayPlan(null);
 			setIsSuggestingRack(false);
 			return;
@@ -1061,10 +1068,10 @@ function GRNLineRow({
 				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
 					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
 					{
-						skuId: resolvedSkuId || null,
-						skuCode: item.skuCode,
-						quantity: inboundQty > 0 ? inboundQty : 1,
-						forRackId: item.rackId?.trim() || null,
+						skuId: debouncedResolvedSkuId || null,
+						skuCode: debouncedSkuCode,
+						quantity: debouncedInboundQty > 0 ? debouncedInboundQty : 1,
+						forRackId: suggestForRackId,
 						excludeRackIds: excludeRackIds.length > 0 ? excludeRackIds : null,
 					},
 				);
@@ -1118,10 +1125,10 @@ function GRNLineRow({
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- re-suggest when SKU/qty/rack, auto-suggest state, or sibling rack assignments change
 	}, [
-		item.skuCode,
-		resolvedSkuId,
-		inboundQty,
-		item.rackId,
+		debouncedSkuCode,
+		debouncedResolvedSkuId,
+		debouncedInboundQty,
+		suggestForRackId,
 		item.rackAutoSuggested,
 		index,
 		otherItemRackIdsKey,
