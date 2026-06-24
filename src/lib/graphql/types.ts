@@ -355,6 +355,8 @@ export interface Transport {
 	maxHeightMm?: string | null;
 	maxWeightKg?: string | null;
 	numberOfPallets?: number | null;
+	/** Resolved from code tonnage label, e.g. 3T for "WTH4155 (3 TON)". */
+	capacityClass?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: string;
