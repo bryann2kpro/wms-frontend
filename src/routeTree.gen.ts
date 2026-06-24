@@ -46,6 +46,7 @@ import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
 import { Route as AdminInvoiceDetailRouteImport } from './routes/admin/invoice-detail'
 import { Route as AdminInventoryDetailRouteImport } from './routes/admin/inventory-detail'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminGrnRemainingReportRouteImport } from './routes/admin/grn-remaining-report'
 import { Route as AdminGrnRouteImport } from './routes/admin/grn'
 import { Route as AdminForbiddenRouteImport } from './routes/admin/forbidden'
 import { Route as AdminExceptionsRouteImport } from './routes/admin/exceptions'
@@ -256,6 +257,11 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminGrnRemainingReportRoute = AdminGrnRemainingReportRouteImport.update({
+  id: '/grn-remaining-report',
+  path: '/grn-remaining-report',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminGrnRoute = AdminGrnRouteImport.update({
   id: '/grn',
   path: '/grn',
@@ -397,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
+  '/admin/grn-remaining-report': typeof AdminGrnRemainingReportRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
+  '/admin/grn-remaining-report': typeof AdminGrnRemainingReportRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -524,6 +532,7 @@ export interface FileRoutesById {
   '/admin/exceptions': typeof AdminExceptionsRoute
   '/admin/forbidden': typeof AdminForbiddenRoute
   '/admin/grn': typeof AdminGrnRoute
+  '/admin/grn-remaining-report': typeof AdminGrnRemainingReportRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/inventory-detail': typeof AdminInventoryDetailRoute
   '/admin/invoice-detail': typeof AdminInvoiceDetailRoute
@@ -589,6 +598,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/forbidden'
     | '/admin/grn'
+    | '/admin/grn-remaining-report'
     | '/admin/inventory'
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/forbidden'
     | '/admin/grn'
+    | '/admin/grn-remaining-report'
     | '/admin/inventory'
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
@@ -715,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/forbidden'
     | '/admin/grn'
+    | '/admin/grn-remaining-report'
     | '/admin/inventory'
     | '/admin/inventory-detail'
     | '/admin/invoice-detail'
@@ -1043,6 +1055,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInventoryRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/grn-remaining-report': {
+      id: '/admin/grn-remaining-report'
+      path: '/grn-remaining-report'
+      fullPath: '/admin/grn-remaining-report'
+      preLoaderRoute: typeof AdminGrnRemainingReportRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/grn': {
       id: '/admin/grn'
       path: '/grn'
@@ -1240,6 +1259,7 @@ interface AdminRouteRouteChildren {
   AdminExceptionsRoute: typeof AdminExceptionsRoute
   AdminForbiddenRoute: typeof AdminForbiddenRoute
   AdminGrnRoute: typeof AdminGrnRoute
+  AdminGrnRemainingReportRoute: typeof AdminGrnRemainingReportRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInventoryDetailRoute: typeof AdminInventoryDetailRoute
   AdminInvoiceDetailRoute: typeof AdminInvoiceDetailRoute
@@ -1284,6 +1304,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminExceptionsRoute: AdminExceptionsRoute,
   AdminForbiddenRoute: AdminForbiddenRoute,
   AdminGrnRoute: AdminGrnRoute,
+  AdminGrnRemainingReportRoute: AdminGrnRemainingReportRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInventoryDetailRoute: AdminInventoryDetailRoute,
   AdminInvoiceDetailRoute: AdminInvoiceDetailRoute,

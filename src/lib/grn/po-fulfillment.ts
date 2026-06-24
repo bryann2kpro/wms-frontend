@@ -156,3 +156,46 @@ export function formatFulfilledLossDisplay(fulfilledLoss: number): string {
 	const safeLoss = Number.isFinite(lossNum) && lossNum >= 0 ? lossNum : 0;
 	return String(safeLoss);
 }
+
+/**
+ * Cartons + loose pieces still owed against a PO/ASN line, after this delivery.
+ *
+ * Mixed-radix subtraction: Ordered (expressed as whole cartons) minus Delivered
+ * (cartons + loose pieces), carrying/borrowing between the two via the SKU's
+ * loose_quantity (pieces/carton) — e.g. Ordered 100 CTN, Delivered 40 CTN + 6 loose,
+ * loose_quantity 10 -> 1000 - 406 = 594 -> 59 CTN + 4 loose still owed.
+ * Returns null when there's no PO/ASN expected qty to compare against (manual GRN line).
+ */
+export function computeRemainingOwed(
+	expectedCtn: number | null | undefined,
+	cumulativeDeliveredCtn: number,
+	cumulativeLossPieces: number,
+	looseQuantity: number | null | undefined,
+): { remainingCtn: number; remainingLoosePcs: number } | null {
+	if (expectedCtn == null || !Number.isFinite(expectedCtn)) return null;
+	const radix = looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0
+		? looseQuantity
+		: 1;
+	const remainingPieces = Math.max(
+		0,
+		(expectedCtn - cumulativeDeliveredCtn) * radix - Math.max(0, cumulativeLossPieces),
+	);
+	return {
+		remainingCtn: Math.floor(remainingPieces / radix),
+		remainingLoosePcs: remainingPieces % radix,
+	};
+}
+
+/**
+ * True when this line's cumulative loss can be reconciled into the remaining-owed figure —
+ * i.e. either there's no loss, or the SKU has a loose_quantity (pieces/carton) configured
+ * to convert it. False blocks "Submit for Approval" (see isLossRackAllocationValid for the
+ * same pattern).
+ */
+export function isRemainingComputable(
+	cumulativeLossPieces: number,
+	looseQuantity: number | null | undefined,
+): boolean {
+	if (cumulativeLossPieces <= 0) return true;
+	return looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0;
+}

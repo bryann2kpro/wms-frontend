@@ -212,6 +212,49 @@ export const DELETE_GRN_MUTATION = gql`
 	}
 `;
 
+/** GRN lines still owed against their PO/ASN (remainingCtn/remainingLoosePcs snapshot). */
+export const GRN_REMAINING_REPORT_QUERY = gql`
+	query GrnRemainingReport {
+		grnRemainingReport {
+			grnNo
+			poNo
+			receivedAt
+			skuCode
+			skuDescription
+			remainingCtn
+			remainingLoosePcs
+		}
+	}
+`;
+
+export type GrnRemainingLine = {
+	grnNo: string;
+	poNo: string | null;
+	receivedAt: string | null;
+	skuCode: string;
+	skuDescription: string;
+	remainingCtn: number;
+	remainingLoosePcs: number;
+};
+
+export type GrnRemainingReportQueryData = {
+	grnRemainingReport: GrnRemainingLine[];
+};
+
+/** Printable PDF of every outstanding GRN remaining-qty line. */
+export const GENERATE_GRN_REMAINING_REPORT_PDF_MUTATION = gql`
+	mutation GenerateGrnRemainingReportPdf {
+		generateGrnRemainingReportPdf {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
+export type GenerateGrnRemainingReportPdfMutationData = {
+	generateGrnRemainingReportPdf: { pdfBase64: string; filename: string };
+};
+
 /** Get next GRN number for today (or an optional date) */
 export const NEXT_GRN_NUMBER_QUERY = gql`
 	query NextGrnNumber($date: String) {

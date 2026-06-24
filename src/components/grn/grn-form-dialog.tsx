@@ -81,8 +81,8 @@ import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
 	applyRemainingQtyToLineItems,
-	formatFulfilledCtnDisplay,
-	formatFulfilledLossDisplay,
+	computeRemainingOwed,
+	isRemainingComputable,
 	remainingForSku,
 	resolveOrderedCtnForDisplay,
 	sumHistoricalLossBySku,
@@ -351,6 +351,19 @@ function buildGrnItemLossRackPayload(item: GRNLineItemForm): {
 	return { lossRackAllocations: [{ rackId: lossRackId, quantity: lossQty }] };
 }
 
+/**
+ * True when this line's loss qty can be folded into the Remaining figure — i.e. there's
+ * no loss, or the SKU has loose_quantity (pieces/carton) configured to convert it.
+ * Blocks "Submit for Approval" the same way isLossRackAllocationValid does.
+ */
+function isRemainingComputableForItem(item: GRNLineItemForm, skuOptions: Skus[]): boolean {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return true;
+	const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+	const looseQuantity = sku?.looseQuantity != null ? Number(sku.looseQuantity) : null;
+	return looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0;
+}
+
 /** True when the loose/loss rack(s) for this line cover the full loss quantity (or there's no loss to cover). */
 function isLossRackAllocationValid(item: GRNLineItemForm): boolean {
 	const lossQty = Math.max(0, Number(item.loss) || 0);
@@ -446,6 +459,7 @@ function GrnQuantitiesTable({
 	orderedCtnEditable,
 	fulfilledCtn,
 	fulfilledLoss,
+	looseQuantity,
 	cartonUomLabel,
 	lossUomLabel,
 }: {
@@ -458,6 +472,8 @@ function GrnQuantitiesTable({
 	orderedCtnEditable: boolean;
 	fulfilledCtn: number;
 	fulfilledLoss: number;
+	/** SKU's pieces-per-carton (m_skus.loose_quantity); null when not configured. */
+	looseQuantity: number | null;
 	cartonUomLabel: string;
 	lossUomLabel: string;
 }) {
@@ -467,11 +483,12 @@ function GrnQuantitiesTable({
 		orderedCtn,
 		item.orderedQty,
 	);
-	const fulfilledCtnDisplay = formatFulfilledCtnDisplay(
-		fulfilledCtn,
-		orderedCtnForDisplay,
-	);
-	const fulfilledLossDisplay = formatFulfilledLossDisplay(fulfilledLoss);
+	const remainingComputable = isRemainingComputable(fulfilledLoss, looseQuantity);
+	const remaining = remainingComputable
+		? computeRemainingOwed(orderedCtnForDisplay, fulfilledCtn, fulfilledLoss, looseQuantity)
+		: null;
+	const remainingCtnDisplay = remaining ? String(remaining.remainingCtn) : "—";
+	const remainingLossDisplay = remaining ? String(remaining.remainingLoosePcs) : "—";
 
 	const readOnlyCellClass =
 		"h-8 rounded-lg border border-border/40 bg-muted/30 px-2 font-mono text-sm tabular-nums text-muted-foreground flex items-center justify-center";
@@ -503,7 +520,7 @@ function GrnQuantitiesTable({
 							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-display)" }}
 						>
-							Fulfilled
+							Fulfillment
 						</th>
 					</tr>
 					<tr>
@@ -590,22 +607,34 @@ function GrnQuantitiesTable({
 						</td>
 						<td className="p-0.5 pr-1">
 							<div
-								className={cn(readOnlyCellClass, "text-foreground")}
+								className={cn(
+									readOnlyCellClass,
+									remainingComputable ? "text-foreground" : "text-destructive",
+								)}
 								title={
-									orderedCtnForDisplay != null
-										? `${fulfilledCtn} of ${orderedCtnForDisplay} ${cartonUomLabel} ordered (prior GRNs + this delivery)`
-										: `${fulfilledCtn} ${cartonUomLabel} received to date incl. this delivery`
+									!remainingComputable
+										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
+										: orderedCtnForDisplay != null
+											? `${remaining?.remainingCtn ?? 0} ${cartonUomLabel} still owed of ${orderedCtnForDisplay} ordered (after this delivery)`
+											: "No PO/ASN line to compare against"
 								}
 							>
-								{fulfilledCtnDisplay}
+								{remainingCtnDisplay}
 							</div>
 						</td>
 						<td className="p-0.5">
 							<div
-								className={cn(readOnlyCellClass, "text-foreground")}
-								title={`${fulfilledLoss} ${lossUomLabel} cumulative loss (prior GRNs + this delivery)`}
+								className={cn(
+									readOnlyCellClass,
+									remainingComputable ? "text-foreground" : "text-destructive",
+								)}
+								title={
+									!remainingComputable
+										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
+										: `${remaining?.remainingLoosePcs ?? 0} ${lossUomLabel} still owed (loss folded back in)`
+								}
 							>
-								{fulfilledLossDisplay}
+								{remainingLossDisplay}
 							</div>
 						</td>
 					</tr>
@@ -912,6 +941,14 @@ function GRNLineRow({
 		);
 		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
+
+	/** Pieces per carton (m_skus.loose_quantity) — converts loss into the Remaining figure. */
+	const looseQuantity = useMemo(() => {
+		if (!item.skuCode?.trim()) return null;
+		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+		const lq = sku?.looseQuantity != null ? Number(sku.looseQuantity) : null;
+		return lq != null && Number.isFinite(lq) && lq > 0 ? lq : null;
+	}, [item.skuCode, skuOptions]);
 
 	const { requireLot, requireExpiry } = useMemo(
 		() =>
@@ -1346,6 +1383,7 @@ function GRNLineRow({
 									orderedCtnEditable={orderedCtnEditable}
 									fulfilledCtn={fulfilledCtn}
 									fulfilledLoss={fulfilledLoss}
+									looseQuantity={looseQuantity}
 									cartonUomLabel={cartonUomLabel}
 									lossUomLabel={lossUomLabel}
 								/>
@@ -2153,6 +2191,15 @@ export function GrnFormDialog({
 						);
 					}
 
+					const missingLooseQuantity = items.find(
+						(i) => !isRemainingComputableForItem(i, skuOptions),
+					);
+					if (missingLooseQuantity) {
+						itemErrors.push(
+							"Each line item with a loss quantity needs its SKU's loose quantity (pieces/carton) configured before the remaining qty can be computed.",
+						);
+					}
+
 					if (value.poFulfilled === false) {
 						const invalidOrderedQty = items.find((i) => {
 							const orderedQty = resolveLineOrderedCtn(i, poAsnLines);
@@ -2212,6 +2259,15 @@ export function GrnFormDialog({
 				if (missingLossRack) {
 					toast.error(
 						"Each line item with a loss quantity must have Loose / Loss Rack(s) covering the full loss quantity.",
+					);
+					return;
+				}
+				const missingLooseQuantity = (value.items ?? []).find(
+					(i) => !isRemainingComputableForItem(i, skuOptions),
+				);
+				if (missingLooseQuantity) {
+					toast.error(
+						"Each line item with a loss quantity needs its SKU's loose quantity (pieces/carton) configured before the remaining qty can be computed.",
 					);
 					return;
 				}
