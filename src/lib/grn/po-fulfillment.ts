@@ -156,3 +156,44 @@ export function formatFulfilledLossDisplay(fulfilledLoss: number): string {
 	const safeLoss = Number.isFinite(lossNum) && lossNum >= 0 ? lossNum : 0;
 	return String(safeLoss);
 }
+
+/**
+ * Cartons + loose pieces still owed against a PO/ASN line, after this delivery.
+ *
+ * CTN: plain Ordered − Delivered (whole cartons), plus one extra carton for every full
+ * loose_quantity's worth of loss (a whole carton lost in transit still needs replacing).
+ * Loose pieces: the complement of the loss within its partial carton — e.g. losing 8 of a
+ * 10-pieces-per-carton SKU still needs 2 more pieces to make that carton whole again.
+ * Returns null when there's no PO/ASN expected qty to compare against (manual GRN line).
+ */
+export function computeRemainingOwed(
+	expectedCtn: number | null | undefined,
+	cumulativeDeliveredCtn: number,
+	cumulativeLossPieces: number,
+	looseQuantity: number | null | undefined,
+): { remainingCtn: number; remainingLoosePcs: number } | null {
+	if (expectedCtn == null || !Number.isFinite(expectedCtn)) return null;
+	const radix = looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0
+		? looseQuantity
+		: 1;
+	const safeLoss = Math.max(0, cumulativeLossPieces);
+	const extraCtnFromLoss = Math.floor(safeLoss / radix);
+	const lossRemainder = safeLoss % radix;
+	const remainingCtn = Math.max(0, expectedCtn - cumulativeDeliveredCtn) + extraCtnFromLoss;
+	const remainingLoosePcs = lossRemainder === 0 ? 0 : radix - lossRemainder;
+	return { remainingCtn, remainingLoosePcs };
+}
+
+/**
+ * True when this line's cumulative loss can be reconciled into the remaining-owed figure —
+ * i.e. either there's no loss, or the SKU has a loose_quantity (pieces/carton) configured
+ * to convert it. False blocks "Submit for Approval" (see isLossRackAllocationValid for the
+ * same pattern).
+ */
+export function isRemainingComputable(
+	cumulativeLossPieces: number,
+	looseQuantity: number | null | undefined,
+): boolean {
+	if (cumulativeLossPieces <= 0) return true;
+	return looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0;
+}
