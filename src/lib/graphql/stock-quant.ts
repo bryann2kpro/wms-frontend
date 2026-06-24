@@ -24,9 +24,11 @@ export const STOCK_QUANTS_QUERY = gql`
 				stockUnitCode
 				description
 				quantity
+				lossQty
 				reservedQty
 				rackId
 				rackLabel
+				rackBinType
 				lotNo
 				expiryDate
 				organizationId
@@ -56,9 +58,12 @@ export interface StockQuant {
 	stockUnitCode: string | null;
 	description: string | null;
 	quantity: string;
+	lossQty: string;
 	reservedQty: string;
 	rackId: string;
 	rackLabel: string | null;
+	/** Bin type of the rack this quant is on (e.g. LOOSE_STORAGE, FIXED, PALLET_STORAGE). */
+	rackBinType: string | null;
 	lotNo: string | null;
 	expiryDate: string | null;
 	organizationId: string;

@@ -250,6 +250,7 @@ function TransportPage() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>Code</TableHead>
+									<TableHead>Class</TableHead>
 									<TableHead>Description</TableHead>
 									<TableHead>Location</TableHead>
 									<TableHead>Storage Bin</TableHead>
@@ -270,7 +271,7 @@ function TransportPage() {
 								{transports.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={15}
+											colSpan={16}
 											className="text-center py-8 text-muted-foreground"
 										>
 											{loading ? "Loading..." : "No transport records found."}
@@ -281,6 +282,9 @@ function TransportPage() {
 										<TableRow key={transport.id}>
 											<TableCell className="font-mono text-sm">
 												{transport.code}
+											</TableCell>
+											<TableCell className="font-mono text-sm text-muted-foreground">
+												{transport.capacityClass ?? "-"}
 											</TableCell>
 											<TableCell className="max-w-[180px] truncate">
 												{transport.description || "-"}

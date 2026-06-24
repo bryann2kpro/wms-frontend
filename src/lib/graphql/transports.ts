@@ -22,6 +22,7 @@ export const TRANSPORT_FRAGMENT = gql`
 		maxHeightMm
 		maxWeightKg
 		numberOfPallets
+		capacityClass
 		createdAt
 		updatedAt
 		createdBy

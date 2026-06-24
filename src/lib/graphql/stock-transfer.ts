@@ -1,8 +1,5 @@
 import { gql } from "graphql-request";
-import type {
-	StockTransfer,
-	StockTransferPaginatedResponse,
-} from "./types";
+import type { StockTransfer, StockTransferPaginatedResponse } from "./types";
 
 // ============================================
 // FRAGMENTS
@@ -38,6 +35,7 @@ export const STOCK_TRANSFER_FRAGMENT = gql`
 			lotNo
 			expiryDate
 			quantity
+			lossQuantity
 			sourceStockQuantId
 			sourceRackId
 			sourceRack {
@@ -128,6 +126,15 @@ export const CANCEL_STOCK_TRANSFER_MUTATION = gql`
 	${STOCK_TRANSFER_FRAGMENT}
 `;
 
+export const DISPATCH_STOCK_TRANSFER_MUTATION = gql`
+	mutation DispatchStockTransfer($id: ID!) {
+		dispatchStockTransfer(id: $id) {
+			...StockTransferFields
+		}
+	}
+	${STOCK_TRANSFER_FRAGMENT}
+`;
+
 export const APPROVE_STOCK_TRANSFER_MUTATION = gql`
 	mutation ApproveStockTransfer($id: ID!) {
 		approveStockTransfer(id: $id) {
@@ -144,6 +151,17 @@ export const REJECT_STOCK_TRANSFER_MUTATION = gql`
 		}
 	}
 	${STOCK_TRANSFER_FRAGMENT}
+`;
+
+export const GENERATE_STOCK_TRANSFER_WORK_QUEUE_LIST_MUTATION = gql`
+	mutation GenerateStockTransferWorkQueueList(
+		$filter: StockTransferWorkQueueFilterInput
+	) {
+		generateStockTransferWorkQueueList(filter: $filter) {
+			pdfBase64
+			filename
+		}
+	}
 `;
 
 // ============================================
@@ -177,6 +195,7 @@ export type CreateStockTransferLineInput = {
 	sourceStockQuantId: string;
 	destinationRackId: string;
 	quantity: string;
+	lossQuantity?: string;
 };
 
 export type CreateStockTransferInput = {
@@ -204,6 +223,11 @@ export type CancelStockTransferMutationData = {
 	cancelStockTransfer: StockTransfer;
 };
 
+export type DispatchStockTransferMutationVariables = { id: string };
+export type DispatchStockTransferMutationData = {
+	dispatchStockTransfer: StockTransfer;
+};
+
 export type ApproveStockTransferMutationVariables = { id: string };
 export type ApproveStockTransferMutationData = {
 	approveStockTransfer: StockTransfer;
@@ -212,4 +236,19 @@ export type ApproveStockTransferMutationData = {
 export type RejectStockTransferMutationVariables = { id: string };
 export type RejectStockTransferMutationData = {
 	rejectStockTransfer: StockTransfer;
+};
+
+export type StockTransferWorkQueueFilterInput = {
+	search?: string | null;
+};
+
+export type GenerateStockTransferWorkQueueListMutationVariables = {
+	filter?: StockTransferWorkQueueFilterInput | null;
+};
+
+export type GenerateStockTransferWorkQueueListMutationData = {
+	generateStockTransferWorkQueueList: {
+		pdfBase64: string;
+		filename: string;
+	};
 };

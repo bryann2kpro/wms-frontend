@@ -39,6 +39,7 @@ export const GRNS_QUERY = gql`
 				nsError
 				endUserId
 				poFulfilled
+				manualInbound
 				createdAt
 				updatedAt
 				createdByUser {
@@ -64,6 +65,7 @@ export const GRNS_QUERY = gql`
 					skuDescription
 					qty
 					lossQty
+					lossRackId
 					remarks
 					expiryDate
 					lotNo
@@ -78,6 +80,11 @@ export const GRNS_QUERY = gql`
 						rackColumn
 					}
 					rackAllocations {
+						rackId
+						quantity
+						rackLabel
+					}
+					lossRackAllocations {
 						rackId
 						quantity
 						rackLabel
@@ -105,6 +112,7 @@ export const GRNS_WORK_QUEUE_QUERY = gql`
 				grnNo
 				status
 				receivedAt
+				manualInbound
 				items {
 					id
 					grnId
@@ -285,7 +293,7 @@ export type GrnsWorkQueueQueryVariables = {
 export type GrnsWorkQueueQueryData = {
 	grns: Pick<GrnPaginatedResponse, "pagination"> & {
 		query: Array<
-			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt"> & {
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt" | "manualInbound"> & {
 				items: Array<
 					Pick<
 						GrnItem,
@@ -458,6 +466,9 @@ export function mapGrnsQueryToResult(
 			const rackAllocations = (i.rackAllocations ?? [])
 				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
 				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
+			const lossRackAllocations = (i.lossRackAllocations ?? [])
+				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
+				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -470,7 +481,9 @@ export function mapGrnsQueryToResult(
 				expiryDate: i.expiryDate ?? null,
 				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
+				lossRackId: i.lossRackId ?? null,
 				rackAllocations: rackAllocations.length > 0 ? rackAllocations : null,
+				lossRackAllocations: lossRackAllocations.length > 0 ? lossRackAllocations : null,
 			};
 		});
 		const totalItems = lineItems.reduce(
@@ -501,6 +514,7 @@ export function mapGrnsQueryToResult(
 			proofUrl: g.proofUrl ?? null,
 			nsError: g.nsError ?? null,
 			poFulfilled: g.poFulfilled ?? null,
+			manualInbound: g.manualInbound ?? false,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,
