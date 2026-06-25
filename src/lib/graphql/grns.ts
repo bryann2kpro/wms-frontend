@@ -212,13 +212,20 @@ export const DELETE_GRN_MUTATION = gql`
 	}
 `;
 
-/** GRN lines still owed against their PO/ASN (remainingCtn/remainingLoosePcs snapshot). */
+/**
+ * Full item context for every GRN that has at least one outstanding line — fulfilled
+ * lines come back too (remainingCtn/remainingLoosePcs null) so the report can group and
+ * show a GRN's complete set of items together.
+ */
 export const GRN_REMAINING_REPORT_QUERY = gql`
 	query GrnRemainingReport {
 		grnRemainingReport {
+			grnId
 			grnNo
 			poNo
 			receivedAt
+			supplierName
+			endUserName
 			skuCode
 			skuDescription
 			remainingCtn
@@ -228,13 +235,16 @@ export const GRN_REMAINING_REPORT_QUERY = gql`
 `;
 
 export type GrnRemainingLine = {
+	grnId: string;
 	grnNo: string;
 	poNo: string | null;
 	receivedAt: string | null;
+	supplierName: string | null;
+	endUserName: string | null;
 	skuCode: string;
 	skuDescription: string;
-	remainingCtn: number;
-	remainingLoosePcs: number;
+	remainingCtn: number | null;
+	remainingLoosePcs: number | null;
 };
 
 export type GrnRemainingReportQueryData = {

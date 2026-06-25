@@ -142,7 +142,7 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 	},
 	{
 		key: "sidebar-grn-remaining-report",
-		title: "GRN Remaining Report",
+		title: "GRN Unfulfillment Report",
 		href: "/admin/grn-remaining-report",
 		icon: FileWarning,
 		allowedPermission: ["GRN"],
