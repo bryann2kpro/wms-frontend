@@ -607,10 +607,7 @@ function GrnQuantitiesTable({
 						</td>
 						<td className="p-0.5 pr-1">
 							<div
-								className={cn(
-									readOnlyCellClass,
-									remainingComputable ? "text-foreground" : "text-destructive",
-								)}
+								className={cn(readOnlyCellClass, "text-destructive")}
 								title={
 									!remainingComputable
 										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
@@ -624,10 +621,7 @@ function GrnQuantitiesTable({
 						</td>
 						<td className="p-0.5">
 							<div
-								className={cn(
-									readOnlyCellClass,
-									remainingComputable ? "text-foreground" : "text-destructive",
-								)}
+								className={cn(readOnlyCellClass, "text-destructive")}
 								title={
 									!remainingComputable
 										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
