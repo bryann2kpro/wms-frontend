@@ -224,6 +224,8 @@ export const GRN_REMAINING_REPORT_QUERY = gql`
 			grnNo
 			poNo
 			receivedAt
+			supplierName
+			endUserName
 			skuCode
 			skuDescription
 			remainingCtn
@@ -237,6 +239,8 @@ export type GrnRemainingLine = {
 	grnNo: string;
 	poNo: string | null;
 	receivedAt: string | null;
+	supplierName: string | null;
+	endUserName: string | null;
 	skuCode: string;
 	skuDescription: string;
 	remainingCtn: number | null;

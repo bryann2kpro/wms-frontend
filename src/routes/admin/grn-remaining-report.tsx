@@ -173,87 +173,103 @@ function GrnRemainingReportComponent() {
 					</div>
 				)}
 
-				<section className="relative" aria-label="Outstanding GRN lines table" aria-busy={busy}>
+				<section
+					className="relative space-y-4"
+					aria-label="Outstanding GRN lines"
+					aria-busy={busy}
+				>
 					<GlobalLoadingShadow />
-					<div className="overflow-x-auto rounded-lg border">
-						<Table aria-label="GRN lines still owed against their PO/ASN">
-							<TableHeader>
-								<TableRow>
-									<TableHead>GRN No.</TableHead>
-									<TableHead>PO No.</TableHead>
-									<TableHead>SKU Code</TableHead>
-									<TableHead>Description</TableHead>
-									<TableHead className="text-center">Remaining</TableHead>
-									<TableHead>Received</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{!queryLoading && groups.length === 0 ? (
-									<TableRow>
-										<TableCell colSpan={6} className="py-16 text-center">
-											<div className="flex flex-col items-center gap-3">
-												<div className="rounded-full bg-muted p-3">
-													<FileWarning className="h-8 w-8 text-muted-foreground" aria-hidden />
-												</div>
-												<p className="font-medium text-foreground">No outstanding lines</p>
-												<p className="text-sm text-muted-foreground">
-													Every PO/ASN-linked GRN submitted so far has been fully received.
-												</p>
-											</div>
-										</TableCell>
-									</TableRow>
-								) : (
-									groups.flatMap((group) => {
-										const first = group[0];
-										return [
-											<TableRow
-												key={`group-${first.grnId}`}
-												className="bg-muted/50 hover:bg-muted/60 border-l-4 border-l-primary/40"
-											>
-												<TableCell colSpan={6} className="px-4 py-2.5">
-													<div className="flex flex-wrap items-center gap-3">
-														<span className="font-mono text-sm font-semibold">
-															{first.grnNo}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															PO {first.poNo ?? "—"}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															Received{" "}
-															{first.receivedAt ? formatDate(first.receivedAt) : "—"}
-														</span>
-													</div>
-												</TableCell>
-											</TableRow>,
-											...group.map((line, i) => (
-												<TableRow key={`${first.grnId}-${line.skuCode}-${i}`}>
-													<TableCell />
-													<TableCell />
-													<TableCell className="font-mono text-xs">{line.skuCode}</TableCell>
-													<TableCell className="text-sm text-muted-foreground">
-														{line.skuDescription}
-													</TableCell>
-													<TableCell className="text-center font-mono text-sm font-semibold text-amber-700">
-														{line.remainingCtn ? (
-															<>
-																{line.remainingCtn} CTN
-																{line.remainingLoosePcs
-																	? ` + ${line.remainingLoosePcs} pcs`
-																	: ""}
-															</>
-														) : (
-															<span className="text-muted-foreground">—</span>
-														)}
-													</TableCell>
-													<TableCell />
+					{!queryLoading && groups.length === 0 ? (
+						<div className="rounded-lg border py-16 text-center">
+							<div className="flex flex-col items-center gap-3">
+								<div className="rounded-full bg-muted p-3">
+									<FileWarning className="h-8 w-8 text-muted-foreground" aria-hidden />
+								</div>
+								<p className="font-medium text-foreground">No outstanding lines</p>
+								<p className="text-sm text-muted-foreground">
+									Every PO/ASN-linked GRN submitted so far has been fully received.
+								</p>
+							</div>
+						</div>
+					) : (
+						groups.map((group) => {
+							const first = group[0];
+							return (
+								<div
+									key={first.grnId}
+									className="flex overflow-hidden rounded-lg border"
+								>
+									<div className="w-64 shrink-0 space-y-3 border-r bg-muted/40 p-4">
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+												GRN No.
+											</p>
+											<p className="font-mono text-sm font-semibold">{first.grnNo}</p>
+										</div>
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+												PO No.
+											</p>
+											<p className="font-mono text-sm">{first.poNo ?? "—"}</p>
+										</div>
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+												Supplier
+											</p>
+											<p className="text-sm">{first.supplierName ?? "—"}</p>
+										</div>
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+												End User
+											</p>
+											<p className="text-sm">{first.endUserName ?? "—"}</p>
+										</div>
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+												Received
+											</p>
+											<p className="text-sm">
+												{first.receivedAt ? formatDate(first.receivedAt) : "—"}
+											</p>
+										</div>
+									</div>
+									<div className="flex-1 overflow-x-auto">
+										<Table aria-label={`Items for ${first.grnNo}`}>
+											<TableHeader>
+												<TableRow>
+													<TableHead>SKU Code</TableHead>
+													<TableHead>Description</TableHead>
+													<TableHead className="text-center">Remaining</TableHead>
 												</TableRow>
-											)),
-										];
-									})
-								)}
-							</TableBody>
-						</Table>
-					</div>
+											</TableHeader>
+											<TableBody>
+												{group.map((line, i) => (
+													<TableRow key={`${first.grnId}-${line.skuCode}-${i}`}>
+														<TableCell className="font-mono text-xs">{line.skuCode}</TableCell>
+														<TableCell className="text-sm text-muted-foreground">
+															{line.skuDescription}
+														</TableCell>
+														<TableCell className="text-center font-mono text-sm font-semibold text-destructive">
+															{line.remainingCtn ? (
+																<>
+																	{line.remainingCtn} CTN
+																	{line.remainingLoosePcs
+																		? ` + ${line.remainingLoosePcs} pcs`
+																		: ""}
+																</>
+															) : (
+																<span className="text-muted-foreground">—</span>
+															)}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</div>
+								</div>
+							);
+						})
+					)}
 				</section>
 			</main>
 		</div>
