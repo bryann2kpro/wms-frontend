@@ -27,7 +27,7 @@ import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
 import { toast } from "sonner";
 
-const PAGE_TITLE = "GRN Remaining Quantity Report";
+const PAGE_TITLE = "GRN Unfulfillment Report";
 const PAGE_DESCRIPTION =
 	"Cartons + loose pieces still owed against each PO/ASN line, as of the GRN that last reported a shortfall.";
 
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/admin/grn-remaining-report")({
 	head: () => ({
 		meta: [
 			{
-				title: "GRN Remaining Quantity Report - SME Edaran WMS",
+				title: "GRN Unfulfillment Report - SME Edaran WMS",
 				description: PAGE_DESCRIPTION,
 			},
 		],
