@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertCircle, FileWarning, Loader2, Printer } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -18,6 +19,7 @@ import {
 	GENERATE_GRN_REMAINING_REPORT_PDF_MUTATION,
 	GRN_REMAINING_REPORT_QUERY,
 	type GenerateGrnRemainingReportPdfMutationData,
+	type GrnRemainingLine,
 	type GrnRemainingReportQueryData,
 } from "@/lib/graphql/grns";
 import { requirePermission } from "@/lib/rbac";
@@ -72,6 +74,21 @@ function GrnRemainingReportComponent() {
 			gqlRequest<GrnRemainingReportQueryData>(GRN_REMAINING_REPORT_QUERY),
 	});
 	const lines = data?.grnRemainingReport ?? [];
+
+	// GRNs are the unit of "outstanding" — group lines by grnId so a GRN's full item set
+	// (fulfilled lines included) renders together under one header instead of isolated rows.
+	const groups = useMemo(() => {
+		const order: string[] = [];
+		const byGrn = new Map<string, GrnRemainingLine[]>();
+		for (const line of lines) {
+			if (!byGrn.has(line.grnId)) {
+				order.push(line.grnId);
+				byGrn.set(line.grnId, []);
+			}
+			byGrn.get(line.grnId)!.push(line);
+		}
+		return order.map((grnId) => byGrn.get(grnId)!);
+	}, [lines]);
 
 	const { mutate: generateReport, isPending: generatingReport } = useMutation({
 		mutationFn: () =>
@@ -171,7 +188,7 @@ function GrnRemainingReportComponent() {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{!queryLoading && lines.length === 0 ? (
+								{!queryLoading && groups.length === 0 ? (
 									<TableRow>
 										<TableCell colSpan={6} className="py-16 text-center">
 											<div className="flex flex-col items-center gap-3">
@@ -186,23 +203,53 @@ function GrnRemainingReportComponent() {
 										</TableCell>
 									</TableRow>
 								) : (
-									lines.map((line, i) => (
-										<TableRow key={`${line.grnNo}-${line.skuCode}-${i}`}>
-											<TableCell className="font-mono text-xs">{line.grnNo}</TableCell>
-											<TableCell className="font-mono text-xs">{line.poNo ?? "—"}</TableCell>
-											<TableCell className="font-mono text-xs">{line.skuCode}</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{line.skuDescription}
-											</TableCell>
-											<TableCell className="text-center font-mono text-sm font-semibold text-amber-700">
-												{line.remainingCtn} CTN
-												{line.remainingLoosePcs > 0 ? ` + ${line.remainingLoosePcs} pcs` : ""}
-											</TableCell>
-											<TableCell className="text-xs text-muted-foreground">
-												{line.receivedAt ? formatDate(line.receivedAt) : "—"}
-											</TableCell>
-										</TableRow>
-									))
+									groups.flatMap((group) => {
+										const first = group[0];
+										return [
+											<TableRow
+												key={`group-${first.grnId}`}
+												className="bg-muted/50 hover:bg-muted/60 border-l-4 border-l-primary/40"
+											>
+												<TableCell colSpan={6} className="px-4 py-2.5">
+													<div className="flex flex-wrap items-center gap-3">
+														<span className="font-mono text-sm font-semibold">
+															{first.grnNo}
+														</span>
+														<span className="text-xs text-muted-foreground">
+															PO {first.poNo ?? "—"}
+														</span>
+														<span className="text-xs text-muted-foreground">
+															Received{" "}
+															{first.receivedAt ? formatDate(first.receivedAt) : "—"}
+														</span>
+													</div>
+												</TableCell>
+											</TableRow>,
+											...group.map((line, i) => (
+												<TableRow key={`${first.grnId}-${line.skuCode}-${i}`}>
+													<TableCell />
+													<TableCell />
+													<TableCell className="font-mono text-xs">{line.skuCode}</TableCell>
+													<TableCell className="text-sm text-muted-foreground">
+														{line.skuDescription}
+													</TableCell>
+													<TableCell className="text-center font-mono text-sm font-semibold text-amber-700">
+														{line.remainingCtn ? (
+															<>
+																{line.remainingCtn} CTN
+																{line.remainingLoosePcs
+																	? ` + ${line.remainingLoosePcs} pcs`
+																	: ""}
+															</>
+														) : (
+															<span className="text-muted-foreground">—</span>
+														)}
+													</TableCell>
+													<TableCell />
+												</TableRow>
+											)),
+										];
+									})
 								)}
 							</TableBody>
 						</Table>
