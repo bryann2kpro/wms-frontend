@@ -212,6 +212,59 @@ export const DELETE_GRN_MUTATION = gql`
 	}
 `;
 
+/**
+ * Full item context for every GRN that has at least one outstanding line — fulfilled
+ * lines come back too (remainingCtn/remainingLoosePcs null) so the report can group and
+ * show a GRN's complete set of items together.
+ */
+export const GRN_REMAINING_REPORT_QUERY = gql`
+	query GrnRemainingReport {
+		grnRemainingReport {
+			grnId
+			grnNo
+			poNo
+			receivedAt
+			supplierName
+			endUserName
+			skuCode
+			skuDescription
+			remainingCtn
+			remainingLoosePcs
+		}
+	}
+`;
+
+export type GrnRemainingLine = {
+	grnId: string;
+	grnNo: string;
+	poNo: string | null;
+	receivedAt: string | null;
+	supplierName: string | null;
+	endUserName: string | null;
+	skuCode: string;
+	skuDescription: string;
+	remainingCtn: number | null;
+	remainingLoosePcs: number | null;
+};
+
+export type GrnRemainingReportQueryData = {
+	grnRemainingReport: GrnRemainingLine[];
+};
+
+/** Printable PDF of every outstanding GRN remaining-qty line. */
+export const GENERATE_GRN_REMAINING_REPORT_PDF_MUTATION = gql`
+	mutation GenerateGrnRemainingReportPdf {
+		generateGrnRemainingReportPdf {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
+export type GenerateGrnRemainingReportPdfMutationData = {
+	generateGrnRemainingReportPdf: { pdfBase64: string; filename: string };
+};
+
 /** Get next GRN number for today (or an optional date) */
 export const NEXT_GRN_NUMBER_QUERY = gql`
 	query NextGrnNumber($date: String) {

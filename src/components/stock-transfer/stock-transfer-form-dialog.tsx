@@ -545,7 +545,7 @@ export function StockTransferFormDialog({
 						onClick={handleSubmit}
 						disabled={loading}
 					>
-						{loading ? "Saving…" : "Save as draft"}
+						{loading ? "Saving…" : "Send for Approval"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
