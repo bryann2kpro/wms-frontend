@@ -18,6 +18,7 @@ COPY src src
 COPY vite.config.ts .
 COPY tsconfig.json .
 COPY project.inlang project.inlang
+COPY public public
 
 RUN pnpm run build
 
