@@ -201,11 +201,11 @@ export function Sidebar() {
 					<div className="relative z-20 flex items-center justify-center">
 						<div className="flex flex-col">
 							<img
-								src="https://sme-public-bucket.s3.ap-southeast-5.amazonaws.com/sme-ederan/sme-logo.jpg"
-								alt="SME Logo"
-								width={56}
-								height={56}
-								className="rounded-lg object-contain group-data-[collapsible=icon]:hidden"
+								src="/sme-logo.jpg"
+								alt="SME Edaran Sdn. Bhd."
+								width={131}
+								height={88}
+								className="h-10 w-auto object-contain group-data-[collapsible=icon]:hidden"
 							/>
 						</div>
 					</div>
