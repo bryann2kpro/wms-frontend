@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -363,6 +363,19 @@ function EmpireSushiDOComponent() {
 		}
 		return Array.from(grouped.values());
 	}, [allItems]);
+
+	// Pre-allocate all DOs on load so racks show before picking starts
+	useEffect(() => {
+		for (const group of groups) {
+			const hasAllocations = group.items.some((i) => (i.allocations ?? []).length > 0);
+			if (!hasAllocations && !allocatedDOs.current.has(group.doId)) {
+				allocatedDOs.current.add(group.doId);
+				allocatePickListMutation({ deliveryOrderId: group.doId })
+					.then(() => refetch())
+					.catch(() => { /* non-fatal */ });
+			}
+		}
+	}, [groups, allocatePickListMutation, refetch]);
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
 	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
