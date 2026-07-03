@@ -839,6 +839,7 @@ export interface DeliveryOrderItemWithDetails {
 	lossQty: string | null;
 	reservedQty: string | null;
 	allocations: DoItemAllocation[];
+	stockQuantRacks: string[];
 }
 
 export interface DeliveryOrderItemWithDetailsPaginatedResponse {

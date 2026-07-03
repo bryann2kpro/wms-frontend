@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -364,27 +364,7 @@ function EmpireSushiDOComponent() {
 		return Array.from(grouped.values());
 	}, [allItems]);
 
-	// Pre-allocate all DOs on load so racks show before picking starts.
-	// Uses gqlRequest directly (not useMutation) so isMutating stays 0 and
-	// GlobalLoadingShadow never blocks the page during background allocation.
-	useEffect(() => {
-		const toAllocate = groups.filter((group) => {
-			const hasAllocations = group.items.some((i) => (i.allocations ?? []).length > 0);
-			return !hasAllocations && !allocatedDOs.current.has(group.doId);
-		});
-		if (toAllocate.length === 0) return;
-		for (const group of toAllocate) {
-			allocatedDOs.current.add(group.doId);
-		}
-		Promise.all(
-			toAllocate.map((group) =>
-				gqlRequest<AllocatePickListMutationData, AllocatePickListMutationVariables>(
-					ALLOCATE_PICK_LIST_MUTATION,
-					{ deliveryOrderId: group.doId },
-				).catch(() => {}),
-			),
-		).then(() => refetch());
-	}, [groups, refetch]);
+
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
 	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
@@ -425,6 +405,18 @@ function EmpireSushiDOComponent() {
 		);
 	}, [allItems, optimisticPicked]);
 
+	// stockQuantRacks per SKU code — collected from items (same for all items of a SKU)
+	const stockQuantRacksBySku = useMemo(() => {
+		const map = new Map<string, string[]>();
+		for (const item of allItems) {
+			const key = item.skuCode ?? "no-sku";
+			if (!map.has(key) && (item.stockQuantRacks ?? []).length > 0) {
+				map.set(key, item.stockQuantRacks);
+			}
+		}
+		return map;
+	}, [allItems]);
+
 	const skuRackRows = useMemo<SKURackRow[]>(() => {
 		const rows: SKURackRow[] = [];
 
@@ -441,15 +433,31 @@ function EmpireSushiDOComponent() {
 			}
 
 			if (rackQtyMap.size === 0) {
-				rows.push({
-					key: `${group.skuCode}-rack-none`,
-					skuCode: group.skuCode,
-					skuDescription: group.skuDescription,
-					doBreakdown: group.doBreakdown,
-					qtyRequired: group.totalQtyRequired,
-					rackLabel: "Rack —",
-					completedPicking,
-				});
+				// Fall back to live stock_quant racks — no mutations needed
+				const sqRacks = stockQuantRacksBySku.get(group.skuCode) ?? [];
+				if (sqRacks.length > 0) {
+					for (const rack of sqRacks.slice().sort()) {
+						rows.push({
+							key: `${group.skuCode}-sq-${rack}`,
+							skuCode: group.skuCode,
+							skuDescription: group.skuDescription,
+							doBreakdown: group.doBreakdown,
+							qtyRequired: group.totalQtyRequired,
+							rackLabel: `Rack ${rack}`,
+							completedPicking,
+						});
+					}
+				} else {
+					rows.push({
+						key: `${group.skuCode}-rack-none`,
+						skuCode: group.skuCode,
+						skuDescription: group.skuDescription,
+						doBreakdown: group.doBreakdown,
+						qtyRequired: group.totalQtyRequired,
+						rackLabel: "Rack —",
+						completedPicking,
+					});
+				}
 				continue;
 			}
 
