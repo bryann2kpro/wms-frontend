@@ -364,7 +364,9 @@ function EmpireSushiDOComponent() {
 		return Array.from(grouped.values());
 	}, [allItems]);
 
-	// Pre-allocate all DOs on load so racks show before picking starts
+	// Pre-allocate all DOs on load so racks show before picking starts.
+	// Uses gqlRequest directly (not useMutation) so isMutating stays 0 and
+	// GlobalLoadingShadow never blocks the page during background allocation.
 	useEffect(() => {
 		const toAllocate = groups.filter((group) => {
 			const hasAllocations = group.items.some((i) => (i.allocations ?? []).length > 0);
@@ -376,10 +378,13 @@ function EmpireSushiDOComponent() {
 		}
 		Promise.all(
 			toAllocate.map((group) =>
-				allocatePickListMutation({ deliveryOrderId: group.doId }).catch(() => {}),
+				gqlRequest<AllocatePickListMutationData, AllocatePickListMutationVariables>(
+					ALLOCATE_PICK_LIST_MUTATION,
+					{ deliveryOrderId: group.doId },
+				).catch(() => {}),
 			),
 		).then(() => refetch());
-	}, [groups, allocatePickListMutation, refetch]);
+	}, [groups, refetch]);
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
 	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
