@@ -438,7 +438,8 @@ function EmpireSushiDOComponent() {
 				// Fall back to live stock_quant racks — no mutations needed
 				const sqRacks = stockQuantRacksBySku.get(group.skuCode) ?? [];
 				if (sqRacks.length > 0) {
-					for (const rack of sqRacks.slice().sort((a, b) => a.rackLabel.localeCompare(b.rackLabel))) {
+					for (const rack of sqRacks.slice().sort((a, b) => (a?.rackLabel ?? '').localeCompare(b?.rackLabel ?? ''))) {
+						if (!rack?.rackLabel) continue;
 						rows.push({
 							key: `${group.skuCode}-sq-${rack.rackLabel}`,
 							skuCode: group.skuCode,
