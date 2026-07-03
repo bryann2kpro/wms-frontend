@@ -366,15 +366,19 @@ function EmpireSushiDOComponent() {
 
 	// Pre-allocate all DOs on load so racks show before picking starts
 	useEffect(() => {
-		for (const group of groups) {
+		const toAllocate = groups.filter((group) => {
 			const hasAllocations = group.items.some((i) => (i.allocations ?? []).length > 0);
-			if (!hasAllocations && !allocatedDOs.current.has(group.doId)) {
-				allocatedDOs.current.add(group.doId);
-				allocatePickListMutation({ deliveryOrderId: group.doId })
-					.then(() => refetch())
-					.catch(() => { /* non-fatal */ });
-			}
+			return !hasAllocations && !allocatedDOs.current.has(group.doId);
+		});
+		if (toAllocate.length === 0) return;
+		for (const group of toAllocate) {
+			allocatedDOs.current.add(group.doId);
 		}
+		Promise.all(
+			toAllocate.map((group) =>
+				allocatePickListMutation({ deliveryOrderId: group.doId }).catch(() => {}),
+			),
+		).then(() => refetch());
 	}, [groups, allocatePickListMutation, refetch]);
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
