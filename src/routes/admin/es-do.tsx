@@ -427,9 +427,7 @@ function EmpireSushiDOComponent() {
 			const rackQtyMap = new Map<string, number>();
 
 			for (const alloc of group.allocations) {
-				const rackLabel = alloc.rackName?.trim()
-					? `Rack ${alloc.rackName.trim()}`
-					: "Rack —";
+				const rackLabel = alloc.rackName?.trim() || "—";
 				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
 				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
 			}
@@ -446,7 +444,7 @@ function EmpireSushiDOComponent() {
 							skuDescription: group.skuDescription,
 							doBreakdown: group.doBreakdown,
 							qtyRequired: group.totalQtyRequired,
-							rackLabel: `Rack ${rack.rackLabel}`,
+							rackLabel: rack.rackLabel,
 							qtyInRack: parseFloat(rack.qty) || 0,
 							expiryDate: rack.expiryDate ?? null,
 							completedPicking,
