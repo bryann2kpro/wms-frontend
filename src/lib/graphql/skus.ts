@@ -17,6 +17,7 @@ export const SKUS_QUERY = gql`
 				pickingStrategy
 				isLotControlled
 				isExpiryControlled
+				looseQuantity
 				skuSuppliers {
 					supplierId
 					originalSkuCode
@@ -102,6 +103,7 @@ export const SKUS_FRAGMENT = gql`
 		pickingStrategy
 		isLotControlled
 		isExpiryControlled
+		looseQuantity
 		isActive
 		barcode
 		brand

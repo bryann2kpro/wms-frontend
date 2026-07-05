@@ -20,6 +20,7 @@ export interface SkusFormValues {
 	pickingStrategy: string;
 	isLotControlled: boolean;
 	isExpiryControlled: boolean;
+	looseQuantity?: number | null;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode?: string | null }>;
 	isActive?: boolean;
 	barcode?: string | null;
@@ -42,6 +43,7 @@ export interface SkusFormInitial {
 	pickingStrategy?: string;
 	isLotControlled?: boolean;
 	isExpiryControlled?: boolean;
+	looseQuantity?: number | null;
 	skuSuppliers?: Array<{ supplierId: string; originalSkuCode: string | null }>;
 	isActive?: boolean;
 	barcode?: string | null;
@@ -83,6 +85,9 @@ export function SkusFormDialog({
 		initial?.skuDescription ?? "",
 	);
 	const [skuUom, setSkuUom] = useState(initial?.skuUom ?? "");
+	const [looseQuantity, setLooseQuantity] = useState(
+		initial?.looseQuantity?.toString() ?? "",
+	);
 	const [pickingStrategy, setPickingStrategy] = useState(
 		initial?.pickingStrategy ?? "FIFO",
 	);
@@ -123,6 +128,7 @@ export function SkusFormDialog({
 		setSkuCode(i?.skuCode ?? "");
 		setSkuDescription(i?.skuDescription ?? "");
 		setSkuUom(i?.skuUom ?? "");
+		setLooseQuantity(i?.looseQuantity?.toString() ?? "");
 		setPickingStrategy(i?.pickingStrategy ?? "FIFO");
 		setIsLotControlled(i?.isLotControlled ?? false);
 		setIsExpiryControlled(i?.isExpiryControlled ?? false);
@@ -247,10 +253,6 @@ export function SkusFormDialog({
 	};
 
 	const handleSubmit = () => {
-		const expiryDateString =
-			skuExpiryDate && !isNaN(skuExpiryDate.getTime())
-				? skuExpiryDate.toISOString().split("T")[0]
-				: "";
 		const parseOptionalFloat = (v: string) => {
 			const t = v.trim();
 			if (t === "") return null;
@@ -264,6 +266,7 @@ export function SkusFormDialog({
 			pickingStrategy,
 			isLotControlled,
 			isExpiryControlled,
+			looseQuantity: parseOptionalFloat(looseQuantity),
 			skuSuppliers,
 			isActive,
 			barcode: barcode.trim() || null,
@@ -302,6 +305,8 @@ export function SkusFormDialog({
 						setSkuDescription={setSkuDescription}
 						skuUom={skuUom}
 						setSkuUom={setSkuUom}
+						looseQuantity={looseQuantity}
+						setLooseQuantity={setLooseQuantity}
 						pickingStrategy={pickingStrategy}
 						setPickingStrategy={setPickingStrategy}
 						isLotControlled={isLotControlled}

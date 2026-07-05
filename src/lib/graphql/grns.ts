@@ -37,7 +37,9 @@ export const GRNS_QUERY = gql`
 				notes
 				proofUrl
 				nsError
+				endUserId
 				poFulfilled
+				manualInbound
 				createdAt
 				updatedAt
 				createdByUser {
@@ -63,6 +65,7 @@ export const GRNS_QUERY = gql`
 					skuDescription
 					qty
 					lossQty
+					lossRackId
 					remarks
 					expiryDate
 					lotNo
@@ -77,6 +80,11 @@ export const GRNS_QUERY = gql`
 						rackColumn
 					}
 					rackAllocations {
+						rackId
+						quantity
+						rackLabel
+					}
+					lossRackAllocations {
 						rackId
 						quantity
 						rackLabel
@@ -104,6 +112,7 @@ export const GRNS_WORK_QUEUE_QUERY = gql`
 				grnNo
 				status
 				receivedAt
+				manualInbound
 				items {
 					id
 					grnId
@@ -203,6 +212,59 @@ export const DELETE_GRN_MUTATION = gql`
 	}
 `;
 
+/**
+ * Full item context for every GRN that has at least one outstanding line — fulfilled
+ * lines come back too (remainingCtn/remainingLoosePcs null) so the report can group and
+ * show a GRN's complete set of items together.
+ */
+export const GRN_REMAINING_REPORT_QUERY = gql`
+	query GrnRemainingReport {
+		grnRemainingReport {
+			grnId
+			grnNo
+			poNo
+			receivedAt
+			supplierName
+			endUserName
+			skuCode
+			skuDescription
+			remainingCtn
+			remainingLoosePcs
+		}
+	}
+`;
+
+export type GrnRemainingLine = {
+	grnId: string;
+	grnNo: string;
+	poNo: string | null;
+	receivedAt: string | null;
+	supplierName: string | null;
+	endUserName: string | null;
+	skuCode: string;
+	skuDescription: string;
+	remainingCtn: number | null;
+	remainingLoosePcs: number | null;
+};
+
+export type GrnRemainingReportQueryData = {
+	grnRemainingReport: GrnRemainingLine[];
+};
+
+/** Printable PDF of every outstanding GRN remaining-qty line. */
+export const GENERATE_GRN_REMAINING_REPORT_PDF_MUTATION = gql`
+	mutation GenerateGrnRemainingReportPdf {
+		generateGrnRemainingReportPdf {
+			pdfBase64
+			filename
+		}
+	}
+`;
+
+export type GenerateGrnRemainingReportPdfMutationData = {
+	generateGrnRemainingReportPdf: { pdfBase64: string; filename: string };
+};
+
 /** Get next GRN number for today (or an optional date) */
 export const NEXT_GRN_NUMBER_QUERY = gql`
 	query NextGrnNumber($date: String) {
@@ -284,7 +346,7 @@ export type GrnsWorkQueueQueryVariables = {
 export type GrnsWorkQueueQueryData = {
 	grns: Pick<GrnPaginatedResponse, "pagination"> & {
 		query: Array<
-			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt"> & {
+			Pick<Grn, "id" | "grnNo" | "status" | "receivedAt" | "manualInbound"> & {
 				items: Array<
 					Pick<
 						GrnItem,
@@ -457,6 +519,9 @@ export function mapGrnsQueryToResult(
 			const rackAllocations = (i.rackAllocations ?? [])
 				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
 				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
+			const lossRackAllocations = (i.lossRackAllocations ?? [])
+				.filter((a) => (a.rackId ?? "").trim() && a.quantity > 0)
+				.map((a) => ({ rackId: a.rackId, quantity: a.quantity, rackLabel: a.rackLabel ?? null }));
 			return {
 				id: i.id,
 				sku: i.skuId,
@@ -469,7 +534,9 @@ export function mapGrnsQueryToResult(
 				expiryDate: i.expiryDate ?? null,
 				lotNo: i.lotNo ?? null,
 				rack: rack ?? null,
+				lossRackId: i.lossRackId ?? null,
 				rackAllocations: rackAllocations.length > 0 ? rackAllocations : null,
+				lossRackAllocations: lossRackAllocations.length > 0 ? lossRackAllocations : null,
 			};
 		});
 		const totalItems = lineItems.reduce(
@@ -500,6 +567,7 @@ export function mapGrnsQueryToResult(
 			proofUrl: g.proofUrl ?? null,
 			nsError: g.nsError ?? null,
 			poFulfilled: g.poFulfilled ?? null,
+			manualInbound: g.manualInbound ?? false,
 			totalItems,
 			receivedItems,
 			totalAmount: 0,

@@ -10,14 +10,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { Supplier, StockUnit } from "@/lib/graphql/types";
-import { Calendar as CalendarIcon, Search, X } from "lucide-react";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Search, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
 	getAvailablePickingStrategies,
@@ -29,10 +22,10 @@ export function SkusFormStep1({
 	setSkuCode,
 	skuDescription,
 	setSkuDescription,
-	skuExpiryDate,
-	setSkuExpiryDate,
 	skuUom,
 	setSkuUom,
+	looseQuantity,
+	setLooseQuantity,
 	pickingStrategy,
 	setPickingStrategy,
 	isLotControlled,
@@ -49,6 +42,8 @@ export function SkusFormStep1({
 	setSkuDescription: (v: string) => void;
 	skuUom: string;
 	setSkuUom: (v: string) => void;
+	looseQuantity: string;
+	setLooseQuantity: (v: string) => void;
 	pickingStrategy: string;
 	setPickingStrategy: (v: string) => void;
 	isLotControlled: boolean;
@@ -165,6 +160,22 @@ export function SkusFormStep1({
 				{errors.skuUom && (
 					<p className="text-sm text-destructive">{errors.skuUom}</p>
 				)}
+			</div>
+			<div className="grid gap-2">
+				<Label htmlFor="sku-loose-quantity">Loose Quantity</Label>
+				<Input
+					id="sku-loose-quantity"
+					type="number"
+					min={0}
+					step={1}
+					value={looseQuantity}
+					onChange={(e) => setLooseQuantity(e.target.value)}
+					placeholder="e.g. 24"
+					className="rounded-lg border-muted-foreground/20"
+				/>
+				<p className="text-xs text-muted-foreground">
+					Number of loose items per unit of measure (e.g. pieces per carton).
+				</p>
 			</div>
 			<div className="flex items-center justify-between gap-4 rounded-lg border border-muted-foreground/20 px-3 py-2">
 				<div className="space-y-0.5">

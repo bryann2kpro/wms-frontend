@@ -79,8 +79,8 @@ function PickFaceStrategyPage() {
 	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
-	const [sortField, setSortField] = useState<string>("UPDATED_AT");
-	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
+	const [sortField, setSortField] = useState<string>("STORAGE_BIN");
+	const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [editing, setEditing] = useState<PickFaceStrategy | null>(null);

@@ -19,6 +19,7 @@ import { StockTransferFormDialog } from "@/components/stock-transfer/stock-trans
 import {
 	TransferDraftActions,
 	dashboardAccentButtonProps,
+	formatTransferQtyDisplay,
 	transferTableEmptyCellClassName,
 	transferTableMonoCellClassName,
 	transferTableWrapperClassName,
@@ -67,6 +68,7 @@ import {
 	RECEIVE_STOCK_TRANSFER_MUTATION,
 	REJECT_STOCK_TRANSFER_MUTATION,
 	STOCK_TRANSFERS_QUERY,
+	type ApproveStockTransferMutationData,
 	type StockTransfersQueryData,
 } from "@/lib/graphql/stock-transfer";
 import type {
@@ -128,6 +130,13 @@ function StatusBadge({ status }: { status: StockTransferStatus }) {
 		return (
 			<Badge className="border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-400">
 				Draft
+			</Badge>
+		);
+	}
+	if (status === "AWAITING_DISPATCH") {
+		return (
+			<Badge className="border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-400">
+				Awaiting Dispatch
 			</Badge>
 		);
 	}
@@ -216,14 +225,32 @@ function StockTransferComponent() {
 	function invalidate() {
 		queryClient.invalidateQueries({ queryKey: qk.stockTransfers.all });
 		queryClient.invalidateQueries({ queryKey: qk.stockQuants.all });
+		queryClient.invalidateQueries({ queryKey: qk.racks.all });
 	}
 
 	const { mutateAsync: approveMutation, isPending: approving } = useMutation({
 		mutationFn: (id: string) =>
-			gqlRequest(APPROVE_STOCK_TRANSFER_MUTATION, { id }),
+			gqlRequest<ApproveStockTransferMutationData>(
+				APPROVE_STOCK_TRANSFER_MUTATION,
+				{ id },
+			),
 		onError: (err) => toast.error(getErrorMessage(err)),
-		onSuccess: () => {
-			toast.success("Transfer approved and stock moved");
+		onSuccess: (data) => {
+			const approved = data.approveStockTransfer;
+			if (
+				approved.type === "WAREHOUSE_TO_WAREHOUSE" &&
+				approved.status === "AWAITING_DISPATCH"
+			) {
+				toast.success(
+					"Transfer approved — dispatch from Internal Transfer Work Queue",
+				);
+			} else if (approved.status === "IN_TRANSIT") {
+				toast.success(
+					"Transfer approved — confirm receipt in Internal Transfer Work Queue",
+				);
+			} else {
+				toast.success("Transfer approved and stock moved");
+			}
 			invalidate();
 		},
 	});
@@ -286,7 +313,7 @@ function StockTransferComponent() {
 			<AdminPageHeader
 				icon={ArrowLeftRight}
 				title="Bin to Bin"
-				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve to move stock."
+				description="Move stock between racks. Add a single-line transfer above, or create a multi-line / cross-warehouse transfer below. Approve dispatches stock from source; confirm receipt in the Internal Transfer Work Queue."
 				titleId="stock-transfer-page-title"
 				descriptionId="stock-transfer-page-description"
 			/>
@@ -317,7 +344,7 @@ function StockTransferComponent() {
 									<TableHead>Source Rack</TableHead>
 									<TableHead>Lot No</TableHead>
 									<TableHead>Destination Rack</TableHead>
-									<TableHead className="text-right">Quantity</TableHead>
+									<TableHead className="text-right">Qty (ctn | loss)</TableHead>
 									<TableHead className="w-[200px] text-right">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -358,7 +385,7 @@ function StockTransferComponent() {
 														{rackLabel(item.destinationRack)}
 													</TableCell>
 													<TableCell className="text-right text-sm font-medium">
-														{Number(item.quantity).toLocaleString()}
+														{formatTransferQtyDisplay(item)}
 													</TableCell>
 													<TableCell className="text-right">
 														<TransferDraftActions
@@ -479,6 +506,9 @@ function StockTransferComponent() {
 							<SelectContent>
 								<SelectItem value="ALL">All statuses</SelectItem>
 								<SelectItem value="DRAFT">Draft</SelectItem>
+								<SelectItem value="AWAITING_DISPATCH">
+									Awaiting Dispatch
+								</SelectItem>
 								<SelectItem value="IN_TRANSIT">In Transit</SelectItem>
 								<SelectItem value="COMPLETED">Completed</SelectItem>
 								<SelectItem value="CANCELLED">Cancelled</SelectItem>
@@ -692,7 +722,7 @@ function StockTransferComponent() {
 											<TableHead>Lot</TableHead>
 											<TableHead>Expiry</TableHead>
 											<TableHead>Movement</TableHead>
-											<TableHead className="text-right">Qty</TableHead>
+											<TableHead className="text-right">Qty (ctn | loss)</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -732,7 +762,7 @@ function StockTransferComponent() {
 													</span>
 												</TableCell>
 												<TableCell className={`text-right ${transferTableMonoCellClassName}`}>
-													{item.quantity}
+													{formatTransferQtyDisplay(item)}
 												</TableCell>
 											</TableRow>
 										))}

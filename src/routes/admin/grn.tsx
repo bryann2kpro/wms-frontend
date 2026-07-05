@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
@@ -98,6 +98,10 @@ import {
 	SUPPLIERS_QUERY,
 	type SuppliersQueryData,
 } from "@/lib/graphql/suppliers";
+import {
+	END_USERS_QUERY,
+	type EndUsersQueryData,
+} from "@/lib/graphql/end-users";
 import { toast } from "sonner";
 import { toUserFriendlyMessage } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -473,7 +477,7 @@ function AsnPickerDialog({
 							}
 						}}
 					>
-						{selecting ? "Loading…" : "Continue"}
+						{selecting ? "Loadingâ€¦" : "Continue"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -550,6 +554,12 @@ function GRNRouteComponent() {
 			gqlRequest<SuppliersQueryData>(SUPPLIERS_QUERY, suppliersVariables),
 	});
 	const suppliers = suppliersData?.suppliers?.query ?? [];
+
+	const { data: endUsersData } = useQuery({
+		queryKey: [...qk.endUsers.all, "list"],
+		queryFn: () => gqlRequest<EndUsersQueryData>(END_USERS_QUERY, { pageSize: 500, pageNumber: 1 }),
+	});
+	const endUsers = endUsersData?.endUsers?.query ?? [];
 
 	const grnsQueryVars: GrnsQueryVariables = {
 		filter: {
@@ -653,23 +663,28 @@ function GRNRouteComponent() {
 			receivedDate: Date;
 			notes?: string;
 			warehouseId?: string;
+			poFulfilled?: boolean;
 			/** Draft = save as draft, Submitted = submit for approval */
 			submitIntent?: "draft" | "submit";
 			items?: Array<{
 				sku: string;
 				description?: string;
 				carton: number;
+				orderedQty?: number;
 				loss: number;
 				uom?: string;
 				unitPrice?: number;
 				expiryDate?: string;
 				lotNo?: string;
+				lossRackId?: string;
 				rackIds?: string[];
 				rackAllocations?: Array<{ rackId: string; quantity: number }>;
+				lossRackAllocations?: Array<{ rackId: string; quantity: number }>;
 			}>;
 			/** ID of advance notice this GRN was created from. */
 			advanceNoticeId?: string | null;
 			supplierId?: string;
+			endUserId?: string;
 		}) => {
 			const status: GRNStatus =
 				payload.submitIntent === "submit" ? "Submitted" : "Draft";
@@ -685,13 +700,18 @@ function GRNRouteComponent() {
 					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
 				);
 				const rackIds = (i.rackIds ?? []).filter((id) => (id ?? "").trim());
+				const lossRackAllocations = (i.lossRackAllocations ?? []).filter(
+					(row) => (row.rackId ?? "").trim() && row.quantity > 0,
+				);
 				return {
 					skuId:
 						skuOptions.find((s) => s.skuCode === i.sku)?.skuId ?? undefined,
 					skuCode: i.sku,
 					skuDescription: i.description ?? undefined,
 					qty: String(i.carton),
+					orderedQty: i.orderedQty == null ? undefined : String(i.orderedQty),
 					lossQty: String(i.loss ?? 0),
+					lossRackId: (i.lossRackId ?? "").trim() || undefined,
 					skuUom: uomId ?? undefined,
 					expiryDate: (i.expiryDate ?? "").trim() || undefined,
 					lotNo: (i.lotNo ?? "").trim() || undefined,
@@ -700,6 +720,7 @@ function GRNRouteComponent() {
 						: rackIds.length > 0
 							? { rackIds }
 							: {}),
+					...(lossRackAllocations.length > 0 ? { lossRackAllocations } : {}),
 				};
 			});
 			const baseInput = {
@@ -710,6 +731,7 @@ function GRNRouteComponent() {
 				status: UI_STATUS_TO_GQL[status],
 				notes: payload.notes?.trim() || undefined,
 				warehouseId,
+				endUserId: payload.endUserId?.trim() || undefined,
 				items,
 			};
 			if (useCreateInbound) {
@@ -723,6 +745,7 @@ function GRNRouteComponent() {
 						userId,
 						...baseInput,
 						supplierId: payload.supplierId?.trim() || undefined,
+						poFulfilled: payload.poFulfilled ?? true,
 						advanceNoticeId: payload.advanceNoticeId ?? undefined,
 					},
 				});
@@ -1078,7 +1101,9 @@ function GRNRouteComponent() {
 											warehouses={warehouses}
 											racks={racks}
 											suppliers={suppliers}
+											endUsers={endUsers}
 											supplierSelectionOptional={!!selectedAsnId}
+											showPoFulfilledToggle={!selectedAsnId}
 											initialValues={asnInitialValues}
 											onCreateSubmit={async (payload) => {
 												await createMutation.mutateAsync({
@@ -1091,18 +1116,24 @@ function GRNRouteComponent() {
 														: new Date(),
 													notes: payload.notes || undefined,
 													warehouseId: payload.warehouseId || undefined,
+													endUserId: payload.endUserId || undefined,
+													poFulfilled: payload.poFulfilled,
 													submitIntent: payload.submitIntent,
 													advanceNoticeId: selectedAsnId ?? undefined,
 													items: payload.items.map((i) => ({
 														sku: i.skuCode,
 														description: i.description,
 														carton: i.carton,
+														orderedQty: i.orderedQty,
 														loss: i.loss,
 														uom: i.uom,
 														unitPrice: i.unitPrice,
 														expiryDate: i.expiryDate ?? "",
 														lotNo: i.lotNo ?? "",
+														lossRackId: i.lossRackId?.trim() || undefined,
 														rackIds: i.rackId?.trim() ? [i.rackId.trim()] : [],
+														rackAllocations: i.rackAllocations,
+														lossRackAllocations: i.lossRackAllocations,
 													})),
 												});
 											}}
@@ -1322,14 +1353,16 @@ function GRNRouteComponent() {
 													(grn.status === "Draft" || grn.status === "Submitted");
 												const showApprove =
 													canApproveGrn && grn.status === "Submitted";
-												console.log("")
 												// poFulfilled === false means the PO/ASN still has outstanding qty —
 												// sending now is guaranteed to be rejected by NetSuite (see
 												// computePoFulfillment on the backend). Hide the action entirely
 												// rather than let staff hit a doomed send.
 												const poBlocked = grn.poFulfilled === false;
 												const showSend =
-													canApproveGrn && grn.status === "Approved" && !poBlocked;
+													canApproveGrn &&
+													grn.status === "Approved" &&
+													!poBlocked &&
+													!grn.manualInbound;
 												const showRetry = canApproveGrn && grn.status === "Failed";
 												return (
 													<TableRow
@@ -1462,7 +1495,7 @@ function GRNRouteComponent() {
 												? 0
 												: (data.page - 1) * data.pageSize + 1}
 										</span>{" "}
-										–{" "}
+										â€“{" "}
 										<span className="font-semibold tabular-nums text-foreground">
 											{data.total === 0
 												? 0
@@ -1619,7 +1652,7 @@ function GRNRouteComponent() {
 																	selectedGRN.warehouse.warehouseCode,
 																]
 																	.filter(Boolean)
-																	.join(" · ") ||
+																	.join(" Â· ") ||
 																selectedGRN.warehouse.warehouseName
 																: "-"}
 														</p>
@@ -1793,12 +1826,13 @@ function GRNRouteComponent() {
 											className="text-white hover:opacity-90"
 										>
 											{statusMutation.status === "pending"
-												? "Approving…"
+												? "Approvingâ€¦"
 												: "Approve"}
 										</Button>
 									)}
 									{canApproveGrn &&
 									selectedGRN?.status === "Approved" &&
+									!selectedGRN.manualInbound &&
 									selectedGRN.poFulfilled !== false && (
 										<Button
 											onClick={() => {
@@ -1810,12 +1844,13 @@ function GRNRouteComponent() {
 										>
 											<Send className="mr-2 h-4 w-4" />
 											{statusMutation.status === "pending"
-												? "Sending…"
+												? "Sendingâ€¦"
 												: "Send to ES"}
 										</Button>
 									)}
 									{canApproveGrn &&
 									selectedGRN?.status === "Approved" &&
+									!selectedGRN.manualInbound &&
 									selectedGRN.poFulfilled === false && (
 										<div
 											title={`PO ${selectedGRN.poNo ?? ""} still has another delivery outstanding — wait until it's fully received before sending to ES.`}
@@ -1834,7 +1869,7 @@ function GRNRouteComponent() {
 										>
 											<RotateCcw className={`mr-2 h-4 w-4 ${statusMutation.status === "pending" ? "animate-spin" : ""}`} />
 											{statusMutation.status === "pending"
-												? "Retrying…"
+												? "Retryingâ€¦"
 												: "Retry"}
 										</Button>
 									)}
@@ -1843,7 +1878,7 @@ function GRNRouteComponent() {
 						</DialogContent>
 					</Dialog>
 
-					{/* Edit GRN – same form dialog as Create */}
+					{/* Edit GRN â€“ same form dialog as Create */}
 					<GrnFormDialog
 						mode="edit"
 						open={isEditOpen}
@@ -1854,6 +1889,7 @@ function GRNRouteComponent() {
 						warehouses={warehouses}
 						racks={racks}
 						suppliers={suppliers}
+						endUsers={endUsers}
 						onSuccess={() => {
 							refetchGRNs();
 							setIsEditOpen(false);

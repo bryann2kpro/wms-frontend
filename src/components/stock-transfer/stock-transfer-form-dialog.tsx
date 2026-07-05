@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { RackLocationCombobox } from "@/components/grn/rack-location-combobox";
 import { WarehouseCombobox } from "@/components/grn/warehouse-combobox";
-import { dashboardAccentButtonProps } from "@/components/stock-transfer/stock-transfer-ui";
+import { dashboardAccentButtonProps, formatCtnLossComma, formatCtnLossPipe } from "@/components/stock-transfer/stock-transfer-ui";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -54,6 +54,7 @@ type TransferLineItem = {
 	sourceRackLabel: string;
 	sourceStockQuantId: string;
 	quantity: string;
+	lossQuantity: string;
 	destWarehouseId: string;
 	destRackId: string;
 	destRackLabel: string;
@@ -96,13 +97,26 @@ function getErrorMessage(err: unknown): string {
 
 function available(quantity: string, reservedQty: string): number {
 	const avail = Number(quantity) - Number(reservedQty);
-	return Number.isFinite(avail) ? avail : 0;
+	return Number.isFinite(avail) ? Math.max(0, Math.floor(avail)) : 0;
+}
+
+function availableLoss(lossQty: string | null | undefined): number {
+	const n = Number(lossQty ?? "0");
+	return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
+function hasTransferableStock(quant: StockQuant): boolean {
+	return (
+		available(quant.quantity, quant.reservedQty) > 0 ||
+		availableLoss(quant.lossQty) > 0
+	);
 }
 
 function formatStockQuantLabel(quant: StockQuant): string {
-	const avail = available(quant.quantity, quant.reservedQty);
+	const availCtn = available(quant.quantity, quant.reservedQty);
+	const availLoss = availableLoss(quant.lossQty);
 	const lot = quant.lotNo?.trim() ? ` · Lot ${quant.lotNo}` : "";
-	return `${quant.skuCode ?? quant.skuId}${lot} · avail ${avail}`;
+	return `${quant.skuCode ?? quant.skuId}${lot} · ${formatCtnLossComma(availCtn, availLoss)}`;
 }
 
 // ============================================
@@ -201,7 +215,7 @@ function StockQuantCombobox({
 	}, [quants, search]);
 
 	const handleSelect = (quant: StockQuant) => {
-		if (available(quant.quantity, quant.reservedQty) <= 0) return;
+		if (!hasTransferableStock(quant)) return;
 		onChange(quant.id);
 		setOpen(false);
 		setSearch("");
@@ -287,10 +301,9 @@ function StockQuantCombobox({
 						) : (
 							<ul className="px-1 py-1">
 								{filtered.map((quant) => {
-									const avail = available(quant.quantity, quant.reservedQty);
 									const label = formatStockQuantLabel(quant);
 									const isSelected = value === quant.id;
-									const isDisabled = avail <= 0;
+									const isDisabled = !hasTransferableStock(quant);
 									return (
 										<li key={quant.id}>
 											<button
@@ -348,6 +361,7 @@ function createEmptyLine(): TransferLineItem {
 		sourceRackLabel: "",
 		sourceStockQuantId: "",
 		quantity: "",
+		lossQuantity: "",
 		destWarehouseId: "",
 		destRackId: "",
 		destRackLabel: "",
@@ -413,9 +427,16 @@ export function StockTransferFormDialog({
 				return `Row ${i + 1}: Please select a destination rack.`;
 			if (item.destRackId === item.sourceRackId)
 				return `Row ${i + 1}: Destination rack must differ from the source rack.`;
-			const qty = Number(item.quantity);
-			if (Number.isNaN(qty) || qty <= 0)
-				return `Row ${i + 1}: Quantity must be greater than zero.`;
+			const qty = item.quantity.trim() ? Number(item.quantity) : 0;
+			const lossQty = item.lossQuantity.trim() ? Number(item.lossQuantity) : 0;
+			if (
+				(item.quantity.trim() && (!Number.isFinite(qty) || qty < 0)) ||
+				(item.lossQuantity.trim() && (!Number.isFinite(lossQty) || lossQty < 0))
+			) {
+				return `Row ${i + 1}: Quantities must be non-negative numbers.`;
+			}
+			if (qty <= 0 && lossQty <= 0)
+				return `Row ${i + 1}: At least one of ctn or Loss quantity must be greater than zero.`;
 		}
 		return null;
 	}
@@ -430,7 +451,8 @@ export function StockTransferFormDialog({
 		const lines: CreateStockTransferLineInput[] = items.map((item) => ({
 			sourceStockQuantId: item.sourceStockQuantId,
 			destinationRackId: item.destRackId,
-			quantity: item.quantity,
+			quantity: item.quantity.trim() || "0",
+			lossQuantity: item.lossQuantity.trim() || "0",
 		}));
 
 		await createMutation({
@@ -523,7 +545,7 @@ export function StockTransferFormDialog({
 						onClick={handleSubmit}
 						disabled={loading}
 					>
-						{loading ? "Saving…" : "Save as draft"}
+						{loading ? "Saving…" : "Send for Approval"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -567,8 +589,11 @@ function TransferLineEditor({
 	});
 
 	const selectedQuant = selectedQuantData?.stockQuants?.query?.[0] ?? null;
-	const availableQty = selectedQuant
+	const availableCtn = selectedQuant
 		? available(selectedQuant.quantity, selectedQuant.reservedQty)
+		: 0;
+	const availableLossQty = selectedQuant
+		? availableLoss(selectedQuant.lossQty)
 		: 0;
 
 	const showBanner = !!item.sourceWarehouseId && !!item.destWarehouseId;
@@ -582,6 +607,7 @@ function TransferLineEditor({
 			sourceRackLabel: "",
 			sourceStockQuantId: "",
 			quantity: "",
+			lossQuantity: "",
 		});
 	}
 
@@ -591,11 +617,12 @@ function TransferLineEditor({
 			sourceRackLabel: rackLabel ?? "",
 			sourceStockQuantId: "",
 			quantity: "",
+			lossQuantity: "",
 		});
 	}
 
 	function handleQuantChange(quantId: string) {
-		onUpdate({ sourceStockQuantId: quantId, quantity: "" });
+		onUpdate({ sourceStockQuantId: quantId, quantity: "", lossQuantity: "" });
 	}
 
 	function handleQuantityChange(value: string) {
@@ -605,8 +632,19 @@ function TransferLineEditor({
 		}
 		const num = Number(value);
 		if (Number.isNaN(num)) return;
-		const clamped = num > availableQty ? String(availableQty) : value;
+		const clamped = num > availableCtn ? String(availableCtn) : value;
 		onUpdate({ quantity: clamped });
+	}
+
+	function handleLossQuantityChange(value: string) {
+		if (value === "") {
+			onUpdate({ lossQuantity: "" });
+			return;
+		}
+		const num = Number(value);
+		if (Number.isNaN(num)) return;
+		const clamped = num > availableLossQty ? String(availableLossQty) : value;
+		onUpdate({ lossQuantity: clamped });
 	}
 
 	function handleDestWarehouseChange(warehouseId: string) {
@@ -683,29 +721,65 @@ function TransferLineEditor({
 							}
 						/>
 					</div>
-					<div className="grid grid-cols-2 gap-2">
-						<div className="space-y-1.5">
-							<Label className="text-xs text-muted-foreground">Available</Label>
-							<Input
-								readOnly
-								value={selectedQuant ? String(availableQty) : "-"}
-								className="font-mono text-sm bg-muted/40"
-							/>
+					<div className="space-y-1.5">
+						<Label className="text-xs text-muted-foreground">
+							Quantity (ctn | loss)
+						</Label>
+						<div className="grid grid-cols-2 gap-2">
+							<div className="space-y-1">
+								<Label
+									htmlFor={`line-${rowIndex}-ctn`}
+									className="text-[10px] font-normal text-muted-foreground"
+								>
+									ctn
+									{selectedQuant?.stockUnitCode?.trim() ? (
+										<span> ({selectedQuant.stockUnitCode.trim()})</span>
+									) : null}
+								</Label>
+								<Input
+									id={`line-${rowIndex}-ctn`}
+									type="number"
+									min={0}
+									max={availableCtn || undefined}
+									step={1}
+									placeholder="0"
+									value={item.quantity}
+									onChange={(e) => handleQuantityChange(e.target.value)}
+									disabled={
+										!item.sourceStockQuantId || availableCtn <= 0
+									}
+									aria-label={`Line ${rowIndex + 1} ctn quantity`}
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label
+									htmlFor={`line-${rowIndex}-loss`}
+									className="text-[10px] font-normal text-muted-foreground"
+								>
+									loss
+								</Label>
+								<Input
+									id={`line-${rowIndex}-loss`}
+									type="number"
+									min={0}
+									max={availableLossQty || undefined}
+									step={1}
+									placeholder="0"
+									value={item.lossQuantity}
+									onChange={(e) => handleLossQuantityChange(e.target.value)}
+									disabled={
+										!item.sourceStockQuantId || availableLossQty <= 0
+									}
+									aria-label={`Line ${rowIndex + 1} loss quantity`}
+								/>
+							</div>
 						</div>
-						<div className="space-y-1.5">
-							<Label className="text-xs text-muted-foreground">Quantity</Label>
-							<Input
-								type="number"
-								min={0}
-								max={availableQty || undefined}
-								step="0.01"
-								placeholder="0"
-								value={item.quantity}
-								onChange={(e) => handleQuantityChange(e.target.value)}
-								disabled={!item.sourceStockQuantId}
-								aria-label={`Line ${rowIndex + 1} quantity`}
-							/>
-						</div>
+						{selectedQuant ? (
+							<p className="text-[10px] text-muted-foreground">
+								Available:{" "}
+								{formatCtnLossPipe(availableCtn, availableLossQty)}
+							</p>
+						) : null}
 					</div>
 				</div>
 

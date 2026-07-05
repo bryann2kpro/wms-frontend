@@ -23,6 +23,47 @@ export const transferTableEmptyCellClassName =
 
 export const transferTableMonoCellClassName = "font-mono text-sm";
 
+/** Format quantity with optional SKU UOM code (e.g. "12 CTN"). */
+export function formatQtyWithUom(
+	qty: number,
+	stockUnitCode?: string | null,
+): string {
+	const amount = qty.toLocaleString();
+	const uom = stockUnitCode?.trim();
+	return uom ? `${amount} ${uom}` : amount;
+}
+
+/** Combobox availability — always shows both parts (e.g. "12 CTN, 0 Loss"). */
+export function formatCtnLossComma(ctn: number, loss: number): string {
+	const safeCtn = Number.isFinite(ctn) ? Math.max(0, Math.floor(ctn)) : 0;
+	const safeLoss = Number.isFinite(loss) ? Math.max(0, Math.floor(loss)) : 0;
+	return `${safeCtn.toLocaleString()} CTN, ${safeLoss.toLocaleString()} Loss`;
+}
+
+/** Available / quantity labels — pipe-separated (e.g. "12 ctn | 5 loss"). */
+export function formatCtnLossPipe(ctn: number, loss: number): string {
+	const safeCtn = Number.isFinite(ctn) ? Math.max(0, Math.floor(ctn)) : 0;
+	const safeLoss = Number.isFinite(loss) ? Math.max(0, Math.floor(loss)) : 0;
+	return `${safeCtn.toLocaleString()} ctn | ${safeLoss.toLocaleString()} loss`;
+}
+
+/** Draft queue / work-queue quantity cell (e.g. "12 CTN + 5 Loss"). */
+export function formatTransferQtyDisplay(item: {
+	quantity: string;
+	lossQuantity?: string | null;
+}): string {
+	const carton = Number(item.quantity ?? 0);
+	const loss = Number(item.lossQuantity ?? 0);
+	const parts: string[] = [];
+	if (Number.isFinite(carton) && carton > 0) {
+		parts.push(`${carton.toLocaleString()} CTN`);
+	}
+	if (Number.isFinite(loss) && loss > 0) {
+		parts.push(`${loss.toLocaleString()} Loss`);
+	}
+	return parts.length > 0 ? parts.join(" + ") : "0";
+}
+
 type TransferDraftActionsProps = {
 	onApprove: () => void;
 	onReject: () => void;

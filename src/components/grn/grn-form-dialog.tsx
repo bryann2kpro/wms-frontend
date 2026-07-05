@@ -21,6 +21,7 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SkuCombobox, type SkuLineValue } from "@/components/grn/sku-combobox";
 import {
@@ -68,15 +69,23 @@ import {
 import type { Grn, GrnItem } from "@/lib/graphql/types";
 import {
 	CREATE_RACK_MUTATION,
+	RACKS_QUERY,
 	type CreateRackMutationData,
+	type RacksQueryData,
+	type RacksQueryVariables,
 } from "@/lib/graphql/racks";
 import type { GRNStatus } from "@/data/grn.mock-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toast } from "sonner";
 import { formatDate, toUserFriendlyMessage } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
 	applyRemainingQtyToLineItems,
+	computeRemainingOwed,
+	isRemainingComputable,
 	remainingForSku,
+	resolveOrderedCtnForDisplay,
+	sumHistoricalLossBySku,
 	sumHistoricalReceivedBySku,
 } from "@/lib/grn/po-fulfillment";
 import { Label } from "@/components/ui/label";
@@ -87,7 +96,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Supplier } from "@/lib/graphql/types";
+import type { Supplier, EndUser } from "@/lib/graphql/types";
 import {
 	getGrnLineSkuControls,
 	grnLineDuplicateKey,
@@ -266,6 +275,7 @@ export type GRNLineItemForm = {
 	description: string;
 	/** Quantity in cartons */
 	carton: number;
+	orderedQty?: number;
 	/** Quantity lost */
 	loss: number;
 	uom: string;
@@ -276,13 +286,30 @@ export type GRNLineItemForm = {
 	lotNo: string;
 	/** Primary rack (first allocation). Same SKU allowed with different expiry/rack. */
 	rackId: string;
+	/** Rack for loose/loss items — must be LOOSE_STORAGE bin type. */
+	lossRackId?: string;
 	/** Multi-rack putaway split when quantity exceeds single-rack capacity. */
 	rackAllocations?: GrnRackAllocationForm[];
+	/** Multi-rack loose/loss split when loss qty is spread across loose-storage racks. */
+	lossRackAllocations?: GrnRackAllocationForm[];
 	/** When true, rack was auto-filled from putaway suggestion (may refresh on SKU/qty change). */
 	rackAutoSuggested?: boolean;
 	/** True when this row was prefilled from a lot-tracked ASN line (UI hint only). */
 	asnLotTracked?: boolean;
 };
+
+function resolveLineOrderedCtn(
+	item: GRNLineItemForm,
+	poAsnLines: Array<{ skuCode: string; expected: number }>,
+): number | undefined {
+	if (item.orderedQty != null && Number.isFinite(item.orderedQty)) {
+		return item.orderedQty;
+	}
+	const code = item.skuCode?.trim();
+	if (!code) return undefined;
+	const asnLine = poAsnLines.find((l) => l.skuCode === code);
+	return asnLine?.expected;
+}
 
 function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	rackAllocations?: Array<{ rackId: string; quantity: number }>;
@@ -302,6 +329,76 @@ function buildGrnItemRackPayload(item: GRNLineItemForm): {
 	const rackId = item.rackId?.trim();
 	if (!rackId) return {};
 	return { rackAllocations: [{ rackId, quantity: cartonQty }] };
+}
+
+function buildGrnItemLossRackPayload(item: GRNLineItemForm): {
+	lossRackAllocations?: Array<{ rackId: string; quantity: number }>;
+} {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return {};
+
+	if (item.lossRackAllocations && item.lossRackAllocations.length > 1) {
+		return {
+			lossRackAllocations: item.lossRackAllocations.map((row) => ({
+				rackId: row.rackId,
+				quantity: row.quantity,
+			})),
+		};
+	}
+
+	const lossRackId = item.lossRackId?.trim();
+	if (!lossRackId) return {};
+	return { lossRackAllocations: [{ rackId: lossRackId, quantity: lossQty }] };
+}
+
+/**
+ * True when this line's loss qty can be folded into the Remaining figure — i.e. there's
+ * no loss, or the SKU has loose_quantity (pieces/carton) configured to convert it.
+ * Blocks "Submit for Approval" the same way isLossRackAllocationValid does.
+ */
+function isRemainingComputableForItem(item: GRNLineItemForm, skuOptions: Skus[]): boolean {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return true;
+	const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+	const looseQuantity = sku?.looseQuantity != null ? Number(sku.looseQuantity) : null;
+	return looseQuantity != null && Number.isFinite(looseQuantity) && looseQuantity > 0;
+}
+
+/** True when the loose/loss rack(s) for this line cover the full loss quantity (or there's no loss to cover). */
+function isLossRackAllocationValid(item: GRNLineItemForm): boolean {
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	if (lossQty <= 0) return true;
+	if (item.lossRackAllocations && item.lossRackAllocations.length > 0) {
+		const allFilled = item.lossRackAllocations.every((row) =>
+			(row.rackId ?? "").trim(),
+		);
+		const total = item.lossRackAllocations.reduce(
+			(sum, row) => sum + (Number(row.quantity) || 0),
+			0,
+		);
+		return allFilled && total === lossQty;
+	}
+	return !!item.lossRackId?.trim();
+}
+
+/** Map stock-unit id or code to a display unit code (never leak UUIDs in labels). */
+function resolveDisplayUnitCode(
+	units: string | null | undefined,
+	stockUnits: Array<{ stockUnitId: string; unitCode: string }>,
+	fallback = "CTN",
+): string {
+	const raw = units?.trim();
+	if (!raw) return fallback;
+	const match = stockUnits.find(
+		(u) =>
+			u.stockUnitId === raw ||
+			u.unitCode.toLowerCase() === raw.toLowerCase(),
+	);
+	if (match?.unitCode) return match.unitCode;
+	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+		return fallback;
+	}
+	return raw;
 }
 
 function formatPutawayPlanHint(
@@ -350,6 +447,211 @@ function normalizeFieldErrors(
 		typeof e === "string"
 			? { message: e }
 			: (e as { message?: string } | undefined),
+	);
+}
+
+function GrnQuantitiesTable({
+	item,
+	index,
+	items,
+	onItemsChange,
+	orderedCtn,
+	orderedCtnEditable,
+	fulfilledCtn,
+	fulfilledLoss,
+	looseQuantity,
+	cartonUomLabel,
+	lossUomLabel,
+}: {
+	item: GRNLineItemForm;
+	index: number;
+	items: GRNLineItemForm[];
+	onItemsChange: (newItems: GRNLineItemForm[]) => void;
+	/** PO / ASN ordered carton qty; null when unknown. */
+	orderedCtn: number | null;
+	orderedCtnEditable: boolean;
+	fulfilledCtn: number;
+	fulfilledLoss: number;
+	/** SKU's pieces-per-carton (m_skus.loose_quantity); null when not configured. */
+	looseQuantity: number | null;
+	cartonUomLabel: string;
+	lossUomLabel: string;
+}) {
+	const inboundQty = Math.max(0, Number(item.carton) || 0);
+	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const orderedCtnForDisplay = resolveOrderedCtnForDisplay(
+		orderedCtn,
+		item.orderedQty,
+	);
+	const remainingComputable = isRemainingComputable(fulfilledLoss, looseQuantity);
+	const remaining = remainingComputable
+		? computeRemainingOwed(orderedCtnForDisplay, fulfilledCtn, fulfilledLoss, looseQuantity)
+		: null;
+	const remainingCtnDisplay = remaining ? String(remaining.remainingCtn) : "—";
+	const remainingLossDisplay = remaining ? String(remaining.remainingLoosePcs) : "—";
+
+	const readOnlyCellClass =
+		"h-8 rounded-lg border border-border/40 bg-muted/30 px-2 font-mono text-sm tabular-nums text-muted-foreground flex items-center justify-center";
+
+	const subHeaderClass =
+		"text-[9px] font-semibold uppercase tracking-wider text-muted-foreground text-center";
+
+	return (
+		<div className="overflow-x-auto">
+			<table className="w-full min-w-[320px] border-collapse text-xs">
+				<thead>
+					<tr>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Ordered
+						</th>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Delivered
+						</th>
+						<th
+							colSpan={2}
+							className="border-b border-border/50 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							style={{ fontFamily: "var(--dashboard-display)" }}
+						>
+							Fulfillment
+						</th>
+					</tr>
+					<tr>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+						<th className={subHeaderClass}>Ctn</th>
+						<th className={subHeaderClass}>Loss</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr className="align-middle">
+						<td className="p-0.5 pr-1">
+							{orderedCtnEditable ? (
+								<Input
+									type="number"
+									min={0}
+									aria-label="Ordered carton quantity"
+									value={item.orderedQty ?? ""}
+									onChange={(e) => {
+										const newItems = [...items];
+										const v = Number(e.target.value);
+										newItems[index] = {
+											...newItems[index],
+											orderedQty:
+												e.target.value === ""
+													? undefined
+													: Number.isFinite(v) && v >= 0
+														? v
+														: 0,
+										};
+										onItemsChange(newItems);
+									}}
+									placeholder="0"
+									className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+								/>
+							) : (
+								<div className={readOnlyCellClass} title={cartonUomLabel}>
+									{orderedCtn != null ? orderedCtn : "—"}
+								</div>
+							)}
+						</td>
+						<td className="p-0.5 pr-1">
+							<div className={readOnlyCellClass}>—</div>
+						</td>
+						<td className="p-0.5 pr-1">
+							<Input
+								type="number"
+								min={0}
+								aria-label="Delivered carton quantity"
+								value={item.carton}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										carton: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</td>
+						<td className="p-0.5 pr-1">
+							<Input
+								type="number"
+								min={0}
+								aria-label="Delivered loss quantity"
+								value={item.loss}
+								onChange={(e) => {
+									const newItems = [...items];
+									const v = Number(e.target.value);
+									newItems[index] = {
+										...newItems[index],
+										loss: Number.isFinite(v) && v >= 0 ? v : 0,
+									};
+									onItemsChange(newItems);
+								}}
+								placeholder="0"
+								className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
+							/>
+						</td>
+						<td className="p-0.5 pr-1">
+							<div
+								className={cn(readOnlyCellClass, "text-destructive")}
+								title={
+									!remainingComputable
+										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
+										: orderedCtnForDisplay != null
+											? `${remaining?.remainingCtn ?? 0} ${cartonUomLabel} still owed of ${orderedCtnForDisplay} ordered (after this delivery)`
+											: "No PO/ASN line to compare against"
+								}
+							>
+								{remainingCtnDisplay}
+							</div>
+						</td>
+						<td className="p-0.5">
+							<div
+								className={cn(readOnlyCellClass, "text-destructive")}
+								title={
+									!remainingComputable
+										? "Cannot compute remaining — this SKU has no loose quantity (pieces/carton) configured"
+										: `${remaining?.remainingLoosePcs ?? 0} ${lossUomLabel} still owed (loss folded back in)`
+								}
+							>
+								{remainingLossDisplay}
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			{inboundQty > 0 || lossQty > 0 ? (
+				<p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+					{inboundQty > 0 ? (
+						<span className="font-semibold text-foreground">
+							{inboundQty} {cartonUomLabel} delivered
+						</span>
+					) : null}
+					{lossQty > 0 ? (
+						<>
+							{inboundQty > 0 ? " · " : null}
+							<span className="font-semibold text-amber-600">
+								{lossQty} {lossUomLabel} loss
+							</span>
+						</>
+					) : null}
+				</p>
+			) : null}
+		</div>
 	);
 }
 
@@ -580,9 +882,10 @@ function GRNLineRow({
 	skuOptions,
 	stockUnits,
 	racks,
-	onOpenCreateRack,
 	poAsnLines,
 	poHistoricalReceivedBySku,
+	poHistoricalLossBySku,
+	showOrderedQty,
 }: {
 	item: GRNLineItemForm;
 	index: number;
@@ -593,6 +896,9 @@ function GRNLineRow({
 	poAsnLines?: Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>;
 	/** Qty already received by PRIOR saved GRNs for this PO, keyed by skuCode. */
 	poHistoricalReceivedBySku?: Map<string, number>;
+	/** Loss qty on PRIOR saved GRNs for this PO, keyed by skuCode. */
+	poHistoricalLossBySku?: Map<string, number>;
+	showOrderedQty?: boolean;
 	stockUnits: Array<{ stockUnitId: string; unitCode: string }>;
 	racks: Array<{
 		rackId: string;
@@ -600,7 +906,6 @@ function GRNLineRow({
 		rackColumn: string;
 		rackLevel: string;
 	}>;
-	onOpenCreateRack?: (lineIndex: number) => void;
 }) {
 	const skuValue: SkuLineValue | null = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
@@ -620,7 +925,8 @@ function GRNLineRow({
 		return !skuOptions.some((s) => s.skuCode === item.skuCode);
 	}, [item.skuCode, skuOptions]);
 
-	const uomLabel = useMemo(() => {
+	/** SKU base / inner stock UOM (e.g. PKT) — used for loss qty and the SKU badge. */
+	const baseUomLabel = useMemo(() => {
 		if (!item.skuCode?.trim()) return null;
 		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
 		if (!sku?.skuUom) return null;
@@ -629,6 +935,14 @@ function GRNLineRow({
 		);
 		return unit?.unitCode ?? null;
 	}, [item.skuCode, skuOptions, stockUnits]);
+
+	/** Pieces per carton (m_skus.loose_quantity) — converts loss into the Remaining figure. */
+	const looseQuantity = useMemo(() => {
+		if (!item.skuCode?.trim()) return null;
+		const sku = skuOptions.find((s) => s.skuCode === item.skuCode);
+		const lq = sku?.looseQuantity != null ? Number(sku.looseQuantity) : null;
+		return lq != null && Number.isFinite(lq) && lq > 0 ? lq : null;
+	}, [item.skuCode, skuOptions]);
 
 	const { requireLot, requireExpiry } = useMemo(
 		() =>
@@ -654,7 +968,7 @@ function GRNLineRow({
 		const span = Math.max(expected, received, 1);
 		return {
 			displayName: line.displayName,
-			units: line.units,
+			units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
 			expected,
 			historical,
 			inProgress,
@@ -663,12 +977,29 @@ function GRNLineRow({
 			historicalPct: Math.min(100, (historical / span) * 100),
 			inProgressPct: Math.min(100 - Math.min(100, (historical / span) * 100), (inProgress / span) * 100),
 		};
-	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku]);
+	}, [item.skuCode, items, poAsnLines, poHistoricalReceivedBySku, stockUnits]);
+
+	/** Receiving / putaway unit — GRN carton qty and rack allocations are always in CTN. */
+	const cartonUomLabel = poGauge?.units?.trim() || "CTN";
+
 	const [putawayPlan, setPutawayPlan] = useState<InboundPutawayPlanGql | null>(
 		null,
 	);
 	const [isSuggestingRack, setIsSuggestingRack] = useState(false);
 	const [editingAllocationIdx, setEditingAllocationIdx] = useState<number | null>(null);
+	const [editingLossAllocationIdx, setEditingLossAllocationIdx] = useState<number | null>(null);
+
+	const { data: looseRacksData } = useQuery({
+		queryKey: [...qk.racks.all, "loose-storage"],
+		queryFn: () =>
+			gqlRequest<RacksQueryData, RacksQueryVariables>(RACKS_QUERY, {
+				filter: { binType: "LOOSE_STORAGE" },
+				pageSize: 50,
+				pageNumber: 1,
+			}),
+		staleTime: 5 * 60 * 1000,
+	});
+	const looseRacks = looseRacksData?.racks?.query ?? [];
 
 	const resolvedSkuId = useMemo(() => {
 		if (!item.skuCode?.trim()) return "";
@@ -677,11 +1008,31 @@ function GRNLineRow({
 
 	const inboundQty = Math.max(0, Number(item.carton) || 0);
 	const lossQty = Math.max(0, Number(item.loss) || 0);
+	const debouncedSkuCode = useDebouncedValue(item.skuCode, 350);
+	const debouncedInboundQty = useDebouncedValue(inboundQty, 350);
+	const debouncedResolvedSkuId = useDebouncedValue(resolvedSkuId, 350);
+
+	useEffect(() => {
+		if (lossQty > 0 && !item.lossRackId && looseRacks.length > 0) {
+			const first = looseRacks[0];
+			onItemsChange(
+				items.map((row, i) =>
+					i === index ? { ...row, lossRackId: first.rackId } : row,
+				),
+			);
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [lossQty, looseRacks.length]);
 	const netQty = Math.max(0, inboundQty - lossQty);
 	const totalAllocQty = Math.round(
 		((item.rackAllocations ?? []).reduce((s, a) => s + (Number(a.quantity) || 0), 0)) * 100,
 	) / 100;
 	const hasAllocations = (item.rackAllocations ?? []).length > 0;
+	const lossRackAllocations = item.lossRackAllocations ?? [];
+	const hasLossAllocations = lossRackAllocations.length > 0;
+	const totalLossAllocQty = Math.round(
+		lossRackAllocations.reduce((s, a) => s + (Number(a.quantity) || 0), 0) * 100,
+	) / 100;
 
 	// Stable key representing rack IDs already assigned to other items in the same form.
 	// Used to exclude those racks from this item's suggestion so each SKU gets distinct locations.
@@ -700,16 +1051,16 @@ function GRNLineRow({
 			item.rackId?.trim() && (putawayPlan?.allocations.length ?? 0) <= 1
 				? formatRackCapacityHint(
 						putawayPlan?.capacityForRack,
-						uomLabel,
+						cartonUomLabel,
 						inboundQty,
 					)
 				: null,
-		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, uomLabel, inboundQty],
+		[putawayPlan?.capacityForRack, putawayPlan?.allocations.length, item.rackId, cartonUomLabel, inboundQty],
 	);
 
 	const putawayPlanHint = useMemo(
-		() => formatPutawayPlanHint(putawayPlan, uomLabel, inboundQty),
-		[putawayPlan, uomLabel, inboundQty],
+		() => formatPutawayPlanHint(putawayPlan, cartonUomLabel, inboundQty),
+		[putawayPlan, cartonUomLabel, inboundQty],
 	);
 
 	const rackSuggestionMessage = putawayPlan?.message ?? null;
@@ -728,8 +1079,11 @@ function GRNLineRow({
 		return rack ? formatRackLocationLabel(rack as Rack) : null;
 	}, [item.rackId, item.rackAllocations, putawayPlan, racks]);
 
+	const suggestForRackId =
+		item.rackAutoSuggested === true ? null : item.rackId?.trim() || null;
+
 	useEffect(() => {
-		if (!item.skuCode?.trim()) {
+		if (!debouncedSkuCode?.trim()) {
 			setPutawayPlan(null);
 			setIsSuggestingRack(false);
 			return;
@@ -745,10 +1099,10 @@ function GRNLineRow({
 				const data = await gqlRequest<SuggestInboundPutawayPlanQueryData>(
 					SUGGEST_INBOUND_PUTAWAY_PLAN_QUERY,
 					{
-						skuId: resolvedSkuId || null,
-						skuCode: item.skuCode,
-						quantity: inboundQty > 0 ? inboundQty : 1,
-						forRackId: item.rackId?.trim() || null,
+						skuId: debouncedResolvedSkuId || null,
+						skuCode: debouncedSkuCode,
+						quantity: debouncedInboundQty > 0 ? debouncedInboundQty : 1,
+						forRackId: suggestForRackId,
 						excludeRackIds: excludeRackIds.length > 0 ? excludeRackIds : null,
 					},
 				);
@@ -802,10 +1156,10 @@ function GRNLineRow({
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- re-suggest when SKU/qty/rack, auto-suggest state, or sibling rack assignments change
 	}, [
-		item.skuCode,
-		resolvedSkuId,
-		inboundQty,
-		item.rackId,
+		debouncedSkuCode,
+		debouncedResolvedSkuId,
+		debouncedInboundQty,
+		suggestForRackId,
 		item.rackAutoSuggested,
 		index,
 		otherItemRackIdsKey,
@@ -832,6 +1186,18 @@ function GRNLineRow({
 
 	const canRecommendRack =
 		!!item.skuCode?.trim() && inboundQty > 0 && !!putawayPlan?.allocations.length;
+
+	const orderedCtnFromPo =
+		poGauge?.expected ??
+		(poAsnLines?.length
+			? poAsnLines.find((l) => l.skuCode === item.skuCode)?.expected ?? null
+			: null);
+	const orderedCtnEditable = Boolean(showOrderedQty && orderedCtnFromPo == null);
+	const historicalCtn = poHistoricalReceivedBySku?.get(item.skuCode) ?? 0;
+	const historicalLoss = poHistoricalLossBySku?.get(item.skuCode) ?? 0;
+	const fulfilledCtn = historicalCtn + inboundQty;
+	const fulfilledLoss = historicalLoss + lossQty;
+	const lossUomLabel = baseUomLabel ?? "PKT";
 
 	return (
 		<div className="group relative overflow-hidden rounded-xl border border-border/60 bg-card transition-all hover:border-border/90 hover:shadow-sm">
@@ -869,6 +1235,7 @@ function GRNLineRow({
 										description: v.description ?? "",
 										uom: v.uom ?? "",
 										carton: remaining > 0 ? remaining : 1,
+										orderedQty: undefined,
 										rackId: "",
 										rackAllocations: undefined,
 										rackAutoSuggested: false,
@@ -891,12 +1258,12 @@ function GRNLineRow({
 								New
 							</Badge>
 						)}
-						{uomLabel && (
+						{baseUomLabel && (
 							<Badge
 								variant="outline"
 								className="shrink-0 font-mono text-xs h-6"
 							>
-								{uomLabel}
+								{baseUomLabel}
 							</Badge>
 						)}
 						<Button
@@ -1001,71 +1368,19 @@ function GRNLineRow({
 								>
 									Quantities
 								</p>
-								<div className="grid grid-cols-2 gap-2">
-									<div className="space-y-1">
-										<label
-											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											Carton
-										</label>
-										<Input
-											type="number"
-											min={0}
-											value={item.carton}
-											onChange={(e) => {
-												const newItems = [...items];
-												const v = Number(e.target.value);
-												newItems[index] = {
-													...newItems[index],
-													carton: Number.isFinite(v) && v >= 0 ? v : 0,
-												};
-												onItemsChange(newItems);
-											}}
-											placeholder="0"
-											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-										/>
-									</div>
-									<div className="space-y-1">
-										<label
-											className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-											style={{ fontFamily: "var(--dashboard-body)" }}
-										>
-											Loss
-										</label>
-										<Input
-											type="number"
-											min={0}
-											value={item.loss}
-											onChange={(e) => {
-												const newItems = [...items];
-												const v = Number(e.target.value);
-												newItems[index] = {
-													...newItems[index],
-													loss: Number.isFinite(v) && v >= 0 ? v : 0,
-												};
-												onItemsChange(newItems);
-											}}
-											placeholder="0"
-											className="h-8 rounded-lg border-muted-foreground/20 font-mono text-sm"
-										/>
-									</div>
-								</div>
-								{inboundQty > 0 || lossQty > 0 ? (
-									<p className="font-mono text-[10px] text-muted-foreground">
-										<span className="font-semibold text-foreground">
-											{inboundQty} {uomLabel ?? "CTN"}
-										</span>
-										{lossQty > 0 ? (
-											<>
-												{" "}+{" "}
-												<span className="font-semibold text-amber-600">
-													{lossQty} loose item{lossQty !== 1 ? "s" : ""}
-												</span>
-											</>
-										) : null}
-									</p>
-								) : null}
+								<GrnQuantitiesTable
+									item={item}
+									index={index}
+									items={items}
+									onItemsChange={onItemsChange}
+									orderedCtn={orderedCtnFromPo}
+									orderedCtnEditable={orderedCtnEditable}
+									fulfilledCtn={fulfilledCtn}
+									fulfilledLoss={fulfilledLoss}
+									looseQuantity={looseQuantity}
+									cartonUomLabel={cartonUomLabel}
+									lossUomLabel={lossUomLabel}
+								/>
 							</div>
 							<div className="space-y-1">
 								<label
@@ -1117,8 +1432,9 @@ function GRNLineRow({
 							</div>
 						</div>
 
-						{/* Putaway */}
-						<div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/15 p-2.5">
+						{/* Putaway (CTN rack + loose/loss rack share one border) */}
+						<div className="rounded-lg border border-border/50 bg-muted/15 p-2.5 lg:col-start-2">
+						<div className={cn("space-y-1.5", lossQty > 0 && "mb-2.5")}>
 						<label
 							className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
 							style={{ fontFamily: "var(--dashboard-body)" }}
@@ -1198,12 +1514,19 @@ function GRNLineRow({
 								{rackCapacityHint}
 							</p>
 						) : null}
-						{hasAllocations ? (
-							<div className="mt-1 rounded-lg border border-border/60 bg-muted/20">
+						{hasAllocations || lossQty > 0 ? (
+							<div
+								className={cn(
+									"mt-1 rounded-lg border bg-muted/20",
+									lossQty > 0 && !isLossRackAllocationValid(item)
+										? "border-red-300 dark:border-red-800"
+										: "border-border/60",
+								)}
+							>
 								<ul className="divide-y divide-border/40">
 									{(item.rackAllocations ?? []).map((allocation, allocIdx) => (
 										<li
-											key={allocIdx}
+											key={`putaway-${allocIdx}`}
 											className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
 										>
 											{editingAllocationIdx === allocIdx ? (
@@ -1272,7 +1595,7 @@ function GRNLineRow({
 														}}
 														className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
 													/>
-													<span className="shrink-0 text-muted-foreground">{uomLabel ?? "CTN"}</span>
+													<span className="shrink-0 text-muted-foreground">{cartonUomLabel}</span>
 													<div className="ml-auto flex shrink-0 items-center gap-1">
 														<button
 															type="button"
@@ -1305,6 +1628,189 @@ function GRNLineRow({
 											)}
 										</li>
 									))}
+									{lossQty > 0 &&
+										(hasLossAllocations ? (
+											lossRackAllocations.map((allocation, allocIdx) => {
+												const usedElsewhere = lossRackAllocations
+													.filter((_, i) => i !== allocIdx)
+													.map((a) => a.rackId);
+												const availableLooseRacks = looseRacks.filter(
+													(r) => !usedElsewhere.includes(r.rackId),
+												);
+												return (
+													<li
+														key={`loss-${allocIdx}`}
+														className="flex items-center gap-1.5 px-2 py-1 text-[11px]"
+													>
+														<Badge
+															variant="outline"
+															className="h-4 shrink-0 px-1 text-[10px] font-normal text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-800"
+														>
+															Loss
+														</Badge>
+														{editingLossAllocationIdx === allocIdx ? (
+															<div className="flex min-w-0 flex-1 items-center gap-1.5">
+																<div className="min-w-0 flex-1">
+																	<RackLocationCombobox
+																		racks={availableLooseRacks}
+																		value={allocation.rackId}
+																		className="h-7"
+																		onChange={(rackId, rackLabel) => {
+																			const newAllocations = lossRackAllocations.map(
+																				(a, i) =>
+																					i === allocIdx
+																						? { ...a, rackId, rackLabel }
+																						: a,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																			};
+																			onItemsChange(newItems);
+																			setEditingLossAllocationIdx(null);
+																		}}
+																	/>
+																</div>
+																<button
+																	type="button"
+																	title="Cancel"
+																	className="shrink-0 text-muted-foreground hover:text-foreground"
+																	onClick={() => {
+																		if (!allocation.rackId) {
+																			const newAllocations = lossRackAllocations.filter(
+																				(_, i) => i !== allocIdx,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																			};
+																			onItemsChange(newItems);
+																		}
+																		setEditingLossAllocationIdx(null);
+																	}}
+																>
+																	<X className="h-3 w-3" />
+																</button>
+															</div>
+														) : (
+															<>
+																<span
+																	className="w-20 shrink-0 font-mono text-foreground/85 truncate"
+																	title={allocation.rackLabel ?? allocation.rackId}
+																>
+																	{allocation.rackLabel ?? allocation.rackId}
+																</span>
+																<Input
+																	type="number"
+																	min={0}
+																	value={allocation.quantity}
+																	onChange={(e) => {
+																		const newQty = Math.max(0, Number(e.target.value) || 0);
+																		const newAllocations = lossRackAllocations.map(
+																			(a, i) => (i === allocIdx ? { ...a, quantity: newQty } : a),
+																		);
+																		const newItems = [...items];
+																		newItems[index] = {
+																			...newItems[index],
+																			lossRackAllocations: newAllocations,
+																		};
+																		onItemsChange(newItems);
+																	}}
+																	className="h-6 w-14 shrink-0 px-1 text-center font-mono text-[11px]"
+																/>
+																<span className="shrink-0 text-muted-foreground">{lossUomLabel}</span>
+																<div className="ml-auto flex shrink-0 items-center gap-1">
+																	<button
+																		type="button"
+																		title="Change rack"
+																		className="text-muted-foreground hover:text-foreground"
+																		onClick={() => setEditingLossAllocationIdx(allocIdx)}
+																	>
+																		<Pencil className="h-3 w-3" />
+																	</button>
+																	<button
+																		type="button"
+																		title="Remove rack"
+																		className="text-muted-foreground hover:text-destructive"
+																		onClick={() => {
+																			const newAllocations = lossRackAllocations.filter(
+																				(_, i) => i !== allocIdx,
+																			);
+																			const newItems = [...items];
+																			newItems[index] = {
+																				...newItems[index],
+																				lossRackAllocations: newAllocations,
+																				lossRackId: newAllocations[0]?.rackId ?? "",
+																			};
+																			onItemsChange(newItems);
+																		}}
+																	>
+																		<Trash2 className="h-3 w-3" />
+																	</button>
+																</div>
+															</>
+														)}
+													</li>
+												);
+											})
+										) : (
+											<li className="flex items-center gap-1.5 px-2 py-1 text-[11px]">
+												<Badge
+													variant="outline"
+													className="h-4 shrink-0 px-1 text-[10px] font-normal text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-800"
+												>
+													Loss
+												</Badge>
+												<div className="min-w-0 flex-1">
+													<RackLocationCombobox
+														remoteSearch
+														binType="LOOSE_STORAGE"
+														value={item.lossRackId ?? ""}
+														onChange={(rackId) => {
+															const newItems = [...items];
+															newItems[index] = { ...newItems[index], lossRackId: rackId };
+															onItemsChange(newItems);
+														}}
+														placeholder="Select loose storage rack…"
+														className="h-7"
+													/>
+												</div>
+												<span className="shrink-0 font-mono text-foreground/85">
+													{lossQty} {lossUomLabel}
+												</span>
+												<button
+													type="button"
+													title="Split the loss quantity across more than one loose storage rack"
+													className="shrink-0 text-muted-foreground hover:text-foreground"
+													onClick={() => {
+														const current = (item.lossRackId ?? "").trim();
+														const currentRack = looseRacks.find(
+															(r) => r.rackId === current,
+														);
+														const currentLabel = currentRack
+															? formatRackLocationLabel(currentRack)
+															: undefined;
+														const newAllocations = current
+															? [
+																{ rackId: current, quantity: lossQty, rackLabel: currentLabel },
+																{ rackId: "", quantity: 0, rackLabel: undefined },
+															]
+															: [{ rackId: "", quantity: lossQty, rackLabel: undefined }];
+														const newItems = [...items];
+														newItems[index] = {
+															...newItems[index],
+															lossRackAllocations: newAllocations,
+														};
+														onItemsChange(newItems);
+														setEditingLossAllocationIdx(newAllocations.length - 1);
+													}}
+												>
+													<Plus className="h-3 w-3" />
+												</button>
+											</li>
+									))}
 								</ul>
 								<div className="flex items-center justify-between border-t border-border/40 px-2 py-1">
 									<button
@@ -1329,16 +1835,36 @@ function GRNLineRow({
 										<Plus className="h-3 w-3" />
 										Add rack
 									</button>
-									<span
-										className={cn(
-											"font-mono text-[11px]",
-											totalAllocQty === inboundQty
-												? "text-green-600 dark:text-green-400"
-												: "text-destructive",
-										)}
-									>
-										{totalAllocQty} / {inboundQty} {uomLabel ?? "CTN"}
-									</span>
+									<div className="flex shrink-0 items-center gap-2.5">
+										<span
+											className={cn(
+												"font-mono text-[11px]",
+												totalAllocQty === inboundQty
+													? "text-green-600 dark:text-green-400"
+													: "text-destructive",
+											)}
+										>
+											{totalAllocQty} / {inboundQty} {cartonUomLabel}
+										</span>
+										{lossQty > 0 ? (
+											<span
+												className={cn(
+													"font-mono text-[11px]",
+													isLossRackAllocationValid(item)
+														? "text-green-600 dark:text-green-400"
+														: "text-destructive",
+												)}
+											>
+												Loss{" "}
+												{hasLossAllocations
+													? totalLossAllocQty
+													: item.lossRackId?.trim()
+														? lossQty
+														: 0}{" "}
+												/ {lossQty} {lossUomLabel}
+											</span>
+										) : null}
+									</div>
 								</div>
 							</div>
 						) : null}
@@ -1356,6 +1882,8 @@ function GRNLineRow({
 							</p>
 						) : null}
 						</div>
+
+					</div>
 					</div>
 				</div>
 			</div>
@@ -1372,6 +1900,8 @@ export type GrnCreateSubmitPayload = {
 	receivedDate: string;
 	notes: string;
 	warehouseId: string;
+	endUserId: string;
+	poFulfilled: boolean;
 	submitIntent: "draft" | "submit";
 	items: GRNLineItemForm[];
 };
@@ -1399,8 +1929,12 @@ export type GrnFormDialogProps = {
 	}>;
 	/** Suppliers from m_suppliers for receipt details */
 	suppliers: Supplier[];
+	/** End users from m_end_user for receipt details */
+	endUsers: EndUser[];
 	/** When true (ASN create), supplier is optional — backend resolves from ASN entity */
 	supplierSelectionOptional?: boolean;
+	/** Show manual-GRN PO fulfillment checkbox. Hidden for ASN-backed creates. */
+	showPoFulfilledToggle?: boolean;
 	/** Called after successful create; optional close/refetch handled by parent */
 	onCreateSubmit?: (payload: GrnCreateSubmitPayload) => Promise<void>;
 	/** Called after successful edit (save/update/delete) */
@@ -1435,7 +1969,9 @@ export function GrnFormDialog({
 	warehouses: _warehouses,
 	racks,
 	suppliers,
+	endUsers,
 	supplierSelectionOptional = false,
+	showPoFulfilledToggle = false,
 	onCreateSubmit,
 	onSuccess,
 	trigger,
@@ -1448,6 +1984,7 @@ export function GrnFormDialog({
 	const { user } = useCurrentUser();
 	const queryClient = useQueryClient();
 	const [proofFiles, setProofFiles] = useState<UploadedFile[]>([]);
+	const [poFulfilledChecked, setPoFulfilledChecked] = useState(true);
 	const createIntentRef = useRef<"draft" | "submit">("draft");
 	/** Prior GRNs found for a manually-typed PO — shown as a "fulfillment history" hint. */
 	const [poHistory, setPoHistory] = useState<
@@ -1468,6 +2005,7 @@ export function GrnFormDialog({
 		Array<{ skuCode: string; displayName: string | null; expected: number; units: string }>
 	>([]);
 	const [poHistoricalReceivedBySku, setPoHistoricalReceivedBySku] = useState<Map<string, number>>(new Map());
+	const [poHistoricalLossBySku, setPoHistoricalLossBySku] = useState<Map<string, number>>(new Map());
 	const lastLookedUpPoRef = useRef<string>("");
 	const poRemainingAppliedRef = useRef(false);
 	const lookupPoHistory = async (poNo: string) => {
@@ -1492,23 +2030,26 @@ export function GrnFormDialog({
 			const asnLines = asnResult?.advanceNoticeByPoNo?.lines ?? [];
 			if (asnLines.length > 0) {
 				const receivedBySku = sumHistoricalReceivedBySku(history);
+				const lossBySku = sumHistoricalLossBySku(history);
 				setPoHistoricalReceivedBySku(receivedBySku);
-				setPoAsnLines(
-					asnLines.map((line) => ({
-						skuCode: line.itemid,
-						displayName: line.displayname,
-						expected: line.quantity,
-						units: line.units,
-					})),
-				);
+				setPoHistoricalLossBySku(lossBySku);
+				const mappedLines = asnLines.map((line) => ({
+					skuCode: line.itemid,
+					displayName: line.displayname,
+					expected: line.quantity,
+					units: resolveDisplayUnitCode(line.units, stockUnits, "CTN"),
+				}));
+				setPoAsnLines(mappedLines);
 			} else {
 				setPoAsnLines([]);
 				setPoHistoricalReceivedBySku(new Map());
+				setPoHistoricalLossBySku(new Map());
 			}
 		} catch {
 			setPoHistory([]);
 			setPoAsnLines([]);
 			setPoHistoricalReceivedBySku(new Map());
+			setPoHistoricalLossBySku(new Map());
 		} finally {
 			setPoHistoryLoading(false);
 		}
@@ -1577,6 +2118,8 @@ export function GrnFormDialog({
 			receivedDate: initialValues?.receivedDate ?? "",
 			notes: "",
 			warehouseId: "",
+			endUserId: "",
+			poFulfilled: true,
 			items: (initialValues?.items ?? []) as GRNLineItemForm[],
 		},
 		validators: {
@@ -1598,53 +2141,99 @@ export function GrnFormDialog({
 				if (items.length === 0) {
 					fields.items = "At least one line item is required";
 				} else {
+					const itemErrors: string[] = [];
+
 					const invalidQty = items.find(
 						(i) => (Number(i.carton) || 0) + (Number(i.loss) || 0) <= 0,
 					);
 					if (invalidQty) {
-						fields.items =
-							"Each line item must have total quantity (Carton + Loss) greater than zero.";
-					} else {
-						const missingControlledFields = items.find((i) => {
-							if (!i.skuCode?.trim()) return false;
-							const { requireLot, requireExpiry } = getGrnLineSkuControls(
+						itemErrors.push(
+							"Each line item must have total quantity (Carton + Loss) greater than zero.",
+						);
+					}
+
+					const missingControlledFields = items.find((i) => {
+						if (!i.skuCode?.trim()) return false;
+						const { requireLot, requireExpiry } = getGrnLineSkuControls(
+							i.skuCode,
+							skuOptions,
+							i.asnLotTracked,
+						);
+						if (requireLot && !i.lotNo?.trim()) return true;
+						if (requireExpiry && !i.expiryDate?.trim()) return true;
+						return false;
+					});
+					if (missingControlledFields) {
+						itemErrors.push(
+							"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.",
+						);
+					}
+
+					const missingRack = items.find(
+						(i) => !(i.rackId ?? "").trim(),
+					);
+					if (missingRack) {
+						itemErrors.push("Each line item must have a rack.");
+					}
+
+					const missingLossRack = items.find(
+						(i) => !isLossRackAllocationValid(i),
+					);
+					if (missingLossRack) {
+						itemErrors.push(
+							"Each line item with a loss quantity must have Loose / Loss Rack(s) covering the full loss quantity.",
+						);
+					}
+
+					const missingLooseQuantity = items.find(
+						(i) => !isRemainingComputableForItem(i, skuOptions),
+					);
+					if (missingLooseQuantity) {
+						itemErrors.push(
+							"Each line item with a loss quantity needs its SKU's loose quantity (pieces/carton) configured before the remaining qty can be computed.",
+						);
+					}
+
+					if (value.poFulfilled === false) {
+						const invalidOrderedQty = items.find((i) => {
+							const orderedQty = resolveLineOrderedCtn(i, poAsnLines);
+							const cartonQty = Number(i.carton) || 0;
+							return (
+								orderedQty == null ||
+								!Number.isFinite(orderedQty) ||
+								orderedQty < cartonQty
+							);
+						});
+						if (invalidOrderedQty) {
+							itemErrors.push(
+								"Partial delivery requires an ordered quantity for every line, and each ordered quantity must be at least the received carton quantity.",
+							);
+						}
+					}
+
+					if (itemErrors.length === 0) {
+						const seen = new Set<string>();
+						const hasDuplicate = items.some((i) => {
+							const key = grnLineDuplicateKey(
 								i.skuCode,
 								skuOptions,
+								i.expiryDate ?? "",
+								i.lotNo ?? "",
 								i.asnLotTracked,
 							);
-							if (requireLot && !i.lotNo?.trim()) return true;
-							if (requireExpiry && !i.expiryDate?.trim()) return true;
+							if (seen.has(key)) return true;
+							seen.add(key);
 							return false;
 						});
-						if (missingControlledFields) {
-							fields.items =
-								"Line items require Lot No. and/or Expiry Date based on each SKU's lot/expiry control settings.";
-						} else {
-							const missingRack = items.find(
-								(i) => !(i.rackId ?? "").trim(),
+						if (hasDuplicate) {
+							itemErrors.push(
+								"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.",
 							);
-							if (missingRack) {
-								fields.items = "Each line item must have a rack.";
-							} else {
-								const seen = new Set<string>();
-								const hasDuplicate = items.some((i) => {
-									const key = grnLineDuplicateKey(
-										i.skuCode,
-										skuOptions,
-										i.expiryDate ?? "",
-										i.lotNo ?? "",
-										i.asnLotTracked,
-									);
-									if (seen.has(key)) return true;
-									seen.add(key);
-									return false;
-								});
-								if (hasDuplicate) {
-									fields.items =
-										"Duplicate line items: two or more rows share the same SKU and batch identifiers. Use different lot/expiry values or merge quantities into one row.";
-								}
-							}
 						}
+					}
+
+					if (itemErrors.length > 0) {
+						fields.items = itemErrors.join(" ");
 					}
 				}
 				if (Object.keys(fields).length > 0) {
@@ -1658,6 +2247,24 @@ export function GrnFormDialog({
 		},
 		onSubmit: async ({ value }) => {
 			if (mode === "create") {
+				const missingLossRack = (value.items ?? []).find(
+					(i) => !isLossRackAllocationValid(i),
+				);
+				if (missingLossRack) {
+					toast.error(
+						"Each line item with a loss quantity must have Loose / Loss Rack(s) covering the full loss quantity.",
+					);
+					return;
+				}
+				const missingLooseQuantity = (value.items ?? []).find(
+					(i) => !isRemainingComputableForItem(i, skuOptions),
+				);
+				if (missingLooseQuantity) {
+					toast.error(
+						"Each line item with a loss quantity needs its SKU's loose quantity (pieces/carton) configured before the remaining qty can be computed.",
+					);
+					return;
+				}
 				const payload: GrnCreateSubmitPayload = {
 					grnNumber: value.grnNumber,
 					poReference: value.poReference ?? "",
@@ -1666,11 +2273,21 @@ export function GrnFormDialog({
 					receivedDate: value.receivedDate,
 					notes: value.notes ?? "",
 					warehouseId: value.warehouseId ?? "",
+					endUserId: value.endUserId ?? "",
+					poFulfilled: value.poFulfilled !== false,
 					submitIntent: createIntentRef.current,
-					items: (value.items ?? []).map((i) => ({
-						...i,
-						...buildGrnItemRackPayload(i),
-					})),
+					items: (value.items ?? []).map((i) => {
+						const orderedCtn =
+							value.poFulfilled === false
+								? resolveLineOrderedCtn(i, poAsnLines)
+								: undefined;
+						return {
+							...i,
+							orderedQty: orderedCtn,
+							...buildGrnItemRackPayload(i),
+							...buildGrnItemLossRackPayload(i),
+						};
+					}),
 				};
 
 
@@ -1709,6 +2326,7 @@ export function GrnFormDialog({
 									?.stockUnitId ?? i.uom)
 								: undefined;
 							const rackPayload = buildGrnItemRackPayload(i);
+							const lossRackPayload = buildGrnItemLossRackPayload(i);
 							return {
 								skuId:
 									skuOptions.find((s) => s.skuCode === i.skuCode)?.skuId ??
@@ -1717,10 +2335,12 @@ export function GrnFormDialog({
 								skuDescription: i.description ?? undefined,
 								qty: String(i.carton),
 								lossQty: String(i.loss),
+								lossRackId: i.lossRackId?.trim() || undefined,
 								skuUom: uomId ?? undefined,
 								expiryDate: (i.expiryDate ?? "").trim() || undefined,
 								lotNo: (i.lotNo ?? "").trim() || undefined,
 								...rackPayload,
+								...lossRackPayload,
 							};
 						}),
 					},
@@ -1773,6 +2393,13 @@ export function GrnFormDialog({
 						: undefined);
 				const expiryDate = it.expiryDate ?? "";
 				const lotNo = it.lotNo ?? "";
+				const lossRackAllocationsSource = it.lossRackAllocations ?? undefined;
+				const lossRackId =
+					lossRackAllocationsSource?.[0]?.rackId ?? it.lossRackId ?? "";
+				const lossRackAllocations = lossRackAllocationsSource?.map((row) => ({
+					rackId: row.rackId,
+					quantity: row.quantity,
+				}));
 				return {
 					skuCode: it.skuCode ?? "",
 					description: it.skuDescription ?? "",
@@ -1784,6 +2411,8 @@ export function GrnFormDialog({
 					lotNo,
 					rackId,
 					rackAllocations,
+					lossRackId,
+					lossRackAllocations,
 				};
 			});
 			form.reset({
@@ -1794,8 +2423,11 @@ export function GrnFormDialog({
 				receivedDate: formatDate(grn.receivedAt ?? ""),
 				notes: grn.notes ?? "",
 				warehouseId: grn.warehouseId ?? "",
+				endUserId: (grn as { endUserId?: string | null }).endUserId ?? "",
+				poFulfilled: true,
 				items: initialItems,
 			});
+			setPoFulfilledChecked(true);
 		} else if (mode === "create") {
 			form.reset({
 				grnNumber: "",
@@ -1805,8 +2437,11 @@ export function GrnFormDialog({
 				receivedDate: initialValues?.receivedDate ?? "",
 				notes: "",
 				warehouseId: "",
+				endUserId: "",
+				poFulfilled: true,
 				items: (initialValues?.items ?? []) as GRNLineItemForm[],
 			});
+			setPoFulfilledChecked(true);
 			setProofFiles([]);
 		}
 	}, [open, mode, grn?.id, initialValues]);
@@ -1966,6 +2601,41 @@ export function GrnFormDialog({
 								<GrnFormSection icon={FileText} title="Receipt Details">
 									<div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
 										<FieldGroup className="gap-4">
+											<form.Field name="endUserId">
+										{(field) => (
+											<Field>
+												<FieldLabel
+													htmlFor={field.name}
+													style={{ fontFamily: "var(--dashboard-body)" }}
+												>
+													End User
+												</FieldLabel>
+												<Select
+													value={field.state.value || undefined}
+													onValueChange={(v) => field.handleChange(v)}
+												>
+													<SelectTrigger
+														id={field.name}
+														className="rounded-lg border-muted-foreground/20 font-mono text-sm w-full"
+													>
+														<SelectValue placeholder="Select end user…" />
+													</SelectTrigger>
+													<SelectContent>
+														{endUsers.map((u) => (
+															<SelectItem key={u.endUserId} value={u.endUserId}>
+																{u.userName}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												{endUsers.length === 0 ? (
+													<p className="text-xs text-amber-600 mt-1">
+														No end users in master data. Add end users in Settings first.
+													</p>
+												) : null}
+											</Field>
+										)}
+									</form.Field>
 											<form.Field name="poReference">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -2051,6 +2721,37 @@ export function GrnFormDialog({
 											);
 										}}
 									</form.Field>
+									{isCreate && showPoFulfilledToggle ? (
+										<form.Field name="poFulfilled">
+											{(field) => (
+												<div className="flex flex-row items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+													<Checkbox
+														id={field.name}
+														checked={Boolean(field.state.value)}
+														onCheckedChange={(checked) => {
+															const next = checked === true;
+															field.handleChange(next);
+															setPoFulfilledChecked(next);
+														}}
+														onBlur={field.handleBlur}
+														className="mt-0.5 shrink-0"
+													/>
+													<div className="grid gap-1.5 leading-none min-w-0">
+														<FieldLabel
+															htmlFor={field.name}
+															className="cursor-pointer text-sm font-medium"
+															style={{ fontFamily: "var(--dashboard-body)" }}
+														>
+															PO fully fulfilled by this delivery
+														</FieldLabel>
+														<p className="text-xs text-muted-foreground">
+															Uncheck for a partial PO delivery and enter ordered quantities per line.
+														</p>
+													</div>
+												</div>
+											)}
+										</form.Field>
+									) : null}
 									<form.Field name="supplierId">
 										{(field) => {
 											const isInvalid = field.state.meta.errors.length > 0;
@@ -2325,10 +3026,12 @@ export function GrnFormDialog({
 															racks={racks}
 															poAsnLines={isCreate ? poAsnLines : undefined}
 															poHistoricalReceivedBySku={isCreate ? poHistoricalReceivedBySku : undefined}
-															onOpenCreateRack={(lineIndex) => {
-																setCreateRackForLineIndex(lineIndex);
-																setCreateRackOpen(true);
-															}}
+															poHistoricalLossBySku={isCreate ? poHistoricalLossBySku : undefined}
+															showOrderedQty={
+																isCreate &&
+																showPoFulfilledToggle &&
+																!poFulfilledChecked
+															}
 														/>
 													))}
 												</div>

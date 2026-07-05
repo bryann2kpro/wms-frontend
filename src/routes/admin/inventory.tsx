@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	CustomerPriorityRanking,
+	ReservationListCard,
+} from "@/components/reservation";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { hasAdminRole } from "@/lib/rbac/require-admin-role";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
@@ -33,10 +40,11 @@ import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye, Activity } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import {
-	INVENTORY_BALANCES_QUERY,
+	INVENTORY_LOT_BALANCES_QUERY,
+	formatLotNoDisplay,
 	getAvailableQty,
-	type InventoryBalance,
-	type InventoryBalancesQueryData,
+	type InventoryLotBalance,
+	type InventoryLotBalancesQueryData,
 } from "@/lib/graphql/inventory-balance";
 import {
 	UPDATE_SKUS_MUTATION,
@@ -48,7 +56,14 @@ import { formatDate } from "@/lib/utils";
 import { getAvailablePickingStrategies } from "@/lib/picking-strategy";
 import { toast } from "sonner";
 
+type InventoryTab = "inventory" | "reservations";
+
 export const Route = createFileRoute("/admin/inventory")({
+	validateSearch: (search: Record<string, unknown>) => {
+		const raw = (search.tab as string) ?? "inventory";
+		const tab: InventoryTab = raw === "reservations" ? "reservations" : "inventory";
+		return { tab };
+	},
 	beforeLoad: async ({ context }) => {
 		await requirePermission(context.queryClient, ["Inventory"]);
 	},
@@ -72,6 +87,56 @@ const ALL_ITEMS_PAGE_SIZE = 9999;
 const DEFAULT_LOW_STOCK_THRESHOLD = 20;
 
 function InventoryComponent() {
+	const { tab } = Route.useSearch();
+	const navigate = useNavigate();
+	const { user } = useCurrentUser();
+	const isAdmin = hasAdminRole(user?.roles);
+	const activeTab: InventoryTab =
+		tab === "reservations" && isAdmin ? "reservations" : "inventory";
+
+	return (
+		<main
+			className="inventory-page container mx-auto p-6 space-y-6"
+			aria-labelledby="inventory-page-title"
+			aria-describedby="inventory-page-description"
+		>
+			<AdminPageHeader
+				icon={Boxes}
+				title="Inventory"
+				description="Real-time on-hand stock levels and reserved quantities for all SKUs."
+				titleId="inventory-page-title"
+				descriptionId="inventory-page-description"
+			/>
+
+			<Tabs
+				value={activeTab}
+				onValueChange={(t) =>
+					navigate({ to: "/admin/inventory", search: { tab: t as InventoryTab } })
+				}
+			>
+				<TabsList className="mb-4">
+					<TabsTrigger value="inventory">Inventory</TabsTrigger>
+					{isAdmin && (
+						<TabsTrigger value="reservations">Order Reservations</TabsTrigger>
+					)}
+				</TabsList>
+				<TabsContent value="inventory">
+					<InventoryBalancesTab />
+				</TabsContent>
+				{isAdmin && (
+					<TabsContent value="reservations">
+						<div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] xl:items-start xl:gap-5">
+							<ReservationListCard className="min-h-0 xl:min-h-[28rem]" />
+							<CustomerPriorityRanking className="xl:sticky xl:top-4" />
+						</div>
+					</TabsContent>
+				)}
+			</Tabs>
+		</main>
+	);
+}
+
+function InventoryBalancesTab() {
 	const navigate = useNavigate();
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
@@ -90,8 +155,8 @@ function InventoryComponent() {
 	const { data: pagedData, isLoading: pagedLoading } = useQuery({
 		queryKey: qk.inventory.list(pagedVars),
 		queryFn: () =>
-			gqlRequest<InventoryBalancesQueryData>(
-				INVENTORY_BALANCES_QUERY,
+			gqlRequest<InventoryLotBalancesQueryData>(
+				INVENTORY_LOT_BALANCES_QUERY,
 				pagedVars,
 			),
 		enabled: !lowStockOnly,
@@ -105,23 +170,26 @@ function InventoryComponent() {
 	const { data: fullData, isLoading: fullLoading } = useQuery({
 		queryKey: qk.inventory.list(fullVars),
 		queryFn: () =>
-			gqlRequest<InventoryBalancesQueryData>(INVENTORY_BALANCES_QUERY, fullVars),
+			gqlRequest<InventoryLotBalancesQueryData>(
+				INVENTORY_LOT_BALANCES_QUERY,
+				fullVars,
+			),
 		enabled: lowStockOnly,
 	});
 
 	const loading = lowStockOnly ? fullLoading : pagedLoading;
 
-	const isOutOfStock = (item: InventoryBalance) => getAvailableQty(item) <= 0;
-	const hasReserved = (item: InventoryBalance) =>
+	const isOutOfStock = (item: InventoryLotBalance) => getAvailableQty(item) <= 0;
+	const hasReserved = (item: InventoryLotBalance) =>
 		Number(item.reservedQty ?? "0") > 0;
-	const isLowStock = (item: InventoryBalance) =>
+	const isLowStock = (item: InventoryLotBalance) =>
 		getAvailableQty(item) <= lowStockThreshold;
 
 	// Derive display items + pagination info depending on active mode.
-	const serverItems = pagedData?.inventoryBalances?.query ?? [];
-	const serverPagination = pagedData?.inventoryBalances?.pagination;
+	const serverItems = pagedData?.inventoryLotBalances?.query ?? [];
+	const serverPagination = pagedData?.inventoryLotBalances?.pagination;
 
-	const allFetchedItems = fullData?.inventoryBalances?.query ?? [];
+	const allFetchedItems = fullData?.inventoryLotBalances?.query ?? [];
 	const lowStockItems = allFetchedItems.filter(isLowStock);
 	const lowStockTotalPages = Math.max(1, Math.ceil(lowStockItems.length / PAGE_SIZE));
 	const lowStockPageItems = lowStockItems.slice(
@@ -181,21 +249,7 @@ function InventoryComponent() {
 	};
 
 	return (
-		<main
-			className="inventory-page container mx-auto p-6 space-y-6"
-			aria-labelledby="inventory-page-title"
-			aria-describedby="inventory-page-description"
-			aria-busy={loading}
-		>
-			<AdminPageHeader
-				icon={Boxes}
-				title="Inventory"
-				description="Real-time on-hand stock levels and reserved quantities for all SKUs."
-				titleId="inventory-page-title"
-				descriptionId="inventory-page-description"
-			/>
-
-			<Card className="dashboard-card">
+		<Card className="dashboard-card" aria-busy={loading}>
 				<CardHeader>
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 						<div>
@@ -203,7 +257,7 @@ function InventoryComponent() {
 								Stock Balances
 							</CardTitle>
 							<CardDescription>
-								Search by SKU code or description. Available = On Hand − Reserved.
+								Search by SKU code, batch no, or description. Available = On Hand − Reserved.
 							</CardDescription>
 						</div>
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -265,15 +319,15 @@ function InventoryComponent() {
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 								<Input
-									placeholder="Search SKU code or description..."
+									placeholder="Search SKU, batch no, or description..."
 									value={searchTerm}
 									onChange={(e) => {
 										setSearchTerm(e.target.value);
 										setPage(1);
 										setLowStockPage(1);
 									}}
-									className="pl-9 sm:w-64"
-									aria-label="Search SKUs"
+									className="pl-9 sm:w-72"
+									aria-label="Search SKUs and batch numbers"
 								/>
 							</div>
 						</div>
@@ -286,6 +340,7 @@ function InventoryComponent() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>SKU Code</TableHead>
+									<TableHead>Batch No</TableHead>
 									<TableHead>Description</TableHead>
 									<TableHead>Strategy</TableHead>
 									<TableHead>Expiry Date</TableHead>
@@ -303,7 +358,7 @@ function InventoryComponent() {
 								{loading && items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={12}
+											colSpan={13}
 											className="h-24 text-center text-muted-foreground"
 										>
 											Loading inventory...
@@ -312,7 +367,7 @@ function InventoryComponent() {
 								) : items.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={12}
+											colSpan={13}
 											className="h-24 text-center text-muted-foreground"
 										>
 											{lowStockOnly
@@ -338,6 +393,9 @@ function InventoryComponent() {
 											>
 												<TableCell className="font-mono text-xs font-semibold">
 													{item.skuCode}
+												</TableCell>
+												<TableCell className="font-mono text-xs text-muted-foreground">
+													{formatLotNoDisplay(item.lotNo)}
 												</TableCell>
 												<TableCell className="max-w-[220px] truncate">
 													{item.skuDescription}
@@ -504,7 +562,8 @@ function InventoryComponent() {
 									{Math.min(currentPage * PAGE_SIZE, totalCount)}
 								</span>{" "}
 								of <span className="font-medium">{totalCount}</span>{" "}
-								{lowStockOnly ? "low stock" : ""} SKUs
+								{lowStockOnly ? "low stock" : ""} lot balance
+								{totalCount === 1 ? "" : "s"}
 							</div>
 							<div className="flex items-center gap-2">
 								<Button
@@ -532,7 +591,6 @@ function InventoryComponent() {
 						</div>
 					)}
 				</CardContent>
-			</Card>
-		</main>
+		</Card>
 	);
 }
