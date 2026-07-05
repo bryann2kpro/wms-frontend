@@ -151,6 +151,8 @@ interface SKURackRow {
 	}[];
 	qtyRequired: number;
 	rackLabel: string;
+	qtyInRack: number | null;
+	expiryDate: string | null;
 	completedPicking: boolean;
 }
 
@@ -364,6 +366,8 @@ function EmpireSushiDOComponent() {
 		return Array.from(grouped.values());
 	}, [allItems]);
 
+
+
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
 	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
 		const grouped = new Map<string, SKUSummaryGroup>();
@@ -403,6 +407,18 @@ function EmpireSushiDOComponent() {
 		);
 	}, [allItems, optimisticPicked]);
 
+	// stockQuantRacks per SKU code — collected from items (same for all items of a SKU)
+	const stockQuantRacksBySku = useMemo(() => {
+		const map = new Map<string, { rackLabel: string; qty: string; expiryDate: string | null }[]>();
+		for (const item of allItems) {
+			const key = item.skuCode ?? "no-sku";
+			if (!map.has(key) && (item.stockQuantRacks ?? []).length > 0) {
+				map.set(key, item.stockQuantRacks);
+			}
+		}
+		return map;
+	}, [allItems]);
+
 	const skuRackRows = useMemo<SKURackRow[]>(() => {
 		const rows: SKURackRow[] = [];
 
@@ -411,23 +427,42 @@ function EmpireSushiDOComponent() {
 			const rackQtyMap = new Map<string, number>();
 
 			for (const alloc of group.allocations) {
-				const rackLabel = alloc.rackName?.trim()
-					? `Rack ${alloc.rackName.trim()}`
-					: "Rack —";
+				const rackLabel = alloc.rackName?.trim() || "—";
 				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
 				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
 			}
 
 			if (rackQtyMap.size === 0) {
-				rows.push({
-					key: `${group.skuCode}-rack-none`,
-					skuCode: group.skuCode,
-					skuDescription: group.skuDescription,
-					doBreakdown: group.doBreakdown,
-					qtyRequired: group.totalQtyRequired,
-					rackLabel: "Rack —",
-					completedPicking,
-				});
+				// Fall back to live stock_quant racks — no mutations needed
+				const sqRacks = stockQuantRacksBySku.get(group.skuCode) ?? [];
+				if (sqRacks.length > 0) {
+					for (const rack of sqRacks.slice().sort((a, b) => (a?.rackLabel ?? '').localeCompare(b?.rackLabel ?? ''))) {
+						if (!rack?.rackLabel) continue;
+						rows.push({
+							key: `${group.skuCode}-sq-${rack.rackLabel}`,
+							skuCode: group.skuCode,
+							skuDescription: group.skuDescription,
+							doBreakdown: group.doBreakdown,
+							qtyRequired: group.totalQtyRequired,
+							rackLabel: rack.rackLabel,
+							qtyInRack: parseFloat(rack.qty) || 0,
+							expiryDate: rack.expiryDate ?? null,
+							completedPicking,
+						});
+					}
+				} else {
+					rows.push({
+						key: `${group.skuCode}-rack-none`,
+						skuCode: group.skuCode,
+						skuDescription: group.skuDescription,
+						doBreakdown: group.doBreakdown,
+						qtyRequired: group.totalQtyRequired,
+						rackLabel: "Rack —",
+						qtyInRack: null,
+						expiryDate: null,
+						completedPicking,
+					});
+				}
 				continue;
 			}
 
@@ -442,6 +477,8 @@ function EmpireSushiDOComponent() {
 					doBreakdown: group.doBreakdown,
 					qtyRequired,
 					rackLabel,
+					qtyInRack: null,
+					expiryDate: null,
 					completedPicking,
 				});
 			}
@@ -1090,17 +1127,17 @@ function EmpireSushiDOComponent() {
 										<TableHead className="w-10">#</TableHead>
 										<TableHead>SKU Code</TableHead>
 										<TableHead>Description &amp; DO Breakdown</TableHead>
-										<TableHead className="text-center">
-											Total Required
-										</TableHead>
+										<TableHead className="text-center">Total Required</TableHead>
 										<TableHead>Rack(s)</TableHead>
+										<TableHead className="text-center">Qty in Rack</TableHead>
+										<TableHead>Expiry Date</TableHead>
 										<TableHead>Completed Picking</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{!queryLoading && skuRackRows.length === 0 ? (
 										<TableRow>
-											<TableCell colSpan={6} className="py-16 text-center">
+											<TableCell colSpan={8} className="py-16 text-center">
 												<div className="flex flex-col items-center gap-3">
 													<div className="rounded-full bg-muted p-3">
 														<PackageOpen
@@ -1147,6 +1184,12 @@ function EmpireSushiDOComponent() {
 													</TableCell>
 													<TableCell className="text-sm text-muted-foreground">
 														{row.rackLabel}
+													</TableCell>
+													<TableCell className="text-center text-sm">
+														{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
+													</TableCell>
+													<TableCell className="text-sm text-muted-foreground">
+														{row.expiryDate ? formatDate(row.expiryDate) : "—"}
 													</TableCell>
 													<TableCell className="text-center">
 														<Checkbox
