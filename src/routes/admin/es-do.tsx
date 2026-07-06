@@ -1107,24 +1107,23 @@ function EmpireSushiDOComponent() {
 					>
 						<GlobalLoadingShadow />
 						<div className="overflow-x-auto rounded-lg border">
-							<Table aria-label="SKU work queue grouped by delivery order">
+							<Table aria-label="SKU picking summary — total quantities per SKU across all DOs">
 								<TableHeader>
 									<TableRow>
 										<TableHead className="w-10">#</TableHead>
-										<TableHead>SKU</TableHead>
-										<TableHead>Description</TableHead>
-										<TableHead>PO</TableHead>
-										<TableHead className="text-center">Qty Required</TableHead>
-										<TableHead className="text-center">Qty Picked</TableHead>
-										<TableHead className="text-center">On Hand</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead className="text-center">Picked</TableHead>
+										<TableHead>SKU Code</TableHead>
+										<TableHead>Description &amp; DO Breakdown</TableHead>
+										<TableHead className="text-center">Total Required</TableHead>
+										<TableHead>Rack(s)</TableHead>
+										<TableHead className="text-center">Qty in Rack</TableHead>
+										<TableHead>Expiry Date</TableHead>
+										<TableHead>Completed Picking</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{!queryLoading && groups.length === 0 ? (
+									{!queryLoading && skuRackRows.length === 0 ? (
 										<TableRow>
-											<TableCell colSpan={TABLE_COLS} className="py-16 text-center">
+											<TableCell colSpan={8} className="py-16 text-center">
 												<div className="flex flex-col items-center gap-3">
 													<div className="rounded-full bg-muted p-3">
 														<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -1134,106 +1133,38 @@ function EmpireSushiDOComponent() {
 											</TableCell>
 										</TableRow>
 									) : (
-										groups.flatMap((group) => {
-											const pickedCount = group.items.filter(isItemPicked).length;
-											const totalCount = group.items.length;
-											const allPicked = pickedCount === totalCount;
-
-											return [
-												<TableRow
-													key={`sku-group-${group.doId}`}
-													className="bg-muted/50 hover:bg-muted/60 border-l-4 border-l-primary/40"
-												>
-													<TableCell colSpan={TABLE_COLS} className="px-4 py-2.5">
-														<div className="flex items-center gap-3">
-															<span className="font-semibold text-sm">{group.doNo}</span>
-															<Badge variant={getStatusBadgeVariant(group.doStatus)} className="text-xs">
-																{group.doStatus}
-															</Badge>
-															<span className={`text-xs font-medium ${allPicked ? "text-green-600" : "text-muted-foreground"}`}>
-																{pickedCount}/{totalCount} picked
+										skuRackRows.map((row, idx) => (
+											<TableRow key={row.key}>
+												<TableCell className="font-medium text-muted-foreground text-xs">{idx + 1}</TableCell>
+												<TableCell className="font-mono text-sm font-semibold">{row.skuCode}</TableCell>
+												<TableCell className="max-w-[240px]">
+													<div className="truncate text-sm">{row.skuDescription}</div>
+													<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+														{row.doBreakdown.map((d, i) => (
+															<span key={`${d.doId}-${i}`} className="text-xs text-muted-foreground">
+																{d.doNo}:{" "}
+																<span className="font-medium text-foreground">{formatQty(d.qtyRequired)}</span>
 															</span>
-															{allPicked && group.doStatus !== "PACKING" && (
-																<span className="text-xs text-green-600 font-medium">· Advancing to Packing…</span>
-															)}
-															{(group.doStatus === "NEW" || group.doStatus === "CREATED") && (
-																<Button
-																	size="sm"
-																	variant="secondary"
-																	onClick={() => handleBulkPickAll(group)}
-																	disabled={bulkPickingDOs.has(group.doId) || !canApprove}
-																	className="ml-auto text-xs h-7"
-																>
-																	{bulkPickingDOs.has(group.doId) ? <Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden /> : null}
-																	Mark all as Picked
-																</Button>
-															)}
-															{group.doStatus === "PACKING" && (
-																<Button
-																	size="sm"
-																	variant="default"
-																	onClick={() => handleAdvanceToShipped(group.doId)}
-																	disabled={advancingDOs.has(group.doId) || !canApprove}
-																	className="ml-auto text-xs h-7"
-																>
-																	{advancingDOs.has(group.doId) ? <Loader2 className="h-3 w-3 animate-spin mr-1" aria-hidden /> : null}
-																	Mark as Shipped
-																</Button>
-															)}
-														</div>
-													</TableCell>
-												</TableRow>,
-
-												...group.items.map((item, idx) => {
-													const picked = isItemPicked(item);
-													const isProcessing = processingItems.has(item.id);
-													const rackLabel = item.selectedRackLabel;
-													const rackQty = item.selectedRackQty;
-													const rackExpiry = item.selectedRackExpiryDate;
-
-													return (
-														<TableRow
-															key={`sku-item-${item.id}`}
-															className={picked ? "bg-green-50/50 dark:bg-green-950/10" : ""}
-														>
-															<TableCell className="font-medium text-muted-foreground text-xs">{idx + 1}</TableCell>
-															<TableCell className="font-mono text-sm font-semibold">{item.skuCode ?? "—"}</TableCell>
-															<TableCell className="max-w-[240px]">
-																<div className="truncate text-sm">{item.skuDescription ?? "—"}</div>
-																{rackLabel && (
-																	<div className="mt-0.5 text-xs text-muted-foreground">
-																		Rack {rackLabel}
-																		{rackExpiry ? ` · Exp: ${formatDate(rackExpiry)}` : ""}
-																		{rackQty != null ? ` · Qty: ${formatQty(rackQty)}` : ""}
-																	</div>
-																)}
-															</TableCell>
-															<TableCell className="font-mono text-xs text-muted-foreground">{item.purchaseOrderNo}</TableCell>
-															<TableCell className="text-center">{formatQty(item.qtyRequired)}</TableCell>
-															<TableCell className="text-center">{formatQty(item.qtyPicked)}</TableCell>
-															<TableCell className="text-center text-sm text-muted-foreground">{formatQty(item.onHandQty)}</TableCell>
-															<TableCell>
-																<Badge variant={getStatusBadgeVariant(item.doStatus)} className="text-xs">
-																	{item.doStatus ?? "—"}
-																</Badge>
-															</TableCell>
-															<TableCell className="text-center">
-																{isProcessing ? (
-																	<Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" aria-hidden />
-																) : (
-																	<Checkbox
-																		checked={picked}
-																		disabled={picked || !item.doId || !canApprove}
-																		onCheckedChange={() => handleCheckItem(item)}
-																		aria-label={`Mark ${item.skuCode ?? "item"} as picked`}
-																	/>
-																)}
-															</TableCell>
-														</TableRow>
-													);
-												}),
-											];
-										})
+														))}
+													</div>
+												</TableCell>
+												<TableCell className="text-center font-semibold">{formatQty(row.qtyRequired)}</TableCell>
+												<TableCell className="text-sm text-muted-foreground">{row.rackLabel}</TableCell>
+												<TableCell className="text-center text-sm">
+													{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{row.expiryDate ? formatDate(row.expiryDate) : "—"}
+												</TableCell>
+												<TableCell className="text-center">
+													<Checkbox
+														checked={row.completedPicking}
+														disabled
+														aria-label={`Picking completed for ${row.skuCode}`}
+													/>
+												</TableCell>
+											</TableRow>
+										))
 									)}
 								</TableBody>
 							</Table>
