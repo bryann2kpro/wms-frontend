@@ -416,6 +416,8 @@ function EmpireSushiDOComponent() {
 			rackLabel: string;
 			totalQtyRequired: number;
 			totalQtyPicked: number;
+			qtyInRack: number | null;
+			expiryDate: string | null;
 			doBreakdown: SKUSummaryGroup["doBreakdown"];
 		};
 		const rackGroupMap = new Map<string, RackGroup>();
@@ -436,6 +438,8 @@ function EmpireSushiDOComponent() {
 					rackLabel,
 					totalQtyRequired: 0,
 					totalQtyPicked: 0,
+					qtyInRack: item.selectedRackQty != null ? parseFloat(item.selectedRackQty) : null,
+					expiryDate: item.selectedRackExpiryDate ?? null,
 					doBreakdown: [],
 				});
 			}
@@ -463,8 +467,8 @@ function EmpireSushiDOComponent() {
 				doBreakdown: g.doBreakdown,
 				qtyRequired: g.totalQtyRequired,
 				rackLabel: g.rackLabel,
-				qtyInRack: null,
-				expiryDate: null,
+				qtyInRack: g.qtyInRack,
+				expiryDate: g.expiryDate,
 				completedPicking: g.totalQtyPicked >= g.totalQtyRequired,
 			}));
 	}, [allItems, optimisticPicked]);

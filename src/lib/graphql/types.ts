@@ -921,6 +921,8 @@ export interface DeliveryOrderItemWithDetails {
 	allocations: DoItemAllocation[];
 	stockQuantRacks: StockQuantRack[];
 	selectedRackLabel: string | null;
+	selectedRackQty: string | null;
+	selectedRackExpiryDate: string | null;
 }
 
 export interface StockQuantRack {

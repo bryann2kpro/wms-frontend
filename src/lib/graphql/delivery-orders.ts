@@ -166,6 +166,8 @@ export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
 			expiryDate
 		}
 		selectedRackLabel
+		selectedRackQty
+		selectedRackExpiryDate
 	}
 `;
 
