@@ -60,8 +60,12 @@ const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
 	"Delivery order work queue for Empire Sushi — stock movement based on DO.";
 
-/** Only show DOs in these statuses on the work queue. */
-const ACTIVE_DO_STATUSES = new Set(["CREATED", "NEW", "PICKING", "PACKING"]);
+/** Show all non-cancelled DO statuses so shipped/delivered DOs remain visible for historical lookup. */
+const ACTIVE_DO_STATUSES = new Set([
+	"CREATED", "NEW", "PICKING", "PACKING", "PACKED",
+	"READY_FOR_COLLECTION", "COLLECTED", "SHIPPED",
+	"DELIVERED_PENDING_PROOF", "DELIVERED", "DELIVERED_CONFIRMED",
+]);
 
 /**
  * Max delivery-order lines fetched for this page. Keep in sync with
