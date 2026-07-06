@@ -92,33 +92,22 @@ export type StockQuantsQueryVariables = {
 /** Sort stock quants for display using the SKU picking strategy (m.skus.picking_strategy). */
 export function sortStockQuantsByPickingStrategy(
 	rows: StockQuant[],
-	strategy: string,
+	_strategy: string,
 ): StockQuant[] {
 	const sorted = [...rows];
-	const byUpdatedAt = (a: StockQuant, b: StockQuant, ascending: boolean) => {
-		const diff =
-			new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-		return ascending ? diff : -diff;
-	};
+	sorted.sort((a, b) => {
+		// 1. Expiry date ascending (no expiry → last)
+		const aExp = a.expiryDate ? new Date(a.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
+		const bExp = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
+		if (aExp !== bExp) return aExp - bExp;
 
-	switch (strategy) {
-		case "LIFO":
-			sorted.sort((a, b) => byUpdatedAt(a, b, false));
-			break;
-		case "FEFO":
-			sorted.sort((a, b) => {
-				const aExp = a.expiryDate
-					? new Date(a.expiryDate).getTime()
-					: Number.MAX_SAFE_INTEGER;
-				const bExp = b.expiryDate
-					? new Date(b.expiryDate).getTime()
-					: Number.MAX_SAFE_INTEGER;
-				return aExp - bExp;
-			});
-			break;
-		default:
-			sorted.sort((a, b) => byUpdatedAt(a, b, true));
-			break;
-	}
+		// 2. Available (onHand - reserved) descending
+		const aAvail = Number(a.quantity ?? 0) - Number(a.reservedQty ?? 0);
+		const bAvail = Number(b.quantity ?? 0) - Number(b.reservedQty ?? 0);
+		if (aAvail !== bAvail) return bAvail - aAvail;
+
+		// 3. Rack label ascending
+		return (a.rackLabel ?? "").localeCompare(b.rackLabel ?? "");
+	});
 	return sorted;
 }
