@@ -101,10 +101,10 @@ export function sortStockQuantsByPickingStrategy(
 		const bExp = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
 		if (aExp !== bExp) return aExp - bExp;
 
-		// 2. Available (onHand - reserved) descending
+		// 2. Available (onHand - reserved) ascending (least first)
 		const aAvail = Number(a.quantity ?? 0) - Number(a.reservedQty ?? 0);
 		const bAvail = Number(b.quantity ?? 0) - Number(b.reservedQty ?? 0);
-		if (aAvail !== bAvail) return bAvail - aAvail;
+		if (aAvail !== bAvail) return aAvail - bAvail;
 
 		// 3. Rack label ascending
 		return (a.rackLabel ?? "").localeCompare(b.rackLabel ?? "");
