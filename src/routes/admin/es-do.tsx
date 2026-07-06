@@ -407,85 +407,67 @@ function EmpireSushiDOComponent() {
 		);
 	}, [allItems, optimisticPicked]);
 
-	// stockQuantRacks per SKU code — collected from items (same for all items of a SKU)
-	const stockQuantRacksBySku = useMemo(() => {
-		const map = new Map<string, { rackLabel: string; qty: string; expiryDate: string | null }[]>();
-		for (const item of allItems) {
-			const key = item.skuCode ?? "no-sku";
-			if (!map.has(key) && (item.stockQuantRacks ?? []).length > 0) {
-				map.set(key, item.stockQuantRacks);
-			}
-		}
-		return map;
-	}, [allItems]);
-
+	// Group by (skuCode, selectedRackLabel) — one row per unique rack per SKU
 	const skuRackRows = useMemo<SKURackRow[]>(() => {
-		const rows: SKURackRow[] = [];
+		// key = skuCode + "|" + rackLabel
+		type RackGroup = {
+			skuCode: string;
+			skuDescription: string;
+			rackLabel: string;
+			totalQtyRequired: number;
+			totalQtyPicked: number;
+			doBreakdown: SKUSummaryGroup["doBreakdown"];
+		};
+		const rackGroupMap = new Map<string, RackGroup>();
 
-		for (const group of skuGroups) {
-			const completedPicking = group.totalQtyPicked >= group.totalQtyRequired;
-			const rackQtyMap = new Map<string, number>();
+		for (const item of allItems) {
+			const skuCode = item.skuCode ?? "no-sku";
+			const rackLabel = item.selectedRackLabel ?? "—";
+			const key = `${skuCode}|${rackLabel}`;
+			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
+			const picked = optimisticPicked.has(item.id)
+				? req
+				: parseFloat(String(item.qtyPicked ?? 0)) || 0;
 
-			for (const alloc of group.allocations) {
-				const rackLabel = alloc.rackName?.trim() || "—";
-				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
-				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
-			}
-
-			if (rackQtyMap.size === 0) {
-				// Fall back to live stock_quant racks — no mutations needed
-				const sqRacks = stockQuantRacksBySku.get(group.skuCode) ?? [];
-				if (sqRacks.length > 0) {
-					for (const rack of sqRacks.slice().sort((a, b) => (a?.rackLabel ?? '').localeCompare(b?.rackLabel ?? ''))) {
-						if (!rack?.rackLabel) continue;
-						rows.push({
-							key: `${group.skuCode}-sq-${rack.rackLabel}`,
-							skuCode: group.skuCode,
-							skuDescription: group.skuDescription,
-							doBreakdown: group.doBreakdown,
-							qtyRequired: group.totalQtyRequired,
-							rackLabel: rack.rackLabel,
-							qtyInRack: parseFloat(rack.qty) || 0,
-							expiryDate: rack.expiryDate ?? null,
-							completedPicking,
-						});
-					}
-				} else {
-					rows.push({
-						key: `${group.skuCode}-rack-none`,
-						skuCode: group.skuCode,
-						skuDescription: group.skuDescription,
-						doBreakdown: group.doBreakdown,
-						qtyRequired: group.totalQtyRequired,
-						rackLabel: "Rack —",
-						qtyInRack: null,
-						expiryDate: null,
-						completedPicking,
-					});
-				}
-				continue;
-			}
-
-			const sortedRackRows = Array.from(rackQtyMap.entries()).sort(([a], [b]) =>
-				a.localeCompare(b),
-			);
-			for (const [rackLabel, qtyRequired] of sortedRackRows) {
-				rows.push({
-					key: `${group.skuCode}-${rackLabel}`,
-					skuCode: group.skuCode,
-					skuDescription: group.skuDescription,
-					doBreakdown: group.doBreakdown,
-					qtyRequired,
+			if (!rackGroupMap.has(key)) {
+				rackGroupMap.set(key, {
+					skuCode,
+					skuDescription: item.skuDescription ?? "—",
 					rackLabel,
-					qtyInRack: null,
-					expiryDate: null,
-					completedPicking,
+					totalQtyRequired: 0,
+					totalQtyPicked: 0,
+					doBreakdown: [],
 				});
 			}
+			const g = rackGroupMap.get(key)!;
+			g.totalQtyRequired += req;
+			g.totalQtyPicked += picked;
+			g.doBreakdown.push({
+				doNo: item.doNo ?? "—",
+				doId: item.doId ?? "",
+				qtyRequired: req,
+				qtyPicked: picked,
+			});
 		}
 
-		return rows;
-	}, [skuGroups]);
+		return Array.from(rackGroupMap.values())
+			.sort((a, b) => {
+				const skuCmp = a.skuCode.localeCompare(b.skuCode);
+				if (skuCmp !== 0) return skuCmp;
+				return a.rackLabel.localeCompare(b.rackLabel);
+			})
+			.map((g) => ({
+				key: `${g.skuCode}|${g.rackLabel}`,
+				skuCode: g.skuCode,
+				skuDescription: g.skuDescription,
+				doBreakdown: g.doBreakdown,
+				qtyRequired: g.totalQtyRequired,
+				rackLabel: g.rackLabel,
+				qtyInRack: null,
+				expiryDate: null,
+				completedPicking: g.totalQtyPicked >= g.totalQtyRequired,
+			}));
+	}, [allItems, optimisticPicked]);
 
 	const { mutate: generatePickingList, isPending: generatingPickingList } =
 		useMutation({
