@@ -1117,7 +1117,8 @@ function EmpireSushiDOComponent() {
 										<TableHead>Rack(s)</TableHead>
 										<TableHead className="text-center">Qty in Rack</TableHead>
 										<TableHead>Expiry Date</TableHead>
-										<TableHead>Completed Picking</TableHead>
+										<TableHead>Status</TableHead>
+										<TableHead className="text-center">Picked</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1155,6 +1156,11 @@ function EmpireSushiDOComponent() {
 												</TableCell>
 												<TableCell className="text-sm text-muted-foreground">
 													{row.expiryDate ? formatDate(row.expiryDate) : "—"}
+												</TableCell>
+												<TableCell>
+													<Badge variant={row.completedPicking ? "secondary" : "outline"} className="text-xs">
+														{row.completedPicking ? "PACKING" : "NEW"}
+													</Badge>
 												</TableCell>
 												<TableCell className="text-center">
 													<Checkbox
