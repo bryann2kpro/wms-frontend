@@ -77,7 +77,7 @@ export async function createPurchaseOrder(
 			skuCode: line.skuCode ?? line.skuId ?? "",
 			skuId: line.skuId || undefined,
 			qtyRequired: line.quantity,
-			stockQuantId: line.stockQuantId || undefined,
+			stockQuantIds: line.stockQuantIds?.length ? line.stockQuantIds : undefined,
 		})),
 		isEmergency: input.isEmergency ?? false,
 	};

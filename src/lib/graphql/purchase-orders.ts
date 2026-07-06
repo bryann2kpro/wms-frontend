@@ -212,6 +212,7 @@ export type CreatePurchaseOrderMutationVariables = {
 			skuId?: string;
 			qtyRequired: number;
 			stockQuantId?: string;
+			stockQuantIds?: string[];
 		}>;
 		isEmergency?: boolean;
 	};
