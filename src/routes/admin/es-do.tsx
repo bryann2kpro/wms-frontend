@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -38,7 +39,6 @@ import {
 	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
 	ADVANCE_DELIVERY_ORDER_STATUS_MUTATION,
 	ALLOCATE_PICK_LIST_MUTATION,
-	GENERATE_DO_PICKING_LIST_MUTATION,
 	type DeliveryOrderItemsQueryVariables,
 	type DeliveryOrderItemsQueryData,
 	type MarkDeliveryOrderItemPickedMutationVariables,
@@ -47,11 +47,8 @@ import {
 	type AdvanceDeliveryOrderStatusMutationData,
 	type AllocatePickListMutationVariables,
 	type AllocatePickListMutationData,
-	type GenerateDoPickingListMutationData,
-	type GenerateDoPickingListMutationVariables,
 } from "@/lib/graphql/delivery-orders";
 import { REGIONS_QUERY, type RegionsQueryData } from "@/lib/graphql/regions";
-import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import type {
 	DeliveryOrderItemWithDetails,
 	DoItemAllocation,
@@ -270,23 +267,6 @@ function EmpireSushiDOComponent() {
 		return `${names[0]!}, ${names[1]!} +${names.length - 2}`;
 	}, [selectedRegionIds, regions]);
 
-	const pickingListFilter = useMemo(
-		() => ({
-			...(sortedRegionIdsForQuery.length > 0
-				? { regionIds: sortedRegionIdsForQuery }
-				: {}),
-			search: trimmedSearchTerm || null,
-			scheduledDeliveryDateFrom: dateFrom || null,
-			scheduledDeliveryDateTo: dateTo || null,
-		}),
-		[
-			sortedRegionIdsForQuery,
-			trimmedSearchTerm,
-			dateFrom,
-			dateTo,
-		],
-	);
-
 	const toggleRegionFilter = useCallback((regionId: string) => {
 		setSelectedRegionIds((prev) =>
 			prev.includes(regionId)
@@ -370,44 +350,6 @@ function EmpireSushiDOComponent() {
 
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
-	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
-		const grouped = new Map<string, SKUSummaryGroup>();
-		for (const item of allItems) {
-			const key = item.skuCode ?? "no-sku";
-			if (!grouped.has(key)) {
-				grouped.set(key, {
-					skuCode: item.skuCode ?? "—",
-					skuDescription: item.skuDescription ?? "—",
-					totalQtyRequired: 0,
-					totalQtyPicked: 0,
-					doBreakdown: [],
-					allocations: [],
-				});
-			}
-			const group = grouped.get(key)!;
-			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
-			const pickedQty = optimisticPicked.has(item.id)
-				? req
-				: parseFloat(String(item.qtyPicked ?? 0)) || 0;
-			group.totalQtyRequired += req;
-			group.totalQtyPicked += pickedQty;
-			group.doBreakdown.push({
-				doNo: item.doNo ?? "—",
-				doId: item.doId ?? "",
-				qtyRequired: req,
-				qtyPicked: pickedQty,
-			});
-			for (const alloc of item.allocations ?? []) {
-				if (!group.allocations.some((a) => a.id === alloc.id)) {
-					group.allocations.push(alloc);
-				}
-			}
-		}
-		return Array.from(grouped.values()).sort((a, b) =>
-			a.skuCode.localeCompare(b.skuCode),
-		);
-	}, [allItems, optimisticPicked]);
-
 	// Group by (skuCode, selectedRackLabel) — one row per unique rack per SKU
 	const skuRackRows = useMemo<SKURackRow[]>(() => {
 		// key = skuCode + "|" + rackLabel
@@ -478,18 +420,24 @@ function EmpireSushiDOComponent() {
 			}));
 	}, [allItems, optimisticPicked]);
 
-	const { mutate: generatePickingList, isPending: generatingPickingList } =
-		useMutation({
-			mutationFn: (vars: GenerateDoPickingListMutationVariables) =>
-				gqlRequest<
-					GenerateDoPickingListMutationData,
-					GenerateDoPickingListMutationVariables
-				>(GENERATE_DO_PICKING_LIST_MUTATION, vars),
-			onSuccess(data) {
-				const { pdfBase64, filename } = data.generateDoPickingList;
-				downloadPdfFromBase64(pdfBase64, filename);
-			},
-		});
+	const exportPickingListExcel = useCallback(() => {
+		const rows = skuRackRows.map((row, idx) => ({
+			"#": idx + 1,
+			"SKU Code": row.skuCode,
+			"Description": row.skuDescription,
+			"Total Required": row.qtyRequired,
+			"Rack(s)": row.rackLabel,
+			"Qty in Rack": row.qtyInRack ?? "",
+			"Expiry Date": row.expiryDate ? formatDate(row.expiryDate) : "",
+		}));
+
+		const ws = XLSX.utils.json_to_sheet(rows);
+		const wb = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(wb, ws, "Picking List");
+
+		const dateLabel = dateFrom === dateTo ? dateFrom : `${dateFrom}_${dateTo}`;
+		XLSX.writeFile(wb, `picking-list-${dateLabel}.xlsx`);
+	}, [skuRackRows, dateFrom, dateTo]);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -643,15 +591,6 @@ function EmpireSushiDOComponent() {
 		],
 	);
 
-	const handlePickSkuRow = useCallback(
-		async (row: SKURackRow) => {
-			const unpicked = row.items.filter((i) => !isItemPicked(i));
-			for (const item of unpicked) {
-				await handleCheckItem(item);
-			}
-		},
-		[isItemPicked, handleCheckItem],
-	);
 
 	const handleAdvanceToShipped = useCallback(
 		async (doId: string) => {
@@ -860,18 +799,12 @@ function EmpireSushiDOComponent() {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() =>
-								generatePickingList({ filter: pickingListFilter })
-							}
-							disabled={generatingPickingList}
+							onClick={exportPickingListExcel}
+							disabled={skuRackRows.length === 0}
 							className="h-7 text-xs gap-1.5"
 						>
-							{generatingPickingList ? (
-								<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-							) : (
-								<Printer className="h-3 w-3" aria-hidden />
-							)}
-							{generatingPickingList ? "Generating…" : "Print Picking List"}
+							<Printer className="h-3 w-3" aria-hidden />
+							Print Picking List
 						</Button>
 					</div>
 				</div>
@@ -1132,14 +1065,12 @@ function EmpireSushiDOComponent() {
 										<TableHead>Rack(s)</TableHead>
 										<TableHead className="text-center">Qty in Rack</TableHead>
 										<TableHead>Expiry Date</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead className="text-center">Picked</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{!queryLoading && skuRackRows.length === 0 ? (
 										<TableRow>
-											<TableCell colSpan={8} className="py-16 text-center">
+											<TableCell colSpan={7} className="py-16 text-center">
 												<div className="flex flex-col items-center gap-3">
 													<div className="rounded-full bg-muted p-3">
 														<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
@@ -1171,19 +1102,6 @@ function EmpireSushiDOComponent() {
 												</TableCell>
 												<TableCell className="text-sm text-muted-foreground">
 													{row.expiryDate ? formatDate(row.expiryDate) : "—"}
-												</TableCell>
-												<TableCell>
-													<Badge variant={row.completedPicking ? "secondary" : "outline"} className="text-xs">
-														{row.completedPicking ? "PACKING" : "NEW"}
-													</Badge>
-												</TableCell>
-												<TableCell className="text-center">
-													<Checkbox
-														checked={row.completedPicking}
-														disabled={row.completedPicking || !canApprove}
-														onCheckedChange={() => handlePickSkuRow(row)}
-														aria-label={`Mark picking complete for ${row.skuCode}`}
-													/>
 												</TableCell>
 											</TableRow>
 										))
