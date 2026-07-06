@@ -315,7 +315,7 @@ export function CreatePurchaseOrderDialog({
 															onClick={() => {
 																form.setFieldValue("items", [
 																	...(items ?? []),
-																	{ skuId: "", quantity: 1, stockQuantId: "" },
+																	{ skuId: "", quantity: 1, stockQuantIds: [] },
 																]);
 															}}
 														>
@@ -439,6 +439,12 @@ export function CreatePurchaseOrderDialog({
 	);
 }
 
+function batchAvailable(batch: { quantity?: string | null; reservedQty?: string | null }): number {
+	const onHand = Number(batch.quantity ?? "0");
+	const reserved = Number(batch.reservedQty ?? "0");
+	return onHand - reserved;
+}
+
 function LineItemRow({
 	index,
 	item,
@@ -451,12 +457,12 @@ function LineItemRow({
 	item: CreatePurchaseOrderLineItem & {
 		skuCode?: string;
 		description?: string;
-		stockQuantId?: string;
+		stockQuantIds?: string[];
 	};
 	items: (CreatePurchaseOrderLineItem & {
 		skuCode?: string;
 		description?: string;
-		stockQuantId?: string;
+		stockQuantIds?: string[];
 	})[];
 	form: any;
 	canRemove: boolean;
@@ -479,33 +485,46 @@ function LineItemRow({
 	const stockQuantBatches = useMemo(
 		() =>
 			sortStockQuantsByPickingStrategy(
-				(stockQuantData?.stockQuants?.query ?? []).filter((row) => {
-					const onHand = Number(row.quantity ?? "0");
-					const reserved = Number(row.reservedQty ?? "0");
-					return onHand - reserved > 0;
-				}),
+				(stockQuantData?.stockQuants?.query ?? []).filter(
+					(row) => batchAvailable(row) > 0,
+				),
 				pickingStrategy,
 			),
 		[stockQuantData, pickingStrategy],
 	);
 
 	const totalAvailable = useMemo(
-		() =>
-			stockQuantBatches.reduce((sum, row) => {
-				const onHand = Number(row.quantity ?? "0");
-				const reserved = Number(row.reservedQty ?? "0");
-				return sum + (onHand - reserved);
-			}, 0),
+		() => stockQuantBatches.reduce((sum, row) => sum + batchAvailable(row), 0),
 		[stockQuantBatches],
 	);
 
-	const selectedBatch = stockQuantBatches.find(
-		(batch) => batch.id === item.stockQuantId,
+	const selectedIds = useMemo(
+		() => item.stockQuantIds ?? [],
+		[item.stockQuantIds],
 	);
-	const selectedAvailable = selectedBatch
-		? Number(selectedBatch.quantity ?? "0") -
-			Number(selectedBatch.reservedQty ?? "0")
-		: 0;
+	const selectedAvailable = useMemo(
+		() =>
+			stockQuantBatches.reduce(
+				(sum, batch) =>
+					selectedIds.includes(batch.id) ? sum + batchAvailable(batch) : sum,
+				0,
+			),
+		[stockQuantBatches, selectedIds],
+	);
+
+	// Planned qty split per selected batch (FIFO order): min(available, remaining)
+	const plannedTakeByBatchId = useMemo(() => {
+		const map = new Map<string, number>();
+		let remaining = item.quantity;
+		for (const batch of stockQuantBatches) {
+			if (!selectedIds.includes(batch.id)) continue;
+			if (remaining <= 0) break;
+			const take = Math.min(remaining, batchAvailable(batch));
+			map.set(batch.id, take);
+			remaining -= take;
+		}
+		return map;
+	}, [stockQuantBatches, selectedIds, item.quantity]);
 
 	const updateRow = useCallback(
 		(patch: Partial<typeof item>) => {
@@ -517,27 +536,62 @@ function LineItemRow({
 		[form, index, items],
 	);
 
+	// Auto-select batches (FIFO): keep whatever the user checked; when it no longer
+	// covers the quantity, extend with the next batches down the list — mirroring
+	// the manual flow where the user must pick more batches until qty is covered.
 	useEffect(() => {
 		if (!item.skuId || stockQuantLoading) return;
 		if (stockQuantBatches.length === 0) {
-			if (item.stockQuantId) {
-				updateRow({ stockQuantId: "" });
-			}
+			if (selectedIds.length > 0) updateRow({ stockQuantIds: [] });
 			return;
 		}
-		const stillValid = stockQuantBatches.some(
-			(batch) => batch.id === item.stockQuantId,
+		const validIds = new Set(stockQuantBatches.map((b) => b.id));
+		const kept = selectedIds.filter((id) => validIds.has(id));
+		let cover = stockQuantBatches.reduce(
+			(sum, b) => (kept.includes(b.id) ? sum + batchAvailable(b) : sum),
+			0,
 		);
-		if (!stillValid) {
-			updateRow({ stockQuantId: stockQuantBatches[0].id });
+
+		const next = [...kept];
+		for (const batch of stockQuantBatches) {
+			if (cover >= item.quantity) break;
+			if (next.includes(batch.id)) continue;
+			next.push(batch.id);
+			cover += batchAvailable(batch);
+		}
+
+		// Normalize to FIFO list order so the backend splits in the right sequence
+		const ordered = stockQuantBatches
+			.filter((b) => next.includes(b.id))
+			.map((b) => b.id);
+
+		if (
+			ordered.length !== selectedIds.length ||
+			ordered.some((id, i) => id !== selectedIds[i])
+		) {
+			updateRow({ stockQuantIds: ordered });
 		}
 	}, [
 		item.skuId,
-		item.stockQuantId,
+		item.quantity,
+		selectedIds,
 		stockQuantBatches,
 		stockQuantLoading,
 		updateRow,
 	]);
+
+	const toggleBatch = useCallback(
+		(batchId: string) => {
+			const next = selectedIds.includes(batchId)
+				? selectedIds.filter((id) => id !== batchId)
+				: [...selectedIds, batchId];
+			const ordered = stockQuantBatches
+				.filter((b) => next.includes(b.id))
+				.map((b) => b.id);
+			updateRow({ stockQuantIds: ordered });
+		},
+		[selectedIds, stockQuantBatches, updateRow],
+	);
 
 	const skuValue: SkuLineValue | null = item.skuId
 		? {
@@ -561,7 +615,7 @@ function LineItemRow({
 								skuId: v.skuId,
 								skuCode: v.skuCode,
 								description: v.description,
-								stockQuantId: "",
+								stockQuantIds: [],
 							});
 						}}
 						placeholder="Select SKU..."
@@ -577,11 +631,7 @@ function LineItemRow({
 					<Input
 						type="number"
 						min={1}
-						max={
-							selectedBatch && selectedAvailable > 0
-								? selectedAvailable
-								: undefined
-						}
+						max={totalAvailable > 0 ? totalAvailable : undefined}
 						value={item.quantity}
 						onChange={(e) =>
 							updateRow({ quantity: Number(e.target.value) || 1 })
@@ -589,15 +639,28 @@ function LineItemRow({
 						className="h-10 w-24 text-[13px] rounded-lg border-muted-foreground/20"
 					/>
 					{item.skuId &&
-					selectedBatch &&
-					item.quantity > selectedAvailable ? (
+					stockQuantBatches.length > 0 &&
+					item.quantity > totalAvailable ? (
 						<p className="mt-1 text-[11px] text-destructive">
-							Exceeds selected batch ({selectedAvailable.toLocaleString()})
+							Exceeds total available ({totalAvailable.toLocaleString()})
+						</p>
+					) : item.skuId &&
+					  selectedIds.length > 0 &&
+					  item.quantity > selectedAvailable ? (
+						<p className="mt-1 text-[11px] text-destructive">
+							Exceeds selected batches ({selectedAvailable.toLocaleString()})
 						</p>
 					) : null}
-					{item.skuId && stockQuantBatches.length > 0 && !item.stockQuantId ? (
+					{item.skuId &&
+					stockQuantBatches.length > 0 &&
+					selectedIds.length === 0 ? (
 						<p className="mt-1 text-[11px] text-destructive">
 							Select a stock quant batch below
+						</p>
+					) : null}
+					{item.skuId && selectedIds.length > 1 ? (
+						<p className="mt-1 text-[11px] text-muted-foreground">
+							Split across {selectedIds.length} racks
 						</p>
 					) : null}
 				</TableCell>
@@ -655,6 +718,9 @@ function LineItemRow({
 												<TableHead className="text-xs text-right">
 													Available
 												</TableHead>
+												<TableHead className="text-xs text-right">
+													Pick Qty
+												</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
@@ -662,11 +728,13 @@ function LineItemRow({
 												const onHand = Number(batch.quantity ?? "0");
 												const reserved = Number(batch.reservedQty ?? "0");
 												const available = onHand - reserved;
-												const isSelected = item.stockQuantId === batch.id;
+												const isSelected = selectedIds.includes(batch.id);
+												const plannedTake =
+													plannedTakeByBatchId.get(batch.id) ?? 0;
 												return (
 													<TableRow
 														key={batch.id}
-														role="radio"
+														role="checkbox"
 														aria-checked={isSelected}
 														tabIndex={0}
 														className={cn(
@@ -677,24 +745,22 @@ function LineItemRow({
 														)}
 														onClick={(e) => {
 															e.preventDefault();
-															updateRow({ stockQuantId: batch.id });
+															toggleBatch(batch.id);
 														}}
 														onKeyDown={(e) => {
 															if (e.key === "Enter" || e.key === " ") {
 																e.preventDefault();
-																updateRow({ stockQuantId: batch.id });
+																toggleBatch(batch.id);
 															}
 														}}
 													>
 														<TableCell className="w-10">
 															<input
-																type="radio"
+																type="checkbox"
 																name={`stock-quant-${index}`}
 																checked={isSelected}
 																onClick={(e) => e.stopPropagation()}
-																onChange={() =>
-																	updateRow({ stockQuantId: batch.id })
-																}
+																onChange={() => toggleBatch(batch.id)}
 																className="h-4 w-4 accent-amber-600"
 																aria-label={`Select batch ${batch.lotNo?.trim() || "no lot"} at ${batch.rackLabel || "rack"}`}
 															/>
@@ -726,6 +792,11 @@ function LineItemRow({
 														</TableCell>
 														<TableCell className="text-right text-xs font-semibold">
 															{available.toLocaleString()}
+														</TableCell>
+														<TableCell className="text-right text-xs font-semibold text-amber-700 dark:text-amber-400">
+															{isSelected && plannedTake > 0
+																? plannedTake.toLocaleString()
+																: ""}
 														</TableCell>
 													</TableRow>
 												);

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -38,7 +39,6 @@ import {
 	MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION,
 	ADVANCE_DELIVERY_ORDER_STATUS_MUTATION,
 	ALLOCATE_PICK_LIST_MUTATION,
-	GENERATE_DO_PICKING_LIST_MUTATION,
 	type DeliveryOrderItemsQueryVariables,
 	type DeliveryOrderItemsQueryData,
 	type MarkDeliveryOrderItemPickedMutationVariables,
@@ -47,11 +47,8 @@ import {
 	type AdvanceDeliveryOrderStatusMutationData,
 	type AllocatePickListMutationVariables,
 	type AllocatePickListMutationData,
-	type GenerateDoPickingListMutationData,
-	type GenerateDoPickingListMutationVariables,
 } from "@/lib/graphql/delivery-orders";
 import { REGIONS_QUERY, type RegionsQueryData } from "@/lib/graphql/regions";
-import { downloadPdfFromBase64 } from "@/lib/reports/report-pdf";
 import type {
 	DeliveryOrderItemWithDetails,
 	DoItemAllocation,
@@ -63,8 +60,12 @@ const PAGE_TITLE = "Empire Sushi DO Work Queue";
 const PAGE_DESCRIPTION =
 	"Delivery order work queue for Empire Sushi — stock movement based on DO.";
 
-/** Only show DOs in these statuses on the work queue. */
-const ACTIVE_DO_STATUSES = new Set(["CREATED", "NEW", "PICKING", "PACKING"]);
+/** Show all non-cancelled DO statuses so shipped/delivered DOs remain visible for historical lookup. */
+const ACTIVE_DO_STATUSES = new Set([
+	"CREATED", "NEW", "PICKING", "PACKING", "PACKED",
+	"READY_FOR_COLLECTION", "COLLECTED", "SHIPPED",
+	"DELIVERED_PENDING_PROOF", "DELIVERED", "DELIVERED_CONFIRMED",
+]);
 
 /**
  * Max delivery-order lines fetched for this page. Keep in sync with
@@ -154,6 +155,7 @@ interface SKURackRow {
 	qtyInRack: number | null;
 	expiryDate: string | null;
 	completedPicking: boolean;
+	items: DeliveryOrderItemWithDetails[];
 }
 
 interface AllocationGuideProps {
@@ -269,23 +271,6 @@ function EmpireSushiDOComponent() {
 		return `${names[0]!}, ${names[1]!} +${names.length - 2}`;
 	}, [selectedRegionIds, regions]);
 
-	const pickingListFilter = useMemo(
-		() => ({
-			...(sortedRegionIdsForQuery.length > 0
-				? { regionIds: sortedRegionIdsForQuery }
-				: {}),
-			search: trimmedSearchTerm || null,
-			scheduledDeliveryDateFrom: dateFrom || null,
-			scheduledDeliveryDateTo: dateTo || null,
-		}),
-		[
-			sortedRegionIdsForQuery,
-			trimmedSearchTerm,
-			dateFrom,
-			dateTo,
-		],
-	);
-
 	const toggleRegionFilter = useCallback((regionId: string) => {
 		setSelectedRegionIds((prev) =>
 			prev.includes(regionId)
@@ -369,136 +354,94 @@ function EmpireSushiDOComponent() {
 
 
 	/** Items grouped by SKU — aggregates total qty required across all active DOs. */
-	const skuGroups = useMemo<SKUSummaryGroup[]>(() => {
-		const grouped = new Map<string, SKUSummaryGroup>();
+	// Group by (skuCode, selectedRackLabel) — one row per unique rack per SKU
+	const skuRackRows = useMemo<SKURackRow[]>(() => {
+		// key = skuCode + "|" + rackLabel
+		type RackGroup = {
+			skuCode: string;
+			skuDescription: string;
+			rackLabel: string;
+			totalQtyRequired: number;
+			totalQtyPicked: number;
+			qtyInRack: number | null;
+			expiryDate: string | null;
+			doBreakdown: SKUSummaryGroup["doBreakdown"];
+		};
+		type RackGroupInternal = RackGroup & { items: DeliveryOrderItemWithDetails[] };
+		const rackGroupMap = new Map<string, RackGroupInternal>();
+
 		for (const item of allItems) {
-			const key = item.skuCode ?? "no-sku";
-			if (!grouped.has(key)) {
-				grouped.set(key, {
-					skuCode: item.skuCode ?? "—",
-					skuDescription: item.skuDescription ?? "—",
-					totalQtyRequired: 0,
-					totalQtyPicked: 0,
-					doBreakdown: [],
-					allocations: [],
-				});
-			}
-			const group = grouped.get(key)!;
+			const skuCode = item.skuCode ?? "no-sku";
+			const rackLabel = item.selectedRackLabel ?? "—";
+			const key = `${skuCode}|${rackLabel}`;
 			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
-			const pickedQty = optimisticPicked.has(item.id)
+			const picked = optimisticPicked.has(item.id)
 				? req
 				: parseFloat(String(item.qtyPicked ?? 0)) || 0;
-			group.totalQtyRequired += req;
-			group.totalQtyPicked += pickedQty;
-			group.doBreakdown.push({
+
+			if (!rackGroupMap.has(key)) {
+				rackGroupMap.set(key, {
+					skuCode,
+					skuDescription: item.skuDescription ?? "—",
+					rackLabel,
+					totalQtyRequired: 0,
+					totalQtyPicked: 0,
+					qtyInRack: item.selectedRackQty != null ? parseFloat(item.selectedRackQty) : null,
+					expiryDate: item.selectedRackExpiryDate ?? null,
+					doBreakdown: [],
+					items: [],
+				});
+			}
+			const g = rackGroupMap.get(key)!;
+			g.totalQtyRequired += req;
+			g.totalQtyPicked += picked;
+			g.doBreakdown.push({
 				doNo: item.doNo ?? "—",
 				doId: item.doId ?? "",
 				qtyRequired: req,
-				qtyPicked: pickedQty,
+				qtyPicked: picked,
 			});
-			for (const alloc of item.allocations ?? []) {
-				if (!group.allocations.some((a) => a.id === alloc.id)) {
-					group.allocations.push(alloc);
-				}
-			}
+			g.items.push(item);
 		}
-		return Array.from(grouped.values()).sort((a, b) =>
-			a.skuCode.localeCompare(b.skuCode),
-		);
+
+		return Array.from(rackGroupMap.values())
+			.sort((a, b) => {
+				const rackCmp = a.rackLabel.localeCompare(b.rackLabel);
+				if (rackCmp !== 0) return rackCmp;
+				return a.skuCode.localeCompare(b.skuCode);
+			})
+			.map((g) => ({
+				key: `${g.skuCode}|${g.rackLabel}`,
+				skuCode: g.skuCode,
+				skuDescription: g.skuDescription,
+				doBreakdown: g.doBreakdown,
+				qtyRequired: g.totalQtyRequired,
+				rackLabel: g.rackLabel,
+				qtyInRack: g.qtyInRack,
+				expiryDate: g.expiryDate,
+				completedPicking: g.totalQtyPicked >= g.totalQtyRequired,
+				items: g.items,
+			}));
 	}, [allItems, optimisticPicked]);
 
-	// stockQuantRacks per SKU code — collected from items (same for all items of a SKU)
-	const stockQuantRacksBySku = useMemo(() => {
-		const map = new Map<string, { rackLabel: string; qty: string; expiryDate: string | null }[]>();
-		for (const item of allItems) {
-			const key = item.skuCode ?? "no-sku";
-			if (!map.has(key) && (item.stockQuantRacks ?? []).length > 0) {
-				map.set(key, item.stockQuantRacks);
-			}
-		}
-		return map;
-	}, [allItems]);
+	const exportPickingListExcel = useCallback(() => {
+		const rows = skuRackRows.map((row, idx) => ({
+			"#": idx + 1,
+			"SKU Code": row.skuCode,
+			"Description": row.skuDescription,
+			"Total Required": row.qtyRequired,
+			"Rack(s)": row.rackLabel,
+			"Qty in Rack": row.qtyInRack ?? "",
+			"Expiry Date": row.expiryDate ? formatDate(row.expiryDate) : "",
+		}));
 
-	const skuRackRows = useMemo<SKURackRow[]>(() => {
-		const rows: SKURackRow[] = [];
+		const ws = XLSX.utils.json_to_sheet(rows);
+		const wb = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(wb, ws, "Picking List");
 
-		for (const group of skuGroups) {
-			const completedPicking = group.totalQtyPicked >= group.totalQtyRequired;
-			const rackQtyMap = new Map<string, number>();
-
-			for (const alloc of group.allocations) {
-				const rackLabel = alloc.rackName?.trim() || "—";
-				const qty = parseFloat(String(alloc.qtyAllocated ?? 0)) || 0;
-				rackQtyMap.set(rackLabel, (rackQtyMap.get(rackLabel) ?? 0) + qty);
-			}
-
-			if (rackQtyMap.size === 0) {
-				// Fall back to live stock_quant racks — no mutations needed
-				const sqRacks = stockQuantRacksBySku.get(group.skuCode) ?? [];
-				if (sqRacks.length > 0) {
-					for (const rack of sqRacks.slice().sort((a, b) => (a?.rackLabel ?? '').localeCompare(b?.rackLabel ?? ''))) {
-						if (!rack?.rackLabel) continue;
-						rows.push({
-							key: `${group.skuCode}-sq-${rack.rackLabel}`,
-							skuCode: group.skuCode,
-							skuDescription: group.skuDescription,
-							doBreakdown: group.doBreakdown,
-							qtyRequired: group.totalQtyRequired,
-							rackLabel: rack.rackLabel,
-							qtyInRack: parseFloat(rack.qty) || 0,
-							expiryDate: rack.expiryDate ?? null,
-							completedPicking,
-						});
-					}
-				} else {
-					rows.push({
-						key: `${group.skuCode}-rack-none`,
-						skuCode: group.skuCode,
-						skuDescription: group.skuDescription,
-						doBreakdown: group.doBreakdown,
-						qtyRequired: group.totalQtyRequired,
-						rackLabel: "Rack —",
-						qtyInRack: null,
-						expiryDate: null,
-						completedPicking,
-					});
-				}
-				continue;
-			}
-
-			const sortedRackRows = Array.from(rackQtyMap.entries()).sort(([a], [b]) =>
-				a.localeCompare(b),
-			);
-			for (const [rackLabel, qtyRequired] of sortedRackRows) {
-				rows.push({
-					key: `${group.skuCode}-${rackLabel}`,
-					skuCode: group.skuCode,
-					skuDescription: group.skuDescription,
-					doBreakdown: group.doBreakdown,
-					qtyRequired,
-					rackLabel,
-					qtyInRack: null,
-					expiryDate: null,
-					completedPicking,
-				});
-			}
-		}
-
-		return rows;
-	}, [skuGroups]);
-
-	const { mutate: generatePickingList, isPending: generatingPickingList } =
-		useMutation({
-			mutationFn: (vars: GenerateDoPickingListMutationVariables) =>
-				gqlRequest<
-					GenerateDoPickingListMutationData,
-					GenerateDoPickingListMutationVariables
-				>(GENERATE_DO_PICKING_LIST_MUTATION, vars),
-			onSuccess(data) {
-				const { pdfBase64, filename } = data.generateDoPickingList;
-				downloadPdfFromBase64(pdfBase64, filename);
-			},
-		});
+		const dateLabel = dateFrom === dateTo ? dateFrom : `${dateFrom}_${dateTo}`;
+		XLSX.writeFile(wb, `picking-list-${dateLabel}.xlsx`);
+	}, [skuRackRows, dateFrom, dateTo]);
 
 	const isItemPicked = useCallback(
 		(item: DeliveryOrderItemWithDetails): boolean =>
@@ -651,6 +594,7 @@ function EmpireSushiDOComponent() {
 			refetch,
 		],
 	);
+
 
 	const handleAdvanceToShipped = useCallback(
 		async (doId: string) => {
@@ -859,18 +803,12 @@ function EmpireSushiDOComponent() {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() =>
-								generatePickingList({ filter: pickingListFilter })
-							}
-							disabled={generatingPickingList}
+							onClick={exportPickingListExcel}
+							disabled={skuRackRows.length === 0}
 							className="h-7 text-xs gap-1.5"
 						>
-							{generatingPickingList ? (
-								<Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-							) : (
-								<Printer className="h-3 w-3" aria-hidden />
-							)}
-							{generatingPickingList ? "Generating…" : "Print Picking List"}
+							<Printer className="h-3 w-3" aria-hidden />
+							Print Picking List
 						</Button>
 					</div>
 				</div>
@@ -1112,7 +1050,7 @@ function EmpireSushiDOComponent() {
 					</section>
 				)}
 
-				{/* SKU summary view */}
+				{/* SKU view — grouped by DO with rack info, same actions as By DO */}
 				{viewMode === "sku" && (
 					<section
 						className="relative print:hidden"
@@ -1131,76 +1069,46 @@ function EmpireSushiDOComponent() {
 										<TableHead>Rack(s)</TableHead>
 										<TableHead className="text-center">Qty in Rack</TableHead>
 										<TableHead>Expiry Date</TableHead>
-										<TableHead>Completed Picking</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{!queryLoading && skuRackRows.length === 0 ? (
 										<TableRow>
-											<TableCell colSpan={8} className="py-16 text-center">
+											<TableCell colSpan={7} className="py-16 text-center">
 												<div className="flex flex-col items-center gap-3">
 													<div className="rounded-full bg-muted p-3">
-														<PackageOpen
-															className="h-8 w-8 text-muted-foreground"
-															aria-hidden
-														/>
+														<PackageOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
 													</div>
-													<p className="font-medium text-foreground">
-														No active delivery orders
-													</p>
+													<p className="font-medium text-foreground">No active delivery orders</p>
 												</div>
 											</TableCell>
 										</TableRow>
 									) : (
-										skuRackRows.map((row, idx) => {
-											return (
-												<TableRow key={row.key}>
-													<TableCell className="font-medium text-muted-foreground text-xs">
-														{idx + 1}
-													</TableCell>
-													<TableCell className="font-mono text-sm font-semibold">
-														{row.skuCode}
-													</TableCell>
-													<TableCell className="max-w-[240px]">
-														<div className="truncate text-sm">
-															{row.skuDescription}
-														</div>
-														<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-															{row.doBreakdown.map((d, i) => (
-																<span
-																	key={`${d.doId}-${i}`}
-																	className="text-xs text-muted-foreground"
-																>
-																	{d.doNo}:{" "}
-																	<span className="font-medium text-foreground">
-																		{formatQty(d.qtyRequired)}
-																	</span>
-																</span>
-															))}
-														</div>
-													</TableCell>
-													<TableCell className="text-center font-semibold">
-														{formatQty(row.qtyRequired)}
-													</TableCell>
-													<TableCell className="text-sm text-muted-foreground">
-														{row.rackLabel}
-													</TableCell>
-													<TableCell className="text-center text-sm">
-														{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
-													</TableCell>
-													<TableCell className="text-sm text-muted-foreground">
-														{row.expiryDate ? formatDate(row.expiryDate) : "—"}
-													</TableCell>
-													<TableCell className="text-center">
-														<Checkbox
-															checked={row.completedPicking}
-															disabled
-															aria-label={`Picking completed for ${row.skuCode}`}
-														/>
-													</TableCell>
-												</TableRow>
-											);
-										})
+										skuRackRows.map((row, idx) => (
+											<TableRow key={row.key}>
+												<TableCell className="font-medium text-muted-foreground text-xs">{idx + 1}</TableCell>
+												<TableCell className="font-mono text-sm font-semibold">{row.skuCode}</TableCell>
+												<TableCell className="max-w-[240px]">
+													<div className="truncate text-sm">{row.skuDescription}</div>
+													<div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+														{row.doBreakdown.map((d, i) => (
+															<span key={`${d.doId}-${i}`} className="text-xs text-muted-foreground">
+																{d.doNo}:{" "}
+																<span className="font-medium text-foreground">{formatQty(d.qtyRequired)}</span>
+															</span>
+														))}
+													</div>
+												</TableCell>
+												<TableCell className="text-center font-semibold">{formatQty(row.qtyRequired)}</TableCell>
+												<TableCell className="text-sm text-muted-foreground">{row.rackLabel}</TableCell>
+												<TableCell className="text-center text-sm">
+													{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{row.expiryDate ? formatDate(row.expiryDate) : "—"}
+												</TableCell>
+											</TableRow>
+										))
 									)}
 								</TableBody>
 							</Table>

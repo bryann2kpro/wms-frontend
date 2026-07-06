@@ -84,7 +84,8 @@ export interface CreatePurchaseOrderLineItemInput {
 	skuCode?: string;
 	description?: string;
 	quantity: number;
-	stockQuantId: string;
+	/** Selected stock_quant batches — qty is split across them in FIFO order. Omitted for Excel-import POs (backend picks by strategy). */
+	stockQuantIds?: string[];
 }
 
 export interface CreatePurchaseOrderInput {

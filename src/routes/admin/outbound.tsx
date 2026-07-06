@@ -609,12 +609,12 @@ function OutboundRouteComponent() {
 			outletId: "",
 			outletName: "",
 			notes: "",
-			items: [{ skuId: "", quantity: 1, stockQuantId: "" }] as {
+			items: [{ skuId: "", quantity: 1, stockQuantIds: [] }] as {
 				skuId: string;
 				skuCode?: string;
 				description?: string;
 				quantity: number;
-				stockQuantId: string;
+				stockQuantIds: string[];
 			}[],
 			isEmergency: false,
 		},
@@ -636,7 +636,7 @@ function OutboundRouteComponent() {
 					skuCode: line.skuCode,
 					description: line.description,
 					quantity: line.quantity,
-					stockQuantId: line.stockQuantId,
+					stockQuantIds: line.stockQuantIds,
 				})),
 			});
 			form.reset();
