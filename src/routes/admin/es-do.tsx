@@ -456,9 +456,9 @@ function EmpireSushiDOComponent() {
 
 		return Array.from(rackGroupMap.values())
 			.sort((a, b) => {
-				const skuCmp = a.skuCode.localeCompare(b.skuCode);
-				if (skuCmp !== 0) return skuCmp;
-				return a.rackLabel.localeCompare(b.rackLabel);
+				const rackCmp = a.rackLabel.localeCompare(b.rackLabel);
+				if (rackCmp !== 0) return rackCmp;
+				return a.skuCode.localeCompare(b.skuCode);
 			})
 			.map((g) => ({
 				key: `${g.skuCode}|${g.rackLabel}`,
