@@ -154,6 +154,7 @@ interface SKURackRow {
 	qtyInRack: number | null;
 	expiryDate: string | null;
 	completedPicking: boolean;
+	items: DeliveryOrderItemWithDetails[];
 }
 
 interface AllocationGuideProps {
@@ -420,7 +421,8 @@ function EmpireSushiDOComponent() {
 			expiryDate: string | null;
 			doBreakdown: SKUSummaryGroup["doBreakdown"];
 		};
-		const rackGroupMap = new Map<string, RackGroup>();
+		type RackGroupInternal = RackGroup & { items: DeliveryOrderItemWithDetails[] };
+		const rackGroupMap = new Map<string, RackGroupInternal>();
 
 		for (const item of allItems) {
 			const skuCode = item.skuCode ?? "no-sku";
@@ -441,6 +443,7 @@ function EmpireSushiDOComponent() {
 					qtyInRack: item.selectedRackQty != null ? parseFloat(item.selectedRackQty) : null,
 					expiryDate: item.selectedRackExpiryDate ?? null,
 					doBreakdown: [],
+					items: [],
 				});
 			}
 			const g = rackGroupMap.get(key)!;
@@ -452,6 +455,7 @@ function EmpireSushiDOComponent() {
 				qtyRequired: req,
 				qtyPicked: picked,
 			});
+			g.items.push(item);
 		}
 
 		return Array.from(rackGroupMap.values())
@@ -470,6 +474,7 @@ function EmpireSushiDOComponent() {
 				qtyInRack: g.qtyInRack,
 				expiryDate: g.expiryDate,
 				completedPicking: g.totalQtyPicked >= g.totalQtyRequired,
+				items: g.items,
 			}));
 	}, [allItems, optimisticPicked]);
 
@@ -636,6 +641,16 @@ function EmpireSushiDOComponent() {
 			advanceStatus,
 			refetch,
 		],
+	);
+
+	const handlePickSkuRow = useCallback(
+		async (row: SKURackRow) => {
+			const unpicked = row.items.filter((i) => !isItemPicked(i));
+			for (const item of unpicked) {
+				await handleCheckItem(item);
+			}
+		},
+		[isItemPicked, handleCheckItem],
 	);
 
 	const handleAdvanceToShipped = useCallback(
@@ -1165,8 +1180,9 @@ function EmpireSushiDOComponent() {
 												<TableCell className="text-center">
 													<Checkbox
 														checked={row.completedPicking}
-														disabled
-														aria-label={`Picking completed for ${row.skuCode}`}
+														disabled={row.completedPicking || !canApprove}
+														onCheckedChange={() => handlePickSkuRow(row)}
+														aria-label={`Mark picking complete for ${row.skuCode}`}
 													/>
 												</TableCell>
 											</TableRow>
