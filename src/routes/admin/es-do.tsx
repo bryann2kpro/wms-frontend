@@ -819,6 +819,7 @@ function EmpireSushiDOComponent() {
 
 					{/* View toggle + print button */}
 					<div className="flex items-center justify-between">
+						{/* View mode toggle — hidden for now, re-enable when needed
 						<div
 							className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1"
 							role="group"
@@ -842,6 +843,7 @@ function EmpireSushiDOComponent() {
 								By Delivery Order
 							</Button>
 						</div>
+						*/}
 						<Button
 							variant="outline"
 							size="sm"
