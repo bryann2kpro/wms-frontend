@@ -165,8 +165,9 @@ export function ImportStockBalanceDialog() {
 					<DialogTitle>Import Stock Balance</DialogTitle>
 					<DialogDescription>
 						Upload the warehouse stock balance Excel (Storage Bin Code, Item
-						Code, Expiry Date, Unit Qty). Quantities and rack locations are
-						synced to inventory and stock quant; rows missing from the file are
+						Code, Expiry Date, Unit Qty). The file fully replaces portal stock:
+						quantities and rack locations are synced to inventory and stock
+						quant, and anything not in the file — including whole SKUs — is
 						zeroed.
 					</DialogDescription>
 				</DialogHeader>
