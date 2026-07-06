@@ -39,6 +39,7 @@ import {
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import { Search, ChevronLeft, ChevronRight, Boxes, AlertTriangle, Eye, Activity } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
+import { ImportStockBalanceDialog } from "@/components/inventory/import-stock-balance-dialog";
 import {
 	INVENTORY_LOT_BALANCES_QUERY,
 	formatLotNoDisplay,
@@ -106,6 +107,7 @@ function InventoryComponent() {
 				description="Real-time on-hand stock levels and reserved quantities for all SKUs."
 				titleId="inventory-page-title"
 				descriptionId="inventory-page-description"
+				rightSlot={isAdmin ? <ImportStockBalanceDialog /> : undefined}
 			/>
 
 			<Tabs

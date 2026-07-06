@@ -111,3 +111,49 @@ export function sortStockQuantsByPickingStrategy(
 	});
 	return sorted;
 }
+
+// ---------------------------------------------------------------------------
+// Stock Balance Excel Sync
+// ---------------------------------------------------------------------------
+
+export const SYNC_STOCK_BALANCE_MUTATION = gql`
+	mutation SyncStockBalance($rows: [StockBalanceSyncRowInput!]!) {
+		syncStockBalance(rows: $rows) {
+			updated
+			inserted
+			zeroed
+			balancesUpdated
+			reassignedDoItems
+			skipped {
+				binCode
+				skuCode
+				reason
+			}
+		}
+	}
+`;
+
+export type StockBalanceSyncRowInput = {
+	binCode: string;
+	skuCode: string;
+	expiryDate: string | null;
+	qty: number;
+	description?: string | null;
+};
+
+export type StockBalanceSyncResult = {
+	updated: number;
+	inserted: number;
+	zeroed: number;
+	balancesUpdated: number;
+	reassignedDoItems: number;
+	skipped: { binCode: string; skuCode: string; reason: string }[];
+};
+
+export type SyncStockBalanceMutationData = {
+	syncStockBalance: StockBalanceSyncResult;
+};
+
+export type SyncStockBalanceMutationVariables = {
+	rows: StockBalanceSyncRowInput[];
+};
