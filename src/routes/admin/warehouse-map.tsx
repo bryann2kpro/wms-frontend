@@ -4,8 +4,10 @@ import { LayoutGrid, Search, Building2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { RackFormDialog } from "@/components/racks/rack-form-dialog";
+import { WarehouseMap3D } from "@/components/warehouse-map/warehouse-map-3d";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Card,
 	CardContent,
@@ -317,12 +319,23 @@ function WarehouseMapComponent() {
 		>
 			<AdminPageHeader
 				icon={LayoutGrid}
-				title="2D Warehouse Map"
-				description="Live rack layout by row and column, based on configured rack master data."
+				title="Warehouse Map"
+				description="Visualize the warehouse layout in 2D grid or 3D shelf view."
 				titleId="warehouse-map-page-title"
 				descriptionId="warehouse-map-page-description"
 			/>
 
+			<Tabs defaultValue="2d">
+				<TabsList>
+					<TabsTrigger value="2d">2D Warehouse Map</TabsTrigger>
+					<TabsTrigger value="3d">3D Warehouse Map</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="3d" className="mt-4">
+					<WarehouseMap3D />
+				</TabsContent>
+
+				<TabsContent value="2d" className="mt-4">
 			<Card className="dashboard-card" style={{ animationDelay: "0ms" }}>
 				<CardHeader>
 					<div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -678,6 +691,8 @@ function WarehouseMapComponent() {
 					description="Create a storage bin location for this warehouse. Optionally link it to an area."
 				/>
 			)}
+				</TabsContent>
+			</Tabs>
 		</main>
 	);
 }
