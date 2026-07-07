@@ -7,10 +7,12 @@ import {
 	Eye,
 	Plus,
 	Search,
+	Upload,
 } from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { StockAdjustmentFormDialog } from "@/components/stock-adjustment/stock-adjustment-form-dialog";
+import { ImportStockAdjustmentDialog } from "@/components/stock-adjustment/import-stock-adjustment-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +74,7 @@ function StockAdjustmentComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearch = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [viewAdj, setViewAdj] = useState<StockAdjustment | null>(null);
 
 	const queryVars = {
@@ -137,6 +140,15 @@ function StockAdjustmentComponent() {
 									className="pl-9 w-full"
 								/>
 							</div>
+							<Button
+								type="button"
+								variant="outline"
+								className="gap-2 shrink-0"
+								onClick={() => setIsImportOpen(true)}
+							>
+								<Upload className="h-4 w-4" aria-hidden />
+								Import Excel
+							</Button>
 							<Button
 								type="button"
 								className="gap-2 text-white shrink-0 disabled:opacity-50"
@@ -249,6 +261,16 @@ function StockAdjustmentComponent() {
 				onOpenChange={setIsCreateOpen}
 				onSuccess={() => {
 					setIsCreateOpen(false);
+					refetch();
+				}}
+			/>
+
+			{/* Import Excel Dialog */}
+			<ImportStockAdjustmentDialog
+				open={isImportOpen}
+				onOpenChange={setIsImportOpen}
+				onSuccess={() => {
+					setIsImportOpen(false);
 					refetch();
 				}}
 			/>
