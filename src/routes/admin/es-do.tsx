@@ -373,7 +373,7 @@ function EmpireSushiDOComponent() {
 		for (const item of allItems) {
 			const skuCode = item.skuCode ?? "no-sku";
 			const rackLabel = item.selectedRackLabel ?? "—";
-			const key = `${skuCode}|${rackLabel}|${item.selectedRackExpiryDate ?? ""}|${item.lotNo ?? ""}`;
+			const key = `${skuCode}|${rackLabel}|${item.stockQuantId ?? item.selectedRackExpiryDate ?? ""}|${item.lotNo ?? ""}`;
 			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
 			const picked = optimisticPicked.has(item.id)
 				? req
