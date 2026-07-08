@@ -17,10 +17,17 @@ const COLUMNS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"
 //   A3 rows 8→1, AW rows 3→1, A2 rows 42→1, AW rows 3→1, A1 rows 24→1
 
 const AISLES = [
-	{ id: "A1" as const, aisleNum: 1, rowCount: 24 },
+	{ id: "A1" as const, aisleNum: 1, rowCount: 38 },
 	{ id: "A2" as const, aisleNum: 2, rowCount: 42 },
 	{ id: "A3" as const, aisleNum: 3, rowCount: 8  },
 ] as const;
+
+// A1: A and N run all 38 rows; B-M are blank (staging area) at rows 1-13,
+// and B-M use their own row numbering offset by 13 (physical row 14 = B-M row 1).
+const A1_STAGING_ROW_COUNT = 14;     // rows 1-14: staging area (B-M blank)
+const A1_BM_MAX_ROW = 24;            // B-M go up to row 24 in their own numbering
+const A1_BM_ROW_OFFSET = A1_STAGING_ROW_COUNT; // physical row - offset = B-M row
+const A1_EXTENDED_COLS = new Set(["A", "N"]);
 
 export type AisleId = "A1" | "A2" | "A3";
 export type AisleFilter = "all" | AisleId;
@@ -28,7 +35,6 @@ export type AisleFilter = "all" | AisleId;
 const WALKWAY_ROW_COUNT = 3;
 const NORMAL_LEVELS = 6;
 const WALKWAY_LEVELS = 3; // represents L4, L5, L6
-const FK_COLUMNS = new Set(["F", "G", "H", "I", "J", "K"]);
 
 // SVG isometric geometry
 const SW = 52;
@@ -38,13 +44,24 @@ const TOP_OFF = SD / 2;
 
 // ─── Isometric bin SVG ────────────────────────────────────────────────────────
 
+type LevelStatus = "normal" | "soon" | "expired";
+const SIX_MONTHS_MS = 6 * 30.5 * 24 * 60 * 60 * 1000;
+function getLevelStatus(expiryDate: string | null): LevelStatus {
+	if (!expiryDate) return "normal";
+	const diff = new Date(expiryDate).getTime() - Date.now();
+	if (diff < 0) return "expired";
+	if (diff <= SIX_MONTHS_MS) return "soon";
+	return "normal";
+}
+const STATUS_PRIORITY: Record<LevelStatus, number> = { expired: 2, soon: 1, normal: 0 };
+
 type ShelfProps = {
 	levels: number;
 	displayLevels?: number;
 	selected: boolean;
 	onClick: (rect: DOMRect) => void;
 	label: string;
-	occupiedLevels?: Set<number>;
+	occupiedLevels?: Map<number, LevelStatus>;
 };
 
 function ShelfUnit({ levels, displayLevels = levels, selected, onClick, label, occupiedLevels }: ShelfProps) {
@@ -56,7 +73,7 @@ function ShelfUnit({ levels, displayLevels = levels, selected, onClick, label, o
 	const topPts = [`0,${TOP_OFF + filledOffset}`, `${SW},${TOP_OFF + filledOffset}`, `${SW + SD},${filledOffset}`, `${SD},${filledOffset}`].join(" ");
 
 	return (
-		<div className="flex flex-col items-center gap-0">
+		<div className={`flex flex-col items-center gap-0 rounded transition-all ${selected ? "drop-shadow-[0_0_8px_rgba(251,191,36,0.9)] scale-105" : ""}`}>
 			<svg
 				width={svgW}
 				height={svgH}
@@ -86,12 +103,16 @@ function ShelfUnit({ levels, displayLevels = levels, selected, onClick, label, o
 
 				{/* Front face — alternating level bands */}
 				{Array.from({ length: levels }, (_, i) => {
-					const levelNum = levels - i; // i=0 is top = highest level number
-					const hasStock = occupiedLevels?.has(levelNum) ?? false;
+					const levelNum = displayLevels - i; // top band is always L6, bottom band is L(6-levels+1)
+					const status = occupiedLevels?.get(levelNum);
 					const dark = i % 2 === 0;
-					const fill = hasStock
-						? "rgba(239,68,68,0.55)"
-						: dark ? "rgba(160,160,160,0.35)" : "rgba(230,230,230,0.18)";
+					const fill = status === "expired"
+						? "rgba(20,20,20,0.75)"
+						: status === "soon"
+							? "rgba(239,68,68,0.6)"
+							: status === "normal"
+								? "rgba(249,115,22,0.55)"
+								: dark ? "rgba(160,160,160,0.35)" : "rgba(230,230,230,0.18)";
 					return (
 						<rect
 							key={i}
@@ -109,17 +130,21 @@ function ShelfUnit({ levels, displayLevels = levels, selected, onClick, label, o
 
 				{/* Right side face — alternating bands */}
 				{Array.from({ length: levels }, (_, i) => {
-					const levelNum = levels - i;
-					const hasStock = occupiedLevels?.has(levelNum) ?? false;
+					const levelNum = displayLevels - i;
+					const status = occupiedLevels?.get(levelNum);
 					const dark = i % 2 === 0;
 					const y1f = TOP_OFF + filledOffset + i * SH;
 					const y2f = TOP_OFF + filledOffset + (i + 1) * SH;
 					const y1b = filledOffset + i * SH;
 					const y2b = filledOffset + (i + 1) * SH;
 					const pts = [`${SW},${y1f}`, `${SW + SD},${y1b}`, `${SW + SD},${y2b}`, `${SW},${y2f}`].join(" ");
-					const fill = hasStock
-						? "rgba(185,28,28,0.45)"
-						: dark ? "rgba(120,120,120,0.4)" : "rgba(180,180,180,0.22)";
+					const fill = status === "expired"
+						? "rgba(10,10,10,0.65)"
+						: status === "soon"
+							? "rgba(185,28,28,0.5)"
+							: status === "normal"
+								? "rgba(194,65,12,0.45)"
+								: dark ? "rgba(120,120,120,0.4)" : "rgba(180,180,180,0.22)";
 					return (
 						<polygon
 							key={i}
@@ -171,6 +196,8 @@ function ShelfRow({
 	selected,
 	onSelect,
 	occupiedLevelsByKey,
+	activeColFilter,
+	rowOffset = 0,
 }: {
 	aisleId: string;
 	aisleNum: number;
@@ -178,7 +205,9 @@ function ShelfRow({
 	isWalkway?: boolean;
 	selected: string | null;
 	onSelect: (key: string | null, rect?: DOMRect) => void;
-	occupiedLevelsByKey?: Map<string, Set<number>>;
+	occupiedLevelsByKey?: Map<string, Map<number, LevelStatus>>;
+	activeColFilter?: (col: string) => boolean;
+	rowOffset?: number;
 }) {
 	return (
 		<div className="flex items-end gap-4">
@@ -187,25 +216,33 @@ function ShelfRow({
 					isWalkway ? "text-amber-500" : "text-slate-400"
 				}`}
 			>
-				{isWalkway ? "W" : row}
+				{isWalkway ? "W" : ""}
 			</div>
 			{COLUMNS.map((col) => {
-				const levels = isWalkway ? WALKWAY_LEVELS : FK_COLUMNS.has(col) ? 5 : NORMAL_LEVELS;
+				const levels = isWalkway ? WALKWAY_LEVELS : NORMAL_LEVELS;
 				const displayLevels = isWalkway ? NORMAL_LEVELS : levels;
+				// A1 extended cols (A, N) keep physical row; B-M use offset row numbering
+				const effectiveRow = (!isWalkway && rowOffset > 0 && !A1_EXTENDED_COLS.has(col))
+					? row - rowOffset
+					: row;
 				const key = isWalkway
-					? `AW${aisleNum}|${col}|${row}`
-					: `${aisleId}|${col}|${row}`;
+					? `AW${aisleNum}|${col}|${effectiveRow}`
+					: `${aisleId}|${col}|${effectiveRow}`;
 				const isSelected = selected === key;
+				if (activeColFilter && !activeColFilter(col)) {
+					return <div key={key} style={{ width: SW + SD, minWidth: SW + SD }} />;
+				}
 				return (
+					<div key={key} data-shelf-key={key}>
 					<ShelfUnit
-						key={key}
 						levels={levels}
 						displayLevels={displayLevels}
 						selected={isSelected}
-						label={isWalkway ? `${col}W-${row}` : `${col}${aisleNum}-${row}`}
+						label={isWalkway ? `${col}W-${effectiveRow}` : `${col}${aisleNum}-${effectiveRow}`}
 						occupiedLevels={occupiedLevelsByKey?.get(key)}
 						onClick={(rect) => onSelect(isSelected ? null : key, isSelected ? undefined : rect)}
 					/>
+					</div>
 				);
 			})}
 		</div>
@@ -287,25 +324,42 @@ function ShelfDetailCard({
 					return (
 						<div
 							key={binCode}
-							className={`rounded-lg border px-3 py-2 ${hasStock ? "border-red-300 bg-red-50" : ""}`}
+							className={`rounded-lg border px-3 py-2 ${hasStock ? "border-orange-300 bg-orange-50" : ""}`}
 						>
-							<p className={`text-[10px] font-bold font-mono mb-1.5 tracking-wide ${hasStock ? "text-red-600" : "text-slate-500"}`}>
-								{binCode}
-							</p>
 							{!hasStock ? (
-								<p className="text-[10px] text-muted-foreground pl-1">—</p>
+								<>
+									<p className={`text-[10px] font-bold font-mono tracking-wide ${hasStock ? "text-orange-600" : "text-slate-500"}`}>{binCode}</p>
+									<p className="text-[10px] text-muted-foreground pl-1 mt-1">—</p>
+								</>
 							) : (
-								<div className="space-y-1">
+								<div className="space-y-1.5">
 									{quants.map((q) => (
-										<div
-											key={q.id}
-											className="grid grid-cols-[auto_1fr_auto] gap-x-2 text-[10px] items-baseline pl-1"
-										>
-											<span className="font-mono font-medium text-slate-700">{q.skuCode}</span>
-											<span className="text-muted-foreground truncate">{q.description}</span>
-											<span className="font-semibold text-foreground shrink-0 tabular-nums">
-												{q.quantity} {q.stockUnitCode ?? "CTN"}
-											</span>
+										<div key={q.id} className="text-[10px]">
+											{/* Row 1: bin code left, expiry date right */}
+											{(() => {
+												const now = Date.now();
+												const exp = q.expiryDate ? new Date(q.expiryDate).getTime() : null;
+												const monthsAway = exp ? (exp - now) / (1000 * 60 * 60 * 24 * 30.5) : null;
+												const expiryClass = exp === null
+													? "text-muted-foreground"
+													: exp < now
+														? "text-slate-900 font-bold"            // already expired
+														: monthsAway! <= 6
+															? "text-red-600 font-semibold"          // expiring within 6 months
+															: "text-muted-foreground";
+												return (
+													<div className="flex items-baseline justify-between gap-2">
+														<span className={`font-bold font-mono tracking-wide ${hasStock ? "text-orange-600" : "text-slate-500"}`}>{binCode}</span>
+														<span className={`shrink-0 ${expiryClass}`}>{q.expiryDate ? new Date(q.expiryDate).toLocaleDateString("en-GB") : "No Expiry"}</span>
+													</div>
+												);
+											})()}
+											{/* Row 2: SKU code + description + qty */}
+											<div className="flex gap-2 mt-0.5 pl-0.5 items-baseline">
+												<span className="font-mono text-slate-600 shrink-0">{q.skuCode}</span>
+												<span className="text-muted-foreground truncate">{q.description}</span>
+												<span className="font-semibold text-foreground tabular-nums shrink-0 ml-auto">{q.quantity} {q.stockUnitCode ?? "CTN"}</span>
+											</div>
 										</div>
 									))}
 								</div>
@@ -323,9 +377,26 @@ function ShelfDetailCard({
 type WarehouseMap3DProps = {
 	sectionFilter: AisleFilter;
 	racks: BinRack[];
+	highlightBin?: string;
+	highlightKey?: number;
 };
 
-export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
+function parseBinToShelfKey(bin: string): string | null {
+	const mw = bin.trim().match(/^([A-N])W-L\d+-(\d+)$/i);
+	if (mw) {
+		const col = mw[1].toUpperCase();
+		const row = parseInt(mw[2]);
+		const aisleNum = row <= WALKWAY_ROW_COUNT ? 1 : 2;
+		return `AW${aisleNum}|${col}|${row}`;
+	}
+	const m = bin.trim().match(/^([A-N])(\d+)-L\d+-(\d+)$/i);
+	if (m) {
+		return `A${m[2]}|${m[1].toUpperCase()}|${parseInt(m[3])}`;
+	}
+	return null;
+}
+
+export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: WarehouseMap3DProps) {
 	const [selected, setSelected] = useState<string | null>(null);
 	const [cardPos, setCardPos] = useState<{ x: number; anchorY: number; anchorBottom: boolean } | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -341,22 +412,19 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 	});
 
 	const occupiedLevelsByKey = useMemo(() => {
-		const map = new Map<string, Set<number>>();
+		const map = new Map<string, Map<number, LevelStatus>>();
 		for (const q of allStockData?.stockQuants?.query ?? []) {
 			if (!q.rackLabel || !(parseFloat(q.quantity ?? "0") > 0)) continue;
 			let key: string | null = null;
 			let levelNum: number | null = null;
-			// Walkway format: XW-Ln-rr  (e.g. KW-L5-01)
 			const mw = q.rackLabel.match(/^([A-N])W-L(\d+)-(\d+)$/);
 			if (mw) {
 				const col = mw[1];
 				levelNum = parseInt(mw[2]);
 				const row = parseInt(mw[3]);
-				// Determine which walkway aisle (AW1 rows 1-3, AW2 rows 4-6)
 				const aisleNum = row <= WALKWAY_ROW_COUNT ? 1 : 2;
 				key = `AW${aisleNum}|${col}|${row}`;
 			} else {
-				// Normal format: XN-Ln-rr  (e.g. K1-L3-05)
 				const m = q.rackLabel.match(/^([A-N])(\d+)-L(\d+)-(\d+)$/);
 				if (m) {
 					key = `A${m[2]}|${m[1]}|${parseInt(m[4])}`;
@@ -364,8 +432,13 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 				}
 			}
 			if (key && levelNum !== null) {
-				if (!map.has(key)) map.set(key, new Set());
-				map.get(key)!.add(levelNum);
+				if (!map.has(key)) map.set(key, new Map());
+				const levels = map.get(key)!;
+				const newStatus = getLevelStatus(q.expiryDate);
+				const existing = levels.get(levelNum);
+				if (!existing || STATUS_PRIORITY[newStatus] > STATUS_PRIORITY[existing]) {
+					levels.set(levelNum, newStatus);
+				}
 			}
 		}
 		return map;
@@ -375,6 +448,25 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 		const el = scrollRef.current;
 		if (el) el.scrollTop = el.scrollHeight;
 	}, [sectionFilter]);
+
+	useEffect(() => {
+		if (!highlightBin) return;
+		const key = parseBinToShelfKey(highlightBin);
+		if (!key) return;
+		setSelected(key);
+		setTimeout(() => {
+			const el = scrollRef.current?.querySelector(`[data-shelf-key="${key}"]`);
+			if (!el) return;
+			el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+			const rect = el.getBoundingClientRect();
+			const CARD_W = 320;
+			const x = rect.right + 12 + CARD_W > window.innerWidth
+				? rect.left - 12 - CARD_W
+				: rect.right + 12;
+			const anchorBottom = rect.top > window.innerHeight * 0.55;
+			setCardPos({ x, anchorY: anchorBottom ? window.innerHeight - rect.top : rect.top, anchorBottom });
+		}, 50);
+	}, [highlightBin, highlightKey]);
 
 	function handleSelect(key: string | null, rect?: DOMRect) {
 		setSelected(key);
@@ -412,7 +504,7 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 		const row = parseInt(rowStr);
 		const rowPadded = String(row).padStart(2, "0");
 		const prefix = isWalkwayKey ? `${col}W` : `${col}${aisleNum}`;
-		const minLevel = isWalkwayKey ? 4 : FK_COLUMNS.has(col) ? 2 : 1;
+		const minLevel = isWalkwayKey ? 4 : 1;
 
 		return Array.from({ length: NORMAL_LEVELS - minLevel + 1 }, (_, i) => {
 			const level = NORMAL_LEVELS - i;
@@ -447,7 +539,6 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 			<div
 				ref={scrollRef}
 				className="overflow-auto rounded-xl border bg-white flex-1 min-h-0"
-				onScroll={() => { setSelected(null); setCardPos(null); }}
 			>
 				<div className="inline-block p-6">
 					<div className="mb-5">
@@ -480,6 +571,68 @@ export function WarehouseMap3D({ sectionFilter }: WarehouseMap3DProps) {
 						}
 
 						const { aisle } = seg;
+						if (aisle.id === "A1") {
+							return (
+								<div key={aisle.id}>
+									{/* Rows 38→14: normal rows; B-M use offset row numbering; row 38 is A/N only */}
+									{Array.from({ length: aisle.rowCount - A1_STAGING_ROW_COUNT }, (_, i) => {
+										const row = aisle.rowCount - i;
+										const bmRow = row - A1_BM_ROW_OFFSET;
+										const hasBMShelf = bmRow >= 1 && bmRow <= A1_BM_MAX_ROW;
+										const activeColFilter = !hasBMShelf
+											? (col: string) => A1_EXTENDED_COLS.has(col)
+											: undefined;
+										const rowOffset = hasBMShelf ? A1_BM_ROW_OFFSET : 0;
+										return (
+											<div key={row} className="mb-3">
+												<ShelfRow
+													aisleId={aisle.id}
+													aisleNum={aisle.aisleNum}
+													row={row}
+													selected={selected}
+													onSelect={handleSelect}
+													occupiedLevelsByKey={occupiedLevelsByKey}
+													activeColFilter={activeColFilter}
+													rowOffset={rowOffset}
+												/>
+											</div>
+										);
+									})}
+
+									{/* Staging area: rows 13→1 — A and N shelves with a visible box in the middle */}
+									<div className="relative">
+										<div
+											className="absolute border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/40 flex items-center justify-center pointer-events-none z-10"
+											style={{
+												left: 64 + SW + SD,
+												width: 12 * (SW + SD) + 11 * 16,
+												top: 0,
+												bottom: 0,
+											}}
+										>
+											<span className="text-slate-400 text-xs font-bold tracking-[0.25em] uppercase">Staging Area</span>
+										</div>
+										{Array.from({ length: A1_STAGING_ROW_COUNT }, (_, i) => {
+											const row = A1_STAGING_ROW_COUNT - i;
+											return (
+												<div key={row} className="mb-3">
+													<ShelfRow
+														aisleId={aisle.id}
+														aisleNum={aisle.aisleNum}
+														row={row}
+														selected={selected}
+														onSelect={handleSelect}
+														occupiedLevelsByKey={occupiedLevelsByKey}
+														activeColFilter={(col) => A1_EXTENDED_COLS.has(col)}
+													/>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							);
+						}
+
 						return (
 							<div key={aisle.id}>
 								{Array.from({ length: aisle.rowCount }, (_, i) => {
