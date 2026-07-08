@@ -95,20 +95,9 @@ export function sortStockQuantsByPickingStrategy(
 	_strategy: string,
 ): StockQuant[] {
 	const sorted = [...rows];
-	sorted.sort((a, b) => {
-		// 1. Expiry date ascending (no expiry → last)
-		const aExp = a.expiryDate ? new Date(a.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
-		const bExp = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.MAX_SAFE_INTEGER;
-		if (aExp !== bExp) return aExp - bExp;
-
-		// 2. Available (onHand - reserved) ascending (least first)
-		const aAvail = Number(a.quantity ?? 0) - Number(a.reservedQty ?? 0);
-		const bAvail = Number(b.quantity ?? 0) - Number(b.reservedQty ?? 0);
-		if (aAvail !== bAvail) return aAvail - bAvail;
-
-		// 3. Rack label ascending
-		return (a.rackLabel ?? "").localeCompare(b.rackLabel ?? "");
-	});
+	sorted.sort((a, b) =>
+		(a.rackLabel ?? "").localeCompare(b.rackLabel ?? ""),
+	);
 	return sorted;
 }
 

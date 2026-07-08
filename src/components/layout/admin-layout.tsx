@@ -39,7 +39,6 @@ export function AdminLayout() {
 					<Header />
 					<main className="flex-1 overflow-y-auto overflow-x-hidden">
 						<Outlet />
-						<div className="mt-10 p-5"></div>
 					</main>
 				</div>
 				<GlobalLoadingShadow />

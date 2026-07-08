@@ -920,6 +920,7 @@ export interface DeliveryOrderItemWithDetails {
 	reservedQty: string | null;
 	allocations: DoItemAllocation[];
 	stockQuantRacks: StockQuantRack[];
+	stockQuantId: string | null;
 	selectedRackLabel: string | null;
 	selectedRackQty: string | null;
 	selectedRackExpiryDate: string | null;

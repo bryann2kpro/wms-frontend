@@ -373,7 +373,7 @@ function EmpireSushiDOComponent() {
 		for (const item of allItems) {
 			const skuCode = item.skuCode ?? "no-sku";
 			const rackLabel = item.selectedRackLabel ?? "—";
-			const key = `${skuCode}|${rackLabel}`;
+			const key = `${skuCode}|${rackLabel}|${item.stockQuantId ?? item.selectedRackExpiryDate ?? ""}|${item.lotNo ?? ""}`;
 			const req = parseFloat(String(item.qtyRequired ?? 0)) || 0;
 			const picked = optimisticPicked.has(item.id)
 				? req
@@ -411,7 +411,7 @@ function EmpireSushiDOComponent() {
 				return a.skuCode.localeCompare(b.skuCode);
 			})
 			.map((g) => ({
-				key: `${g.skuCode}|${g.rackLabel}`,
+				key: `${g.skuCode}|${g.rackLabel}|${g.expiryDate ?? ""}`,
 				skuCode: g.skuCode,
 				skuDescription: g.skuDescription,
 				doBreakdown: g.doBreakdown,

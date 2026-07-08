@@ -4,8 +4,10 @@ import { LayoutGrid, Search, Building2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { RackFormDialog } from "@/components/racks/rack-form-dialog";
+import { WarehouseMap3D, type AisleFilter } from "@/components/warehouse-map/warehouse-map-3d";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Card,
 	CardContent,
@@ -118,6 +120,10 @@ function WarehouseMapComponent() {
 	const [selectedCode, setSelectedCode] = useState<string | null>(null);
 	const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 	const [isCreateRackOpen, setIsCreateRackOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState("2d");
+	const [sectionFilter, setSectionFilter] = useState<AisleFilter>("all");
+	const [binSearchInput, setBinSearchInput] = useState("");
+	const [highlightBin, setHighlightBin] = useState<{ bin: string; n: number }>({ bin: "", n: 0 });
 
 	const { data: warehousesData } = useQuery({
 		queryKey: [...qk.warehouses.all, "warehouse-map"] as const,
@@ -310,19 +316,64 @@ function WarehouseMapComponent() {
 
 	return (
 		<main
-			className="warehouse-map-page container mx-auto p-6 space-y-6"
+			className="warehouse-map-page container mx-auto px-6 pt-6 flex flex-col overflow-hidden"
+			style={{ height: "100%" }}
 			aria-labelledby="warehouse-map-page-title"
 			aria-describedby="warehouse-map-page-description"
 			aria-busy={isLoading}
 		>
 			<AdminPageHeader
 				icon={LayoutGrid}
-				title="2D Warehouse Map"
-				description="Live rack layout by row and column, based on configured rack master data."
+				title="Warehouse Map"
+				description="Visualize the warehouse layout in 2D grid or 3D shelf view."
 				titleId="warehouse-map-page-title"
 				descriptionId="warehouse-map-page-description"
 			/>
 
+			<Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 mt-6">
+				<div className="flex items-center gap-3 flex-wrap">
+					<TabsList>
+						<TabsTrigger value="2d">2D Warehouse Map</TabsTrigger>
+						<TabsTrigger value="3d">3D Warehouse Map</TabsTrigger>
+					</TabsList>
+					{activeTab === "3d" && (
+						<>
+							<select
+								value={sectionFilter}
+								onChange={(e) => setSectionFilter(e.target.value as typeof sectionFilter)}
+								className="text-xs border rounded-lg px-3 py-1.5 bg-white text-slate-700 font-medium shadow-sm cursor-pointer"
+							>
+								{[
+									{ label: "All sections", value: "all" },
+									{ label: "A1 (rows 1–24)", value: "A1" },
+									{ label: "A2 (rows 1–42)", value: "A2" },
+									{ label: "A3 (rows 1–8)",  value: "A3" },
+								].map((o) => (
+									<option key={o.value} value={o.value}>{o.label}</option>
+								))}
+							</select>
+							<div className="relative ml-auto">
+								<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+								<input
+									type="text"
+									placeholder="Search bin (e.g. A1-L1-01)"
+									value={binSearchInput}
+									onChange={(e) => setBinSearchInput(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") setHighlightBin(prev => ({ bin: binSearchInput.trim(), n: prev.n + 1 }));
+									}}
+									className="text-xs border rounded-lg pl-7 pr-3 py-1.5 bg-white text-slate-700 shadow-sm w-52 focus:outline-none focus:ring-2 focus:ring-slate-300"
+								/>
+							</div>
+						</>
+					)}
+				</div>
+
+				<TabsContent value="3d" className="mt-4 flex-1 flex flex-col overflow-hidden min-h-0">
+					<WarehouseMap3D sectionFilter={sectionFilter} racks={allRacks} highlightBin={highlightBin.bin} highlightKey={highlightBin.n} />
+				</TabsContent>
+
+				<TabsContent value="2d" className="mt-4 flex-1 overflow-auto pb-6 min-h-0">
 			<Card className="dashboard-card" style={{ animationDelay: "0ms" }}>
 				<CardHeader>
 					<div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -678,6 +729,8 @@ function WarehouseMapComponent() {
 					description="Create a storage bin location for this warehouse. Optionally link it to an area."
 				/>
 			)}
+				</TabsContent>
+			</Tabs>
 		</main>
 	);
 }
