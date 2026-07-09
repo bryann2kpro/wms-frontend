@@ -153,6 +153,7 @@ interface SKURackRow {
 	qtyRequired: number;
 	rackLabel: string;
 	qtyInRack: number | null;
+	reservedQtyInRack: number | null;
 	expiryDate: string | null;
 	completedPicking: boolean;
 	items: DeliveryOrderItemWithDetails[];
@@ -364,6 +365,7 @@ function EmpireSushiDOComponent() {
 			totalQtyRequired: number;
 			totalQtyPicked: number;
 			qtyInRack: number | null;
+			reservedQtyInRack: number | null;
 			expiryDate: string | null;
 			doBreakdown: SKUSummaryGroup["doBreakdown"];
 		};
@@ -387,6 +389,7 @@ function EmpireSushiDOComponent() {
 					totalQtyRequired: 0,
 					totalQtyPicked: 0,
 					qtyInRack: item.selectedRackQty != null ? parseFloat(item.selectedRackQty) : null,
+					reservedQtyInRack: item.selectedRackReservedQty != null ? parseFloat(item.selectedRackReservedQty) : null,
 					expiryDate: item.selectedRackExpiryDate ?? null,
 					doBreakdown: [],
 					items: [],
@@ -418,6 +421,7 @@ function EmpireSushiDOComponent() {
 				qtyRequired: g.totalQtyRequired,
 				rackLabel: g.rackLabel,
 				qtyInRack: g.qtyInRack,
+				reservedQtyInRack: g.reservedQtyInRack,
 				expiryDate: g.expiryDate,
 				completedPicking: g.totalQtyPicked >= g.totalQtyRequired,
 				items: g.items,
@@ -1102,7 +1106,14 @@ function EmpireSushiDOComponent() {
 												<TableCell className="text-center font-semibold">{formatQty(row.qtyRequired)}</TableCell>
 												<TableCell className="text-sm text-muted-foreground">{row.rackLabel}</TableCell>
 												<TableCell className="text-center text-sm">
-													{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
+													{row.qtyInRack != null ? (
+														<span>
+															{formatQty(row.qtyInRack)}
+															{row.reservedQtyInRack != null && row.reservedQtyInRack > 0 && (
+																<span className="text-muted-foreground"> → {formatQty(row.qtyInRack - row.reservedQtyInRack)}</span>
+															)}
+														</span>
+													) : "—"}
 												</TableCell>
 												<TableCell className="text-sm text-muted-foreground">
 													{row.expiryDate ? formatDate(row.expiryDate) : "—"}

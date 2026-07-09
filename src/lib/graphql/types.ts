@@ -923,6 +923,7 @@ export interface DeliveryOrderItemWithDetails {
 	stockQuantId: string | null;
 	selectedRackLabel: string | null;
 	selectedRackQty: string | null;
+	selectedRackReservedQty: string | null;
 	selectedRackExpiryDate: string | null;
 }
 
