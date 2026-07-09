@@ -60,6 +60,7 @@ import {
 } from "@/lib/reports/report-pdf";
 import { buildErrorReport, copyErrorReport } from "@/lib/error-report";
 import { getErrorMessage } from "@/lib/utils";
+import { allocateStockQuantsForImport } from "@/lib/import-excel-allocator";
 
 const STATUS_BORDER_COLOR: Record<string, string> = {
 	preparing: "border-l-yellow-500",
@@ -388,7 +389,8 @@ function OutboundRouteComponent() {
 	const handleExcelImport = useCallback(
 		async (inputs: CreatePurchaseOrderInput[]): Promise<ImportRowResult[]> => {
 			const results: ImportRowResult[] = [];
-			for (const input of inputs) {
+			const allocated = await allocateStockQuantsForImport(inputs);
+			for (const input of allocated) {
 				try {
 					await createPurchaseOrder(input);
 					results.push({
