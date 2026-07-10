@@ -190,6 +190,8 @@ export function StockAdjustmentFormDialog({
 			if (!item.sku) return `Row ${i + 1}: Please select a SKU.`;
 			if (!item.rackId.trim())
 				return `Row ${i + 1}: Please select a rack location.`;
+			if (!item.expiryDate.trim())
+				return `Row ${i + 1}: Expiry date is required.`;
 			const qty = Number(item.quantity);
 			if (Number.isNaN(qty) || qty === 0)
 				return `Row ${i + 1}: Quantity must be a non-zero number.`;
@@ -304,7 +306,7 @@ export function StockAdjustmentFormDialog({
 											Lot no.
 										</TableHead>
 										<TableHead className="w-[120px] min-w-[110px]">
-											Expiry
+											Expiry <span className="text-destructive">*</span>
 										</TableHead>
 										<TableHead className="w-[115px] min-w-[100px]">
 											Type
