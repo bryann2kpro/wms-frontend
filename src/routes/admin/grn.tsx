@@ -540,7 +540,7 @@ function GRNRouteComponent() {
 	});
 	const warehouses = warehousesData?.warehouses?.query ?? [];
 
-	const racksVariables = { pageSize: 500, pageNumber: 1 };
+	const racksVariables = { pageSize: 10000, pageNumber: 1 };
 	const { data: racksData, refetch: refetchRacks } = useQuery({
 		queryKey: [...qk.racks.all, "list", racksVariables] as const,
 		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVariables),

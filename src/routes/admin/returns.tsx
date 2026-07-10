@@ -538,7 +538,7 @@ function ReturnsComponent() {
 	// Racks + zones (loaded once) — used to split racks by zone purpose so the
 	// keeper only sees valid racks per item reason. The backend enforces this
 	// regardless.
-	const racksVars: RacksQueryVariables = { pageSize: 500, pageNumber: 1 };
+	const racksVars: RacksQueryVariables = { pageSize: 10000, pageNumber: 1 };
 	const { data: racksData } = useQuery({
 		queryKey: [...qk.racks.all, "returns-putaway", racksVars] as const,
 		queryFn: () =>

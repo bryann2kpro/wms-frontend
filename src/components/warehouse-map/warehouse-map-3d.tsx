@@ -320,7 +320,7 @@ function ShelfDetailCard({
 			<div className="overflow-auto flex-1 space-y-2">
 				{levelEntries.map(({ binCode }) => {
 					const quants = stockByBinCode.get(binCode) ?? [];
-					const hasStock = quants.length > 0;
+					const hasStock = quants.some((q) => parseFloat(q.quantity) > 0);
 					return (
 						<div
 							key={binCode}
@@ -487,6 +487,7 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 		const map = new Map<string, StockQuant[]>();
 		for (const q of allStockData?.stockQuants?.query ?? []) {
 			if (!q.rackLabel) continue;
+			if (parseFloat(q.quantity) <= 0) continue;
 			if (!map.has(q.rackLabel)) map.set(q.rackLabel, []);
 			map.get(q.rackLabel)!.push(q);
 		}

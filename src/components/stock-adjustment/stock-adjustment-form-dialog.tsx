@@ -140,7 +140,7 @@ export function StockAdjustmentFormDialog({
 	const [notes, setNotes] = useState("");
 	const [items, setItems] = useState<AdjustmentLineItem[]>([createEmptyLine()]);
 
-	const racksVars = { pageSize: 500, pageNumber: 1 };
+	const racksVars = { pageSize: 10000, pageNumber: 1 };
 	const { data: racksData } = useQuery({
 		queryKey: [...qk.racks.all, racksVars],
 		queryFn: () => gqlRequest<RacksQueryData>(RACKS_QUERY, racksVars),
