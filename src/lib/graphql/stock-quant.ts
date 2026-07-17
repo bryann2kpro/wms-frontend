@@ -95,9 +95,16 @@ export function sortStockQuantsByPickingStrategy(
 	_strategy: string,
 ): StockQuant[] {
 	const sorted = [...rows];
-	sorted.sort((a, b) =>
-		(a.rackLabel ?? "").localeCompare(b.rackLabel ?? ""),
-	);
+	sorted.sort((a, b) => {
+		const aExpiry = a.expiryDate
+			? new Date(a.expiryDate).getTime()
+			: Number.POSITIVE_INFINITY;
+		const bExpiry = b.expiryDate
+			? new Date(b.expiryDate).getTime()
+			: Number.POSITIVE_INFINITY;
+		if (aExpiry !== bExpiry) return aExpiry - bExpiry;
+		return (a.rackLabel ?? "").localeCompare(b.rackLabel ?? "");
+	});
 	return sorted;
 }
 

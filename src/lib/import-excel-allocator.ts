@@ -6,7 +6,7 @@
  *
  * Algorithm:
  * 1. Collect all SKUs + qty needed across all POs
- * 2. For each SKU, load available stock_quant sorted by rack label ascending
+ * 2. For each SKU, load available stock_quant sorted by expiry date ascending (FEFO), then rack label
  * 3. Drain racks globally (rack 1 fully used before moving to rack 2)
  * 4. Map each portion back to its PO line item as stockQuantIds
  */
@@ -27,10 +27,15 @@ async function fetchStockQuantsForSku(skuId: string): Promise<StockQuant[]> {
 		pageNumber: 1,
 	});
 	const rows = data.stockQuants?.query ?? [];
-	// Filter to rows with available qty, sort by rack label ascending
+	// Filter to rows with available qty, sort by expiry ascending (FEFO), then rack label
 	return rows
 		.filter((r) => parseFloat(r.quantity) - parseFloat(r.reservedQty) > 0)
-		.sort((a, b) => (a.rackLabel ?? "").localeCompare(b.rackLabel ?? ""));
+		.sort((a, b) => {
+			const aExp = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
+			const bExp = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+			if (aExp !== bExp) return aExp - bExp;
+			return (a.rackLabel ?? "").localeCompare(b.rackLabel ?? "");
+		});
 }
 
 /**
