@@ -33,6 +33,9 @@ const LIVE_QUERY_ROOTS = new Set([
 	"stock-quants",
 	"inventory",
 	"inventory-movements",
+	// DO items / picking lists (ES DO Work Queue) — qtyInRack/reservedQty change on
+	// every pick and must never be served from a stale persisted cache.
+	"dos",
 ]);
 
 export function getContext() {
@@ -54,7 +57,7 @@ export function getContext() {
 			queryClient,
 			persister,
 			// Bump when persisted query shape changes (e.g. stockQuant.reservedQty).
-			buster: "2026-05-21-stock-quant-reserved",
+			buster: "2026-07-21-dos-live",
 			dehydrateOptions: {
 				shouldDehydrateQuery: (query) => {
 					const root = query.queryKey[0];
