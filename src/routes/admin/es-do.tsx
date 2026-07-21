@@ -1106,14 +1106,7 @@ function EmpireSushiDOComponent() {
 												<TableCell className="text-center font-semibold">{formatQty(row.qtyRequired)}</TableCell>
 												<TableCell className="text-sm text-muted-foreground">{row.rackLabel}</TableCell>
 												<TableCell className="text-center text-sm">
-													{row.qtyInRack != null ? (
-														<span>
-															{formatQty(row.qtyInRack)}
-															{row.reservedQtyInRack != null && row.reservedQtyInRack > 0 && (
-																<span className="text-muted-foreground"> → {formatQty(row.qtyInRack - row.reservedQtyInRack)}</span>
-															)}
-														</span>
-													) : "—"}
+													{row.qtyInRack != null ? formatQty(row.qtyInRack) : "—"}
 												</TableCell>
 												<TableCell className="text-sm text-muted-foreground">
 													{row.expiryDate ? formatDate(row.expiryDate) : "—"}
