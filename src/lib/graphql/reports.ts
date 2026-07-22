@@ -98,7 +98,10 @@ export const INVENTORY_BALANCE_REPORT_DATA_QUERY = gql`
 			skuDescription
 			unitCode
 			onHandQty
-			rackLocations
+			rackBreakdown {
+				rackLabel
+				qty
+			}
 		}
 	}
 `;
@@ -112,12 +115,17 @@ export const GENERATE_STOCK_BALANCE_REPORT_MUTATION = gql`
 	}
 `;
 
+export type InventoryBalanceReportRackBreakdown = {
+	rackLabel: string;
+	qty: number;
+};
+
 export type InventoryBalanceReportRow = {
 	skuCode: string;
 	skuDescription: string;
 	unitCode: string;
 	onHandQty: number;
-	rackLocations: string[];
+	rackBreakdown: InventoryBalanceReportRackBreakdown[];
 };
 
 export type InventoryBalanceReportDataQueryData = {

@@ -290,13 +290,16 @@ function ReportsComponent() {
 					}
 					const withRack = stockBalanceType === "WITH_RACK";
 					const header = withRack
-						? ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty", "Rack Location(s)"]
+						? ["No.", "SKU Code", "Description", "UOM", "Qty in Rack", "Rack Location"]
 						: ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty"];
-					const dataRows = rows.map((row, i) =>
-						withRack
-							? [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty, row.rackLocations.join(", ")]
-							: [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty],
-					);
+					// WITH_RACK: one row per rack the SKU is stocked in, showing that rack's own qty.
+					const dataRows = withRack
+						? rows.flatMap((row) =>
+								row.rackBreakdown.length > 0
+									? row.rackBreakdown.map((rb) => [row.skuCode, row.skuDescription, row.unitCode, rb.qty, rb.rackLabel])
+									: [[row.skuCode, row.skuDescription, row.unitCode, row.onHandQty, "—"]],
+							).map((cols, i) => [i + 1, ...cols])
+						: rows.map((row, i) => [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty]);
 					const wb = XLSX.utils.book_new();
 					const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
 					XLSX.utils.book_append_sheet(wb, ws, "Stock Balance");
