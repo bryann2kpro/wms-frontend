@@ -52,11 +52,13 @@ import {
 	type InventoryBalanceReportDataQueryData,
 	type InventoryBalanceReportDataQueryVariables,
 	type InventoryBalanceReportType,
+	type InventoryBalanceExpiryType,
 	GENERATE_STOCK_BALANCE_REPORT_MUTATION,
 	type GenerateStockBalanceReportMutationData,
 	type GenerateStockBalanceReportMutationVariables,
 } from "@/lib/graphql/reports";
 import { downloadPdfFromBase64 } from "@/lib/reports";
+import { formatDateOnly } from "@/lib/utils";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import request from "graphql-request";
 import { toast } from "sonner";
@@ -90,6 +92,7 @@ type ReportFormValues = {
 	dateTo: string;
 	format: ExportFormat;
 	stockBalanceType: InventoryBalanceReportType;
+	stockBalanceExpiryType: InventoryBalanceExpiryType;
 };
 
 const reportTypes: {
@@ -250,9 +253,10 @@ function ReportsComponent() {
 			dateTo: "",
 			format: "PDF" as ExportFormat,
 			stockBalanceType: "WITHOUT_RACK" as InventoryBalanceReportType,
+			stockBalanceExpiryType: "WITHOUT_EXPIRY" as InventoryBalanceExpiryType,
 		} satisfies ReportFormValues,
 		onSubmit: async ({ value }) => {
-			const { selectedReport, regionId, dateFrom, dateTo, format, stockBalanceType } = value;
+			const { selectedReport, regionId, dateFrom, dateTo, format, stockBalanceType, stockBalanceExpiryType } = value;
 			if (!selectedReport) return;
 
 			// Stock Balance — PDF
@@ -260,6 +264,7 @@ function ReportsComponent() {
 				try {
 					const result = await generateStockBalanceMutation({
 						type: stockBalanceType,
+						expiryType: stockBalanceExpiryType,
 					});
 					const payload = result?.generateStockBalanceReport;
 					if (!payload?.pdfBase64 || !payload?.filename) {
@@ -282,21 +287,53 @@ function ReportsComponent() {
 					const reportData = await request<
 						InventoryBalanceReportDataQueryData,
 						InventoryBalanceReportDataQueryVariables
-					>(env.VITE_GRAPHQL_ENDPOINT, INVENTORY_BALANCE_REPORT_DATA_QUERY, { type: stockBalanceType }, headers);
+					>(
+						env.VITE_GRAPHQL_ENDPOINT,
+						INVENTORY_BALANCE_REPORT_DATA_QUERY,
+						{ type: stockBalanceType, expiryType: stockBalanceExpiryType },
+						headers,
+					);
 					const rows = reportData.inventoryBalanceReportData ?? [];
 					if (rows.length === 0) {
 						toast.error("No stock balance data found.");
 						return;
 					}
 					const withRack = stockBalanceType === "WITH_RACK";
-					const header = withRack
-						? ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty", "Rack Location(s)"]
-						: ["No.", "SKU Code", "Description", "UOM", "On-Hand Qty"];
-					const dataRows = rows.map((row, i) =>
-						withRack
-							? [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty, row.rackLocations.join(", ")]
-							: [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty],
-					);
+					const withExpiry = stockBalanceExpiryType === "WITH_EXPIRY";
+					const withBreakdown = withRack || withExpiry;
+					const header = [
+						"No.",
+						"SKU Code",
+						"Description",
+						"UOM",
+						withBreakdown ? "Qty in Rack" : "On-Hand Qty",
+						...(withRack ? ["Rack Location"] : []),
+						...(withExpiry ? ["Expiry Date"] : []),
+					];
+					// WITH_RACK / WITH_EXPIRY: one row per rack/expiry breakdown, showing that batch's own qty.
+					const dataRows = withBreakdown
+						? rows
+								.flatMap((row) =>
+									row.rackBreakdown.length > 0
+										? row.rackBreakdown.map((rb) => [
+												row.skuCode,
+												row.skuDescription,
+												row.unitCode,
+												rb.qty,
+												...(withRack ? [rb.rackLabel ?? "—"] : []),
+												...(withExpiry ? [rb.expiryDate ? formatDateOnly(rb.expiryDate) : "—"] : []),
+											])
+										: [[
+												row.skuCode,
+												row.skuDescription,
+												row.unitCode,
+												row.onHandQty,
+												...(withRack ? ["—"] : []),
+												...(withExpiry ? ["—"] : []),
+											]],
+								)
+								.map((cols, i) => [i + 1, ...cols])
+						: rows.map((row, i) => [i + 1, row.skuCode, row.skuDescription, row.unitCode, row.onHandQty]);
 					const wb = XLSX.utils.book_new();
 					const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
 					XLSX.utils.book_append_sheet(wb, ws, "Stock Balance");
@@ -921,35 +958,62 @@ function ReportsComponent() {
 									</form.Field>
 								</div>
 
-								{/* Stock Balance type selector — shown only when StockBalance is selected */}
+								{/* Stock Balance type + expiry selectors — shown only when StockBalance is selected */}
 								<form.Subscribe selector={(state) => state.values.selectedReport}>
 									{(selectedReport) =>
 										selectedReport === "StockBalance" ? (
-											<form.Field name="stockBalanceType">
-												{(field) => (
-													<div className="space-y-1.5">
-														<FieldLabel className="text-xs font-medium">
-															Report Variant
-														</FieldLabel>
-														<Select
-															value={field.state.value}
-															onValueChange={(v) => {
-																field.handleChange(v as InventoryBalanceReportType);
-																field.handleBlur();
-															}}
-															disabled={isGenerating}
-														>
-															<SelectTrigger className="h-9 text-sm w-56" aria-label="Stock balance report variant">
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="WITHOUT_RACK">Without Rack (for principals)</SelectItem>
-																<SelectItem value="WITH_RACK">With Rack (internal)</SelectItem>
-															</SelectContent>
-														</Select>
-													</div>
-												)}
-											</form.Field>
+											<div className="flex flex-wrap gap-4">
+												<form.Field name="stockBalanceType">
+													{(field) => (
+														<div className="space-y-1.5">
+															<FieldLabel className="text-xs font-medium">
+																Report Variant
+															</FieldLabel>
+															<Select
+																value={field.state.value}
+																onValueChange={(v) => {
+																	field.handleChange(v as InventoryBalanceReportType);
+																	field.handleBlur();
+																}}
+																disabled={isGenerating}
+															>
+																<SelectTrigger className="h-9 text-sm w-56" aria-label="Stock balance report variant">
+																	<SelectValue />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem value="WITHOUT_RACK">Without Rack (for principals)</SelectItem>
+																	<SelectItem value="WITH_RACK">With Rack (internal)</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
+													)}
+												</form.Field>
+												<form.Field name="stockBalanceExpiryType">
+													{(field) => (
+														<div className="space-y-1.5">
+															<FieldLabel className="text-xs font-medium">
+																Expiry Date
+															</FieldLabel>
+															<Select
+																value={field.state.value}
+																onValueChange={(v) => {
+																	field.handleChange(v as InventoryBalanceExpiryType);
+																	field.handleBlur();
+																}}
+																disabled={isGenerating}
+															>
+																<SelectTrigger className="h-9 text-sm w-56" aria-label="Stock balance expiry date variant">
+																	<SelectValue />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem value="WITHOUT_EXPIRY">Without Expiry Date</SelectItem>
+																	<SelectItem value="WITH_EXPIRY">With Expiry Date</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
+													)}
+												</form.Field>
+											</div>
 										) : null
 									}
 								</form.Subscribe>
