@@ -90,16 +90,18 @@ export type InvoiceSummaryReportDataQueryVariables = {
 };
 
 export type InventoryBalanceReportType = "WITHOUT_RACK" | "WITH_RACK";
+export type InventoryBalanceExpiryType = "WITHOUT_EXPIRY" | "WITH_EXPIRY";
 
 export const INVENTORY_BALANCE_REPORT_DATA_QUERY = gql`
-	query InventoryBalanceReportData($type: InventoryBalanceReportType!) {
-		inventoryBalanceReportData(type: $type) {
+	query InventoryBalanceReportData($type: InventoryBalanceReportType!, $expiryType: InventoryBalanceExpiryType) {
+		inventoryBalanceReportData(type: $type, expiryType: $expiryType) {
 			skuCode
 			skuDescription
 			unitCode
 			onHandQty
 			rackBreakdown {
 				rackLabel
+				expiryDate
 				qty
 			}
 		}
@@ -107,8 +109,8 @@ export const INVENTORY_BALANCE_REPORT_DATA_QUERY = gql`
 `;
 
 export const GENERATE_STOCK_BALANCE_REPORT_MUTATION = gql`
-	mutation GenerateStockBalanceReport($type: InventoryBalanceReportType!) {
-		generateStockBalanceReport(type: $type) {
+	mutation GenerateStockBalanceReport($type: InventoryBalanceReportType!, $expiryType: InventoryBalanceExpiryType) {
+		generateStockBalanceReport(type: $type, expiryType: $expiryType) {
 			pdfBase64
 			filename
 		}
@@ -116,7 +118,8 @@ export const GENERATE_STOCK_BALANCE_REPORT_MUTATION = gql`
 `;
 
 export type InventoryBalanceReportRackBreakdown = {
-	rackLabel: string;
+	rackLabel: string | null;
+	expiryDate: string | null;
 	qty: number;
 };
 
@@ -134,6 +137,7 @@ export type InventoryBalanceReportDataQueryData = {
 
 export type InventoryBalanceReportDataQueryVariables = {
 	type: InventoryBalanceReportType;
+	expiryType?: InventoryBalanceExpiryType;
 };
 
 export type GenerateStockBalanceReportMutationData = {
@@ -142,4 +146,5 @@ export type GenerateStockBalanceReportMutationData = {
 
 export type GenerateStockBalanceReportMutationVariables = {
 	type: InventoryBalanceReportType;
+	expiryType?: InventoryBalanceExpiryType;
 };
