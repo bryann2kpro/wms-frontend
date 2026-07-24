@@ -2216,10 +2216,8 @@ export function GrnFormDialog({
 						const hasDuplicate = items.some((i) => {
 							const key = grnLineDuplicateKey(
 								i.skuCode,
-								skuOptions,
 								i.expiryDate ?? "",
 								i.lotNo ?? "",
-								i.asnLotTracked,
 							);
 							if (seen.has(key)) return true;
 							seen.add(key);
