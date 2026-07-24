@@ -20,18 +20,12 @@ export function getGrnLineSkuControls(
 
 export function grnLineDuplicateKey(
 	skuCode: string,
-	skuOptions: Skus[],
 	expiryDate: string,
 	lotNo: string,
-	asnLotTracked?: boolean,
 ): string {
-	const { requireLot, requireExpiry } = getGrnLineSkuControls(
-		skuCode,
-		skuOptions,
-		asnLotTracked,
-	);
-	let key = skuCode.trim();
-	if (requireExpiry) key += `::exp:${expiryDate.trim()}`;
-	if (requireLot) key += `::lot:${lotNo.trim()}`;
-	return key;
+	// Two rows are only true duplicates if SKU, expiry, and lot all match. Whether a SKU is
+	// officially "controlled" only affects whether these fields are *required* — it must not
+	// gate whether they're used to tell batches apart, or different real batches of an
+	// uncontrolled SKU get wrongly flagged as duplicates of each other.
+	return `${skuCode.trim()}::exp:${expiryDate.trim()}::lot:${lotNo.trim()}`;
 }
