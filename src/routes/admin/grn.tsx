@@ -1693,6 +1693,7 @@ function GRNRouteComponent() {
 														</Badge>
 													</div>
 													<div className="rounded-xl border bg-card overflow-hidden">
+														<div className="overflow-x-auto">
 														<Table>
 															<TableHeader>
 																<TableRow className="bg-muted/50">
@@ -1703,7 +1704,7 @@ function GRNRouteComponent() {
 																	<TableHead>Total</TableHead>
 																	<TableHead>Expiry Date</TableHead>
 																	<TableHead>Lot No</TableHead>
-																	<TableHead>Location</TableHead>
+																	<TableHead className="min-w-[160px]">Location</TableHead>
 																</TableRow>
 															</TableHeader>
 															<TableBody>
@@ -1728,7 +1729,7 @@ function GRNRouteComponent() {
 																					{item.rackAllocations.map((alloc, i) => {
 																						const label = alloc.rackLabel || (() => { const r = racks.find((r) => r.rackId === alloc.rackId); return r ? `${r.rackRow}-${r.rackLevel}-${r.rackColumn}` : alloc.rackId; })();
 																						return (
-																							<li key={i} className="flex items-center gap-1.5 text-xs">
+																							<li key={i} className="flex items-center gap-1.5 text-xs whitespace-nowrap">
 																								<span className="font-mono">{label}</span>
 																								<span className="text-muted-foreground">{alloc.quantity} CTN</span>
 																							</li>
@@ -1745,6 +1746,7 @@ function GRNRouteComponent() {
 														</Table>
 													</div>
 												</div>
+											</div>
 
 												{/* Notes */}
 												{selectedGRN.notes && (
