@@ -1,10 +1,5 @@
 import { gql } from "graphql-request";
-import type {
-	Driver,
-	DriverPaginatedResponse,
-	CreateDriverInput,
-	UpdateDriverInput,
-} from "./types";
+import type { Driver, CreateDriverInput, UpdateDriverInput } from "./types";
 
 export const DRIVER_FRAGMENT = gql`
 	fragment DriverFields on Driver {
@@ -33,19 +28,9 @@ export const DRIVER_FRAGMENT = gql`
 `;
 
 export const DRIVERS_QUERY = gql`
-	query Drivers($filter: DriverFilterInput, $pageSize: Int, $pageNumber: Int) {
-		drivers(filter: $filter, pageSize: $pageSize, pageNumber: $pageNumber) {
-			query {
-				...DriverFields
-			}
-			pagination {
-				count
-				totalCount
-				currentPage
-				totalPages
-				hasNextPage
-				hasPrevPage
-			}
+	query Drivers($status: String) {
+		drivers(status: $status) {
+			...DriverFields
 		}
 	}
 	${DRIVER_FRAGMENT}
@@ -76,8 +61,8 @@ export const DELETE_DRIVER_MUTATION = gql`
 `;
 
 export const SET_DRIVER_CLOCK_MUTATION = gql`
-	mutation SetDriverClock($id: ID!, $clockedIn: Boolean!) {
-		setDriverClock(id: $id, clockedIn: $clockedIn) {
+	mutation SetDriverClock($driverId: ID!, $action: String!) {
+		setDriverClock(driverId: $driverId, action: $action) {
 			...DriverFields
 		}
 	}
@@ -85,17 +70,11 @@ export const SET_DRIVER_CLOCK_MUTATION = gql`
 `;
 
 export type DriversQueryVariables = {
-	filter?: {
-		id?: string;
-		name?: string;
-		status?: string;
-	};
-	pageSize?: number;
-	pageNumber?: number;
+	status?: string;
 };
 
 export type DriversQueryData = {
-	drivers: DriverPaginatedResponse;
+	drivers: Driver[];
 };
 
 export type CreateDriverMutationVariables = { input: CreateDriverInput };
@@ -111,8 +90,8 @@ export type DeleteDriverMutationVariables = { id: string };
 export type DeleteDriverMutationData = { deleteDriver: boolean };
 
 export type SetDriverClockMutationVariables = {
-	id: string;
-	clockedIn: boolean;
+	driverId: string;
+	action: "IN" | "OUT";
 };
 export type SetDriverClockMutationData = { setDriverClock: Driver };
 

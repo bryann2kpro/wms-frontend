@@ -72,11 +72,7 @@ function TmsDriversPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearch = useDebouncedValue(searchTerm, SEARCH_DEBOUNCE_MS);
 
-	const queryVars: DriversQueryVariables = {
-		filter: debouncedSearch.trim() ? { name: debouncedSearch.trim() } : undefined,
-		pageSize: 500,
-		pageNumber: 1,
-	};
+	const queryVars: DriversQueryVariables = {};
 
 	const { data, isLoading, isFetching } = useQuery({
 		queryKey: qk.drivers.list(queryVars),
@@ -98,7 +94,12 @@ function TmsDriversPage() {
 		},
 	});
 
-	const drivers = data?.drivers.query ?? [];
+	const allDrivers = data?.drivers ?? [];
+	const drivers = debouncedSearch.trim()
+		? allDrivers.filter((d) =>
+				d.name.toLowerCase().includes(debouncedSearch.trim().toLowerCase()),
+			)
+		: allDrivers;
 	const loading = isLoading || isFetching;
 
 	return (
@@ -122,8 +123,7 @@ function TmsDriversPage() {
 					<div>
 						<CardTitle>Driver roster</CardTitle>
 						<CardDescription>
-							{data?.drivers.pagination.totalCount ?? 0} driver
-							{data?.drivers.pagination.totalCount === 1 ? "" : "s"}
+							{allDrivers.length} driver{allDrivers.length === 1 ? "" : "s"}
 						</CardDescription>
 					</div>
 					<div className="relative w-64">
@@ -195,7 +195,10 @@ function TmsDriversPage() {
 														}
 														disabled={clockMutation.isPending}
 														onClick={() =>
-															clockMutation.mutate({ id: d.id, clockedIn: !clockedIn })
+															clockMutation.mutate({
+																driverId: d.id,
+																action: clockedIn ? "OUT" : "IN",
+															})
 														}
 													>
 														{clockedIn ? "Clock Out" : "Clock In"}
