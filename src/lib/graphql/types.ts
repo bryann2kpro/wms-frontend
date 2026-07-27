@@ -403,6 +403,75 @@ export interface UpdateTransportInput {
 	updatedBy: string;
 }
 
+export interface Driver {
+	id: string;
+	name: string;
+	phone: string;
+	licenseNumber: string;
+	licenseExpiry: string;
+	status: string;
+	plateNumber?: string | null;
+	vehicleType?: string | null;
+	fleetCategory?: string | null;
+	barcode?: string | null;
+	clockedInAt?: string | null;
+	email?: string | null;
+	btm?: string | null;
+	bdm?: string | null;
+	payload?: string | null;
+	length?: string | null;
+	width?: string | null;
+	height?: string | null;
+	pallet4x3?: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface DriverPaginatedResponse {
+	query: Driver[];
+	pagination: Pagination;
+}
+
+export interface CreateDriverInput {
+	name: string;
+	phone: string;
+	licenseNumber: string;
+	licenseExpiry: string;
+	status?: string;
+	plateNumber?: string;
+	vehicleType?: string;
+	fleetCategory?: string;
+	barcode?: string;
+	email?: string;
+	btm?: string;
+	bdm?: string;
+	payload?: string;
+	length?: string;
+	width?: string;
+	height?: string;
+	pallet4x3?: string;
+}
+
+export interface UpdateDriverInput {
+	name?: string;
+	phone?: string;
+	licenseNumber?: string;
+	licenseExpiry?: string;
+	status?: string;
+	plateNumber?: string;
+	vehicleType?: string;
+	fleetCategory?: string;
+	barcode?: string;
+	email?: string;
+	btm?: string;
+	bdm?: string;
+	payload?: string;
+	length?: string;
+	width?: string;
+	height?: string;
+	pallet4x3?: string;
+}
+
 export interface SetupArea {
 	id: string;
 	code: string;

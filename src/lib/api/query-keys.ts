@@ -18,6 +18,10 @@ export const qk = {
 		all: ["transports"] as const,
 		list: (f: object) => ["transports", "list", f] as const,
 	},
+	drivers: {
+		all: ["drivers"] as const,
+		list: (f: object) => ["drivers", "list", f] as const,
+	},
 	setupAreas: {
 		all: ["setup-areas"] as const,
 		list: (f: object) => ["setup-areas", "list", f] as const,
