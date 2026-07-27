@@ -403,6 +403,20 @@ export interface UpdateTransportInput {
 	updatedBy: string;
 }
 
+export interface PodRecord {
+	id: string;
+	doId: string;
+	doNo: string;
+	outletName: string;
+	driverId?: string | null;
+	driverName?: string | null;
+	photoUrl: string;
+	capturedAt: string;
+	lat?: string | null;
+	lng?: string | null;
+	createdAt: string;
+}
+
 export interface Driver {
 	id: string;
 	name: string;
