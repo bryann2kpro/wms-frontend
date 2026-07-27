@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/tms/pod")({
 
 function TmsPodPage() {
 	return (
-		<div className="space-y-6">
+		<main className="container mx-auto p-6 space-y-6">
 			<AdminPageHeader
 				icon={FileCheck}
 				title="POD"
@@ -17,6 +17,6 @@ function TmsPodPage() {
 				descriptionId="tms-pod-description"
 			/>
 			<p className="text-sm text-muted-foreground">Not yet implemented.</p>
-		</div>
+		</main>
 	);
 }

@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/tms/routing")({
 
 function TmsRoutingPage() {
 	return (
-		<div className="space-y-6">
+		<main className="container mx-auto p-6 space-y-6">
 			<AdminPageHeader
 				icon={RouteIcon}
 				title="Routing"
@@ -17,6 +17,6 @@ function TmsRoutingPage() {
 				descriptionId="tms-routing-description"
 			/>
 			<p className="text-sm text-muted-foreground">Not yet implemented.</p>
-		</div>
+		</main>
 	);
 }

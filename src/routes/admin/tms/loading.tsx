@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/tms/loading")({
 
 function TmsLoadingPage() {
 	return (
-		<div className="space-y-6">
+		<main className="container mx-auto p-6 space-y-6">
 			<AdminPageHeader
 				icon={Boxes}
 				title="Loading"
@@ -17,6 +17,6 @@ function TmsLoadingPage() {
 				descriptionId="tms-loading-description"
 			/>
 			<p className="text-sm text-muted-foreground">Not yet implemented.</p>
-		</div>
+		</main>
 	);
 }

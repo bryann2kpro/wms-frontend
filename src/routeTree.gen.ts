@@ -66,6 +66,11 @@ import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
 import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as AdminTmsRoutingRouteImport } from './routes/admin/tms/routing'
+import { Route as AdminTmsPodRouteImport } from './routes/admin/tms/pod'
+import { Route as AdminTmsPackingRouteImport } from './routes/admin/tms/packing'
+import { Route as AdminTmsLoadingRouteImport } from './routes/admin/tms/loading'
+import { Route as AdminTmsDriversRouteImport } from './routes/admin/tms/drivers'
 import { Route as AdminSettlementIdRouteImport } from './routes/admin/settlement.$id'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
@@ -358,6 +363,31 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTmsRoutingRoute = AdminTmsRoutingRouteImport.update({
+  id: '/tms/routing',
+  path: '/tms/routing',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTmsPodRoute = AdminTmsPodRouteImport.update({
+  id: '/tms/pod',
+  path: '/tms/pod',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTmsPackingRoute = AdminTmsPackingRouteImport.update({
+  id: '/tms/packing',
+  path: '/tms/packing',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTmsLoadingRoute = AdminTmsLoadingRouteImport.update({
+  id: '/tms/loading',
+  path: '/tms/loading',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTmsDriversRoute = AdminTmsDriversRouteImport.update({
+  id: '/tms/drivers',
+  path: '/tms/drivers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSettlementIdRoute = AdminSettlementIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -437,6 +467,11 @@ export interface FileRoutesByFullPath {
   '/demo/store': typeof DemoStoreRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/admin/tms/drivers': typeof AdminTmsDriversRoute
+  '/admin/tms/loading': typeof AdminTmsLoadingRoute
+  '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/pod': typeof AdminTmsPodRoute
+  '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -501,6 +536,11 @@ export interface FileRoutesByTo {
   '/demo/store': typeof DemoStoreRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/admin/tms/drivers': typeof AdminTmsDriversRoute
+  '/admin/tms/loading': typeof AdminTmsLoadingRoute
+  '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/pod': typeof AdminTmsPodRoute
+  '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -566,6 +606,11 @@ export interface FileRoutesById {
   '/demo/store': typeof DemoStoreRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/admin/settlement/$id': typeof AdminSettlementIdRoute
+  '/admin/tms/drivers': typeof AdminTmsDriversRoute
+  '/admin/tms/loading': typeof AdminTmsLoadingRoute
+  '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/pod': typeof AdminTmsPodRoute
+  '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -632,6 +677,11 @@ export interface FileRouteTypes {
     | '/demo/store'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
+    | '/admin/tms/drivers'
+    | '/admin/tms/loading'
+    | '/admin/tms/packing'
+    | '/admin/tms/pod'
+    | '/admin/tms/routing'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/form/address'
@@ -696,6 +746,11 @@ export interface FileRouteTypes {
     | '/demo/store'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
+    | '/admin/tms/drivers'
+    | '/admin/tms/loading'
+    | '/admin/tms/packing'
+    | '/admin/tms/pod'
+    | '/admin/tms/routing'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/form/address'
@@ -760,6 +815,11 @@ export interface FileRouteTypes {
     | '/demo/store'
     | '/demo/tanstack-query'
     | '/admin/settlement/$id'
+    | '/admin/tms/drivers'
+    | '/admin/tms/loading'
+    | '/admin/tms/packing'
+    | '/admin/tms/pod'
+    | '/admin/tms/routing'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/form/address'
@@ -1195,6 +1255,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tms/routing': {
+      id: '/admin/tms/routing'
+      path: '/tms/routing'
+      fullPath: '/admin/tms/routing'
+      preLoaderRoute: typeof AdminTmsRoutingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tms/pod': {
+      id: '/admin/tms/pod'
+      path: '/tms/pod'
+      fullPath: '/admin/tms/pod'
+      preLoaderRoute: typeof AdminTmsPodRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tms/packing': {
+      id: '/admin/tms/packing'
+      path: '/tms/packing'
+      fullPath: '/admin/tms/packing'
+      preLoaderRoute: typeof AdminTmsPackingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tms/loading': {
+      id: '/admin/tms/loading'
+      path: '/tms/loading'
+      fullPath: '/admin/tms/loading'
+      preLoaderRoute: typeof AdminTmsLoadingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tms/drivers': {
+      id: '/admin/tms/drivers'
+      path: '/tms/drivers'
+      fullPath: '/admin/tms/drivers'
+      preLoaderRoute: typeof AdminTmsDriversRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/settlement/$id': {
       id: '/admin/settlement/$id'
       path: '/$id'
@@ -1288,6 +1383,11 @@ interface AdminRouteRouteChildren {
   AdminTransportRoute: typeof AdminTransportRoute
   AdminUserManagementRoute: typeof AdminUserManagementRoute
   AdminWarehouseMapRoute: typeof AdminWarehouseMapRoute
+  AdminTmsDriversRoute: typeof AdminTmsDriversRoute
+  AdminTmsLoadingRoute: typeof AdminTmsLoadingRoute
+  AdminTmsPackingRoute: typeof AdminTmsPackingRoute
+  AdminTmsPodRoute: typeof AdminTmsPodRoute
+  AdminTmsRoutingRoute: typeof AdminTmsRoutingRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1333,6 +1433,11 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminTransportRoute: AdminTransportRoute,
   AdminUserManagementRoute: AdminUserManagementRoute,
   AdminWarehouseMapRoute: AdminWarehouseMapRoute,
+  AdminTmsDriversRoute: AdminTmsDriversRoute,
+  AdminTmsLoadingRoute: AdminTmsLoadingRoute,
+  AdminTmsPackingRoute: AdminTmsPackingRoute,
+  AdminTmsPodRoute: AdminTmsPodRoute,
+  AdminTmsRoutingRoute: AdminTmsRoutingRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
