@@ -46,8 +46,8 @@ function looksLikeSkuHeader(val: unknown): val is string {
 	// Skip obvious non-SKU headers
 	const lower = t.toLowerCase();
 	if (lower === "sum" || lower === "total") return false;
-	// Typical codes: P0017, E0010, W0005
-	return /^[A-Za-z][\w.-]*$/.test(t);
+	// Typical codes: P0017, E0010, W0005, E0013(F)
+	return /^[A-Za-z][\w.()\s-]*$/.test(t);
 }
 
 /** Convert Excel date serial, Date, or locale string (e.g. `4/7/26`) to JS Date. */
@@ -233,6 +233,11 @@ export type ImportReviewRow = {
 	unmatchedSkuCodes: string[];
 };
 
+/** Space-insensitive compare — catalog codes disagree on the space before "(F)" (e.g. `RAW-E0010(F)` vs `RAW-E0013 (F)`). */
+function normalizeSkuCode(code: string): string {
+	return code.replace(/\s+/g, "").toUpperCase();
+}
+
 function findSkuInCatalog(
 	skuCode: string,
 	skus: ImportSkuRef[],
@@ -252,7 +257,8 @@ function findSkuInCatalog(
 		skus.find(
 			(s) =>
 				s.skuCode.replace(/^RAW-/i, "").toUpperCase() === short.toUpperCase(),
-		)
+		) ??
+		skus.find((s) => normalizeSkuCode(s.skuCode) === normalizeSkuCode(trimmed))
 	);
 }
 
