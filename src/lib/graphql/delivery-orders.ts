@@ -220,7 +220,7 @@ export const SET_DELIVERY_ORDER_STAGING_BIN_MUTATION = gql`
 
 export type SetDeliveryOrderStagingBinVariables = {
 	doId: string;
-	stagingBin: string;
+	stagingBin: string | null;
 };
 export type SetDeliveryOrderStagingBinData = {
 	setDeliveryOrderStagingBin: boolean;

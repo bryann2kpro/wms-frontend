@@ -4,10 +4,9 @@ import { ChevronRight, PackageCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
-import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Table,
 	TableBody,
@@ -76,64 +75,98 @@ type PackingGroup = {
 	items: DeliveryOrderItemWithDetails[];
 };
 
-function StagingBinInput({
-	doId,
-	value,
-	onSave,
-	saving,
-}: {
-	doId: string;
-	value: string | null;
-	onSave: (doId: string, bin: string) => void;
-	saving: boolean;
-}) {
-	const [draft, setDraft] = useState(value ?? "");
-	const [editing, setEditing] = useState(false);
+const ZONE_COLS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+const ZONE_ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-	if (!editing) {
-		return (
-			<button
-				type="button"
-				onClick={() => {
-					setDraft(value ?? "");
-					setEditing(true);
-				}}
-				className="inline-flex items-center rounded-md border border-violet-400 bg-violet-50 px-2.5 py-1 text-xs font-mono font-semibold text-violet-700 hover:bg-violet-100 dark:bg-violet-950/30 dark:text-violet-300"
-			>
-				{value || "Assign"}
-			</button>
-		);
+function ZonePicker({
+	value,
+	onChange,
+	occupiedZones,
+}: {
+	value: string;
+	onChange: (v: string) => void;
+	occupiedZones?: Set<string>;
+}) {
+	const [open, setOpen] = useState(false);
+
+	function select(col: string, row: number) {
+		const next = `${col}${row}`;
+		if (occupiedZones?.has(next)) return;
+		onChange(next === value ? "" : next);
+		setOpen(false);
 	}
 
 	return (
-		<div className="flex items-center gap-1">
-			<Input
-				value={draft}
-				onChange={(e) => setDraft(e.target.value.toUpperCase())}
-				placeholder="A1"
-				className="h-7 w-16 px-2 text-xs font-mono"
-				autoFocus
-				onKeyDown={(e) => {
-					if (e.key === "Enter" && draft.trim()) {
-						onSave(doId, draft.trim());
-						setEditing(false);
-					}
-					if (e.key === "Escape") setEditing(false);
-				}}
-			/>
-			<Button
-				type="button"
-				size="sm"
-				className="h-7 px-2 text-xs"
-				disabled={saving || !draft.trim()}
-				onClick={() => {
-					onSave(doId, draft.trim());
-					setEditing(false);
-				}}
-			>
-				Save
-			</Button>
-		</div>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className={`h-7 min-w-[3rem] rounded border px-2 text-xs font-mono font-semibold transition-colors ${
+						value
+							? "border-violet-400 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-950/30 dark:text-violet-300"
+							: "border-muted-foreground/30 bg-background text-muted-foreground hover:border-muted-foreground/60"
+					}`}
+				>
+					{value || "—"}
+				</button>
+			</PopoverTrigger>
+			<PopoverContent className="w-auto p-3 max-w-[calc(100vw-2rem)]" align="end">
+				<div className="flex flex-col gap-1">
+					<div className="flex items-center gap-1">
+						<span className="w-4 text-[10px] text-muted-foreground" />
+						{ZONE_COLS.map((col) => (
+							<span
+								key={col}
+								className="w-7 text-center text-[10px] font-semibold text-muted-foreground"
+							>
+								{col}
+							</span>
+						))}
+					</div>
+					{ZONE_ROWS.map((row) => (
+						<div key={row} className="flex items-center gap-1">
+							<span className="w-4 text-center text-[10px] font-semibold text-muted-foreground">
+								{row}
+							</span>
+							{ZONE_COLS.map((col) => {
+								const cell = `${col}${row}`;
+								const selected = value === cell;
+								const occupied = occupiedZones?.has(cell) ?? false;
+								return (
+									<button
+										type="button"
+										key={col}
+										onClick={() => select(col, row)}
+										disabled={occupied}
+										className={`flex h-7 w-7 items-center justify-center rounded border text-[10px] font-mono font-semibold transition-colors ${
+											selected
+												? "border-violet-500 bg-violet-500 text-white"
+												: occupied
+													? "border-red-200 bg-red-50 text-red-400 cursor-not-allowed dark:bg-red-950/20"
+													: "border-muted-foreground/30 bg-background text-muted-foreground hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30"
+										}`}
+									>
+										{selected ? cell : occupied ? "✕" : ""}
+									</button>
+								);
+							})}
+						</div>
+					))}
+					{value && (
+						<button
+							type="button"
+							onClick={() => {
+								onChange("");
+								setOpen(false);
+							}}
+							className="mt-1 text-left text-[10px] text-muted-foreground underline"
+						>
+							Clear
+						</button>
+					)}
+				</div>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -190,6 +223,17 @@ function TmsPackingPage() {
 		return Array.from(map.values()).sort((a, b) => a.doNo.localeCompare(b.doNo));
 	}, [data]);
 
+	const [localBins, setLocalBins] = useState<Map<string, string>>(new Map());
+
+	const globalOccupiedZones = useMemo(() => {
+		const set = new Set<string>();
+		for (const group of groups) {
+			const bin = localBins.has(group.doId) ? localBins.get(group.doId) : group.stagingBin;
+			if (bin) set.add(bin);
+		}
+		return set;
+	}, [groups, localBins]);
+
 	const loading = isLoading || isFetching;
 
 	function toggleExpand(doId: string) {
@@ -201,8 +245,9 @@ function TmsPackingPage() {
 		});
 	}
 
-	function handleSaveBin(doId: string, bin: string) {
-		stagingBinMutation.mutate({ doId, stagingBin: bin });
+	function handleZoneChange(doId: string, bin: string) {
+		setLocalBins((prev) => new Map(prev).set(doId, bin));
+		stagingBinMutation.mutate({ doId, stagingBin: bin || null });
 	}
 
 	return (
@@ -249,6 +294,9 @@ function TmsPackingPage() {
 								) : (
 									groups.flatMap((group) => {
 										const expanded = expandedIds.has(group.doId);
+										const zoneValue = localBins.has(group.doId)
+											? (localBins.get(group.doId) ?? "")
+											: (group.stagingBin ?? "");
 										return [
 											<TableRow
 												key={`row-${group.doId}`}
@@ -275,11 +323,14 @@ function TmsPackingPage() {
 													className="text-right"
 													onClick={(e) => e.stopPropagation()}
 												>
-													<StagingBinInput
-														doId={group.doId}
-														value={group.stagingBin}
-														onSave={handleSaveBin}
-														saving={stagingBinMutation.isPending}
+													<ZonePicker
+														value={zoneValue}
+														onChange={(v) => handleZoneChange(group.doId, v)}
+														occupiedZones={
+															new Set(
+																[...globalOccupiedZones].filter((z) => z !== zoneValue),
+															)
+														}
 													/>
 												</TableCell>
 											</TableRow>,
