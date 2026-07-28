@@ -217,7 +217,7 @@ function AllocationGuide({
 const TABLE_COLS = 9;
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
-function EmpireSushiDOComponent() {
+export function EmpireSushiDOComponent() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const trimmedSearchTerm = searchTerm.trim();
 	const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);

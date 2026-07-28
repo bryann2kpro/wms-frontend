@@ -68,6 +68,7 @@ import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
 import { Route as AdminTmsRoutingRouteImport } from './routes/admin/tms/routing'
 import { Route as AdminTmsPodRouteImport } from './routes/admin/tms/pod'
+import { Route as AdminTmsPickingRouteImport } from './routes/admin/tms/picking'
 import { Route as AdminTmsPackingRouteImport } from './routes/admin/tms/packing'
 import { Route as AdminTmsLoadingRouteImport } from './routes/admin/tms/loading'
 import { Route as AdminTmsDriversRouteImport } from './routes/admin/tms/drivers'
@@ -373,6 +374,11 @@ const AdminTmsPodRoute = AdminTmsPodRouteImport.update({
   path: '/tms/pod',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminTmsPickingRoute = AdminTmsPickingRouteImport.update({
+  id: '/tms/picking',
+  path: '/tms/picking',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminTmsPackingRoute = AdminTmsPackingRouteImport.update({
   id: '/tms/packing',
   path: '/tms/packing',
@@ -470,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/admin/tms/drivers': typeof AdminTmsDriversRoute
   '/admin/tms/loading': typeof AdminTmsLoadingRoute
   '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/picking': typeof AdminTmsPickingRoute
   '/admin/tms/pod': typeof AdminTmsPodRoute
   '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/admin/tms/drivers': typeof AdminTmsDriversRoute
   '/admin/tms/loading': typeof AdminTmsLoadingRoute
   '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/picking': typeof AdminTmsPickingRoute
   '/admin/tms/pod': typeof AdminTmsPodRoute
   '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -609,6 +617,7 @@ export interface FileRoutesById {
   '/admin/tms/drivers': typeof AdminTmsDriversRoute
   '/admin/tms/loading': typeof AdminTmsLoadingRoute
   '/admin/tms/packing': typeof AdminTmsPackingRoute
+  '/admin/tms/picking': typeof AdminTmsPickingRoute
   '/admin/tms/pod': typeof AdminTmsPodRoute
   '/admin/tms/routing': typeof AdminTmsRoutingRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -680,6 +689,7 @@ export interface FileRouteTypes {
     | '/admin/tms/drivers'
     | '/admin/tms/loading'
     | '/admin/tms/packing'
+    | '/admin/tms/picking'
     | '/admin/tms/pod'
     | '/admin/tms/routing'
     | '/demo/api/names'
@@ -749,6 +759,7 @@ export interface FileRouteTypes {
     | '/admin/tms/drivers'
     | '/admin/tms/loading'
     | '/admin/tms/packing'
+    | '/admin/tms/picking'
     | '/admin/tms/pod'
     | '/admin/tms/routing'
     | '/demo/api/names'
@@ -818,6 +829,7 @@ export interface FileRouteTypes {
     | '/admin/tms/drivers'
     | '/admin/tms/loading'
     | '/admin/tms/packing'
+    | '/admin/tms/picking'
     | '/admin/tms/pod'
     | '/admin/tms/routing'
     | '/demo/api/names'
@@ -1269,6 +1281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTmsPodRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/tms/picking': {
+      id: '/admin/tms/picking'
+      path: '/tms/picking'
+      fullPath: '/admin/tms/picking'
+      preLoaderRoute: typeof AdminTmsPickingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/tms/packing': {
       id: '/admin/tms/packing'
       path: '/tms/packing'
@@ -1386,6 +1405,7 @@ interface AdminRouteRouteChildren {
   AdminTmsDriversRoute: typeof AdminTmsDriversRoute
   AdminTmsLoadingRoute: typeof AdminTmsLoadingRoute
   AdminTmsPackingRoute: typeof AdminTmsPackingRoute
+  AdminTmsPickingRoute: typeof AdminTmsPickingRoute
   AdminTmsPodRoute: typeof AdminTmsPodRoute
   AdminTmsRoutingRoute: typeof AdminTmsRoutingRoute
 }
@@ -1436,6 +1456,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminTmsDriversRoute: AdminTmsDriversRoute,
   AdminTmsLoadingRoute: AdminTmsLoadingRoute,
   AdminTmsPackingRoute: AdminTmsPackingRoute,
+  AdminTmsPickingRoute: AdminTmsPickingRoute,
   AdminTmsPodRoute: AdminTmsPodRoute,
   AdminTmsRoutingRoute: AdminTmsRoutingRoute,
 }

@@ -301,6 +301,15 @@ export const allNavigationItems: NavLinkSchemaType[] = [
 		group: "warehouse setup",
 	},
 	{
+		key: "sidebar-tms-picking",
+		title: "Picking",
+		href: "/admin/tms/picking",
+		icon: PackageSearch,
+		allowedPermission: ["*"],
+		variant: "default",
+		group: "tms",
+	},
+	{
 		key: "sidebar-tms-packing",
 		title: "Packing",
 		href: "/admin/tms/packing",
