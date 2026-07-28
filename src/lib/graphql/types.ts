@@ -340,6 +340,36 @@ export interface AreaPaginatedResponse {
 	pagination: Pagination;
 }
 
+export interface TmsRoute {
+	id: string;
+	name: string;
+	origin: string;
+	destination: string;
+	distanceKm: string;
+	estimatedDurationMins: string;
+	status: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface CreateTmsRouteInput {
+	name: string;
+	origin: string;
+	destination: string;
+	distanceKm: string;
+	estimatedDurationMins: string;
+	status?: string;
+}
+
+export interface UpdateTmsRouteInput {
+	name?: string;
+	origin?: string;
+	destination?: string;
+	distanceKm?: string;
+	estimatedDurationMins?: string;
+	status?: string;
+}
+
 export interface Transport {
 	id: string;
 	code: string;
