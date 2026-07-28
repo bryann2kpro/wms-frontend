@@ -145,6 +145,9 @@ export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
 		doId
 		doNo
 		doStatus
+		stagingBin
+		outletName
+		outletAddress
 		onHandQty
 		lossQty
 		reservedQty
@@ -208,6 +211,20 @@ export const MARK_DELIVERY_ORDER_ITEM_PICKED_MUTATION = gql`
 	}
 	${DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT}
 `;
+
+export const SET_DELIVERY_ORDER_STAGING_BIN_MUTATION = gql`
+	mutation SetDeliveryOrderStagingBin($doId: ID!, $stagingBin: String!) {
+		setDeliveryOrderStagingBin(doId: $doId, stagingBin: $stagingBin)
+	}
+`;
+
+export type SetDeliveryOrderStagingBinVariables = {
+	doId: string;
+	stagingBin: string;
+};
+export type SetDeliveryOrderStagingBinData = {
+	setDeliveryOrderStagingBin: boolean;
+};
 
 export const ALLOCATE_PICK_LIST_MUTATION = gql`
 	mutation AllocatePickList($deliveryOrderId: ID!) {

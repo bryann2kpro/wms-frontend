@@ -998,6 +998,9 @@ export interface DeliveryOrderItemWithDetails {
 	doId: string | null;
 	doNo: string | null;
 	doStatus: string | null;
+	stagingBin: string | null;
+	outletName: string | null;
+	outletAddress: string | null;
 	onHandQty: string | null;
 	lossQty: string | null;
 	reservedQty: string | null;
