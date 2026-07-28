@@ -402,8 +402,8 @@ function BatchCard({
 							<TableHeader>
 								<TableRow>
 									<TableHead className="w-14 text-center">Load #</TableHead>
-									<TableHead>DO / Outlet</TableHead>
-									<TableHead className="w-64">Address</TableHead>
+									<TableHead className="w-48">DO / Outlet</TableHead>
+									<TableHead className="w-80">Address</TableHead>
 									<TableHead className="w-24">Staging Bin</TableHead>
 									<TableHead className="w-24">Status</TableHead>
 								</TableRow>
@@ -416,8 +416,10 @@ function BatchCard({
 											<TableCell className="text-center font-mono text-sm font-bold">
 												{stop.loadOrder ?? "—"}
 											</TableCell>
-											<TableCell>
-												<div className="text-sm font-medium">{stop.outletName ?? "—"}</div>
+											<TableCell className="w-48">
+												<div className="truncate text-sm font-medium">
+													{stop.outletName ?? "—"}
+												</div>
 												<div className="font-mono text-xs text-muted-foreground">
 													{stop.doNo}
 												</div>
