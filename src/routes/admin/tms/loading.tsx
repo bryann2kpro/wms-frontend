@@ -163,6 +163,7 @@ function LoadingBayDialog({
 							<TableRow>
 								<TableHead className="w-14 text-center">Load #</TableHead>
 								<TableHead>DO / Outlet</TableHead>
+								<TableHead className="w-20">Bin</TableHead>
 								<TableHead className="w-10 text-center">
 									<Checkbox
 										checked={allSelected}
@@ -191,6 +192,7 @@ function LoadingBayDialog({
 												{stop.doNo}
 											</div>
 										</TableCell>
+										<TableCell className="font-mono text-xs">{stop.stagingBin ?? "—"}</TableCell>
 										<TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
 											<Checkbox checked={checked} onCheckedChange={() => toggle(stop.doId)} />
 										</TableCell>
@@ -308,8 +310,8 @@ function BatchCard({
 				<ChevronRight
 					className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${collapsed ? "" : "rotate-90"}`}
 				/>
-				<span className="rounded border border-violet-300 bg-violet-50 px-1.5 py-0.5 font-mono text-xs font-semibold text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
-					{batch.zone}
+				<span className="rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
+					{batch.regionName ?? "Unknown"} {batch.regionCode ? `(${batch.regionCode})` : ""}
 				</span>
 				<div className="min-w-0 flex-1">
 					{batch.status === "PENDING_DRIVER" ? (
@@ -402,6 +404,7 @@ function BatchCard({
 									<TableHead className="w-14 text-center">Load #</TableHead>
 									<TableHead>DO / Outlet</TableHead>
 									<TableHead>Address</TableHead>
+									<TableHead className="w-24">Staging Bin</TableHead>
 									<TableHead className="w-24">Status</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -421,6 +424,15 @@ function BatchCard({
 											</TableCell>
 											<TableCell className="max-w-xs text-xs text-muted-foreground">
 												{stop.outletAddress ?? "—"}
+											</TableCell>
+											<TableCell>
+												{stop.stagingBin ? (
+													<span className="rounded border border-violet-300 bg-violet-50 px-1.5 py-0.5 font-mono text-xs font-semibold text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
+														{stop.stagingBin}
+													</span>
+												) : (
+													<span className="text-xs text-muted-foreground">—</span>
+												)}
 											</TableCell>
 											<TableCell>
 												{stop.loadedAt ? (

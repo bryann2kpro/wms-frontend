@@ -423,6 +423,7 @@ export interface LoadBatchStop {
 	outletId?: string | null;
 	outletName?: string | null;
 	outletAddress?: string | null;
+	stagingBin?: string | null;
 	loadOrder?: number | null;
 	loadedAt?: string | null;
 }
@@ -430,7 +431,9 @@ export interface LoadBatchStop {
 export interface LoadBatch {
 	id: string;
 	date: string;
-	zone: string;
+	regionId: string;
+	regionName?: string | null;
+	regionCode?: string | null;
 	status: string;
 	assignedAt?: string | null;
 	createdAt: string;

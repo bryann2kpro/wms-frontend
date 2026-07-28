@@ -6,7 +6,9 @@ export const LOAD_BATCH_FRAGMENT = gql`
 	fragment LoadBatchFields on LoadBatch {
 		id
 		date
-		zone
+		regionId
+		regionName
+		regionCode
 		status
 		assignedAt
 		createdAt
@@ -19,6 +21,7 @@ export const LOAD_BATCH_FRAGMENT = gql`
 			outletId
 			outletName
 			outletAddress
+			stagingBin
 			loadOrder
 			loadedAt
 		}
