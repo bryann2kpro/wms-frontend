@@ -30,6 +30,10 @@ export const qk = {
 		all: ["packing-list"] as const,
 		list: (f: object) => ["packing-list", "list", f] as const,
 	},
+	loadBatches: {
+		all: ["load-batches"] as const,
+		list: (f: object) => ["load-batches", "list", f] as const,
+	},
 	setupAreas: {
 		all: ["setup-areas"] as const,
 		list: (f: object) => ["setup-areas", "list", f] as const,

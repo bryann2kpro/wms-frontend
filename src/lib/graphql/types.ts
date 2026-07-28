@@ -417,6 +417,27 @@ export interface PodRecord {
 	createdAt: string;
 }
 
+export interface LoadBatchStop {
+	doId: string;
+	doNo: string;
+	outletId?: string | null;
+	outletName?: string | null;
+	outletAddress?: string | null;
+	loadOrder?: number | null;
+	loadedAt?: string | null;
+}
+
+export interface LoadBatch {
+	id: string;
+	date: string;
+	zone: string;
+	status: string;
+	assignedAt?: string | null;
+	createdAt: string;
+	driver?: Driver | null;
+	stops: LoadBatchStop[];
+}
+
 export interface Driver {
 	id: string;
 	name: string;
