@@ -302,10 +302,17 @@ function BatchCard({
 		<div
 			className={`overflow-hidden rounded-md ${done ? "border border-border opacity-70" : "border-2 border-emerald-300 dark:border-emerald-800"}`}
 		>
-			<button
-				type="button"
+			<div
+				role="button"
+				tabIndex={0}
 				onClick={() => setCollapsed((c) => !c)}
-				className={`flex w-full items-center gap-3 px-4 py-2.5 text-left ${done ? "bg-muted/40" : "bg-emerald-50 dark:bg-emerald-950/20"}`}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						setCollapsed((c) => !c);
+					}
+				}}
+				className={`flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left ${done ? "bg-muted/40" : "bg-emerald-50 dark:bg-emerald-950/20"}`}
 			>
 				<ChevronRight
 					className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${collapsed ? "" : "rotate-90"}`}
@@ -328,74 +335,72 @@ function BatchCard({
 					)}
 				</div>
 				<StatusBadge status={batch.status} />
-			</button>
+				{batch.status === "LOADING" && (
+					<div className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
+						{!allLoaded && (
+							<Button size="sm" onClick={() => setBayOpen(true)}>
+								Load
+							</Button>
+						)}
+						{allLoaded && (
+							<Button
+								size="sm"
+								disabled={completeMutation.isPending}
+								onClick={() => completeMutation.mutate({ batchId: batch.id })}
+							>
+								{completeMutation.isPending ? "Completing…" : "Complete"}
+							</Button>
+						)}
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={unassignMutation.isPending}
+							onClick={() => unassignMutation.mutate({ batchId: batch.id })}
+						>
+							Reassign
+						</Button>
+					</div>
+				)}
+			</div>
 
 			{!collapsed && (
 				<>
-					<div
-						className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5"
-						onClick={(e) => e.stopPropagation()}
-					>
-						{batch.status === "PENDING_DRIVER" && (
-							<>
-								<Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-									<SelectTrigger className="h-8 w-56 text-sm">
-										<SelectValue placeholder="Select driver…" />
-									</SelectTrigger>
-									<SelectContent>
-										{availableDrivers.map((d) => (
-											<SelectItem key={d.id} value={d.id}>
-												<div className="flex items-center gap-2">
-													{d.name}
-													{d.plateNumber && (
-														<span className="font-mono text-xs text-muted-foreground">
-															{d.plateNumber}
-														</span>
-													)}
-												</div>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<Button
-									size="sm"
-									disabled={!selectedDriverId || assignMutation.isPending}
-									onClick={() =>
-										assignMutation.mutate({ batchId: batch.id, driverId: selectedDriverId })
-									}
-								>
-									<Truck className="mr-1.5 h-3.5 w-3.5" />
-									{assignMutation.isPending ? "Assigning…" : "Assign"}
-								</Button>
-							</>
-						)}
-						{batch.status === "LOADING" && (
-							<div className="ml-auto flex gap-1.5">
-								{!allLoaded && (
-									<Button size="sm" onClick={() => setBayOpen(true)}>
-										Load
-									</Button>
-								)}
-								{allLoaded && (
-									<Button
-										size="sm"
-										disabled={completeMutation.isPending}
-										onClick={() => completeMutation.mutate({ batchId: batch.id })}
-									>
-										{completeMutation.isPending ? "Completing…" : "Complete"}
-									</Button>
-								)}
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={unassignMutation.isPending}
-									onClick={() => unassignMutation.mutate({ batchId: batch.id })}
-								>
-									Reassign
-								</Button>
-							</div>
-						)}
-					</div>
+					{batch.status === "PENDING_DRIVER" && (
+						<div
+							className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+								<SelectTrigger className="h-8 w-56 text-sm">
+									<SelectValue placeholder="Select driver…" />
+								</SelectTrigger>
+								<SelectContent>
+									{availableDrivers.map((d) => (
+										<SelectItem key={d.id} value={d.id}>
+											<div className="flex items-center gap-2">
+												{d.name}
+												{d.plateNumber && (
+													<span className="font-mono text-xs text-muted-foreground">
+														{d.plateNumber}
+													</span>
+												)}
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Button
+								size="sm"
+								disabled={!selectedDriverId || assignMutation.isPending}
+								onClick={() =>
+									assignMutation.mutate({ batchId: batch.id, driverId: selectedDriverId })
+								}
+							>
+								<Truck className="mr-1.5 h-3.5 w-3.5" />
+								{assignMutation.isPending ? "Assigning…" : "Assign"}
+							</Button>
+						</div>
+					)}
 
 					<div className="overflow-x-auto">
 						<Table>
