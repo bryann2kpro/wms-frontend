@@ -403,7 +403,7 @@ function BatchCard({
 								<TableRow>
 									<TableHead className="w-14 text-center">Load #</TableHead>
 									<TableHead>DO / Outlet</TableHead>
-									<TableHead>Address</TableHead>
+									<TableHead className="w-64">Address</TableHead>
 									<TableHead className="w-24">Staging Bin</TableHead>
 									<TableHead className="w-24">Status</TableHead>
 								</TableRow>
@@ -422,7 +422,7 @@ function BatchCard({
 													{stop.doNo}
 												</div>
 											</TableCell>
-											<TableCell className="max-w-xs text-xs text-muted-foreground">
+											<TableCell className="w-64 whitespace-normal break-words text-xs text-muted-foreground">
 												{stop.outletAddress ?? "—"}
 											</TableCell>
 											<TableCell>
