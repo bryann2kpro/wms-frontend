@@ -24,6 +24,8 @@ export const LOAD_BATCH_FRAGMENT = gql`
 			stagingBin
 			loadOrder
 			loadedAt
+			lat
+			lng
 		}
 	}
 	${DRIVER_FRAGMENT}
@@ -37,6 +39,17 @@ export const LOAD_BATCHES_QUERY = gql`
 	}
 	${LOAD_BATCH_FRAGMENT}
 `;
+
+export const WAREHOUSE_COORDS_QUERY = gql`
+	query WarehouseCoords {
+		warehouseCoords {
+			lat
+			lng
+		}
+	}
+`;
+
+export type WarehouseCoordsData = { warehouseCoords: { lat: number; lng: number } | null };
 
 export const ASSIGN_BATCH_DRIVER_MUTATION = gql`
 	mutation AssignBatchDriver($batchId: ID!, $driverId: ID!) {

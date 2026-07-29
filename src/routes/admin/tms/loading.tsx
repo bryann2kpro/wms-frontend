@@ -1,20 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronRight, PackageCheck, Truck, Undo2 } from "lucide-react";
+import { ChevronRight, Truck, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import {
 	Select,
@@ -36,17 +28,11 @@ import { qk } from "@/lib/api/query-keys";
 import { DRIVERS_QUERY, type DriversQueryData, type DriversQueryVariables } from "@/lib/graphql/drivers";
 import {
 	ASSIGN_BATCH_DRIVER_MUTATION,
-	COMPLETE_BATCH_MUTATION,
-	CONFIRM_BATCH_LOADING_MUTATION,
 	LOAD_BATCHES_QUERY,
 	UNASSIGN_BATCH_DRIVER_MUTATION,
 	UNDO_LOAD_BATCH_MUTATION,
 	type AssignBatchDriverData,
 	type AssignBatchDriverVariables,
-	type CompleteBatchData,
-	type CompleteBatchVariables,
-	type ConfirmBatchLoadingData,
-	type ConfirmBatchLoadingVariables,
 	type LoadBatchesQueryData,
 	type LoadBatchesQueryVariables,
 	type UnassignBatchDriverData,
@@ -99,123 +85,6 @@ function StatusBadge({ status }: { status: string }) {
 	);
 }
 
-function LoadingBayDialog({
-	batch,
-	open,
-	onOpenChange,
-	onConfirm,
-	confirming,
-}: {
-	batch: LoadBatch;
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	onConfirm: (doIds: string[]) => void;
-	confirming: boolean;
-}) {
-	const [selected, setSelected] = useState<Set<string>>(new Set());
-
-	const capacity = batch.driver?.pallet4x3 ? Math.round(Number(batch.driver.pallet4x3)) : 10;
-	const count = selected.size;
-	const isFull = count >= capacity;
-	const allSelected = batch.stops.length > 0 && batch.stops.every((s) => selected.has(s.doId));
-
-	function toggle(doId: string) {
-		setSelected((prev) => {
-			const next = new Set(prev);
-			if (next.has(doId)) next.delete(doId);
-			else next.add(doId);
-			return next;
-		});
-	}
-
-	return (
-		<Dialog
-			open={open}
-			onOpenChange={(v) => {
-				if (v) setSelected(new Set());
-				onOpenChange(v);
-			}}
-		>
-			<DialogContent className="max-w-lg">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<Truck className="h-4 w-4" />
-						Loading Bay
-					</DialogTitle>
-				</DialogHeader>
-				<div className="space-y-1.5">
-					<div className="flex items-center justify-between text-xs">
-						<span className="text-muted-foreground">Vehicle capacity</span>
-						<span className={isFull ? "text-red-600 font-semibold" : "font-medium"}>
-							{count} / {capacity} selected
-						</span>
-					</div>
-					<div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-						<div
-							className={`h-full rounded-full transition-all ${isFull ? "bg-red-500" : "bg-blue-500"}`}
-							style={{ width: `${Math.min((count / capacity) * 100, 100)}%` }}
-						/>
-					</div>
-				</div>
-				<div className="max-h-72 overflow-y-auto rounded-md border">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-14 text-center">Load #</TableHead>
-								<TableHead>DO / Outlet</TableHead>
-								<TableHead className="w-20">Bin</TableHead>
-								<TableHead className="w-10 text-center">
-									<Checkbox
-										checked={allSelected}
-										onCheckedChange={(v) =>
-											setSelected(v ? new Set(batch.stops.map((s) => s.doId)) : new Set())
-										}
-									/>
-								</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{batch.stops.map((stop) => {
-								const checked = selected.has(stop.doId);
-								return (
-									<TableRow
-										key={stop.doId}
-										className={checked ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}
-										onClick={() => toggle(stop.doId)}
-									>
-										<TableCell className="text-center font-mono text-sm font-bold">
-											{stop.loadOrder ?? "—"}
-										</TableCell>
-										<TableCell>
-											<div className="text-sm font-medium">{stop.outletName ?? "—"}</div>
-											<div className="font-mono text-xs text-muted-foreground">
-												{stop.doNo}
-											</div>
-										</TableCell>
-										<TableCell className="font-mono text-xs">{stop.stagingBin ?? "—"}</TableCell>
-										<TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-											<Checkbox checked={checked} onCheckedChange={() => toggle(stop.doId)} />
-										</TableCell>
-									</TableRow>
-								);
-							})}
-						</TableBody>
-					</Table>
-				</div>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
-					<Button disabled={count === 0 || confirming} onClick={() => onConfirm([...selected])}>
-						<PackageCheck className="mr-1.5 h-3.5 w-3.5" />
-						{confirming ? "Confirming…" : `Done (${count} loaded)`}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
-	);
-}
-
 function BatchCard({
 	batch,
 	drivers,
@@ -228,7 +97,6 @@ function BatchCard({
 	const queryClient = useQueryClient();
 	const [collapsed, setCollapsed] = useState(true);
 	const [selectedDriverId, setSelectedDriverId] = useState("");
-	const [bayOpen, setBayOpen] = useState(false);
 
 	const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.loadBatches.all });
 
@@ -258,30 +126,6 @@ function BatchCard({
 		onError: (err) => toast.error(getErrorMessage(err)),
 	});
 
-	const confirmMutation = useMutation({
-		mutationFn: (vars: ConfirmBatchLoadingVariables) =>
-			gqlRequest<ConfirmBatchLoadingData, ConfirmBatchLoadingVariables>(
-				CONFIRM_BATCH_LOADING_MUTATION,
-				vars,
-			),
-		onSuccess: () => {
-			toast.success("Load confirmed");
-			setBayOpen(false);
-			invalidate();
-		},
-		onError: (err) => toast.error(getErrorMessage(err)),
-	});
-
-	const completeMutation = useMutation({
-		mutationFn: (vars: CompleteBatchVariables) =>
-			gqlRequest<CompleteBatchData, CompleteBatchVariables>(COMPLETE_BATCH_MUTATION, vars),
-		onSuccess: () => {
-			toast.success("Batch completed");
-			invalidate();
-		},
-		onError: (err) => toast.error(getErrorMessage(err)),
-	});
-
 	const undoMutation = useMutation({
 		mutationFn: (vars: UndoLoadBatchVariables) =>
 			gqlRequest<UndoLoadBatchData, UndoLoadBatchVariables>(UNDO_LOAD_BATCH_MUTATION, vars),
@@ -296,7 +140,6 @@ function BatchCard({
 		(d) => !assignedDriverIds.has(d.id) || d.id === batch.driver?.id,
 	);
 	const done = batch.status === "DONE";
-	const allLoaded = batch.stops.length > 0 && batch.stops.every((s) => s.loadedAt);
 
 	return (
 		<div
@@ -337,20 +180,6 @@ function BatchCard({
 				<StatusBadge status={batch.status} />
 				{batch.status === "LOADING" && (
 					<div className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
-						{!allLoaded && (
-							<Button size="sm" onClick={() => setBayOpen(true)}>
-								Load
-							</Button>
-						)}
-						{allLoaded && (
-							<Button
-								size="sm"
-								disabled={completeMutation.isPending}
-								onClick={() => completeMutation.mutate({ batchId: batch.id })}
-							>
-								{completeMutation.isPending ? "Completing…" : "Complete"}
-							</Button>
-						)}
 						<Button
 							size="sm"
 							variant="outline"
@@ -410,7 +239,6 @@ function BatchCard({
 									<TableHead className="w-48">DO / Outlet</TableHead>
 									<TableHead className="w-80">Address</TableHead>
 									<TableHead className="w-24">Staging Bin</TableHead>
-									<TableHead className="w-24">Status</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -441,15 +269,6 @@ function BatchCard({
 													<span className="text-xs text-muted-foreground">—</span>
 												)}
 											</TableCell>
-											<TableCell>
-												{stop.loadedAt ? (
-													<span className="rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-950/20 dark:text-green-400">
-														Loaded
-													</span>
-												) : (
-													<span className="text-xs text-muted-foreground">—</span>
-												)}
-											</TableCell>
 										</TableRow>
 									))}
 							</TableBody>
@@ -469,14 +288,6 @@ function BatchCard({
 							</button>
 						</div>
 					)}
-
-					<LoadingBayDialog
-						batch={batch}
-						open={bayOpen}
-						onOpenChange={setBayOpen}
-						confirming={confirmMutation.isPending}
-						onConfirm={(doIds) => confirmMutation.mutate({ batchId: batch.id, loadedDoIds: doIds })}
-					/>
 				</>
 			)}
 		</div>
@@ -529,7 +340,8 @@ function TmsLoadingPage() {
 			{batches.length === 0 && !loading ? (
 				<Card className="rounded-2xl border-2 border-border">
 					<CardContent className="py-16 text-center text-muted-foreground">
-						No load batches yet — assign a staging bin in Packing first.
+						No load batches yet — batches appear here automatically once a DO is
+						created for an outlet with a region.
 					</CardContent>
 				</Card>
 			) : (
@@ -580,16 +392,6 @@ function TmsLoadingPage() {
 					)}
 				</div>
 			)}
-
-			<Card className="rounded-2xl border-2 border-border">
-				<CardHeader>
-					<CardTitle className="text-sm">About staging bins → batches</CardTitle>
-					<CardDescription>
-						A load batch is created automatically the moment a DO gets a staging bin
-						assigned in Packing — one batch per staging bin per day.
-					</CardDescription>
-				</CardHeader>
-			</Card>
 		</main>
 	);
 }

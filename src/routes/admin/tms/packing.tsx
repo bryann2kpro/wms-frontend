@@ -72,11 +72,23 @@ type PackingGroup = {
 	outletName: string | null;
 	outletAddress: string | null;
 	stagingBin: string | null;
+	loadOrder: number | null;
+	regionId: string | null;
+	regionName: string | null;
+	regionCode: string | null;
 	items: DeliveryOrderItemWithDetails[];
 };
 
-const ZONE_COLS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-const ZONE_ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+type RegionSection = {
+	regionId: string;
+	regionName: string | null;
+	regionCode: string | null;
+	groups: PackingGroup[];
+};
+
+// Matches the real warehouse map's staging area: columns B-M (12 cols), rows 1-14, single layer.
+const ZONE_COLS = ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"];
+const ZONE_ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 function ZonePicker({
 	value,
@@ -214,6 +226,10 @@ function TmsPackingPage() {
 					outletName: item.outletName,
 					outletAddress: item.outletAddress,
 					stagingBin: item.stagingBin,
+					loadOrder: item.loadOrder ?? null,
+					regionId: item.regionId ?? null,
+					regionName: item.regionName ?? null,
+					regionCode: item.regionCode ?? null,
 					items: [],
 				};
 				map.set(item.doId, group);
@@ -222,6 +238,39 @@ function TmsPackingPage() {
 		}
 		return Array.from(map.values()).sort((a, b) => a.doNo.localeCompare(b.doNo));
 	}, [data]);
+
+	const regionSections = useMemo<RegionSection[]>(() => {
+		const map = new Map<string, RegionSection>();
+		for (const group of groups) {
+			const key = group.regionId ?? "unknown";
+			let section = map.get(key);
+			if (!section) {
+				section = {
+					regionId: key,
+					regionName: group.regionName,
+					regionCode: group.regionCode,
+					groups: [],
+				};
+				map.set(key, section);
+			}
+			section.groups.push(group);
+		}
+		// Match Loading/Routing's delivery sequence — sort by loadOrder (route-optimized
+		// position), falling back to DO No. for batches not yet geocoded/routed.
+		for (const section of map.values()) {
+			section.groups.sort((a, b) => {
+				if (a.loadOrder != null && b.loadOrder != null) return a.loadOrder - b.loadOrder;
+				if (a.loadOrder != null) return -1;
+				if (b.loadOrder != null) return 1;
+				return a.doNo.localeCompare(b.doNo);
+			});
+		}
+		return Array.from(map.values()).sort((a, b) => {
+			if (a.regionId === "unknown") return 1;
+			if (b.regionId === "unknown") return -1;
+			return (a.regionName ?? "").localeCompare(b.regionName ?? "");
+		});
+	}, [groups]);
 
 	const [localBins, setLocalBins] = useState<Map<string, string>>(new Map());
 
@@ -266,132 +315,145 @@ function TmsPackingPage() {
 				descriptionId="tms-packing-description"
 			/>
 
-			<Card className="rounded-2xl border-2 border-border">
-				<CardHeader>
-					<CardTitle>Segmentation</CardTitle>
-					<CardDescription>
-						{groups.length} delivery order{groups.length === 1 ? "" : "s"}
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="overflow-x-auto rounded-xl border">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead className="w-8" />
-									<TableHead>DO No.</TableHead>
-									<TableHead>Outlet</TableHead>
-									<TableHead className="text-right">Staging Bin</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{groups.length === 0 && !loading ? (
-									<TableRow>
-										<TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-											No delivery orders in the picking/packing queue.
-										</TableCell>
-									</TableRow>
-								) : (
-									groups.flatMap((group) => {
-										const expanded = expandedIds.has(group.doId);
-										const zoneValue = localBins.has(group.doId)
-											? (localBins.get(group.doId) ?? "")
-											: (group.stagingBin ?? "");
-										return [
-											<TableRow
-												key={`row-${group.doId}`}
-												className="cursor-pointer hover:bg-muted/30"
-												onClick={() => toggleExpand(group.doId)}
-											>
-												<TableCell>
-													<ChevronRight
-														className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`}
-													/>
-												</TableCell>
-												<TableCell className="font-mono text-sm font-semibold">
-													{group.doNo}
-												</TableCell>
-												<TableCell>
-													<div className="text-sm font-medium">{dash(group.outletName)}</div>
-													{group.outletAddress && (
-														<div className="text-xs text-muted-foreground">
-															{group.outletAddress}
-														</div>
-													)}
-												</TableCell>
-												<TableCell
-													className="text-right"
-													onClick={(e) => e.stopPropagation()}
-												>
-													<ZonePicker
-														value={zoneValue}
-														onChange={(v) => handleZoneChange(group.doId, v)}
-														occupiedZones={
-															new Set(
-																[...globalOccupiedZones].filter((z) => z !== zoneValue),
-															)
-														}
-													/>
-												</TableCell>
-											</TableRow>,
-											expanded ? (
-												<TableRow key={`detail-${group.doId}`} className="bg-muted/10">
-													<TableCell colSpan={4} className="p-0">
-														<div className="px-4 py-3">
-															<table className="w-full text-xs border rounded-md overflow-hidden">
-																<thead>
-																	<tr className="bg-muted/50 text-muted-foreground">
-																		<th className="px-3 py-1.5 text-left font-medium">
-																			Item Code
-																		</th>
-																		<th className="px-3 py-1.5 text-left font-medium">
-																			Description
-																		</th>
-																		<th className="px-3 py-1.5 text-right font-medium">
-																			Qty
-																		</th>
-																		<th className="px-3 py-1.5 text-left font-medium">
-																			Bin
-																		</th>
-																	</tr>
-																</thead>
-																<tbody className="divide-y">
-																	{group.items.map((item) => (
-																		<tr key={item.id} className="bg-background">
-																			<td className="px-3 py-1.5 font-mono">
-																				{dash(item.skuCode)}
-																			</td>
-																			<td className="px-3 py-1.5">
-																				{dash(item.skuDescription)}
-																			</td>
-																			<td className="px-3 py-1.5 text-right font-mono">
-																				{item.qtyRequired}
-																			</td>
-																			<td className="px-3 py-1.5">
-																				{item.selectedRackLabel ? (
-																					<span className="inline-block rounded bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 text-[10px] font-mono font-medium dark:bg-amber-950/30 dark:text-amber-300">
-																						{item.selectedRackLabel}
-																					</span>
-																				) : (
-																					<span className="text-muted-foreground">—</span>
-																				)}
-																			</td>
-																		</tr>
-																	))}
-																</tbody>
-															</table>
-														</div>
-													</TableCell>
-												</TableRow>
-											) : null,
-										].filter(Boolean);
-									})
-								)}
-							</TableBody>
-						</Table>
-					</div>
-				</CardContent>
-			</Card>
+			{groups.length === 0 && !loading ? (
+				<Card className="rounded-2xl border-2 border-border">
+					<CardContent className="py-16 text-center text-muted-foreground">
+						No delivery orders in the picking/packing queue.
+					</CardContent>
+				</Card>
+			) : (
+				<div className="space-y-6">
+					{regionSections.map((section) => (
+						<Card key={section.regionId} className="rounded-2xl border-2 border-border">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<span className="rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
+										{section.regionName ?? "Unknown region"}
+										{section.regionCode ? ` (${section.regionCode})` : ""}
+									</span>
+								</CardTitle>
+								<CardDescription>
+									{section.groups.length} delivery order{section.groups.length === 1 ? "" : "s"}
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<div className="overflow-x-auto rounded-xl border">
+									<Table>
+										<TableHeader>
+											<TableRow>
+												<TableHead className="w-8" />
+												<TableHead className="w-14 text-center">Load #</TableHead>
+												<TableHead>DO No.</TableHead>
+												<TableHead>Outlet</TableHead>
+												<TableHead className="text-right">Staging Bin</TableHead>
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{section.groups.flatMap((group) => {
+												const expanded = expandedIds.has(group.doId);
+												const zoneValue = localBins.has(group.doId)
+													? (localBins.get(group.doId) ?? "")
+													: (group.stagingBin ?? "");
+												return [
+													<TableRow
+														key={`row-${group.doId}`}
+														className="cursor-pointer hover:bg-muted/30"
+														onClick={() => toggleExpand(group.doId)}
+													>
+														<TableCell>
+															<ChevronRight
+																className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`}
+															/>
+														</TableCell>
+														<TableCell className="text-center font-mono text-sm font-bold">
+															{group.loadOrder ?? "—"}
+														</TableCell>
+														<TableCell className="font-mono text-sm font-semibold">
+															{group.doNo}
+														</TableCell>
+														<TableCell>
+															<div className="text-sm font-medium">{dash(group.outletName)}</div>
+															{group.outletAddress && (
+																<div className="text-xs text-muted-foreground">
+																	{group.outletAddress}
+																</div>
+															)}
+														</TableCell>
+														<TableCell
+															className="text-right"
+															onClick={(e) => e.stopPropagation()}
+														>
+															<ZonePicker
+																value={zoneValue}
+																onChange={(v) => handleZoneChange(group.doId, v)}
+																occupiedZones={
+																	new Set(
+																		[...globalOccupiedZones].filter((z) => z !== zoneValue),
+																	)
+																}
+															/>
+														</TableCell>
+													</TableRow>,
+													expanded ? (
+														<TableRow key={`detail-${group.doId}`} className="bg-muted/10">
+															<TableCell colSpan={5} className="p-0">
+																<div className="px-4 py-3">
+																	<table className="w-full text-xs border rounded-md overflow-hidden">
+																		<thead>
+																			<tr className="bg-muted/50 text-muted-foreground">
+																				<th className="px-3 py-1.5 text-left font-medium">
+																					Item Code
+																				</th>
+																				<th className="px-3 py-1.5 text-left font-medium">
+																					Description
+																				</th>
+																				<th className="px-3 py-1.5 text-right font-medium">
+																					Qty
+																				</th>
+																				<th className="px-3 py-1.5 text-left font-medium">
+																					Bin
+																				</th>
+																			</tr>
+																		</thead>
+																		<tbody className="divide-y">
+																			{group.items.map((item) => (
+																				<tr key={item.id} className="bg-background">
+																					<td className="px-3 py-1.5 font-mono">
+																						{dash(item.skuCode)}
+																					</td>
+																					<td className="px-3 py-1.5">
+																						{dash(item.skuDescription)}
+																					</td>
+																					<td className="px-3 py-1.5 text-right font-mono">
+																						{item.qtyRequired}
+																					</td>
+																					<td className="px-3 py-1.5">
+																						{item.selectedRackLabel ? (
+																							<span className="inline-block rounded bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 text-[10px] font-mono font-medium dark:bg-amber-950/30 dark:text-amber-300">
+																								{item.selectedRackLabel}
+																							</span>
+																						) : (
+																							<span className="text-muted-foreground">—</span>
+																						)}
+																					</td>
+																				</tr>
+																			))}
+																		</tbody>
+																	</table>
+																</div>
+															</TableCell>
+														</TableRow>
+													) : null,
+												].filter(Boolean);
+											})}
+										</TableBody>
+									</Table>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
 		</main>
 	);
 }

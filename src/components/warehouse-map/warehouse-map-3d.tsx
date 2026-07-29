@@ -7,6 +7,11 @@ import {
 	type StockQuant,
 	type StockQuantsQueryData,
 } from "@/lib/graphql/stock-quant";
+import {
+	DELIVERY_ORDER_ITEMS_QUERY,
+	type DeliveryOrderItemsQueryData,
+	type DeliveryOrderItemsQueryVariables,
+} from "@/lib/graphql/delivery-orders";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -28,6 +33,8 @@ const A1_STAGING_ROW_COUNT = 14;     // rows 1-14: staging area (B-M blank)
 const A1_BM_MAX_ROW = 24;            // B-M go up to row 24 in their own numbering
 const A1_BM_ROW_OFFSET = A1_STAGING_ROW_COUNT; // physical row - offset = B-M row
 const A1_EXTENDED_COLS = new Set(["A", "N"]);
+// Staging bins: columns B-M, single layer (no shelf levels) — matches the real staging bin codes (B1..M14).
+const A1_STAGING_BM_COLS = new Set(["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]);
 
 export type AisleId = "A1" | "A2" | "A3";
 export type AisleFilter = "all" | AisleId;
@@ -197,6 +204,7 @@ function ShelfRow({
 	onSelect,
 	occupiedLevelsByKey,
 	activeColFilter,
+	singleLayerCols,
 	rowOffset = 0,
 }: {
 	aisleId: string;
@@ -207,6 +215,8 @@ function ShelfRow({
 	onSelect: (key: string | null, rect?: DOMRect) => void;
 	occupiedLevelsByKey?: Map<string, Map<number, LevelStatus>>;
 	activeColFilter?: (col: string) => boolean;
+	/** Columns rendered as a single-layer staging bin (no shelf levels) instead of a normal multi-level rack. */
+	singleLayerCols?: Set<string>;
 	rowOffset?: number;
 }) {
 	return (
@@ -219,26 +229,36 @@ function ShelfRow({
 				{isWalkway ? "W" : ""}
 			</div>
 			{COLUMNS.map((col) => {
-				const levels = isWalkway ? WALKWAY_LEVELS : NORMAL_LEVELS;
+				const isSingleLayer = !isWalkway && singleLayerCols?.has(col);
+				const levels = isWalkway ? WALKWAY_LEVELS : isSingleLayer ? 1 : NORMAL_LEVELS;
 				const displayLevels = isWalkway ? NORMAL_LEVELS : levels;
 				// A1 extended cols (A, N) keep physical row; B-M use offset row numbering
 				const effectiveRow = (!isWalkway && rowOffset > 0 && !A1_EXTENDED_COLS.has(col))
 					? row - rowOffset
 					: row;
-				const key = isWalkway
-					? `AW${aisleNum}|${col}|${effectiveRow}`
-					: `${aisleId}|${col}|${effectiveRow}`;
+				// Staging bins get their own key namespace (STG|col|row) — they're never rack levels,
+				// so they must never collide with the B-M real-rack keys that reuse the same 1-14 numbering above the staging zone.
+				const key = isSingleLayer
+					? `STG|${col}|${row}`
+					: isWalkway
+						? `AW${aisleNum}|${col}|${effectiveRow}`
+						: `${aisleId}|${col}|${effectiveRow}`;
 				const isSelected = selected === key;
 				if (activeColFilter && !activeColFilter(col)) {
 					return <div key={key} style={{ width: SW + SD, minWidth: SW + SD }} />;
 				}
+				const label = isWalkway
+					? `${col}W-${effectiveRow}`
+					: isSingleLayer
+						? `${col}${effectiveRow}`
+						: `${col}${aisleNum}-${effectiveRow}`;
 				return (
 					<div key={key} data-shelf-key={key}>
 					<ShelfUnit
 						levels={levels}
 						displayLevels={displayLevels}
 						selected={isSelected}
-						label={isWalkway ? `${col}W-${effectiveRow}` : `${col}${aisleNum}-${effectiveRow}`}
+						label={label}
 						occupiedLevels={occupiedLevelsByKey?.get(key)}
 						onClick={(rect) => onSelect(isSelected ? null : key, isSelected ? undefined : rect)}
 					/>
@@ -372,6 +392,48 @@ function ShelfDetailCard({
 	);
 }
 
+function isStagingBinKey(key: string): boolean {
+	return key.startsWith("STG|");
+}
+
+function StagingBinDetailCard({
+	shelfKey,
+	doInfo,
+	onClose,
+}: {
+	shelfKey: string;
+	doInfo: { doNo: string; outletName: string | null } | null;
+	onClose: () => void;
+}) {
+	const [, col, rowStr] = shelfKey.split("|");
+	const binCode = `${col}${rowStr}`;
+
+	return (
+		<div className="border rounded-xl bg-white shadow-lg p-4 w-72 shrink-0 flex flex-col">
+			<div className="flex items-center justify-between mb-3 shrink-0">
+				<p className="font-semibold text-sm" style={{ fontFamily: "var(--dashboard-display)" }}>
+					Bin {binCode}
+				</p>
+				<button
+					onClick={onClose}
+					className="text-muted-foreground hover:text-foreground transition-colors"
+					aria-label="Close"
+				>
+					<X className="h-4 w-4" />
+				</button>
+			</div>
+			{doInfo ? (
+				<div className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-2">
+					<p className="text-xs font-bold font-mono tracking-wide text-violet-700">{doInfo.doNo}</p>
+					{doInfo.outletName && <p className="text-[10px] text-muted-foreground mt-0.5">{doInfo.outletName}</p>}
+				</div>
+			) : (
+				<p className="text-xs text-muted-foreground">—</p>
+			)}
+		</div>
+	);
+}
+
 // ─── Main 3D map component ────────────────────────────────────────────────────
 
 type WarehouseMap3DProps = {
@@ -410,6 +472,30 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 				pageNumber: 1,
 			}),
 	});
+
+	// Staging bins hold a DO (from Packing), not SKU stock — fetch active DOs to map stagingBin -> DO.
+	const stagingDoVars: DeliveryOrderItemsQueryVariables = {
+		filter: { doStatuses: ["CREATED", "NEW", "PICKING", "PACKING"] },
+		pageSize: 1000,
+		pageNumber: 1,
+	};
+	const { data: stagingDoData } = useQuery({
+		queryKey: ["warehouse-map-staging-bins", stagingDoVars],
+		queryFn: () =>
+			gqlRequest<DeliveryOrderItemsQueryData, DeliveryOrderItemsQueryVariables>(
+				DELIVERY_ORDER_ITEMS_QUERY,
+				stagingDoVars,
+			),
+	});
+
+	const doByStagingBin = useMemo(() => {
+		const map = new Map<string, { doNo: string; outletName: string | null }>();
+		for (const item of stagingDoData?.deliveryOrderItems.query ?? []) {
+			if (!item.stagingBin || map.has(item.stagingBin)) continue;
+			map.set(item.stagingBin, { doNo: item.doNo ?? "—", outletName: item.outletName ?? null });
+		}
+		return map;
+	}, [stagingDoData]);
 
 	const occupiedLevelsByKey = useMemo(() => {
 		const map = new Map<string, Map<number, LevelStatus>>();
@@ -496,7 +582,7 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 
 	// Synthetic level entries — always generated, not dependent on master data
 	const selectedLevelEntries = useMemo<LevelEntry[]>(() => {
-		if (!selected) return [];
+		if (!selected || isStagingBinKey(selected)) return [];
 		const isWalkwayKey = selected.startsWith("AW");
 		const [aisleStr, col, rowStr] = selected.split("|");
 		const aisleNum = isWalkwayKey
@@ -600,18 +686,12 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 										);
 									})}
 
-									{/* Staging area: rows 13→1 — A and N shelves with a visible box in the middle */}
-									<div className="relative">
-										<div
-											className="absolute border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/40 flex items-center justify-center pointer-events-none z-10"
-											style={{
-												left: 64 + SW + SD,
-												width: 12 * (SW + SD) + 11 * 16,
-												top: 0,
-												bottom: 0,
-											}}
-										>
+									{/* Staging area: rows 14→1 — A and N keep their normal 6-level racks; B-M render as single-layer staging bins (B1..M14). */}
+									<div>
+										<div className="flex items-center gap-2 py-2">
+											<div className="h-px flex-1 bg-slate-200" />
 											<span className="text-slate-400 text-xs font-bold tracking-[0.25em] uppercase">Staging Area</span>
+											<div className="h-px flex-1 bg-slate-200" />
 										</div>
 										{Array.from({ length: A1_STAGING_ROW_COUNT }, (_, i) => {
 											const row = A1_STAGING_ROW_COUNT - i;
@@ -624,7 +704,7 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 														selected={selected}
 														onSelect={handleSelect}
 														occupiedLevelsByKey={occupiedLevelsByKey}
-														activeColFilter={(col) => A1_EXTENDED_COLS.has(col)}
+														singleLayerCols={A1_STAGING_BM_COLS}
 													/>
 												</div>
 											);
@@ -662,15 +742,27 @@ export function WarehouseMap3D({ sectionFilter, highlightBin, highlightKey }: Wa
 			{/* Floating detail card */}
 			{selected && cardPos && (
 				<div style={{ position: "fixed", left: cardPos.x, ...(cardPos.anchorBottom ? { bottom: cardPos.anchorY } : { top: cardPos.anchorY }), zIndex: 50 }}>
-					<ShelfDetailCard
-						shelfKey={selected}
-						levelEntries={selectedLevelEntries}
-						stockByBinCode={stockByBinCode}
-						onClose={() => {
-							setSelected(null);
-							setCardPos(null);
-						}}
-					/>
+					{isStagingBinKey(selected) ? (
+						// selected key format for staging bins: STG|col|row -> bin code "{col}{row}"
+						<StagingBinDetailCard
+							shelfKey={selected}
+							doInfo={doByStagingBin.get(`${selected.split("|")[1]}${selected.split("|")[2]}`) ?? null}
+							onClose={() => {
+								setSelected(null);
+								setCardPos(null);
+							}}
+						/>
+					) : (
+						<ShelfDetailCard
+							shelfKey={selected}
+							levelEntries={selectedLevelEntries}
+							stockByBinCode={stockByBinCode}
+							onClose={() => {
+								setSelected(null);
+								setCardPos(null);
+							}}
+						/>
+					)}
 				</div>
 			)}
 		</div>

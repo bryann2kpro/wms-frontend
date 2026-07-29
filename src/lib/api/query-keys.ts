@@ -34,6 +34,7 @@ export const qk = {
 		all: ["load-batches"] as const,
 		list: (f: object) => ["load-batches", "list", f] as const,
 	},
+	warehouseCoords: { all: ["warehouse-coords"] as const },
 	tmsRoutes: { all: ["tms-routes"] as const },
 	setupAreas: {
 		all: ["setup-areas"] as const,

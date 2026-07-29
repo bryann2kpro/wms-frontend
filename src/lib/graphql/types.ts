@@ -456,6 +456,8 @@ export interface LoadBatchStop {
 	stagingBin?: string | null;
 	loadOrder?: number | null;
 	loadedAt?: string | null;
+	lat?: number | null;
+	lng?: number | null;
 }
 
 export interface LoadBatch {
@@ -1053,8 +1055,12 @@ export interface DeliveryOrderItemWithDetails {
 	doNo: string | null;
 	doStatus: string | null;
 	stagingBin: string | null;
+	loadOrder?: number | null;
 	outletName: string | null;
 	outletAddress: string | null;
+	regionId?: string | null;
+	regionName?: string | null;
+	regionCode?: string | null;
 	onHandQty: string | null;
 	lossQty: string | null;
 	reservedQty: string | null;

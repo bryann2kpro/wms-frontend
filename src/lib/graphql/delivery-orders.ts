@@ -146,8 +146,12 @@ export const DELIVERY_ORDER_ITEM_WITH_DETAILS_FRAGMENT = gql`
 		doNo
 		doStatus
 		stagingBin
+		loadOrder
 		outletName
 		outletAddress
+		regionId
+		regionName
+		regionCode
 		onHandQty
 		lossQty
 		reservedQty

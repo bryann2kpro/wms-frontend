@@ -217,7 +217,15 @@ function AllocationGuide({
 const TABLE_COLS = 9;
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
-export function EmpireSushiDOComponent() {
+export function EmpireSushiDOComponent({
+	title = PAGE_TITLE,
+	description = PAGE_DESCRIPTION,
+	singleDateMode = false,
+}: {
+	title?: string;
+	description?: string;
+	singleDateMode?: boolean;
+} = {}) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const trimmedSearchTerm = searchTerm.trim();
 	const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
@@ -645,8 +653,8 @@ export function EmpireSushiDOComponent() {
 
 				<AdminPageHeader
 					icon={Truck}
-					title={PAGE_TITLE}
-					description={PAGE_DESCRIPTION}
+					title={title}
+					description={description}
 					titleId="es-do-page-title"
 					descriptionId="es-do-page-description"
 					rightSlot={
@@ -747,18 +755,25 @@ export function EmpireSushiDOComponent() {
 							<input
 								type="date"
 								value={dateFrom}
-								onChange={(e) => setDateFrom(e.target.value)}
+								onChange={(e) => {
+									setDateFrom(e.target.value);
+									if (singleDateMode) setDateTo(e.target.value);
+								}}
 								className="h-8 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								aria-label="Delivery date from"
+								aria-label={singleDateMode ? "Delivery date" : "Delivery date from"}
 							/>
-							<span className="text-xs text-muted-foreground">–</span>
-							<input
-								type="date"
-								value={dateTo}
-								onChange={(e) => setDateTo(e.target.value)}
-								className="h-8 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								aria-label="Delivery date to"
-							/>
+							{!singleDateMode && (
+								<>
+									<span className="text-xs text-muted-foreground">–</span>
+									<input
+										type="date"
+										value={dateTo}
+										onChange={(e) => setDateTo(e.target.value)}
+										className="h-8 rounded-md border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										aria-label="Delivery date to"
+									/>
+								</>
+							)}
 						</div>
 
 						{(selectedRegionIds.length > 0 ||
