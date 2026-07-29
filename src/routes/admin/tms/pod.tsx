@@ -85,13 +85,12 @@ function TmsPodPage() {
 									<TableHead>Outlet</TableHead>
 									<TableHead>Driver</TableHead>
 									<TableHead>Captured At</TableHead>
-									<TableHead>Location</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{records.length === 0 && !loading ? (
 									<TableRow>
-										<TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+										<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
 											No POD records found.
 										</TableCell>
 									</TableRow>
@@ -111,9 +110,6 @@ function TmsPodPage() {
 											<TableCell>{r.outletName}</TableCell>
 											<TableCell>{dash(r.driverName)}</TableCell>
 											<TableCell>{formatDate(r.capturedAt)}</TableCell>
-											<TableCell className="font-mono text-xs">
-												{r.lat && r.lng ? `${r.lat}, ${r.lng}` : "—"}
-											</TableCell>
 										</TableRow>
 									))
 								)}
