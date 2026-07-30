@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	Table,
 	TableBody,
 	TableCell,
@@ -25,14 +18,10 @@ import {
 } from "@/components/ui/table";
 import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
-import { DRIVERS_QUERY, type DriversQueryData, type DriversQueryVariables } from "@/lib/graphql/drivers";
 import {
-	ASSIGN_BATCH_DRIVER_MUTATION,
 	LOAD_BATCHES_QUERY,
 	UNASSIGN_BATCH_DRIVER_MUTATION,
 	UNDO_LOAD_BATCH_MUTATION,
-	type AssignBatchDriverData,
-	type AssignBatchDriverVariables,
 	type LoadBatchesQueryData,
 	type LoadBatchesQueryVariables,
 	type UnassignBatchDriverData,
@@ -49,7 +38,7 @@ export const Route = createFileRoute("/admin/tms/loading")({
 		meta: [
 			{
 				title: "Loading - SME Edaran WMS",
-				description: "Assign drivers and confirm vehicle loading per batch.",
+				description: "Drivers are auto-assigned on clock-in — confirm vehicle loading per batch.",
 			},
 		],
 	}),
@@ -85,33 +74,11 @@ function StatusBadge({ status }: { status: string }) {
 	);
 }
 
-function BatchCard({
-	batch,
-	drivers,
-	assignedDriverIds,
-}: {
-	batch: LoadBatch;
-	drivers: { id: string; name: string; plateNumber?: string | null; vehicleType?: string | null }[];
-	assignedDriverIds: Set<string>;
-}) {
+function BatchCard({ batch }: { batch: LoadBatch }) {
 	const queryClient = useQueryClient();
 	const [collapsed, setCollapsed] = useState(true);
-	const [selectedDriverId, setSelectedDriverId] = useState("");
 
 	const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.loadBatches.all });
-
-	const assignMutation = useMutation({
-		mutationFn: (vars: AssignBatchDriverVariables) =>
-			gqlRequest<AssignBatchDriverData, AssignBatchDriverVariables>(
-				ASSIGN_BATCH_DRIVER_MUTATION,
-				vars,
-			),
-		onSuccess: () => {
-			toast.success("Driver assigned");
-			invalidate();
-		},
-		onError: (err) => toast.error(getErrorMessage(err)),
-	});
 
 	const unassignMutation = useMutation({
 		mutationFn: (vars: UnassignBatchDriverVariables) =>
@@ -136,9 +103,6 @@ function BatchCard({
 		onError: (err) => toast.error(getErrorMessage(err)),
 	});
 
-	const availableDrivers = drivers.filter(
-		(d) => !assignedDriverIds.has(d.id) || d.id === batch.driver?.id,
-	);
 	const done = batch.status === "DONE";
 
 	return (
@@ -194,43 +158,6 @@ function BatchCard({
 
 			{!collapsed && (
 				<>
-					{batch.status === "PENDING_DRIVER" && (
-						<div
-							className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5"
-							onClick={(e) => e.stopPropagation()}
-						>
-							<Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-								<SelectTrigger className="h-8 w-56 text-sm">
-									<SelectValue placeholder="Select driver…" />
-								</SelectTrigger>
-								<SelectContent>
-									{availableDrivers.map((d) => (
-										<SelectItem key={d.id} value={d.id}>
-											<div className="flex items-center gap-2">
-												{d.name}
-												{d.plateNumber && (
-													<span className="font-mono text-xs text-muted-foreground">
-														{d.plateNumber}
-													</span>
-												)}
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Button
-								size="sm"
-								disabled={!selectedDriverId || assignMutation.isPending}
-								onClick={() =>
-									assignMutation.mutate({ batchId: batch.id, driverId: selectedDriverId })
-								}
-							>
-								<Truck className="mr-1.5 h-3.5 w-3.5" />
-								{assignMutation.isPending ? "Assigning…" : "Assign"}
-							</Button>
-						</div>
-					)}
-
 					<div className="overflow-x-auto">
 						<Table>
 							<TableHeader>
@@ -303,19 +230,8 @@ function TmsLoadingPage() {
 			gqlRequest<LoadBatchesQueryData, LoadBatchesQueryVariables>(LOAD_BATCHES_QUERY, queryVars),
 	});
 
-	const { data: driversData } = useQuery({
-		queryKey: qk.drivers.list({}),
-		queryFn: () =>
-			gqlRequest<DriversQueryData, DriversQueryVariables>(DRIVERS_QUERY, { status: "ACTIVE" }),
-	});
-
 	const batches = data?.loadBatches ?? [];
-	const drivers = (driversData?.drivers ?? []).filter((d) => d.clockedInAt != null);
 	const loading = isLoading || isFetching;
-
-	const assignedDriverIds = new Set(
-		batches.filter((b) => b.driver?.id).map((b) => b.driver!.id),
-	);
 
 	const pending = batches.filter((b) => b.status === "PENDING_DRIVER");
 	const active = batches.filter((b) => b.status === "LOADING");
@@ -332,7 +248,7 @@ function TmsLoadingPage() {
 			<AdminPageHeader
 				icon={Truck}
 				title="Loading"
-				description="Assign drivers and confirm vehicle loading per batch."
+				description="Drivers are auto-assigned on clock-in — confirm vehicle loading per batch."
 				titleId="tms-loading-title"
 				descriptionId="tms-loading-description"
 			/>
@@ -356,7 +272,7 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-amber-200" />
 							</div>
 							{pending.map((b) => (
-								<BatchCard key={b.id} batch={b} drivers={drivers} assignedDriverIds={assignedDriverIds} />
+								<BatchCard key={b.id} batch={b} />
 							))}
 						</section>
 					)}
@@ -371,7 +287,7 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-border" />
 							</div>
 							{active.map((b) => (
-								<BatchCard key={b.id} batch={b} drivers={drivers} assignedDriverIds={assignedDriverIds} />
+								<BatchCard key={b.id} batch={b} />
 							))}
 						</section>
 					)}
@@ -386,7 +302,7 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-green-200" />
 							</div>
 							{done.map((b) => (
-								<BatchCard key={b.id} batch={b} drivers={drivers} assignedDriverIds={assignedDriverIds} />
+								<BatchCard key={b.id} batch={b} />
 							))}
 						</section>
 					)}
