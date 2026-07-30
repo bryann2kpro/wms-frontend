@@ -76,7 +76,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function BatchCard({ batch }: { batch: LoadBatch }) {
 	const queryClient = useQueryClient();
-	const [collapsed, setCollapsed] = useState(true);
+	const [collapsed, setCollapsed] = useState(batch.status !== "LOADING");
 
 	const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.loadBatches.all });
 

@@ -149,7 +149,7 @@ function ZoneMap({
 }
 
 function BatchRouteCard({ batch, depot }: { batch: LoadBatch; depot: { lat: number; lng: number } | null }) {
-	const [collapsed, setCollapsed] = useState(true);
+	const [collapsed, setCollapsed] = useState(batch.status !== "LOADING");
 	const sortedStops = [...batch.stops].sort((a, b) => (a.loadOrder ?? 9999) - (b.loadOrder ?? 9999));
 
 	return (
