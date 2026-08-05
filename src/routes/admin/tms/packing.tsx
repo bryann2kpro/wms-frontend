@@ -342,7 +342,6 @@ function TmsPackingPage() {
 										<TableHeader>
 											<TableRow>
 												<TableHead className="w-8" />
-												<TableHead className="w-14 text-center">Load #</TableHead>
 												<TableHead>DO No.</TableHead>
 												<TableHead>Outlet</TableHead>
 												<TableHead className="text-right">Staging Bin</TableHead>
@@ -364,9 +363,6 @@ function TmsPackingPage() {
 															<ChevronRight
 																className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`}
 															/>
-														</TableCell>
-														<TableCell className="text-center font-mono text-sm font-bold">
-															{group.loadOrder ?? "—"}
 														</TableCell>
 														<TableCell className="font-mono text-sm font-semibold">
 															{group.doNo}
@@ -396,7 +392,7 @@ function TmsPackingPage() {
 													</TableRow>,
 													expanded ? (
 														<TableRow key={`detail-${group.doId}`} className="bg-muted/10">
-															<TableCell colSpan={5} className="p-0">
+															<TableCell colSpan={4} className="p-0">
 																<div className="px-4 py-3">
 																	<table className="w-full text-xs border rounded-md overflow-hidden">
 																		<thead>
