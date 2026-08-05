@@ -22,6 +22,11 @@ import {
 	type LoadBatchesQueryVariables,
 	type WarehouseCoordsData,
 } from "@/lib/graphql/loading";
+import {
+	DRIVER_LATEST_LOCATION_QUERY,
+	type DriverLatestLocationQueryData,
+	type DriverLatestLocationQueryVariables,
+} from "@/lib/graphql/drivers";
 import type { LoadBatch, LoadBatchStop } from "@/lib/graphql/types";
 
 export const Route = createFileRoute("/admin/tms/routing")({
@@ -86,10 +91,12 @@ function ZoneMap({
 	stops,
 	depot,
 	mapId,
+	driverLocation,
 }: {
 	stops: LoadBatchStop[];
 	depot: { lat: number; lng: number };
 	mapId: string;
+	driverLocation?: { lat: number; lng: number } | null;
 }) {
 	const deliveryStops = sortByDeliveryOrder(stops);
 
@@ -143,6 +150,11 @@ function ZoneMap({
 					</div>
 				</AdvancedMarker>
 			))}
+			{driverLocation && (
+				<AdvancedMarker position={driverLocation}>
+					<div className="h-4 w-4 rounded-full border-2 border-white bg-red-500 shadow-md" title="Driver's last known location" />
+				</AdvancedMarker>
+			)}
 			<RouteLine depot={depot} stops={deliveryStops} />
 		</GMap>
 	);
@@ -151,6 +163,21 @@ function ZoneMap({
 function BatchRouteCard({ batch, depot }: { batch: LoadBatch; depot: { lat: number; lng: number } | null }) {
 	const [collapsed, setCollapsed] = useState(batch.status !== "LOADING");
 	const sortedStops = [...batch.stops].sort((a, b) => (a.loadOrder ?? 9999) - (b.loadOrder ?? 9999));
+
+	const driverId = batch.driver?.id;
+	// Fetched once when the card expands — no polling, refresh the page to update (matches Bryan's "manual refresh only" call).
+	const { data: locationData } = useQuery({
+		queryKey: qk.driverLocation.latest(driverId ?? ""),
+		queryFn: () =>
+			gqlRequest<DriverLatestLocationQueryData, DriverLatestLocationQueryVariables>(
+				DRIVER_LATEST_LOCATION_QUERY,
+				{ driverId: driverId as string },
+			),
+		enabled: !!driverId && !collapsed,
+	});
+	const driverLocation = locationData?.driverLatestLocation
+		? { lat: locationData.driverLatestLocation.lat, lng: locationData.driverLatestLocation.lng }
+		: null;
 
 	return (
 		<div className="overflow-hidden rounded-lg border">
@@ -196,7 +223,20 @@ function BatchRouteCard({ batch, depot }: { batch: LoadBatch; depot: { lat: numb
 				<div className="flex flex-col border-t sm:flex-row">
 					<div className="min-w-0 flex-1">
 						{depot ? (
-							<ZoneMap stops={batch.stops} depot={depot} mapId={`${GMAPS_MAP_ID}-${batch.id}`} />
+							<>
+								<ZoneMap
+									stops={batch.stops}
+									depot={depot}
+									mapId={`${GMAPS_MAP_ID}-${batch.id}`}
+									driverLocation={driverLocation}
+								/>
+								{locationData?.driverLatestLocation && (
+									<div className="flex items-center gap-1.5 border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+										<span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+										Driver last seen {new Date(locationData.driverLatestLocation.capturedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+									</div>
+								)}
+							</>
 						) : (
 							<div className="flex h-64 items-center justify-center text-xs text-muted-foreground">
 								Warehouse location not geocoded yet.

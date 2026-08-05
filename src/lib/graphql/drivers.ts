@@ -95,4 +95,25 @@ export type SetDriverClockMutationVariables = {
 };
 export type SetDriverClockMutationData = { setDriverClock: Driver };
 
+export const DRIVER_LATEST_LOCATION_QUERY = gql`
+	query DriverLatestLocation($driverId: ID!) {
+		driverLatestLocation(driverId: $driverId) {
+			driverId
+			lat
+			lng
+			capturedAt
+		}
+	}
+`;
+
+export type DriverLocation = {
+	driverId: string;
+	lat: number;
+	lng: number;
+	capturedAt: string;
+};
+
+export type DriverLatestLocationQueryVariables = { driverId: string };
+export type DriverLatestLocationQueryData = { driverLatestLocation: DriverLocation | null };
+
 export type { Driver };

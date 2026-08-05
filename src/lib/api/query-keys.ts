@@ -22,6 +22,9 @@ export const qk = {
 		all: ["drivers"] as const,
 		list: (f: object) => ["drivers", "list", f] as const,
 	},
+	driverLocation: {
+		latest: (driverId: string) => ["driver-location", "latest", driverId] as const,
+	},
 	podRecords: {
 		all: ["pod-records"] as const,
 		list: (f: object) => ["pod-records", "list", f] as const,
