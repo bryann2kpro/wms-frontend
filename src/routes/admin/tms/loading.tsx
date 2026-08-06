@@ -7,6 +7,13 @@ import { AdminPageHeader } from "@/components/admin-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { GlobalLoadingShadow } from "@/components/ui/loading-shadow";
 import {
 	Table,
@@ -20,10 +27,13 @@ import { gqlRequest } from "@/lib/api/gql";
 import { qk } from "@/lib/api/query-keys";
 import {
 	LOAD_BATCHES_QUERY,
+	MOVE_DO_TO_BATCH_MUTATION,
 	UNASSIGN_BATCH_DRIVER_MUTATION,
 	UNDO_LOAD_BATCH_MUTATION,
 	type LoadBatchesQueryData,
 	type LoadBatchesQueryVariables,
+	type MoveDoToBatchData,
+	type MoveDoToBatchVariables,
 	type UnassignBatchDriverData,
 	type UnassignBatchDriverVariables,
 	type UndoLoadBatchData,
@@ -74,9 +84,113 @@ function StatusBadge({ status }: { status: string }) {
 	);
 }
 
-function BatchCard({ batch }: { batch: LoadBatch }) {
+function EditLoadlistDialog({
+	open,
+	onOpenChange,
+	batch,
+	pendingBatch,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	batch: LoadBatch;
+	pendingBatch: LoadBatch | null;
+}) {
+	const queryClient = useQueryClient();
+	const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.loadBatches.all });
+
+	const moveMutation = useMutation({
+		mutationFn: (vars: MoveDoToBatchVariables) =>
+			gqlRequest<MoveDoToBatchData, MoveDoToBatchVariables>(MOVE_DO_TO_BATCH_MUTATION, vars),
+		onSuccess: () => invalidate(),
+		onError: (err) => toast.error(getErrorMessage(err)),
+	});
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-2xl">
+				<DialogHeader>
+					<DialogTitle>Edit Loadlist — {batch.driver?.name ?? "Unassigned"}</DialogTitle>
+					<DialogDescription>
+						Manually add or remove DOs for this driver. Vehicle capacity is not enforced here —
+						you can intentionally add extra DOs beyond the driver's usual pallet limit.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="grid grid-cols-2 gap-4">
+					<div>
+						<div className="mb-2 text-xs font-semibold text-muted-foreground">
+							In this load ({batch.stops.length})
+						</div>
+						<div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+							{batch.stops.map((stop) => (
+								<div
+									key={stop.doId}
+									className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs"
+								>
+									<div className="min-w-0">
+										<div className="truncate font-medium">{stop.outletName ?? stop.doNo}</div>
+										<div className="text-[10px] text-muted-foreground">{stop.doNo}</div>
+									</div>
+									<Button
+										size="sm"
+										variant="ghost"
+										disabled={!pendingBatch || moveMutation.isPending}
+										onClick={() =>
+											pendingBatch &&
+											moveMutation.mutate({ doId: stop.doId, targetBatchId: pendingBatch.id })
+										}
+									>
+										Remove
+									</Button>
+								</div>
+							))}
+							{batch.stops.length === 0 && (
+								<div className="py-4 text-center text-xs text-muted-foreground">
+									No DOs in this load.
+								</div>
+							)}
+						</div>
+					</div>
+					<div>
+						<div className="mb-2 text-xs font-semibold text-muted-foreground">
+							Available in {batch.regionName ?? "region"} ({pendingBatch?.stops.length ?? 0})
+						</div>
+						<div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+							{(pendingBatch?.stops ?? []).map((stop) => (
+								<div
+									key={stop.doId}
+									className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs"
+								>
+									<div className="min-w-0">
+										<div className="truncate font-medium">{stop.outletName ?? stop.doNo}</div>
+										<div className="text-[10px] text-muted-foreground">{stop.doNo}</div>
+									</div>
+									<Button
+										size="sm"
+										variant="ghost"
+										disabled={moveMutation.isPending}
+										onClick={() => moveMutation.mutate({ doId: stop.doId, targetBatchId: batch.id })}
+									>
+										Add
+									</Button>
+								</div>
+							))}
+							{(!pendingBatch || pendingBatch.stops.length === 0) && (
+								<div className="py-4 text-center text-xs text-muted-foreground">
+									No pending DOs available in this region.
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function BatchCard({ batch, pendingBatch }: { batch: LoadBatch; pendingBatch: LoadBatch | null }) {
 	const queryClient = useQueryClient();
 	const [collapsed, setCollapsed] = useState(batch.status !== "LOADING");
+	const [editOpen, setEditOpen] = useState(false);
 
 	const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.loadBatches.all });
 
@@ -145,6 +259,9 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 				<StatusBadge status={batch.status} />
 				{batch.status === "LOADING" && (
 					<div className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
+						<Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+							Edit
+						</Button>
 						<Button
 							size="sm"
 							variant="outline"
@@ -156,6 +273,15 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 					</div>
 				)}
 			</div>
+
+			{batch.status === "LOADING" && (
+				<EditLoadlistDialog
+					open={editOpen}
+					onOpenChange={setEditOpen}
+					batch={batch}
+					pendingBatch={pendingBatch}
+				/>
+			)}
 
 			{!collapsed && (
 				<>
@@ -277,7 +403,7 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-amber-200" />
 							</div>
 							{pending.map((b) => (
-								<BatchCard key={b.id} batch={b} />
+								<BatchCard key={b.id} batch={b} pendingBatch={null} />
 							))}
 						</section>
 					)}
@@ -292,7 +418,11 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-border" />
 							</div>
 							{active.map((b) => (
-								<BatchCard key={b.id} batch={b} />
+								<BatchCard
+									key={b.id}
+									batch={b}
+									pendingBatch={pending.find((p) => p.regionId === b.regionId) ?? null}
+								/>
 							))}
 						</section>
 					)}
@@ -307,7 +437,7 @@ function TmsLoadingPage() {
 								<div className="h-px flex-1 bg-green-200" />
 							</div>
 							{done.map((b) => (
-								<BatchCard key={b.id} batch={b} />
+								<BatchCard key={b.id} batch={b} pendingBatch={null} />
 							))}
 						</section>
 					)}

@@ -69,6 +69,15 @@ export const UNASSIGN_BATCH_DRIVER_MUTATION = gql`
 	${LOAD_BATCH_FRAGMENT}
 `;
 
+export const MOVE_DO_TO_BATCH_MUTATION = gql`
+	mutation MoveDoToBatch($doId: ID!, $targetBatchId: ID!) {
+		moveDoToBatch(doId: $doId, targetBatchId: $targetBatchId) {
+			...LoadBatchFields
+		}
+	}
+	${LOAD_BATCH_FRAGMENT}
+`;
+
 export const CONFIRM_BATCH_LOADING_MUTATION = gql`
 	mutation ConfirmBatchLoading($batchId: ID!, $loadedDoIds: [ID!]!) {
 		confirmBatchLoading(batchId: $batchId, loadedDoIds: $loadedDoIds)
@@ -100,6 +109,9 @@ export type AssignBatchDriverData = { assignBatchDriver: LoadBatch };
 
 export type UnassignBatchDriverVariables = { batchId: string };
 export type UnassignBatchDriverData = { unassignBatchDriver: LoadBatch };
+
+export type MoveDoToBatchVariables = { doId: string; targetBatchId: string };
+export type MoveDoToBatchData = { moveDoToBatch: LoadBatch };
 
 export type ConfirmBatchLoadingVariables = { batchId: string; loadedDoIds: string[] };
 export type ConfirmBatchLoadingData = { confirmBatchLoading: boolean };
