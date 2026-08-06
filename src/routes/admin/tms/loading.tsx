@@ -163,10 +163,10 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									{!pending && <TableHead className="w-14 text-center">Load #</TableHead>}
-									<TableHead className="w-48">DO / Outlet</TableHead>
+									{!pending && <TableHead className="w-14 pl-4 text-center">Load #</TableHead>}
+									<TableHead className={`w-48 ${pending ? "pl-4" : ""}`}>DO / Outlet</TableHead>
 									<TableHead className="w-80">Address</TableHead>
-									<TableHead className="w-24">Staging Bin</TableHead>
+									<TableHead className="w-24 pr-4">Staging Bin</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -175,11 +175,11 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 									.map((stop) => (
 										<TableRow key={stop.doId}>
 											{!pending && (
-												<TableCell className="text-center font-mono text-sm font-bold">
+												<TableCell className="pl-4 text-center font-mono text-sm font-bold">
 													{stop.loadOrder ?? "—"}
 												</TableCell>
 											)}
-											<TableCell className="w-48">
+											<TableCell className={`w-48 ${pending ? "pl-4" : ""}`}>
 												<div className="truncate text-sm font-medium">
 													{stop.outletName ?? "—"}
 												</div>
@@ -190,7 +190,7 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 											<TableCell className="w-64 whitespace-normal break-words text-xs text-muted-foreground">
 												{stop.outletAddress ?? "—"}
 											</TableCell>
-											<TableCell>
+											<TableCell className="pr-4">
 												{stop.stagingBin ? (
 													<span className="rounded border border-violet-300 bg-violet-50 px-1.5 py-0.5 font-mono text-xs font-semibold text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
 														{stop.stagingBin}
