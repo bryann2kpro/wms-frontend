@@ -233,7 +233,9 @@ function TmsLoadingPage() {
 	const batches = data?.loadBatches ?? [];
 	const loading = isLoading || isFetching;
 
-	const pending = batches.filter((b) => b.status === "PENDING_DRIVER");
+	const pending = batches
+		.filter((b) => b.status === "PENDING_DRIVER")
+		.sort((a, b) => (a.regionCode ?? a.regionName ?? "").localeCompare(b.regionCode ?? b.regionName ?? ""));
 	const active = batches.filter((b) => b.status === "LOADING");
 	const done = batches.filter((b) => b.status === "DONE");
 

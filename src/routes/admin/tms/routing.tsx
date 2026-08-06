@@ -294,7 +294,9 @@ function TmsRoutingPage() {
 	}, [batches]);
 
 	const dateBatches = latestDate ? batches.filter((b) => b.date === latestDate) : [];
-	const activeBatches = dateBatches.filter((b) => b.status !== "DONE");
+	const activeBatches = dateBatches
+		.filter((b) => b.status !== "DONE")
+		.sort((a, b) => (a.regionCode ?? a.regionName ?? "").localeCompare(b.regionCode ?? b.regionName ?? ""));
 	const doneBatches = dateBatches.filter((b) => b.status === "DONE");
 
 	return (
