@@ -104,6 +104,7 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 	});
 
 	const done = batch.status === "DONE";
+	const pending = batch.status === "PENDING_DRIVER";
 
 	return (
 		<div
@@ -162,7 +163,7 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-14 text-center">Load #</TableHead>
+									{!pending && <TableHead className="w-14 text-center">Load #</TableHead>}
 									<TableHead className="w-48">DO / Outlet</TableHead>
 									<TableHead className="w-80">Address</TableHead>
 									<TableHead className="w-24">Staging Bin</TableHead>
@@ -173,9 +174,11 @@ function BatchCard({ batch }: { batch: LoadBatch }) {
 									.sort((a, b) => (a.loadOrder ?? 9999) - (b.loadOrder ?? 9999))
 									.map((stop) => (
 										<TableRow key={stop.doId}>
-											<TableCell className="text-center font-mono text-sm font-bold">
-												{stop.loadOrder ?? "—"}
-											</TableCell>
+											{!pending && (
+												<TableCell className="text-center font-mono text-sm font-bold">
+													{stop.loadOrder ?? "—"}
+												</TableCell>
+											)}
 											<TableCell className="w-48">
 												<div className="truncate text-sm font-medium">
 													{stop.outletName ?? "—"}
