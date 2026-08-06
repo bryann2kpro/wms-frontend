@@ -295,7 +295,7 @@ function TmsRoutingPage() {
 
 	const dateBatches = latestDate ? batches.filter((b) => b.date === latestDate) : [];
 	const activeBatches = dateBatches
-		.filter((b) => b.status !== "DONE")
+		.filter((b) => b.status !== "DONE" && b.status !== "PENDING_DRIVER")
 		.sort((a, b) => (a.regionCode ?? a.regionName ?? "").localeCompare(b.regionCode ?? b.regionName ?? ""));
 	const doneBatches = dateBatches.filter((b) => b.status === "DONE");
 
@@ -321,7 +321,7 @@ function TmsRoutingPage() {
 						Google Maps API key not configured.
 					</CardContent>
 				</Card>
-			) : dateBatches.length === 0 && !loading ? (
+			) : activeBatches.length === 0 && doneBatches.length === 0 && !loading ? (
 				<Card className="rounded-2xl border-2 border-border">
 					<CardContent className="py-16 text-center text-muted-foreground">
 						No route data yet — batches appear here once a DO is created.
@@ -334,7 +334,8 @@ function TmsRoutingPage() {
 							<span className="font-mono">{latestDate}</span>
 							<span>·</span>
 							<span>
-								{dateBatches.length} batch{dateBatches.length !== 1 ? "es" : ""}
+								{activeBatches.length + doneBatches.length} batch
+								{activeBatches.length + doneBatches.length !== 1 ? "es" : ""}
 							</span>
 						</div>
 						<div className="flex flex-col gap-3">
